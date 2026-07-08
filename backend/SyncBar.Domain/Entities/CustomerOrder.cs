@@ -1,0 +1,165 @@
+using SyncBar.Domain.Constants;
+using SyncBar.Domain.Primitives;
+
+namespace SyncBar.Domain.Entities;
+
+public sealed class CustomerOrder : AggregateRoot
+{
+    private readonly List<OrderItem> _items = [];
+
+    public long BranchId { get; private set; }
+    public long? DiningTableId { get; private set; }
+    public long? ComandaId { get; private set; }
+    public long EmployeeId { get; private set; }
+    public long OrderStatusId { get; private set; }
+    public int? GuestCount { get; private set; }
+    public DateTime OpenedAt { get; private set; }
+    public DateTime? ClosedAt { get; private set; }
+    public decimal SubtotalAmount { get; private set; }
+    public decimal DiscountAmount { get; private set; }
+    public decimal ServiceFeeAmount { get; private set; }
+    public decimal TotalAmount { get; private set; }
+    public string? Notes { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public DateTime? UpdatedAt { get; private set; }
+    public bool IsActive { get; private set; }
+
+    public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
+
+    private CustomerOrder() : base(0) { }
+
+    private CustomerOrder(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes) : base(0)
+    {
+        BranchId = branchId;
+        DiningTableId = diningTableId;
+        ComandaId = comandaId;
+        EmployeeId = employeeId;
+        GuestCount = guestCount;
+        Notes = notes;
+        OrderStatusId = OrderStatusIds.Aberto;
+        OpenedAt = DateTime.UtcNow;
+        IsActive = true;
+        CreatedAt = DateTime.UtcNow;
+    }
+
+    public static Result<CustomerOrder> Create(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes)
+    {
+        // Espelha CK_CustomerOrder_Origin: pedido precisa de mesa OU comanda.
+        if (diningTableId is null && comandaId is null)
+            return Result.Failure<CustomerOrder>(
+                new Error("CustomerOrder.MissingOrigin", "Order must have a dining table or a comanda."));
+
+        return Result.Success(new CustomerOrder(branchId, diningTableId, comandaId, employeeId, guestCount, notes));
+    }
+
+    public Result AddItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId)
+    {
+        if (!IsOpen())
+            return Result.Failure(new Error("CustomerOrder.NotOpen", "Items can only be added to an open order."));
+        if (quantity <= 0)
+            return Result.Failure(new Error("CustomerOrder.InvalidQuantity", "Quantity must be greater than zero."));
+
+        // UnitPrice congelado no lancamento — nunca recalculado a partir do Product.
+        var item = OrderItem.Create(Id, productId, unitPrice, quantity, notes, employeeId);
+        if (item.IsFailure)
+            return Result.Failure(item.Error);
+
+        _items.Add(item.Value);
+        OrderStatusId = OrderStatusIds.EmAndamento;
+        RecalculateTotals();
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    public Result UpdateItemStatus(long orderItemId, long orderItemStatusId)
+    {
+        if (!IsOpen())
+            return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
+
+        var item = _items.FirstOrDefault(i => i.Id == orderItemId && i.IsActive);
+        if (item is null)
+            return Result.Failure(new Error("CustomerOrder.ItemNotFound", "Order item not found."));
+
+        var result = item.UpdateStatus(orderItemStatusId);
+        if (result.IsFailure)
+            return result;
+
+        if (orderItemStatusId == OrderItemStatusIds.Cancelado)
+            RecalculateTotals();
+
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    public Result ApplyDiscount(decimal discountAmount)
+    {
+        if (!IsOpen())
+            return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
+        if (discountAmount < 0)
+            return Result.Failure(new Error("CustomerOrder.InvalidDiscount", "Discount cannot be negative."));
+        if (discountAmount > SubtotalAmount)
+            return Result.Failure(new Error("CustomerOrder.DiscountExceedsSubtotal", "Discount cannot exceed the subtotal."));
+
+        DiscountAmount = discountAmount;
+        RecalculateTotals();
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    public Result Close(decimal serviceFeeRate)
+    {
+        if (!IsOpen())
+            return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
+        if (_items.Count(i => i.IsActive && i.OrderItemStatusId != OrderItemStatusIds.Cancelado) == 0)
+            return Result.Failure(new Error("CustomerOrder.NoItems", "Order has no items to close."));
+        if (serviceFeeRate < 0)
+            return Result.Failure(new Error("CustomerOrder.InvalidServiceFee", "Service fee rate cannot be negative."));
+
+        ServiceFeeAmount = Math.Round((SubtotalAmount - DiscountAmount) * serviceFeeRate, 2);
+        RecalculateTotals();
+        OrderStatusId = OrderStatusIds.AguardandoPagamento;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    public Result MarkAsPaid()
+    {
+        if (OrderStatusId != OrderStatusIds.AguardandoPagamento)
+            return Result.Failure(new Error("CustomerOrder.NotAwaitingPayment", "Order is not awaiting payment."));
+
+        OrderStatusId = OrderStatusIds.Pago;
+        ClosedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    public Result Cancel()
+    {
+        if (OrderStatusId == OrderStatusIds.Pago)
+            return Result.Failure(new Error("CustomerOrder.AlreadyPaid", "Paid orders must be refunded, not cancelled."));
+        if (OrderStatusId == OrderStatusIds.Cancelado)
+            return Result.Failure(new Error("CustomerOrder.AlreadyCancelled", "Order is already cancelled."));
+
+        OrderStatusId = OrderStatusIds.Cancelado;
+        ClosedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    public void Deactivate()
+    {
+        IsActive = false;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    private bool IsOpen()
+        => OrderStatusId is OrderStatusIds.Aberto or OrderStatusIds.EmAndamento or OrderStatusIds.AguardandoPagamento;
+
+    private void RecalculateTotals()
+    {
+        SubtotalAmount = _items
+            .Where(i => i.IsActive && i.OrderItemStatusId != OrderItemStatusIds.Cancelado)
+            .Sum(i => i.TotalAmount);
+        TotalAmount = SubtotalAmount - DiscountAmount + ServiceFeeAmount;
+    }
+}

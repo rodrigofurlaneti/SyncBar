@@ -1,0 +1,149 @@
+erDiagram
+    Company ||--o{ Branch : possui
+    Company ||--o{ JobTitle : define
+    Company ||--o{ Role : define
+    Company ||--o{ Category : define
+    Company ||--o{ Product : cadastra
+    Company ||--o{ Supplier : cadastra
+    Company ||--o{ AppUser : possui
+
+    Branch ||--o{ Employee : emprega
+    Branch ||--o{ DiningTable : possui
+    Branch ||--o{ Comanda : possui
+    Branch ||--o{ CashRegister : possui
+    Branch ||--o{ StockItem : mantem
+    Branch ||--o{ Purchase : recebe
+    Branch ||--o{ CustomerOrder : atende
+    Branch ||--o{ Sale : fatura
+
+    JobTitle ||--o{ Employee : classifica
+    Employee |o--o{ AppUser : acessa
+
+    AppUser ||--o{ UserRole : tem
+    Role ||--o{ UserRole : agrupa
+    Role ||--o{ RolePermission : concede
+    Permission ||--o{ RolePermission : compoe
+    AppUser ||--o{ RefreshToken : gera
+    AppUser |o--o{ AccessLog : registra
+
+    Category ||--o{ Product : agrupa
+    UnitOfMeasure ||--o{ Product : mede
+
+    Product ||--o{ StockItem : estocado
+    Product ||--o{ PurchaseItem : comprado
+    Product ||--o{ OrderItem : vendido
+    Supplier ||--o{ Purchase : fornece
+    Purchase ||--o{ PurchaseItem : contem
+    StockItem ||--o{ StockMovement : movimenta
+    StockMovementType ||--o{ StockMovement : classifica
+    PurchaseItem |o--o{ StockMovement : origina
+    OrderItem |o--o{ StockMovement : origina
+
+    TableStatus ||--o{ DiningTable : classifica
+    ComandaStatus ||--o{ Comanda : classifica
+    DiningTable |o--o{ CustomerOrder : recebe
+    Comanda |o--o{ CustomerOrder : recebe
+    Employee ||--o{ CustomerOrder : atende
+    OrderStatus ||--o{ CustomerOrder : classifica
+    CustomerOrder ||--o{ OrderItem : contem
+    OrderItemStatus ||--o{ OrderItem : classifica
+
+    CashRegister ||--o{ CashSession : abre
+    CashSessionStatus ||--o{ CashSession : classifica
+    Employee ||--o{ CashSession : opera
+    CashSession ||--o{ CashMovement : registra
+    CashMovementType ||--o{ CashMovement : classifica
+    CashSession ||--o{ Sale : recebe
+    CustomerOrder ||--|| Sale : gera
+    Sale ||--o{ SalePayment : liquidado
+    PaymentMethod ||--o{ SalePayment : forma
+    Sale |o--o{ CashMovement : origina
+
+    Company {
+        BIGINT Id PK
+        NVARCHAR LegalName
+        CHAR Cnpj
+        BIT IsActive
+    }
+    Branch {
+        BIGINT Id PK
+        BIGINT CompanyId FK
+        NVARCHAR Name
+    }
+    AppUser {
+        BIGINT Id PK
+        BIGINT CompanyId FK
+        BIGINT EmployeeId FK
+        VARCHAR UserName
+        VARCHAR PasswordHash
+    }
+    Employee {
+        BIGINT Id PK
+        BIGINT BranchId FK
+        BIGINT JobTitleId FK
+        NVARCHAR Name
+        CHAR Cpf
+    }
+    Product {
+        BIGINT Id PK
+        BIGINT CompanyId FK
+        BIGINT CategoryId FK
+        DECIMAL SalePrice
+        BIT IsStockControlled
+    }
+    DiningTable {
+        BIGINT Id PK
+        BIGINT BranchId FK
+        INT Number
+        BIGINT TableStatusId FK
+    }
+    Comanda {
+        BIGINT Id PK
+        BIGINT BranchId FK
+        VARCHAR Code
+        BIGINT ComandaStatusId FK
+    }
+    CustomerOrder {
+        BIGINT Id PK
+        BIGINT DiningTableId FK
+        BIGINT ComandaId FK
+        BIGINT OrderStatusId FK
+        DECIMAL TotalAmount
+    }
+    OrderItem {
+        BIGINT Id PK
+        BIGINT CustomerOrderId FK
+        BIGINT ProductId FK
+        DECIMAL Quantity
+        DECIMAL TotalAmount
+    }
+    CashSession {
+        BIGINT Id PK
+        BIGINT CashRegisterId FK
+        DECIMAL OpeningAmount
+        DECIMAL ClosingAmount
+    }
+    Sale {
+        BIGINT Id PK
+        BIGINT CustomerOrderId FK
+        BIGINT CashSessionId FK
+        DECIMAL TotalAmount
+    }
+    SalePayment {
+        BIGINT Id PK
+        BIGINT SaleId FK
+        BIGINT PaymentMethodId FK
+        DECIMAL Amount
+    }
+    StockItem {
+        BIGINT Id PK
+        BIGINT BranchId FK
+        BIGINT ProductId FK
+        DECIMAL CurrentQuantity
+    }
+    StockMovement {
+        BIGINT Id PK
+        BIGINT StockItemId FK
+        BIGINT StockMovementTypeId FK
+        DECIMAL Quantity
+    }

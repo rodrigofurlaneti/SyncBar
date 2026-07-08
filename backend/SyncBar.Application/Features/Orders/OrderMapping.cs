@@ -1,0 +1,19 @@
+using SyncBar.Domain.Entities;
+
+namespace SyncBar.Application.Features.Orders;
+
+internal static class OrderMapping
+{
+    internal static OrderResponse ToResponse(this CustomerOrder order)
+        => new(
+            order.Id, order.BranchId, order.DiningTableId, order.ComandaId, order.EmployeeId,
+            order.OrderStatusId, order.GuestCount, order.OpenedAt, order.ClosedAt,
+            order.SubtotalAmount, order.DiscountAmount, order.ServiceFeeAmount, order.TotalAmount,
+            order.Notes,
+            order.Items
+                .Where(i => i.IsActive)
+                .Select(i => new OrderItemResponse(
+                    i.Id, i.ProductId, i.OrderItemStatusId, i.Quantity, i.UnitPrice,
+                    i.DiscountAmount, i.TotalAmount, i.Notes))
+                .ToList());
+}
