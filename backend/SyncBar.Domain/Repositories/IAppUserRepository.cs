@@ -5,6 +5,8 @@ namespace SyncBar.Domain.Repositories;
 public interface IAppUserRepository
 {
     Task<AppUser?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+    Task<AppUser?> GetByIdForUpdateAsync(long id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<AppUser>> GetByCompanyAsync(long companyId, CancellationToken cancellationToken = default);
     // Tracked — Login atualiza FailedAccessCount/LastLoginAt.
     Task<AppUser?> GetByUserNameForUpdateAsync(string userName, CancellationToken cancellationToken = default);
     Task<bool> ExistsAsync(string userName, string email, CancellationToken cancellationToken = default);

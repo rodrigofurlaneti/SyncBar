@@ -10,6 +10,14 @@ internal sealed class AppUserRepository(AppDbContext context) : IAppUserReposito
         => await context.AppUsers.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public async Task<AppUser?> GetByIdForUpdateAsync(long id, CancellationToken cancellationToken = default)
+        => await context.AppUsers.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyCollection<AppUser>> GetByCompanyAsync(long companyId, CancellationToken cancellationToken = default)
+        => await context.AppUsers.AsNoTracking()
+            .Where(x => x.CompanyId == companyId)
+            .ToListAsync(cancellationToken);
+
     // Tracked — Login atualiza FailedAccessCount/LastLoginAt.
     public async Task<AppUser?> GetByUserNameForUpdateAsync(string userName, CancellationToken cancellationToken = default)
         => await context.AppUsers

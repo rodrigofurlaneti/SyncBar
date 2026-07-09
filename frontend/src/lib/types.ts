@@ -160,3 +160,99 @@ export const CashMovementType = {
 
 // Caixa físico padrão (seed: "Caixa 01")
 export const DEFAULT_CASH_REGISTER_ID = 1;
+
+export interface EmployeeResponse {
+  id: number;
+  branchId: number;
+  jobTitleId: number;
+  name: string;
+  cpf: string;
+  email: string | null;
+  phone: string | null;
+  hiredAt: string;
+  dismissedAt: string | null;
+  salary: number | null;
+  isActive: boolean;
+}
+
+export interface JobTitleResponse {
+  id: number;
+  name: string;
+}
+
+export interface UserResponse {
+  id: number;
+  userName: string;
+  email: string;
+  employeeId: number | null;
+  isActive: boolean;
+  roleIds: number[];
+}
+
+export interface RoleResponse {
+  id: number;
+  name: string;
+  description: string | null;
+}
+
+export interface CategoryResponse {
+  id: number;
+  name: string;
+  displayOrder: number;
+}
+
+export interface StockItemResponse {
+  id: number;
+  branchId: number;
+  productId: number;
+  currentQuantity: number;
+  minimumQuantity: number;
+  maximumQuantity: number | null;
+  isBelowMinimum: boolean;
+}
+
+export interface StockMovementResponse {
+  id: number;
+  stockItemId: number;
+  stockMovementTypeId: number;
+  quantity: number;
+  unitCost: number | null;
+  totalCost: number | null;
+  documentNumber: string | null;
+  movedAt: string;
+  notes: string | null;
+}
+
+export const unitOfMeasureLabel: Record<number, string> = {
+  1: "Unidade",
+  2: "Quilograma",
+  3: "Grama",
+  4: "Litro",
+  5: "Mililitro",
+  6: "Dose",
+  7: "Porção",
+  8: "Garrafa",
+  9: "Lata",
+  10: "Caixa",
+};
+
+export const stockMovementTypeLabel: Record<number, string> = {
+  1: "Entrada (compra)",
+  2: "Saída (venda)",
+  3: "Ajuste — entrada",
+  4: "Ajuste — saída",
+  5: "Perda",
+  6: "Quebra",
+  7: "Transferência — entrada",
+  8: "Transferência — saída",
+  9: "Devolução a fornecedor",
+  10: "Consumo interno",
+};
+
+// Tipos ofertados no lançamento manual (venda/estorno passam pelos fluxos próprios)
+export const manualStockMovementTypes = [1, 3, 4, 5, 6, 10] as const;
+
+export const stockMovementIsInflow: Record<number, boolean> = {
+  1: true, 2: false, 3: true, 4: false, 5: false,
+  6: false, 7: true, 8: false, 9: false, 10: false,
+};

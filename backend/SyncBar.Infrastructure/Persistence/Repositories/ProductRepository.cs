@@ -10,6 +10,9 @@ internal sealed class ProductRepository(AppDbContext context) : IProductReposito
         => await context.Products.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public async Task<Product?> GetByIdForUpdateAsync(long id, CancellationToken cancellationToken = default)
+        => await context.Products.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
     public async Task<IReadOnlyCollection<Product>> GetByCompanyAsync(long companyId, CancellationToken cancellationToken = default)
         => await context.Products.AsNoTracking()
             .Where(x => x.CompanyId == companyId && x.IsActive)

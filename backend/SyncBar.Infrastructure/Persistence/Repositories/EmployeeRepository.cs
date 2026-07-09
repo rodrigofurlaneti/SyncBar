@@ -10,6 +10,12 @@ internal sealed class EmployeeRepository(AppDbContext context) : IEmployeeReposi
         => await context.Employees.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public async Task<Employee?> GetByIdForUpdateAsync(long id, CancellationToken cancellationToken = default)
+        => await context.Employees.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public async Task<bool> ExistsByCpfAsync(string cpf, CancellationToken cancellationToken = default)
+        => await context.Employees.AsNoTracking().AnyAsync(x => x.Cpf == cpf && x.IsActive, cancellationToken);
+
     public async Task<IReadOnlyCollection<Employee>> GetByBranchAsync(long branchId, CancellationToken cancellationToken = default)
         => await context.Employees.AsNoTracking()
             .Where(x => x.BranchId == branchId && x.IsActive)

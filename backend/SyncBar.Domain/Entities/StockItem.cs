@@ -57,6 +57,19 @@ public sealed class StockItem : AggregateRoot
         return Result.Success();
     }
 
+    public Result SetLimits(decimal minimumQuantity, decimal? maximumQuantity)
+    {
+        if (minimumQuantity < 0)
+            return Result.Failure(new Error("StockItem.InvalidMinimum", "Minimum quantity cannot be negative."));
+        if (maximumQuantity is not null && maximumQuantity < minimumQuantity)
+            return Result.Failure(new Error("StockItem.InvalidMaximum", "Maximum cannot be below minimum."));
+
+        MinimumQuantity = minimumQuantity;
+        MaximumQuantity = maximumQuantity;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
     public bool IsBelowMinimum() => CurrentQuantity < MinimumQuantity;
 
     public void Deactivate()

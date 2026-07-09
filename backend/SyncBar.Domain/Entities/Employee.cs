@@ -43,6 +43,31 @@ public sealed class Employee : AggregateRoot
         return Result.Success(new Employee(branchId, jobTitleId, name, cpf, email, phone, hiredAt, dismissedAt, salary));
     }
 
+    public Result UpdateDetails(long jobTitleId, string name, string? email, string? phone, decimal? salary)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return Result.Failure(new Error("Employee.EmptyName", "Name is required."));
+
+        JobTitleId = jobTitleId;
+        Name = name;
+        Email = email;
+        Phone = phone;
+        Salary = salary;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    public Result Dismiss()
+    {
+        if (DismissedAt is not null)
+            return Result.Failure(new Error("Employee.AlreadyDismissed", "Employee is already dismissed."));
+
+        DismissedAt = DateTime.UtcNow;
+        IsActive = false;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
     public void Touch() => UpdatedAt = DateTime.UtcNow;
 
     public void Deactivate()

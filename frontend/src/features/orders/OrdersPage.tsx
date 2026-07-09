@@ -1,6 +1,5 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { getTablesByBranch } from "../tables/api";
 import { getOpenOrdersByBranch } from "./api";
 import { useAuthStore } from "../../stores/authStore";
@@ -8,7 +7,6 @@ import { TableStatus, formatBRL } from "../../lib/types";
 import type { OrderResponse, TableResponse } from "../../lib/types";
 import { OrderDrawer } from "./OrderDrawer";
 import { OpenOrderDialog } from "./OpenOrderDialog";
-import { CashDrawer } from "../cash/CashDrawer";
 
 const statusColor: Record<number, string> = {
   [TableStatus.Livre]: "var(--free)",
@@ -27,12 +25,10 @@ const statusLabel: Record<number, string> = {
 };
 
 export function OrdersPage() {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { userName, branchId, clear } = useAuthStore();
+  const { branchId } = useAuthStore();
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [openingTable, setOpeningTable] = useState<TableResponse | null>(null);
-  const [cashOpen, setCashOpen] = useState(false);
 
   const tablesQuery = useQuery({
     queryKey: ["tables", branchId],
@@ -65,28 +61,6 @@ export function OrdersPage() {
 
   return (
     <>
-      <header className="topbar">
-        <span className="brand">
-          SYNC<em>BAR</em>
-        </span>
-        <span className="chip" style={{ "--dot": "var(--free)" } as CSSProperties}>
-          Filial {branchId}
-        </span>
-        <span style={{ flex: 1 }} />
-        <button className="btn-ghost" onClick={() => setCashOpen(true)}>
-          Caixa
-        </button>
-        <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>{userName}</span>
-        <button
-          className="btn-ghost"
-          onClick={() => {
-            clear();
-            navigate("/login", { replace: true });
-          }}
-        >
-          Sair
-        </button>
-      </header>
 
       <main style={{ padding: "22px", maxWidth: 1240, margin: "0 auto" }}>
         <section className="rise">
@@ -174,8 +148,6 @@ export function OrdersPage() {
           }}
         />
       )}
-
-      {cashOpen && <CashDrawer onClose={() => setCashOpen(false)} />}
 
       {selectedOrderId !== null && (
         <OrderDrawer

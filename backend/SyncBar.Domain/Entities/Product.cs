@@ -43,6 +43,27 @@ public sealed class Product : AggregateRoot
         return Result.Success(new Product(companyId, categoryId, unitOfMeasureId, name, description, barcode, salePrice, costPrice, isStockControlled, preparationTimeMinutes));
     }
 
+    public Result UpdateDetails(long categoryId, long unitOfMeasureId, string name, string? description,
+        string? barcode, decimal salePrice, decimal? costPrice, bool isStockControlled, int? preparationTimeMinutes)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return Result.Failure(new Error("Product.EmptyName", "Name is required."));
+        if (salePrice < 0)
+            return Result.Failure(new Error("Product.InvalidSalePrice", "Sale price cannot be negative."));
+
+        CategoryId = categoryId;
+        UnitOfMeasureId = unitOfMeasureId;
+        Name = name;
+        Description = description;
+        Barcode = barcode;
+        SalePrice = salePrice;
+        CostPrice = costPrice;
+        IsStockControlled = isStockControlled;
+        PreparationTimeMinutes = preparationTimeMinutes;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
     public void Touch() => UpdatedAt = DateTime.UtcNow;
 
     public void Deactivate()
