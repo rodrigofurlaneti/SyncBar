@@ -63,8 +63,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseHttpsRedirection();
+else
+{
+    // Em dev o frontend acessa via proxy HTTP (Vite) — redirect para HTTPS
+    // quebraria o fetch com 307 + certificado autoassinado.
+    app.UseHttpsRedirection();
+}
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

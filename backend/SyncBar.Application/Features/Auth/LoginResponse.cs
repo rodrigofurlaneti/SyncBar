@@ -5,4 +5,6 @@ public sealed record LoginResponse(
     DateTime AccessTokenExpiresAt,
     string RefreshToken,
     DateTime RefreshTokenExpiresAt,
-    string UserName);
+    string UserName,
+    long CompanyId,
+    long? EmployeeId);

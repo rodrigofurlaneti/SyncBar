@@ -54,6 +54,6 @@ internal sealed class LoginCommandHandler(
         return Result.Success(new LoginResponse(
             accessToken.Token, accessToken.ExpiresAt,
             refreshTokenValue, refreshTokenExpiresAt,
-            user.UserName));
+            user.UserName, user.CompanyId, user.EmployeeId));
     }
 }

@@ -1,0 +1,28 @@
+import type { ReactNode } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { useAuthStore } from "./stores/authStore";
+import { LoginPage } from "./features/auth/LoginPage";
+import { OrdersPage } from "./features/orders/OrdersPage";
+
+function RequireAuth({ children }: { children: ReactNode }) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  if (!accessToken) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/"
+        element={
+          <RequireAuth>
+            <OrdersPage />
+          </RequireAuth>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}

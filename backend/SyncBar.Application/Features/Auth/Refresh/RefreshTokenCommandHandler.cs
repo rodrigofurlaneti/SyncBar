@@ -43,6 +43,6 @@ internal sealed class RefreshTokenCommandHandler(
         return Result.Success(new LoginResponse(
             accessToken.Token, accessToken.ExpiresAt,
             newTokenValue, newTokenExpiresAt,
-            user.UserName));
+            user.UserName, user.CompanyId, user.EmployeeId));
     }
 }

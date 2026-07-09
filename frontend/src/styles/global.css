@@ -1,0 +1,227 @@
+/* ============================================================
+   SyncBar PDV — tema escuro de balcao
+   Estetica: quadro de bar a giz + senha de cozinha. Ambar de
+   chope sobre carvao, tipografia condensada de letreiro.
+   ============================================================ */
+
+:root {
+  --bg: #131316;
+  --bg-raise: #1b1b20;
+  --bg-press: #232329;
+  --line: #2e2e36;
+  --line-soft: #26262d;
+
+  --ink: #ece9e2;
+  --ink-dim: #a7a29a;
+  --ink-faint: #6d6963;
+
+  --amber: #f5a524;
+  --amber-deep: #c47d09;
+  --amber-ink: #1a1204;
+
+  --free: #3fb27f;
+  --busy: #f5a524;
+  --reserved: #5b9cf5;
+  --closing: #ef6851;
+  --blocked: #55555e;
+
+  --danger: #ef4b3d;
+  --ok: #3fb27f;
+
+  --font-display: "Bebas Neue", "Barlow Condensed", sans-serif;
+  --font-cond: "Barlow Condensed", sans-serif;
+  --font-body: "Barlow", sans-serif;
+
+  --radius: 10px;
+  --touch: 48px;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1100px 500px at 85% -10%, rgba(245, 165, 36, 0.07), transparent 60%),
+    radial-gradient(800px 600px at -10% 110%, rgba(91, 156, 245, 0.05), transparent 55%),
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--amber); color: var(--amber-ink); }
+
+h1, h2, h3 { margin: 0; font-weight: 400; }
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius);
+  min-height: var(--touch);
+  font-size: 1rem;
+  transition: transform 60ms ease, filter 120ms ease, background 120ms ease;
+}
+button:active { transform: scale(0.97); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+input, select {
+  font-family: var(--font-body);
+  background: var(--bg-press);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  min-height: var(--touch);
+  padding: 0 14px;
+  font-size: 1rem;
+  width: 100%;
+}
+input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1px; border-color: transparent; }
+
+.btn-primary {
+  background: var(--amber);
+  color: var(--amber-ink);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0 22px;
+}
+.btn-primary:hover { filter: brightness(1.08); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  padding: 0 16px;
+}
+.btn-ghost:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid rgba(239, 75, 61, 0.4);
+  padding: 0 16px;
+}
+.btn-danger:hover { background: rgba(239, 75, 61, 0.12); }
+
+.display { font-family: var(--font-display); letter-spacing: 0.03em; }
+.mono-num { font-variant-numeric: tabular-nums; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-cond);
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+}
+.chip::before {
+  content: "";
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--dot, var(--ink-faint));
+}
+
+/* barra superior */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--line-soft);
+  background: rgba(19, 19, 22, 0.88);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  line-height: 1;
+  color: var(--ink);
+}
+.brand em { font-style: normal; color: var(--amber); }
+
+/* grade de mesas */
+.table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.table-tile {
+  position: relative;
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 16px 14px;
+  min-height: 128px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  overflow: hidden;
+}
+.table-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--status, var(--ink-faint));
+}
+.table-tile:hover { border-color: var(--ink-faint); }
+.table-tile .num {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  line-height: 0.9;
+  color: var(--ink);
+}
+
+/* ticket de pedido */
+.ticket {
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.ticket-head {
+  padding: 16px 18px;
+  border-bottom: 1px dashed var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.ticket-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.ticket-total {
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-cond);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* animacao de entrada */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise 240ms ease both; }
+.rise-1 { animation-delay: 40ms; } .rise-2 { animation-delay: 90ms; } .rise-3 { animation-delay: 140ms; }
+
+.error-text { color: var(--danger); font-size: 0.9rem; }
