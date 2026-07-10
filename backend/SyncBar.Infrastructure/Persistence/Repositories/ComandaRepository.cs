@@ -17,6 +17,11 @@ internal sealed class ComandaRepository(AppDbContext context) : IComandaReposito
         => await context.Comandas.AsNoTracking()
             .FirstOrDefaultAsync(x => x.BranchId == branchId && x.Code == code && x.IsActive, cancellationToken);
 
+    public async Task<IReadOnlyCollection<Comanda>> GetByBranchAsync(long branchId, CancellationToken cancellationToken = default)
+        => await context.Comandas.AsNoTracking()
+            .Where(x => x.BranchId == branchId && x.IsActive)
+            .ToListAsync(cancellationToken);
+
     public async Task AddAsync(Comanda entity, CancellationToken cancellationToken = default)
         => await context.Comandas.AddAsync(entity, cancellationToken);
 }

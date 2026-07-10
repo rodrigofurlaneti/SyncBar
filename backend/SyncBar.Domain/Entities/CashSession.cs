@@ -57,6 +57,16 @@ public sealed class CashSession : AggregateRoot
         return Result.Success();
     }
 
+    public Result MarkAsReviewed()
+    {
+        if (CashSessionStatusId != CashSessionStatusIds.Fechado)
+            return Result.Failure(new Error("CashSession.NotClosed", "Only a closed session can be reviewed."));
+
+        CashSessionStatusId = CashSessionStatusIds.Conferido;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
     public bool IsOpen() => CashSessionStatusId == CashSessionStatusIds.Aberto;
 
     public void Deactivate()

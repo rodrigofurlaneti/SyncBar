@@ -99,6 +99,12 @@ function ItemRow({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
         <span style={{ fontSize: "0.78rem", color: "var(--ink-faint)" }}>
           {orderItemStatusLabel[item.orderItemStatusId]} · limite {item.limitMinutes} min
+          {item.requestedBy && (
+            <>
+              {" · "}
+              <span style={{ color: "var(--ink-dim)", fontWeight: 600 }}>por {item.requestedBy}</span>
+            </>
+          )}
         </span>
         {next && (
           <button

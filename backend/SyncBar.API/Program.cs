@@ -11,7 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+    options.JsonSerializerOptions.Converters.Add(new SyncBar.API.Serialization.UtcDateTimeConverter()));
 builder.Services.AddFluentValidationAutoValidation();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

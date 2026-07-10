@@ -14,6 +14,7 @@ const links = [
   { to: "/faturamento", label: "Faturamento", feature: "Faturamento" },
   { to: "/cenarios", label: "Cenários", feature: "Faturamento" },
   { to: "/preparo", label: "Preparo", feature: "Preparo" },
+  { to: "/fechamentos", label: "Fechamentos", feature: "Caixa" },
 ];
 
 export function AppShell() {

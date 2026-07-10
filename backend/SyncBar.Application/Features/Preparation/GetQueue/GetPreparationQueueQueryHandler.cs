@@ -9,7 +9,8 @@ internal sealed class GetPreparationQueueQueryHandler(
     ICustomerOrderRepository orderRepository,
     IProductRepository productRepository,
     IDiningTableRepository diningTableRepository,
-    IComandaRepository comandaRepository)
+    IComandaRepository comandaRepository,
+    IEmployeeRepository employeeRepository)
     : IQueryHandler<GetPreparationQueueQuery, IReadOnlyCollection<PreparationTicketResponse>>
 {
     // Itens de bar (sem tempo de preparo cadastrado): tolerancia media para
@@ -29,6 +30,7 @@ internal sealed class GetPreparationQueueQueryHandler(
     {
         var orders = await orderRepository.GetOpenByBranchAsync(request.BranchId, cancellationToken);
         var tables = await diningTableRepository.GetByBranchAsync(request.BranchId, cancellationToken);
+        var employees = await employeeRepository.GetByBranchAsync(request.BranchId, cancellationToken);
 
         var productIds = orders
             .SelectMany(o => o.Items)
@@ -48,6 +50,9 @@ internal sealed class GetPreparationQueueQueryHandler(
                 {
                     var product = products.FirstOrDefault(p => p.Id == i.ProductId);
                     var isBarItem = product?.PreparationTimeMinutes is null;
+                    // Quem lancou o item; sem responsavel no item, cai no garcom do pedido.
+                    var requesterId = i.EmployeeId ?? order.EmployeeId;
+                    var requestedBy = employees.FirstOrDefault(e => e.Id == requesterId)?.Name;
                     return new PreparationItemResponse(
                         i.Id,
                         i.ProductId,
@@ -57,7 +62,8 @@ internal sealed class GetPreparationQueueQueryHandler(
                         i.Notes,
                         i.SentToKitchenAt ?? i.CreatedAt,
                         product?.PreparationTimeMinutes ?? BarToleranceMinutes,
-                        isBarItem);
+                        isBarItem,
+                        requestedBy);
                 })
                 .ToList();
 

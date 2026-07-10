@@ -359,6 +359,7 @@ export interface PreparationItemResponse {
   startedAt: string;
   limitMinutes: number;
   isBarItem: boolean;
+  requestedBy: string | null;
 }
 
 export interface PreparationTicketResponse {
@@ -368,3 +369,39 @@ export interface PreparationTicketResponse {
   openedAt: string;
   items: PreparationItemResponse[];
 }
+
+export interface ComandaResponse {
+  id: number;
+  branchId: number;
+  comandaStatusId: number;
+  code: string;
+}
+
+export const ComandaStatus = {
+  Disponivel: 1,
+  EmUso: 2,
+  Extraviada: 3,
+  Bloqueada: 4,
+} as const;
+
+export interface CashSessionHistoryResponse {
+  id: number;
+  cashRegisterName: string;
+  cashSessionStatusId: number;
+  openedByName: string | null;
+  closedByName: string | null;
+  openedAt: string;
+  closedAt: string | null;
+  openingAmount: number;
+  expectedAmount: number | null;
+  closingAmount: number | null;
+  differenceAmount: number | null;
+  salesTotal: number;
+  salesCount: number;
+}
+
+export const CashSessionStatus = {
+  Aberto: 1,
+  Fechado: 2,
+  Conferido: 3,
+} as const;

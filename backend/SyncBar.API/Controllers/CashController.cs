@@ -2,7 +2,9 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Cash.CloseSession;
+using SyncBar.Application.Features.Cash.GetHistory;
 using SyncBar.Application.Features.Cash.GetOpenSession;
+using SyncBar.Application.Features.Cash.ReviewSession;
 using SyncBar.Application.Features.Cash.GetSummary;
 using SyncBar.Application.Features.Cash.OpenSession;
 using SyncBar.Application.Features.Cash.RegisterMovement;
@@ -24,6 +26,20 @@ public sealed class CashController(IMediator mediator) : ApiController(mediator)
     {
         var result = await Mediator.Send(new GetCashSummaryQuery(id), ct);
         return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+    }
+
+    [HttpGet("history/branch/{branchId:long}/{year:int}/{month:int}")]
+    public async Task<IActionResult> GetHistory(long branchId, int year, int month, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new GetCashSessionHistoryQuery(branchId, year, month), ct);
+        return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+    }
+
+    [HttpPut("sessions/{id:long}/review")]
+    public async Task<IActionResult> ReviewSession(long id, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new ReviewCashSessionCommand(id), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
     }
 
     [HttpPost("sessions")]

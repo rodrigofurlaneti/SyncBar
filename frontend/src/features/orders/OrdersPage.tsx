@@ -2,9 +2,11 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getTablesByBranch } from "../tables/api";
 import { getOpenOrdersByBranch } from "./api";
+import { getComandasByBranch } from "../comandas/api";
+import { OpenComandaDialog } from "../comandas/OpenComandaDialog";
 import { useAuthStore } from "../../stores/authStore";
-import { TableStatus, formatBRL } from "../../lib/types";
-import type { OrderResponse, TableResponse } from "../../lib/types";
+import { ComandaStatus, TableStatus, formatBRL } from "../../lib/types";
+import type { ComandaResponse, OrderResponse, TableResponse } from "../../lib/types";
 import { OrderDrawer } from "./OrderDrawer";
 import { OpenOrderDialog } from "./OpenOrderDialog";
 import { QueryError } from "../../components/QueryError";
@@ -15,6 +17,20 @@ const statusColor: Record<number, string> = {
   [TableStatus.Reservada]: "var(--reserved)",
   [TableStatus.EmFechamento]: "var(--closing)",
   [TableStatus.Interditada]: "var(--blocked)",
+};
+
+const comandaColor: Record<number, string> = {
+  [ComandaStatus.Disponivel]: "var(--free)",
+  [ComandaStatus.EmUso]: "var(--busy)",
+  [ComandaStatus.Extraviada]: "var(--closing)",
+  [ComandaStatus.Bloqueada]: "var(--blocked)",
+};
+
+const comandaStatusLabel: Record<number, string> = {
+  [ComandaStatus.Disponivel]: "Livre",
+  [ComandaStatus.EmUso]: "Em uso",
+  [ComandaStatus.Extraviada]: "Extraviada",
+  [ComandaStatus.Bloqueada]: "Bloqueada",
 };
 
 const statusLabel: Record<number, string> = {
@@ -30,10 +46,18 @@ export function OrdersPage() {
   const { branchId } = useAuthStore();
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [openingTable, setOpeningTable] = useState<TableResponse | null>(null);
+  const [openingComanda, setOpeningComanda] = useState<ComandaResponse | null>(null);
+  const [comandaSearch, setComandaSearch] = useState("");
 
   const tablesQuery = useQuery({
     queryKey: ["tables", branchId],
     queryFn: () => getTablesByBranch(branchId),
+    refetchInterval: 15_000,
+  });
+
+  const comandasQuery = useQuery({
+    queryKey: ["comandas", branchId],
+    queryFn: () => getComandasByBranch(branchId),
     refetchInterval: 15_000,
   });
 
@@ -50,14 +74,25 @@ export function OrdersPage() {
     return map;
   }, [ordersQuery.data]);
 
-  const comandaOrders = useMemo(
-    () => (ordersQuery.data ?? []).filter((o) => o.diningTableId === null),
-    [ordersQuery.data],
+  const orderByComanda = useMemo(() => {
+    const map = new Map<number, OrderResponse>();
+    for (const order of ordersQuery.data ?? [])
+      if (order.comandaId !== null) map.set(order.comandaId, order);
+    return map;
+  }, [ordersQuery.data]);
+
+  const filteredComandas = useMemo(
+    () =>
+      (comandasQuery.data ?? []).filter((c) =>
+        comandaSearch.trim() === "" ? true : c.code.includes(comandaSearch.trim()),
+      ),
+    [comandasQuery.data, comandaSearch],
   );
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ["tables"] });
     void queryClient.invalidateQueries({ queryKey: ["orders"] });
+    void queryClient.invalidateQueries({ queryKey: ["comandas"] });
   };
 
   return (
@@ -113,29 +148,87 @@ export function OrdersPage() {
           </div>
         </section>
 
-        {comandaOrders.length > 0 && (
-          <section className="rise rise-2" style={{ marginTop: 34 }}>
-            <h2 className="display" style={{ fontSize: "1.7rem", marginBottom: 14 }}>
-              Comandas abertas
-            </h2>
-            <div className="table-grid">
-              {comandaOrders.map((order) => (
+        <section className="rise rise-2" style={{ marginTop: 34 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
+            <h2 className="display" style={{ fontSize: "1.7rem" }}>Comandas</h2>
+            <span style={{ color: "var(--ink-faint)", fontSize: "0.9rem" }}>
+              toque numa comanda livre para abrir uma conta individual
+            </span>
+            <span style={{ flex: 1 }} />
+            <input
+              placeholder="nº…"
+              inputMode="numeric"
+              value={comandaSearch}
+              onChange={(e) => setComandaSearch(e.target.value)}
+              style={{ width: 110 }}
+            />
+          </div>
+
+          {comandasQuery.isError && (
+            <QueryError error={comandasQuery.error} what="as comandas" />
+          )}
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(76px, 1fr))",
+              gap: 8,
+            }}
+          >
+            {filteredComandas.map((comanda) => {
+              const order = orderByComanda.get(comanda.id);
+              const color = comandaColor[comanda.comandaStatusId] ?? "var(--ink-faint)";
+              const busy = comanda.comandaStatusId === ComandaStatus.EmUso;
+              return (
                 <button
-                  key={order.id}
-                  className="table-tile"
-                  style={{ "--status": "var(--busy)" } as CSSProperties}
-                  onClick={() => setSelectedOrderId(order.id)}
+                  key={comanda.id}
+                  onClick={() => {
+                    if (order) setSelectedOrderId(order.id);
+                    else if (comanda.comandaStatusId === ComandaStatus.Disponivel)
+                      setOpeningComanda(comanda);
+                  }}
+                  title={order ? `${order.items.length} itens · ${formatBRL(order.totalAmount)}` : undefined}
+                  style={{
+                    background: busy ? "var(--bg-press)" : "var(--bg-raise)",
+                    border: `1px solid ${busy ? color : "var(--line)"}`,
+                    borderRadius: 10,
+                    minHeight: 64,
+                    display: "grid",
+                    gap: 2,
+                    placeItems: "center",
+                    padding: "8px 4px",
+                  }}
                 >
-                  <span className="num mono-num">#{order.comandaId}</span>
-                  <span className="mono-num" style={{ color: "var(--ink-dim)", fontSize: "0.88rem" }}>
-                    {order.items.length} itens · {formatBRL(order.totalAmount)}
+                  <span className="display mono-num" style={{ fontSize: "1.5rem", color: busy ? color : "var(--ink)" }}>
+                    {comanda.code}
                   </span>
+                  {order ? (
+                    <span className="mono-num" style={{ fontSize: "0.68rem", color: "var(--ink-dim)" }}>
+                      {formatBRL(order.totalAmount)}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "0.62rem", color, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      {comandaStatusLabel[comanda.comandaStatusId] ?? ""}
+                    </span>
+                  )}
                 </button>
-              ))}
-            </div>
-          </section>
-        )}
+              );
+            })}
+          </div>
+        </section>
       </main>
+
+      {openingComanda && (
+        <OpenComandaDialog
+          comanda={openingComanda}
+          onClose={() => setOpeningComanda(null)}
+          onOpened={(orderId) => {
+            setOpeningComanda(null);
+            refresh();
+            setSelectedOrderId(orderId);
+          }}
+        />
+      )}
 
       {openingTable && (
         <OpenOrderDialog

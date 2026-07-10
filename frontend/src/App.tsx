@@ -12,6 +12,7 @@ import { AccessPage } from "./features/access/AccessPage";
 import { FinancePage } from "./features/finance/FinancePage";
 import { ScenariosPage } from "./features/finance/ScenariosPage";
 import { PreparationPage } from "./features/preparation/PreparationPage";
+import { CashHistoryPage } from "./features/cash/CashHistoryPage";
 import { FeatureGate, NoAccessPage } from "./features/access/FeatureGate";
 import { useMyFeatures } from "./features/access/hooks";
 
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/faturamento" element={<FeatureGate code="Faturamento"><FinancePage /></FeatureGate>} />
         <Route path="/cenarios" element={<FeatureGate code="Faturamento"><ScenariosPage /></FeatureGate>} />
         <Route path="/preparo" element={<FeatureGate code="Preparo"><PreparationPage /></FeatureGate>} />
+        <Route path="/fechamentos" element={<FeatureGate code="Caixa"><CashHistoryPage /></FeatureGate>} />
         <Route path="/acessos" element={<ManagerGate><AccessPage /></ManagerGate>} />
         <Route path="/sem-acesso" element={<NoAccessPage />} />
       </Route>

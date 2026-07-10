@@ -19,6 +19,14 @@ internal sealed class CashSessionRepository(AppDbContext context) : ICashSession
             .FirstOrDefaultAsync(x => x.CashRegisterId == cashRegisterId && x.IsActive
                 && x.CashSessionStatusId == CashSessionStatusIds.Aberto, cancellationToken);
 
+    public async Task<IReadOnlyCollection<CashSession>> GetByBranchAndPeriodAsync(
+        long branchId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
+        => await context.CashSessions.AsNoTracking()
+            .Join(context.CashRegisters, s => s.CashRegisterId, r => r.Id, (s, r) => new { s, r })
+            .Where(x => x.r.BranchId == branchId && x.s.IsActive && x.s.OpenedAt >= from && x.s.OpenedAt < to)
+            .Select(x => x.s)
+            .ToListAsync(cancellationToken);
+
     public async Task AddAsync(CashSession entity, CancellationToken cancellationToken = default)
         => await context.CashSessions.AddAsync(entity, cancellationToken);
 }

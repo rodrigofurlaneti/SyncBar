@@ -11,7 +11,8 @@ public sealed record PreparationItemResponse(
     string? Notes,
     DateTime StartedAt,
     int LimitMinutes,
-    bool IsBarItem);
+    bool IsBarItem,
+    string? RequestedBy);
 
 public sealed record PreparationTicketResponse(
     long CustomerOrderId,

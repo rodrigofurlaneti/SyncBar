@@ -1,5 +1,6 @@
 import { api } from "../../lib/apiClient";
 import type {
+  CashSessionHistoryResponse,
   CashSessionResponse,
   CashSummaryResponse,
   CloseCashSessionResponse,
@@ -42,3 +43,13 @@ export const registerCashMovement = (
     method: "POST",
     body: JSON.stringify({ cashMovementTypeId, employeeId, amount, description }),
   });
+
+export const getCashHistory = (
+  branchId: number,
+  year: number,
+  month: number,
+): Promise<CashSessionHistoryResponse[]> =>
+  api<CashSessionHistoryResponse[]>(`/api/cash/history/branch/${branchId}/${year}/${month}`);
+
+export const reviewCashSession = (sessionId: number): Promise<void> =>
+  api<void>(`/api/cash/sessions/${sessionId}/review`, { method: "PUT" });
