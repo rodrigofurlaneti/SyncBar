@@ -45,6 +45,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
 
     public DbSet<AppFeature> AppFeatures => Set<AppFeature>();
+    public DbSet<CostType> CostTypes => Set<CostType>();
+    public DbSet<OperatingCost> OperatingCosts => Set<OperatingCost>();
+    public DbSet<RevenueTarget> RevenueTargets => Set<RevenueTarget>();
     public DbSet<JobTitleFeature> JobTitleFeatures => Set<JobTitleFeature>();
     public DbSet<AppUserFeature> AppUserFeatures => Set<AppUserFeature>();
 

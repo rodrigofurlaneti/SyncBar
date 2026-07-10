@@ -67,6 +67,12 @@ public static class StockMovementTypeIds
     public const long ConsumoInterno = 10;
 }
 
+public static class CostTypeIds
+{
+    public const long Fixo = 1;
+    public const long Variavel = 2;
+}
+
 public static class PaymentMethodIds
 {
     public const long Dinheiro = 1;

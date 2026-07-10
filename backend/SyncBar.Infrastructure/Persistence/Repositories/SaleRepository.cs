@@ -17,6 +17,12 @@ internal sealed class SaleRepository(AppDbContext context) : ISaleRepository
             .Where(x => x.CashSessionId == cashSessionId && x.IsActive)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyCollection<Sale>> GetByBranchAndPeriodAsync(
+        long branchId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
+        => await context.Sales.AsNoTracking()
+            .Where(x => x.BranchId == branchId && x.IsActive && x.SoldAt >= from && x.SoldAt < to)
+            .ToListAsync(cancellationToken);
+
     // Sequencial por filial — nunca IDENTITY global.
     public async Task<long> GetNextSaleNumberAsync(long branchId, CancellationToken cancellationToken = default)
     {

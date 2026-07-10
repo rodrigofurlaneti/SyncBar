@@ -9,6 +9,8 @@ import { StockPage } from "./features/stock/StockPage";
 import { EmployeesPage } from "./features/employees/EmployeesPage";
 import { UsersPage } from "./features/users/UsersPage";
 import { AccessPage } from "./features/access/AccessPage";
+import { FinancePage } from "./features/finance/FinancePage";
+import { ScenariosPage } from "./features/finance/ScenariosPage";
 import { FeatureGate, NoAccessPage } from "./features/access/FeatureGate";
 import { useMyFeatures } from "./features/access/hooks";
 
@@ -41,6 +43,8 @@ export default function App() {
         <Route path="/estoque" element={<FeatureGate code="Estoque"><StockPage /></FeatureGate>} />
         <Route path="/equipe" element={<FeatureGate code="Equipe"><EmployeesPage /></FeatureGate>} />
         <Route path="/usuarios" element={<FeatureGate code="Usuarios"><UsersPage /></FeatureGate>} />
+        <Route path="/faturamento" element={<FeatureGate code="Faturamento"><FinancePage /></FeatureGate>} />
+        <Route path="/cenarios" element={<FeatureGate code="Faturamento"><ScenariosPage /></FeatureGate>} />
         <Route path="/acessos" element={<ManagerGate><AccessPage /></ManagerGate>} />
         <Route path="/sem-acesso" element={<NoAccessPage />} />
       </Route>

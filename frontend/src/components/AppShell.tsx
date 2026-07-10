@@ -11,6 +11,8 @@ const links = [
   { to: "/estoque", label: "Estoque", feature: "Estoque" },
   { to: "/equipe", label: "Equipe", feature: "Equipe" },
   { to: "/usuarios", label: "Usuários", feature: "Usuarios" },
+  { to: "/faturamento", label: "Faturamento", feature: "Faturamento" },
+  { to: "/cenarios", label: "Cenários", feature: "Faturamento" },
 ];
 
 export function AppShell() {

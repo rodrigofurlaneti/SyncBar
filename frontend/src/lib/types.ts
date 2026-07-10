@@ -279,4 +279,71 @@ export const featureLabel: Record<string, string> = {
   Equipe: "Equipe",
   Usuarios: "Usuários",
   Caixa: "Caixa",
+  Faturamento: "Faturamento",
 };
+
+export interface OperatingCostResponse {
+  id: number;
+  costTypeId: number;
+  description: string;
+  amount: number;
+}
+
+export interface DailyRevenueResponse {
+  day: number;
+  amount: number;
+}
+
+export interface BillingSummaryResponse {
+  referenceYear: number;
+  referenceMonth: number;
+  revenue: number;
+  salesCount: number;
+  costOfGoodsSold: number;
+  fixedCosts: number;
+  variableCosts: number;
+  totalCosts: number;
+  netResult: number;
+  targetAmount: number | null;
+  targetAttainmentRate: number | null;
+  costs: OperatingCostResponse[];
+  dailyRevenue: DailyRevenueResponse[];
+}
+
+export const CostType = { Fixo: 1, Variavel: 2 } as const;
+
+export const costTypeLabel: Record<number, string> = {
+  1: "Fixo",
+  2: "Variável",
+};
+
+export interface StockPlanItemResponse {
+  productId: number;
+  productName: string;
+  revenueShare: number;
+  estimatedUnits: number;
+  currentStock: number;
+  unitsToBuy: number;
+}
+
+export interface ScenarioResponse {
+  name: string;
+  marginRate: number;
+  breakEvenRevenue: number;
+  targetRevenue: number;
+  dailyTarget: number;
+  estimatedSalesCount: number | null;
+  stockPlan: StockPlanItemResponse[];
+}
+
+export interface ScenariosResponse {
+  referenceYear: number;
+  referenceMonth: number;
+  daysInMonth: number;
+  fixedCosts: number;
+  desiredProfit: number;
+  historicalRevenue: number | null;
+  historicalMarginRate: number | null;
+  averageTicket: number | null;
+  scenarios: ScenarioResponse[];
+}
