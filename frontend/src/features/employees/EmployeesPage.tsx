@@ -12,6 +12,7 @@ import { ApiError } from "../../lib/apiClient";
 import { formatBRL } from "../../lib/types";
 import type { EmployeeResponse } from "../../lib/types";
 import { Overlay } from "../orders/Overlay";
+import { QueryError } from "../../components/QueryError";
 
 const emptyForm = { jobTitleId: "", name: "", cpf: "", email: "", phone: "", salary: "" };
 type FormState = typeof emptyForm;
@@ -106,6 +107,13 @@ export function EmployeesPage() {
       </div>
 
       {error && editing === null && <p className="error-text">{error}</p>}
+      {employeesQuery.isError && <QueryError error={employeesQuery.error} what="funcionários" />}
+      {jobTitlesQuery.isError && <QueryError error={jobTitlesQuery.error} what="cargos" />}
+      {jobTitlesQuery.isSuccess && jobTitlesQuery.data.length === 0 && (
+        <p className="error-text">
+          Nenhum cargo cadastrado — execute BarRestaurante_JobTitles.sql para criar os cargos padrão.
+        </p>
+      )}
 
       <div className="ticket rise rise-1">
         {(employeesQuery.data ?? []).map((employee) => (
@@ -164,6 +172,7 @@ export function EmployeesPage() {
             <label style={{ display: "grid", gap: 4 }}>
               <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Cargo</span>
               <select value={form.jobTitleId} onChange={(e) => setForm({ ...form, jobTitleId: e.target.value })}>
+                <option value="">Selecione o cargo…</option>
                 {(jobTitlesQuery.data ?? []).map((j) => (
                   <option key={j.id} value={j.id}>{j.name}</option>
                 ))}
@@ -185,6 +194,16 @@ export function EmployeesPage() {
             <input inputMode="decimal" value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} />
           </label>
           {error && <p className="error-text">{error}</p>}
+          {form.jobTitleId === "" && (
+            <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem", margin: 0 }}>
+              Selecione um cargo para habilitar o salvar.
+            </p>
+          )}
+          {editing === "new" && form.cpf.length !== 11 && form.cpf.length > 0 && (
+            <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem", margin: 0 }}>
+              CPF precisa de 11 dígitos ({form.cpf.length}/11).
+            </p>
+          )}
           <button
             className="btn-primary"
             disabled={

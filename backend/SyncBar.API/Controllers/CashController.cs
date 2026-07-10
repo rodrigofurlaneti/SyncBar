@@ -9,7 +9,7 @@ using SyncBar.Application.Features.Cash.RegisterMovement;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize]
+[Authorize(Policy = "Feature:Caixa")]
 public sealed class CashController(IMediator mediator) : ApiController(mediator)
 {
     [HttpGet("registers/{registerId:long}/open-session")]

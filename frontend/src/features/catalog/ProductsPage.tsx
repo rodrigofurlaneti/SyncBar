@@ -14,6 +14,7 @@ import { ApiError } from "../../lib/apiClient";
 import { formatBRL, unitOfMeasureLabel } from "../../lib/types";
 import type { MenuItemResponse } from "../../lib/types";
 import { Overlay } from "../orders/Overlay";
+import { QueryError } from "../../components/QueryError";
 
 const emptyForm = {
   categoryId: "",
@@ -71,13 +72,13 @@ export function ProductsPage() {
     else
       setForm({
         categoryId: String(product.categoryId),
-        unitOfMeasureId: "1",
+        unitOfMeasureId: String(product.unitOfMeasureId),
         name: product.name,
         description: product.description ?? "",
-        barcode: "",
+        barcode: product.barcode ?? "",
         salePrice: String(product.salePrice),
-        costPrice: "",
-        isStockControlled: true,
+        costPrice: product.costPrice === null ? "" : String(product.costPrice),
+        isStockControlled: product.isStockControlled,
         preparationTimeMinutes: product.preparationTimeMinutes === null ? "" : String(product.preparationTimeMinutes),
       });
   };
@@ -149,6 +150,8 @@ export function ProductsPage() {
       </div>
 
       {error && !editing && <p className="error-text">{error}</p>}
+      {menuQuery.isError && <QueryError error={menuQuery.error} what="o cardápio" />}
+      {categoriesQuery.isError && <QueryError error={categoriesQuery.error} what="as categorias" />}
 
       <div className="ticket rise rise-2">
         {(menuQuery.data ?? []).map((product) => (
@@ -158,6 +161,7 @@ export function ProductsPage() {
               <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
                 {categoryName.get(product.categoryId) ?? `Categoria ${product.categoryId}`}
                 {product.description ? ` · ${product.description}` : ""}
+                {product.isStockControlled ? " · controla estoque" : " · sem controle de estoque"}
               </span>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -198,6 +202,7 @@ export function ProductsPage() {
             <label style={{ display: "grid", gap: 4 }}>
               <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Categoria</span>
               <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}>
+                <option value="">Selecione a categoria…</option>
                 {(categoriesQuery.data ?? []).map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -245,6 +250,11 @@ export function ProductsPage() {
             </label>
           </div>
           {error && <p className="error-text">{error}</p>}
+          {form.categoryId === "" && (
+            <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem", margin: 0 }}>
+              Selecione uma categoria para habilitar o salvar.
+            </p>
+          )}
           <button
             className="btn-primary"
             disabled={form.name.trim() === "" || form.categoryId === "" || saveMutation.isPending}

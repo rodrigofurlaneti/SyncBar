@@ -26,6 +26,7 @@ public sealed class EmployeesController(IMediator mediator) : ApiController(medi
         return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
     }
 
+    [Authorize(Policy = "Feature:Equipe")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateEmployeeCommand command, CancellationToken ct)
     {
@@ -35,6 +36,7 @@ public sealed class EmployeesController(IMediator mediator) : ApiController(medi
             : CreatedAtAction(nameof(GetByBranch), new { branchId = command.BranchId }, result.Value);
     }
 
+    [Authorize(Policy = "Feature:Equipe")]
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update(long id, [FromBody] UpdateEmployeeRequest request, CancellationToken ct)
     {
@@ -43,6 +45,7 @@ public sealed class EmployeesController(IMediator mediator) : ApiController(medi
         return result.IsFailure ? HandleFailure(result) : NoContent();
     }
 
+    [Authorize(Policy = "Feature:Equipe")]
     [HttpPut("{id:long}/dismiss")]
     public async Task<IActionResult> Dismiss(long id, CancellationToken ct)
     {

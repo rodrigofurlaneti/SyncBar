@@ -12,7 +12,7 @@ using SyncBar.Application.Features.Orders.UpdateItemStatus;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize]
+[Authorize(Policy = "Feature:Salao")]
 public sealed class OrdersController(IMediator mediator) : ApiController(mediator)
 {
     [HttpGet("{id:long}")]

@@ -5,7 +5,7 @@ using SyncBar.Application.Features.Billing.RegisterSale;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize]
+[Authorize(Policy = "Feature:Caixa")]
 public sealed class SalesController(IMediator mediator) : ApiController(mediator)
 {
     [HttpPost]

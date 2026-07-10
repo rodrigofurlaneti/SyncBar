@@ -48,9 +48,14 @@ export function OrderDrawer({ orderId, onClose }: Props) {
   const menuQuery = useQuery({
     queryKey: ["menu", companyId],
     queryFn: () => getMenu(companyId ?? 1),
-    enabled: menuOpen,
     staleTime: 5 * 60_000,
   });
+
+  const productNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const item of menuQuery.data ?? []) map.set(item.id, item.name);
+    return map;
+  }, [menuQuery.data]);
 
   const order = orderQuery.data;
 
@@ -146,7 +151,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                         color: cancelled ? "var(--ink-faint)" : "var(--ink)",
                       }}
                     >
-                      {item.quantity} × produto #{item.productId} — {formatBRL(item.totalAmount)}
+                      {item.quantity} × {productNameById.get(item.productId) ?? `produto #${item.productId}`} — {formatBRL(item.totalAmount)}
                     </span>
                     <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
                       {orderItemStatusLabel[item.orderItemStatusId]}

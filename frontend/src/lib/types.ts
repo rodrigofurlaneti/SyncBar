@@ -42,9 +42,13 @@ export interface OrderResponse {
 export interface MenuItemResponse {
   id: number;
   categoryId: number;
+  unitOfMeasureId: number;
   name: string;
   description: string | null;
+  barcode: string | null;
   salePrice: number;
+  costPrice: number | null;
+  isStockControlled: boolean;
   preparationTimeMinutes: number | null;
 }
 
@@ -255,4 +259,24 @@ export const manualStockMovementTypes = [1, 3, 4, 5, 6, 10] as const;
 export const stockMovementIsInflow: Record<number, boolean> = {
   1: true, 2: false, 3: true, 4: false, 5: false,
   6: false, 7: true, 8: false, 9: false, 10: false,
+};
+
+export interface FeatureResponse {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface MyFeaturesResponse {
+  canManageAccess: boolean;
+  features: string[];
+}
+
+export const featureLabel: Record<string, string> = {
+  Salao: "Salão",
+  Cardapio: "Cardápio",
+  Estoque: "Estoque",
+  Equipe: "Equipe",
+  Usuarios: "Usuários",
+  Caixa: "Caixa",
 };

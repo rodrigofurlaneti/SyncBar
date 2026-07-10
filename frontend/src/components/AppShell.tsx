@@ -1,20 +1,28 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
 import { CashDrawer } from "../features/cash/CashDrawer";
+import { useMyFeatures } from "../features/access/hooks";
 
 const links = [
-  { to: "/", label: "Salão" },
-  { to: "/produtos", label: "Cardápio" },
-  { to: "/estoque", label: "Estoque" },
-  { to: "/equipe", label: "Equipe" },
-  { to: "/usuarios", label: "Usuários" },
+  { to: "/", label: "Salão", feature: "Salao" },
+  { to: "/produtos", label: "Cardápio", feature: "Cardapio" },
+  { to: "/estoque", label: "Estoque", feature: "Estoque" },
+  { to: "/equipe", label: "Equipe", feature: "Equipe" },
+  { to: "/usuarios", label: "Usuários", feature: "Usuarios" },
 ];
 
 export function AppShell() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { userName, branchId, clear } = useAuthStore();
   const [cashOpen, setCashOpen] = useState(false);
+  const featuresQuery = useMyFeatures();
+  const access = featuresQuery.data;
+  // Fail-closed: sem resposta de acessos, nenhum link aparece.
+  const canSee = (feature: string) =>
+    access !== undefined && (access.canManageAccess || access.features.includes(feature));
 
   return (
     <>
@@ -23,7 +31,7 @@ export function AppShell() {
           SYNC<em>BAR</em>
         </span>
         <nav style={{ display: "flex", gap: 4 }}>
-          {links.map((link) => (
+          {links.filter((link) => canSee(link.feature)).map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
@@ -44,18 +52,41 @@ export function AppShell() {
               {link.label}
             </NavLink>
           ))}
+          {access?.canManageAccess && (
+            <NavLink
+              to="/acessos"
+              style={({ isActive }) => ({
+                padding: "8px 14px",
+                borderRadius: 8,
+                textDecoration: "none",
+                fontFamily: "var(--font-cond)",
+                fontWeight: 600,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase" as const,
+                fontSize: "0.85rem",
+                color: isActive ? "var(--amber-ink)" : "var(--amber)",
+                background: isActive ? "var(--amber)" : "transparent",
+                border: "1px dashed var(--amber-deep)",
+              })}
+            >
+              Acessos
+            </NavLink>
+          )}
         </nav>
         <span style={{ flex: 1 }} />
         <span className="chip" style={{ "--dot": "var(--free)" } as React.CSSProperties}>
           Filial {branchId}
         </span>
-        <button className="btn-ghost" onClick={() => setCashOpen(true)}>
-          Caixa
-        </button>
+        {canSee("Caixa") && (
+          <button className="btn-ghost" onClick={() => setCashOpen(true)}>
+            Caixa
+          </button>
+        )}
         <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>{userName}</span>
         <button
           className="btn-ghost"
           onClick={() => {
+            queryClient.clear();
             clear();
             navigate("/login", { replace: true });
           }}
@@ -63,6 +94,13 @@ export function AppShell() {
           Sair
         </button>
       </header>
+
+      {featuresQuery.isError && (
+        <p className="error-text" style={{ padding: "10px 22px", margin: 0 }}>
+          Falha ao carregar seus acessos — a API está atualizada e rodando? (Reinicie-a
+          se acabou de aplicar a funcionalidade de acessos.)
+        </p>
+      )}
 
       <Outlet />
 

@@ -28,3 +28,20 @@ export const setStockLimits = (
     method: "PUT",
     body: JSON.stringify({ minimumQuantity, maximumQuantity }),
   });
+
+export interface InventoryAdjustment {
+  productId: number;
+  previousQuantity: number;
+  countedQuantity: number;
+  difference: number;
+}
+
+export const adjustInventory = (
+  branchId: number,
+  employeeId: number,
+  counts: { productId: number; countedQuantity: number }[],
+): Promise<InventoryAdjustment[]> =>
+  api<InventoryAdjustment[]>("/api/stock/inventory", {
+    method: "POST",
+    body: JSON.stringify({ branchId, employeeId, counts }),
+  });

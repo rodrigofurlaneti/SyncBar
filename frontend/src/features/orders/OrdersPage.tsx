@@ -7,6 +7,7 @@ import { TableStatus, formatBRL } from "../../lib/types";
 import type { OrderResponse, TableResponse } from "../../lib/types";
 import { OrderDrawer } from "./OrderDrawer";
 import { OpenOrderDialog } from "./OpenOrderDialog";
+import { QueryError } from "../../components/QueryError";
 
 const statusColor: Record<number, string> = {
   [TableStatus.Livre]: "var(--free)",
@@ -74,9 +75,8 @@ export function OrdersPage() {
           </div>
 
           {tablesQuery.isLoading && <p style={{ color: "var(--ink-dim)" }}>Carregando mesas…</p>}
-          {tablesQuery.isError && (
-            <p className="error-text">Falha ao carregar mesas. A API está de pé?</p>
-          )}
+          {tablesQuery.isError && <QueryError error={tablesQuery.error} what="as mesas" />}
+          {ordersQuery.isError && <QueryError error={ordersQuery.error} what="os pedidos abertos" />}
 
           <div className="table-grid">
             {(tablesQuery.data ?? []).map((table) => {

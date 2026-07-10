@@ -1,4 +1,4 @@
-/* =====================================================================
+﻿/* =====================================================================
    BarRestauranteDb — Seed complementar (para banco iniciado via SetupAdmin)
    Cria: lookups, permissões, perfis operacionais, mesas, comandas,
    caixa, categorias, produtos e estoque. Idempotente.

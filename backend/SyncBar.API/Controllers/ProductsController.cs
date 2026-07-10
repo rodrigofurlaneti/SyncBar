@@ -9,7 +9,7 @@ using SyncBar.Application.Features.Catalog.UpdateProduct;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize]
+[Authorize(Policy = "Feature:Cardapio")]
 public sealed class ProductsController(IMediator mediator) : ApiController(mediator)
 {
     [HttpGet("categories/company/{companyId:long}")]

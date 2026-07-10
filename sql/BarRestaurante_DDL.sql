@@ -1,4 +1,4 @@
-/* =====================================================================
+﻿/* =====================================================================
    BarRestauranteDb — Script DDL (SQL Server)
    Sistema de Gestão de Bar e Restaurante — Multi-empresa / Multi-filial
    Convenções:

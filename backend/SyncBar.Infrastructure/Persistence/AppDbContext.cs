@@ -44,6 +44,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<CashMovement> CashMovements => Set<CashMovement>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
 
+    public DbSet<AppFeature> AppFeatures => Set<AppFeature>();
+    public DbSet<JobTitleFeature> JobTitleFeatures => Set<JobTitleFeature>();
+    public DbSet<AppUserFeature> AppUserFeatures => Set<AppUserFeature>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
         => modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 

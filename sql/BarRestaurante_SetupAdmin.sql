@@ -1,4 +1,4 @@
-/* =====================================================================
+﻿/* =====================================================================
    BarRestauranteDb — Setup do usuário admin (idempotente)
    Cria a cadeia mínima se não existir (Company → Branch → JobTitle →
    Employee → Role → AppUser → UserRole) e define a senha do admin.

@@ -36,6 +36,9 @@ public static class DependencyInjection
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<IAppFeatureRepository, AppFeatureRepository>();
+        services.AddScoped<IJobTitleFeatureRepository, JobTitleFeatureRepository>();
+        services.AddScoped<IAppUserFeatureRepository, AppUserFeatureRepository>();
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IPasswordHasher, PasswordHasher>();

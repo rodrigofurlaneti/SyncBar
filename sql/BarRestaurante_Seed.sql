@@ -1,4 +1,4 @@
-/* =====================================================================
+﻿/* =====================================================================
    BarRestauranteDb — Script de Seed (dados iniciais)
    Executar APÓS BarRestaurante_DDL.sql
    Convenções:

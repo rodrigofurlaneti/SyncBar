@@ -11,6 +11,8 @@ import {
 } from "../../lib/types";
 import type { StockItemResponse } from "../../lib/types";
 import { Overlay } from "../orders/Overlay";
+import { InventoryOverlay } from "./InventoryOverlay";
+import { QueryError } from "../../components/QueryError";
 
 const parseNum = (raw: string): number | null => {
   if (raw.trim() === "") return null;
@@ -22,6 +24,7 @@ export function StockPage() {
   const queryClient = useQueryClient();
   const { branchId, companyId, employeeId } = useAuthStore();
   const [movementOpen, setMovementOpen] = useState(false);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
   const [ledgerItem, setLedgerItem] = useState<StockItemResponse | null>(null);
   const [limitsItem, setLimitsItem] = useState<StockItemResponse | null>(null);
   const [productId, setProductId] = useState("");
@@ -100,12 +103,17 @@ export function StockPage() {
           saldo por produto · linhas em vermelho estão abaixo do mínimo
         </span>
         <span style={{ flex: 1 }} />
+        <button className="btn-ghost" onClick={() => setInventoryOpen(true)}>
+          Inventário
+        </button>
         <button className="btn-primary" onClick={() => { setError(null); setMovementOpen(true); }}>
           + Lançar movimento
         </button>
       </div>
 
       {error && !movementOpen && limitsItem === null && <p className="error-text">{error}</p>}
+      {stockQuery.isError && <QueryError error={stockQuery.error} what="o estoque" />}
+      {menuQuery.isError && <QueryError error={menuQuery.error} what="os produtos" />}
 
       <div className="ticket rise rise-1">
         {(stockQuery.data ?? []).map((item) => (
@@ -153,6 +161,15 @@ export function StockPage() {
           </div>
         )}
       </div>
+
+      {inventoryOpen && (
+        <InventoryOverlay
+          items={stockQuery.data ?? []}
+          productName={productName}
+          onClose={() => setInventoryOpen(false)}
+          onDone={refresh}
+        />
+      )}
 
       {movementOpen && (
         <Overlay title="Lançar movimento" onClose={() => setMovementOpen(false)}>

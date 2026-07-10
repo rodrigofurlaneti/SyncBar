@@ -29,7 +29,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"]!))
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // Uma policy por tela — controllers usam [Authorize(Policy = "Feature:X")].
+    foreach (var code in SyncBar.Domain.Constants.FeatureCodes.All)
+        options.AddPolicy($"Feature:{code}", policy =>
+            policy.Requirements.Add(new SyncBar.API.Authorization.FeatureRequirement(code)));
+});
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
+    SyncBar.API.Authorization.FeatureAuthorizationHandler>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>

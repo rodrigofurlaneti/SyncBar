@@ -9,7 +9,7 @@ using SyncBar.Application.Features.Users.UpdateRoles;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize]
+[Authorize(Policy = "Feature:Usuarios")]
 public sealed class UsersController(IMediator mediator) : ApiController(mediator)
 {
     [HttpGet("company/{companyId:long}")]

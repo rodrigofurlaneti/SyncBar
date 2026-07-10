@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SyncBar.Application.Features.Stock.AdjustInventory;
 using SyncBar.Application.Features.Stock.GetByBranch;
 using SyncBar.Application.Features.Stock.GetLedger;
 using SyncBar.Application.Features.Stock.RegisterMovement;
@@ -8,7 +9,7 @@ using SyncBar.Application.Features.Stock.SetLimits;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize]
+[Authorize(Policy = "Feature:Estoque")]
 public sealed class StockController(IMediator mediator) : ApiController(mediator)
 {
     [HttpGet("branch/{branchId:long}")]
@@ -27,6 +28,13 @@ public sealed class StockController(IMediator mediator) : ApiController(mediator
 
     [HttpPost("movements")]
     public async Task<IActionResult> RegisterMovement([FromBody] RegisterStockMovementCommand command, CancellationToken ct)
+    {
+        var result = await Mediator.Send(command, ct);
+        return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+    }
+
+    [HttpPost("inventory")]
+    public async Task<IActionResult> AdjustInventory([FromBody] AdjustInventoryCommand command, CancellationToken ct)
     {
         var result = await Mediator.Send(command, ct);
         return result.IsFailure ? HandleFailure(result) : Ok(result.Value);

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { login } from "./api";
 import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const setSession = useAuthStore((s) => s.setSession);
   const [userName, setUserName] = useState("");
   const [password, setPassword] = useState("");
@@ -14,6 +15,8 @@ export function LoginPage() {
   const mutation = useMutation({
     mutationFn: () => login(userName, password),
     onSuccess: (session) => {
+      // Nada do usuario anterior pode sobrar em cache (telas, listas, caixa...).
+      queryClient.clear();
       setSession(session);
       navigate("/", { replace: true });
     },

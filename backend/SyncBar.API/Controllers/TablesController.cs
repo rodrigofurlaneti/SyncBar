@@ -5,7 +5,7 @@ using SyncBar.Application.Features.Tables.GetByBranch;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize]
+[Authorize(Policy = "Feature:Salao")]
 public sealed class TablesController(IMediator mediator) : ApiController(mediator)
 {
     [HttpGet("branch/{branchId:long}")]

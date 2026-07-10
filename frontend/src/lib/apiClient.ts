@@ -43,14 +43,19 @@ async function tryRefresh(): Promise<boolean> {
 export async function api<T>(path: string, init?: RequestInit, retry = true): Promise<T> {
   const { accessToken } = useAuthStore.getState();
 
-  const response = await fetch(path, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...init?.headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...init?.headers,
+      },
+    });
+  } catch {
+    throw new ApiError(0, "Network.Unreachable", "Não foi possível conectar à API — ela está rodando?");
+  }
 
   if (response.status === 401 && retry) {
     const renewed = await tryRefresh();
@@ -59,17 +64,29 @@ export async function api<T>(path: string, init?: RequestInit, retry = true): Pr
   }
 
   if (!response.ok) {
-    let problem: ApiProblem | null = null;
+    let title: string | undefined;
+    let detail: string | undefined;
     try {
-      problem = (await response.json()) as ApiProblem;
+      const body = (await response.json()) as ApiProblem & { errors?: Record<string, string[]> };
+      title = body.title;
+      detail = body.detail;
+      // ValidationProblemDetails (FluentValidation): agrega as mensagens de campo.
+      if (!detail && body.errors)
+        detail = Object.values(body.errors).flat().join(" ");
     } catch {
-      // corpo vazio ou nao-JSON
+      // corpo vazio ou nao-JSON (ex.: 403 da policy de feature)
     }
-    throw new ApiError(
-      response.status,
-      problem?.title ?? `Http.${response.status}`,
-      problem?.detail ?? "Falha ao comunicar com a API.",
-    );
+
+    const fallback =
+      response.status === 403
+        ? "Você não tem acesso a esta funcionalidade — peça ao gerente na tela Acessos."
+        : response.status === 404
+          ? "Recurso não encontrado — a API está atualizada (reiniciada após a última alteração)?"
+          : response.status >= 500
+            ? "Erro interno na API — veja o console dela para detalhes."
+            : "Falha ao comunicar com a API.";
+
+    throw new ApiError(response.status, title ?? `Http.${response.status}`, detail ?? fallback);
   }
 
   if (response.status === 204) return undefined as T;

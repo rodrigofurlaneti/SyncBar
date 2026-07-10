@@ -6,6 +6,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import type { UserResponse } from "../../lib/types";
 import { Overlay } from "../orders/Overlay";
+import { QueryError } from "../../components/QueryError";
 
 export function UsersPage() {
   const queryClient = useQueryClient();
@@ -123,6 +124,8 @@ export function UsersPage() {
       </div>
 
       {error && !creating && editingRoles === null && <p className="error-text">{error}</p>}
+      {usersQuery.isError && <QueryError error={usersQuery.error} what="os usuários" />}
+      {rolesQuery.isError && <QueryError error={rolesQuery.error} what="os perfis" />}
 
       <div className="ticket rise rise-1">
         {(usersQuery.data ?? []).map((user) => (

@@ -53,6 +53,11 @@ export function PaymentPanel({ order, onPaid }: Props) {
     sessionQuery.error instanceof ApiError &&
     sessionQuery.error.status === 404;
 
+  const noCashAccess =
+    sessionQuery.isError &&
+    sessionQuery.error instanceof ApiError &&
+    sessionQuery.error.status === 403;
+
   const openSessionMutation = useMutation({
     mutationFn: () =>
       openCashSession(DEFAULT_CASH_REGISTER_ID, employeeId ?? 1, parseAmount(openingAmount)),
@@ -100,6 +105,17 @@ export function PaymentPanel({ order, onPaid }: Props) {
 
   if (sessionQuery.isLoading)
     return <p style={{ color: "var(--ink-dim)" }}>Verificando caixa…</p>;
+
+  if (noCashAccess)
+    return (
+      <div className="ticket" style={{ padding: 18, display: "grid", gap: 6 }}>
+        <strong>Conta fechada — aguardando pagamento.</strong>
+        <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>
+          Você não tem acesso ao caixa. Chame o operador de caixa ou o gerente para
+          registrar o pagamento.
+        </span>
+      </div>
+    );
 
   if (noSession)
     return (

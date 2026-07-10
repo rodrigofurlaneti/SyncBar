@@ -16,7 +16,8 @@ internal sealed class GetMenuQueryHandler(IProductRepository productRepository)
         IReadOnlyCollection<MenuItemResponse> response = products
             .OrderBy(p => p.CategoryId).ThenBy(p => p.Name)
             .Select(p => new MenuItemResponse(
-                p.Id, p.CategoryId, p.Name, p.Description, p.SalePrice, p.PreparationTimeMinutes))
+                p.Id, p.CategoryId, p.UnitOfMeasureId, p.Name, p.Description, p.Barcode,
+                p.SalePrice, p.CostPrice, p.IsStockControlled, p.PreparationTimeMinutes))
             .ToList();
 
         return Result.Success(response);
