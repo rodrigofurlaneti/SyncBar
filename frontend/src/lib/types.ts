@@ -280,6 +280,7 @@ export const featureLabel: Record<string, string> = {
   Usuarios: "Usuários",
   Caixa: "Caixa",
   Faturamento: "Faturamento",
+  Preparo: "Preparo",
 };
 
 export interface OperatingCostResponse {
@@ -346,4 +347,24 @@ export interface ScenariosResponse {
   historicalMarginRate: number | null;
   averageTicket: number | null;
   scenarios: ScenarioResponse[];
+}
+
+export interface PreparationItemResponse {
+  orderItemId: number;
+  productId: number;
+  productName: string;
+  quantity: number;
+  orderItemStatusId: number;
+  notes: string | null;
+  startedAt: string;
+  limitMinutes: number;
+  isBarItem: boolean;
+}
+
+export interface PreparationTicketResponse {
+  customerOrderId: number;
+  tableNumber: number | null;
+  comandaCode: string | null;
+  openedAt: string;
+  items: PreparationItemResponse[];
 }

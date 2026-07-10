@@ -10,8 +10,9 @@ public static class FeatureCodes
     public const string Usuarios = "Usuarios";
     public const string Caixa = "Caixa";
     public const string Faturamento = "Faturamento";
+    public const string Preparo = "Preparo";
 
-    public static readonly string[] All = [Salao, Cardapio, Estoque, Equipe, Usuarios, Caixa, Faturamento];
+    public static readonly string[] All = [Salao, Cardapio, Estoque, Equipe, Usuarios, Caixa, Faturamento, Preparo];
 
     // Perfis com acesso total e direito de conceder acessos.
     public static readonly string[] ManagerRoles = ["Administrador", "Gerente"];

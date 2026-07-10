@@ -225,3 +225,10 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
 .rise-1 { animation-delay: 40ms; } .rise-2 { animation-delay: 90ms; } .rise-3 { animation-delay: 140ms; }
 
 .error-text { color: var(--danger); font-size: 0.9rem; }
+
+/* KDS: item com tempo estourado pulsa */
+@keyframes kds-pulse {
+  0%, 100% { background: transparent; }
+  50% { background: rgba(239, 75, 61, 0.12); }
+}
+.kds-overdue { animation: kds-pulse 1.6s ease-in-out infinite; }

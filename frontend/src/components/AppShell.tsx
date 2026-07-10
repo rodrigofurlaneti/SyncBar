@@ -13,6 +13,7 @@ const links = [
   { to: "/usuarios", label: "Usuários", feature: "Usuarios" },
   { to: "/faturamento", label: "Faturamento", feature: "Faturamento" },
   { to: "/cenarios", label: "Cenários", feature: "Faturamento" },
+  { to: "/preparo", label: "Preparo", feature: "Preparo" },
 ];
 
 export function AppShell() {
