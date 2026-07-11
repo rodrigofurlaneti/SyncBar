@@ -4,7 +4,9 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Orders.GetById;
 
-internal sealed class GetOrderByIdQueryHandler(ICustomerOrderRepository orderRepository)
+internal sealed class GetOrderByIdQueryHandler(
+    ICustomerOrderRepository orderRepository,
+    IOrderPartialPaymentRepository partialPaymentRepository)
     : IQueryHandler<GetOrderByIdQuery, OrderResponse>
 {
     public async Task<Result<OrderResponse>> Handle(GetOrderByIdQuery request, CancellationToken cancellationToken)
@@ -13,6 +15,7 @@ internal sealed class GetOrderByIdQueryHandler(ICustomerOrderRepository orderRep
         if (order is null || !order.IsActive)
             return Result.Failure<OrderResponse>(new Error("CustomerOrder.NotFound", "Order not found."));
 
-        return Result.Success(order.ToResponse());
+        var partials = await partialPaymentRepository.GetByOrderAsync(order.Id, cancellationToken);
+        return Result.Success(order.ToResponse(partials.Sum(p => p.Amount)));
     }
 }

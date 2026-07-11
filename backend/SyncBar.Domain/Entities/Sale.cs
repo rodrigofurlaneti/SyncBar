@@ -67,9 +67,10 @@ public sealed class Sale : AggregateRoot
         return Result.Success();
     }
 
-    public Result EnsureFullyPaid()
+    // previouslyPaid: pagamentos parciais feitos antes do acerto final (cliente que saiu antes).
+    public Result EnsureFullyPaid(decimal previouslyPaid = 0)
     {
-        var paid = _payments.Where(p => p.IsActive).Sum(p => p.Amount - (p.ChangeAmount ?? 0));
+        var paid = _payments.Where(p => p.IsActive).Sum(p => p.Amount - (p.ChangeAmount ?? 0)) + previouslyPaid;
         if (paid < TotalAmount)
             return Result.Failure(new Error("Sale.InsufficientPayment",
                 $"Payments ({paid:0.00}) do not cover the sale total ({TotalAmount:0.00})."));

@@ -32,6 +32,13 @@ public sealed class PrintingController(IMediator mediator, IPrintingService prin
         return result.IsFailure ? HandleFailure(result) : NoContent();
     }
 
+    [HttpPost("partial-receipt/{partialId:long}")]
+    public async Task<IActionResult> PrintPartialReceipt(long partialId, CancellationToken ct)
+    {
+        var result = await printingService.PrintPartialReceiptAsync(partialId, ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+
     [HttpPost("cash-session/{sessionId:long}")]
     public async Task<IActionResult> PrintCashClosing(long sessionId, CancellationToken ct)
     {

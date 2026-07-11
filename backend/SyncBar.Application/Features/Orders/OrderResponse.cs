@@ -24,5 +24,6 @@ public sealed record OrderResponse(
     decimal DiscountAmount,
     decimal ServiceFeeAmount,
     decimal TotalAmount,
+    decimal PartialPaidAmount,
     string? Notes,
     IReadOnlyCollection<OrderItemResponse> Items);

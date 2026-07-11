@@ -19,12 +19,13 @@ public sealed class RegisterSaleCommandHandlerTests
     private readonly IProductRepository _productRepository = Substitute.For<IProductRepository>();
     private readonly IStockItemRepository _stockItemRepository = Substitute.For<IStockItemRepository>();
     private readonly IStockMovementRepository _stockMovementRepository = Substitute.For<IStockMovementRepository>();
+    private readonly IOrderPartialPaymentRepository _partialRepository = Substitute.For<IOrderPartialPaymentRepository>();
     private readonly IPrintingService _printingService = Substitute.For<IPrintingService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
     private RegisterSaleCommandHandler CreateHandler()
         => new(_orderRepository, _saleRepository, _cashSessionRepository, _diningTableRepository,
-            _comandaRepository, _productRepository, _stockItemRepository, _stockMovementRepository, _printingService, _unitOfWork);
+            _comandaRepository, _productRepository, _stockItemRepository, _stockMovementRepository, _partialRepository, _printingService, _unitOfWork);
 
     private static CustomerOrder ClosedOrder(decimal price = 100m)
     {
@@ -36,6 +37,10 @@ public sealed class RegisterSaleCommandHandlerTests
 
     private static CashSession OpenSession() => CashSession.Open(1, 1, 100m).Value;
 
+    private void NoPartials()
+        => _partialRepository.GetByOrderAsync(Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(new List<OrderPartialPayment>());
+
     [Fact]
     public async Task Handle_WithSplitPayments_ShouldRegisterSaleAndMarkOrderPaid()
     {
@@ -45,6 +50,7 @@ public sealed class RegisterSaleCommandHandlerTests
         _cashSessionRepository.GetByIdAsync(7, Arg.Any<CancellationToken>()).Returns(OpenSession());
         _saleRepository.ExistsActiveByOrderAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(false);
         _saleRepository.GetNextSaleNumberAsync(1, Arg.Any<CancellationToken>()).Returns(1L);
+        NoPartials();
 
         var payments = new List<SalePaymentInput>
         {
@@ -71,6 +77,7 @@ public sealed class RegisterSaleCommandHandlerTests
         _cashSessionRepository.GetByIdAsync(7, Arg.Any<CancellationToken>()).Returns(OpenSession());
         _saleRepository.ExistsActiveByOrderAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(false);
         _saleRepository.GetNextSaleNumberAsync(1, Arg.Any<CancellationToken>()).Returns(1L);
+        NoPartials();
 
         var payments = new List<SalePaymentInput> { new(PaymentMethodIds.Pix, 50m, null, "E2E-123") };
 
@@ -90,6 +97,7 @@ public sealed class RegisterSaleCommandHandlerTests
         _cashSessionRepository.GetByIdAsync(7, Arg.Any<CancellationToken>()).Returns(OpenSession());
         _saleRepository.ExistsActiveByOrderAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(false);
         _saleRepository.GetNextSaleNumberAsync(1, Arg.Any<CancellationToken>()).Returns(1L);
+        NoPartials();
 
         var payments = new List<SalePaymentInput> { new(PaymentMethodIds.CartaoDebito, 120m, 10m, "AUT-9") };
 
@@ -98,6 +106,30 @@ public sealed class RegisterSaleCommandHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Sale.ChangeNotAllowed");
+    }
+
+    [Fact]
+    public async Task Handle_WithPartialPayment_ShouldRequireOnlyRemaining()
+    {
+        // Conta 245 + 10% = 269,50; parcial de 65,55 ja pago → basta 203,95 no acerto.
+        var order = ClosedOrder(245m);
+        _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
+        _cashSessionRepository.GetByIdAsync(7, Arg.Any<CancellationToken>()).Returns(OpenSession());
+        _saleRepository.ExistsActiveByOrderAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(false);
+        _saleRepository.GetNextSaleNumberAsync(1, Arg.Any<CancellationToken>()).Returns(1L);
+        _partialRepository.GetByOrderAsync(Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(new List<OrderPartialPayment>
+            {
+                OrderPartialPayment.Create(1, 7, PaymentMethodIds.Pix, 1, 65.55m, null, "Carlos").Value,
+            });
+
+        var payments = new List<SalePaymentInput> { new(PaymentMethodIds.CartaoCredito, 203.95m, null, "AUT-1") };
+
+        var result = await CreateHandler().Handle(
+            new RegisterSaleCommand(1, 7, 1, payments), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        order.OrderStatusId.Should().Be(OrderStatusIds.Pago);
     }
 
     [Fact]

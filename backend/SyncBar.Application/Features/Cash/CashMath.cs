@@ -10,13 +10,19 @@ internal static class CashMath
     internal static decimal ExpectedCash(
         decimal openingAmount,
         IReadOnlyCollection<Sale> sales,
-        IReadOnlyCollection<CashMovement> movements)
+        IReadOnlyCollection<CashMovement> movements,
+        IReadOnlyCollection<OrderPartialPayment>? partialPayments = null)
     {
         var cashReceived = sales
             .Where(s => s.IsActive)
             .SelectMany(s => s.Payments)
             .Where(p => p.IsActive && p.PaymentMethodId == PaymentMethodIds.Dinheiro)
             .Sum(p => p.Amount - (p.ChangeAmount ?? 0));
+
+        // Parciais em dinheiro tambem estao na gaveta.
+        cashReceived += (partialPayments ?? [])
+            .Where(p => p.PaymentMethodId == PaymentMethodIds.Dinheiro)
+            .Sum(p => p.Amount);
 
         var suprimento = movements
             .Where(m => m.CashMovementTypeId == CashMovementTypeIds.Suprimento)

@@ -8,6 +8,7 @@ internal sealed class CloseCashSessionCommandHandler(
     ICashSessionRepository cashSessionRepository,
     ISaleRepository saleRepository,
     ICashMovementRepository cashMovementRepository,
+    IOrderPartialPaymentRepository partialPaymentRepository,
     IUnitOfWork unitOfWork)
     : ICommandHandler<CloseCashSessionCommand, CloseCashSessionResponse>
 {
@@ -19,7 +20,8 @@ internal sealed class CloseCashSessionCommandHandler(
 
         var sales = await saleRepository.GetByCashSessionAsync(session.Id, cancellationToken);
         var movements = await cashMovementRepository.GetBySessionAsync(session.Id, cancellationToken);
-        var expected = CashMath.ExpectedCash(session.OpeningAmount, sales, movements);
+        var partials = await partialPaymentRepository.GetByCashSessionAsync(session.Id, cancellationToken);
+        var expected = CashMath.ExpectedCash(session.OpeningAmount, sales, movements, partials);
 
         var result = session.Close(request.ClosedByEmployeeId, request.ClosingAmount, expected);
         if (result.IsFailure)

@@ -13,10 +13,15 @@ public sealed class CloseCashSessionCommandHandlerTests
     private readonly ICashSessionRepository _cashSessionRepository = Substitute.For<ICashSessionRepository>();
     private readonly ISaleRepository _saleRepository = Substitute.For<ISaleRepository>();
     private readonly ICashMovementRepository _cashMovementRepository = Substitute.For<ICashMovementRepository>();
+    private readonly IOrderPartialPaymentRepository _partialRepository = Substitute.For<IOrderPartialPaymentRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
     private CloseCashSessionCommandHandler CreateHandler()
-        => new(_cashSessionRepository, _saleRepository, _cashMovementRepository, _unitOfWork);
+    {
+        _partialRepository.GetByCashSessionAsync(Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(new List<OrderPartialPayment>());
+        return new(_cashSessionRepository, _saleRepository, _cashMovementRepository, _partialRepository, _unitOfWork);
+    }
 
     [Fact]
     public async Task Handle_ShouldComputeExpectedAndDifference()

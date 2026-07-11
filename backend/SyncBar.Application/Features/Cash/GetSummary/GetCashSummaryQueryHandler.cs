@@ -8,7 +8,8 @@ namespace SyncBar.Application.Features.Cash.GetSummary;
 internal sealed class GetCashSummaryQueryHandler(
     ICashSessionRepository cashSessionRepository,
     ISaleRepository saleRepository,
-    ICashMovementRepository cashMovementRepository)
+    ICashMovementRepository cashMovementRepository,
+    IOrderPartialPaymentRepository partialPaymentRepository)
     : IQueryHandler<GetCashSummaryQuery, CashSummaryResponse>
 {
     public async Task<Result<CashSummaryResponse>> Handle(GetCashSummaryQuery request, CancellationToken cancellationToken)
@@ -19,6 +20,7 @@ internal sealed class GetCashSummaryQueryHandler(
 
         var sales = await saleRepository.GetByCashSessionAsync(session.Id, cancellationToken);
         var movements = await cashMovementRepository.GetBySessionAsync(session.Id, cancellationToken);
+        var partials = await partialPaymentRepository.GetByCashSessionAsync(session.Id, cancellationToken);
 
         var paymentTotals = sales
             .Where(s => s.IsActive)
@@ -38,7 +40,8 @@ internal sealed class GetCashSummaryQueryHandler(
             movements.Where(m => m.CashMovementTypeId == CashMovementTypeIds.Suprimento).Sum(m => m.Amount),
             movements.Where(m => m.CashMovementTypeId == CashMovementTypeIds.Sangria).Sum(m => m.Amount),
             movements.Where(m => m.CashMovementTypeId == CashMovementTypeIds.Despesa).Sum(m => m.Amount),
-            CashMath.ExpectedCash(session.OpeningAmount, sales, movements));
+            partials.Sum(p => p.Amount),
+            CashMath.ExpectedCash(session.OpeningAmount, sales, movements, partials));
 
         return Result.Success(response);
     }

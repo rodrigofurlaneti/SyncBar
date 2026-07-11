@@ -19,6 +19,7 @@ public sealed record CashSummaryResponse(
     decimal SuprimentoTotal,
     decimal SangriaTotal,
     decimal DespesaTotal,
+    decimal PartialPaymentsTotal,
     decimal ExpectedCashAmount);
 
 public sealed record CloseCashSessionResponse(

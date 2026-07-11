@@ -127,12 +127,59 @@ internal sealed class PrintingService(
                 p.Amount, p.ChangeAmount, p.AuthorizationCode))
             .ToList();
 
+        var previouslyPaid = await context.OrderPartialPayments.AsNoTracking()
+            .Where(p => p.CustomerOrderId == sale.CustomerOrderId && p.IsActive)
+            .SumAsync(p => p.Amount, cancellationToken);
+
         var content = TicketFormatter.PaymentReceipt(
             company?.TradeName ?? "SyncBar",
             order is null ? "" : await OriginLabelAsync(order, cancellationToken),
             ExtractCustomerName(order?.Notes),
             sale.SaleNumber, sale.CustomerOrderId, DateTime.Now,
-            sale.TotalAmount, payments, operatorName);
+            sale.TotalAmount, payments, operatorName, previouslyPaid);
+
+        return await SendToAllAsync(printers, content, cancellationToken);
+    }
+
+    public async Task<Result> PrintPartialReceiptAsync(long partialPaymentId, CancellationToken cancellationToken = default)
+    {
+        var partial = await context.OrderPartialPayments.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == partialPaymentId && p.IsActive, cancellationToken);
+        if (partial is null)
+            return Result.Failure(new Error("PartialPayment.NotFound", "Partial payment not found."));
+
+        var order = await context.CustomerOrders.AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == partial.CustomerOrderId, cancellationToken);
+        if (order is null)
+            return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
+
+        var settings = await GetSettingsAsync(order.BranchId, cancellationToken);
+        if (settings is { PrintBillsEnabled: false })
+            return Result.Failure(new Error("Printing.Disabled", "A impressão de contas está desligada."));
+
+        var printers = await GetPrintersAsync(order.BranchId, ordersOnly: false, cancellationToken);
+        if (printers.Count == 0)
+            return Result.Failure(new Error("Printing.NoPrinter", "Nenhuma impressora de contas configurada."));
+
+        var allPartials = await context.OrderPartialPayments.AsNoTracking()
+            .Where(p => p.CustomerOrderId == order.Id && p.IsActive)
+            .ToListAsync(cancellationToken);
+        var method = await context.PaymentMethods.AsNoTracking()
+            .FirstOrDefaultAsync(m => m.Id == partial.PaymentMethodId, cancellationToken);
+        var company = await context.Companies.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
+        var operatorName = (await context.Employees.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == partial.EmployeeId, cancellationToken))?.Name;
+
+        var content = TicketFormatter.PartialPaymentReceipt(
+            company?.TradeName ?? "SyncBar",
+            await OriginLabelAsync(order, cancellationToken),
+            partial.PayerName,
+            order.Id, DateTime.Now,
+            method?.Name ?? $"Forma {partial.PaymentMethodId}",
+            partial.Amount, partial.AuthorizationCode,
+            order.TotalAmount,
+            order.TotalAmount - allPartials.Sum(p => p.Amount),
+            operatorName);
 
         return await SendToAllAsync(printers, content, cancellationToken);
     }

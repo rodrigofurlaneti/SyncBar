@@ -75,7 +75,8 @@ public static class TicketFormatter
     public static string PaymentReceipt(
         string establishment, string originLabel, string? customerName,
         long saleNumber, long orderId, DateTime paidAt,
-        decimal totalAmount, IReadOnlyCollection<ReceiptPayment> payments, string? operatorName)
+        decimal totalAmount, IReadOnlyCollection<ReceiptPayment> payments, string? operatorName,
+        decimal previouslyPaid = 0)
     {
         var lines = new List<string>
         {
@@ -90,6 +91,11 @@ public static class TicketFormatter
             lines.Add($"Cliente: {customerName}");
         lines.Add(Separator());
         lines.Add(Row("TOTAL DA CONTA", Money(totalAmount)));
+        if (previouslyPaid > 0)
+        {
+            lines.Add(Row("Pago parcial (anterior)", "-" + Money(previouslyPaid)));
+            lines.Add(Row("Restante quitado agora", Money(totalAmount - previouslyPaid)));
+        }
         lines.Add(Separator());
 
         foreach (var payment in payments)
@@ -105,6 +111,36 @@ public static class TicketFormatter
         if (!string.IsNullOrWhiteSpace(operatorName))
             lines.Add($"Operador: {operatorName}");
         lines.Add(Center("*** CONTA PAGA ***"));
+        return string.Join("\n", lines);
+    }
+
+    public static string PartialPaymentReceipt(
+        string establishment, string originLabel, string? payerName,
+        long orderId, DateTime paidAt, string paymentMethod, decimal amount,
+        string? authorizationCode, decimal orderTotal, decimal remainingAfter, string? operatorName)
+    {
+        var lines = new List<string>
+        {
+            Center(establishment.ToUpperInvariant()),
+            Center("PAGAMENTO PARCIAL"),
+            Center(originLabel),
+            Separator(),
+            $"Pedido #{orderId}  {paidAt.ToString("dd/MM/yyyy HH:mm", PtBr)}",
+        };
+        if (!string.IsNullOrWhiteSpace(payerName))
+            lines.Add($"Pago por: {payerName}");
+        lines.Add(Separator());
+        lines.Add(Row("VALOR PAGO", Money(amount)));
+        lines.Add(Row("  " + paymentMethod, Money(amount)));
+        if (!string.IsNullOrWhiteSpace(authorizationCode))
+            lines.Add($"  Aut: {authorizationCode}");
+        lines.Add(Separator());
+        lines.Add(Row("Total da conta", Money(orderTotal)));
+        lines.Add(Row("Restante em aberto", Money(remainingAfter)));
+        lines.Add(Separator());
+        if (!string.IsNullOrWhiteSpace(operatorName))
+            lines.Add($"Operador: {operatorName}");
+        lines.Add(Center("*** MESA CONTINUA ABERTA ***"));
         return string.Join("\n", lines);
     }
 

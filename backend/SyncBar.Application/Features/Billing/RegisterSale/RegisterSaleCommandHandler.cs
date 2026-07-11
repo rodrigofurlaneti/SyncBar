@@ -16,6 +16,7 @@ internal sealed class RegisterSaleCommandHandler(
     IProductRepository productRepository,
     IStockItemRepository stockItemRepository,
     IStockMovementRepository stockMovementRepository,
+    IOrderPartialPaymentRepository partialPaymentRepository,
     IPrintingService printingService,
     IUnitOfWork unitOfWork)
     : ICommandHandler<RegisterSaleCommand, long>
@@ -60,7 +61,11 @@ internal sealed class RegisterSaleCommandHandler(
                 return Result.Failure<long>(added.Error);
         }
 
-        var fullyPaid = sale.EnsureFullyPaid();
+        // Pagamentos parciais (cliente que saiu antes) abatem o total no acerto final.
+        var partials = await partialPaymentRepository.GetByOrderAsync(order.Id, cancellationToken);
+        var partiallyPaid = partials.Sum(p => p.Amount);
+
+        var fullyPaid = sale.EnsureFullyPaid(partiallyPaid);
         if (fullyPaid.IsFailure)
             return Result.Failure<long>(fullyPaid.Error);
 
