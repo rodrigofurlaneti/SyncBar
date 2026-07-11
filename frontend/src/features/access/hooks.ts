@@ -22,4 +22,6 @@ export const featurePath: Record<string, string> = {
   Usuarios: "/usuarios",
   Faturamento: "/faturamento",
   Preparo: "/preparo",
+  Promocoes: "/promocoes",
+  Impressao: "/impressao",
 };

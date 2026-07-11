@@ -73,6 +73,12 @@ public static class CostTypeIds
     public const long Variavel = 2;
 }
 
+public static class PromotionTypeIds
+{
+    public const long EmDobro = 1;
+    public const long Desconto = 2;
+}
+
 public static class PaymentMethodIds
 {
     public const long Dinheiro = 1;

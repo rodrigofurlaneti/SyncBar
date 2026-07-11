@@ -15,6 +15,8 @@ const links = [
   { to: "/cenarios", label: "Cenários", feature: "Faturamento" },
   { to: "/preparo", label: "Preparo", feature: "Preparo" },
   { to: "/fechamentos", label: "Fechamentos", feature: "Caixa" },
+  { to: "/promocoes", label: "Promoções", feature: "Promocoes" },
+  { to: "/impressao", label: "Impressão", feature: "Impressao" },
 ];
 
 export function AppShell() {

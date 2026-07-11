@@ -9,6 +9,8 @@ import {
   updateItemStatus,
 } from "./api";
 import { getMenu } from "../catalog/api";
+import { getActivePromotions } from "../promotions/api";
+import { getPrintSettings, printBill } from "../printing/api";
 import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import {
@@ -16,6 +18,7 @@ import {
   OrderStatus,
   formatBRL,
   orderItemStatusLabel,
+  promotionBadge,
 } from "../../lib/types";
 import { Overlay } from "./Overlay";
 import { PaymentPanel } from "./PaymentPanel";
@@ -44,6 +47,18 @@ export function OrderDrawer({ orderId, onClose }: Props) {
     queryKey: ["order", orderId],
     queryFn: () => getOrder(orderId),
   });
+
+  const activePromosQuery = useQuery({
+    queryKey: ["promotions", "active"],
+    queryFn: () => getActivePromotions(useAuthStore.getState().branchId),
+    refetchInterval: 60_000,
+  });
+
+  const promoByProduct = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const p of activePromosQuery.data ?? []) map.set(p.productId, promotionBadge(p));
+    return map;
+  }, [activePromosQuery.data]);
 
   const menuQuery = useQuery({
     queryKey: ["menu", companyId],
@@ -82,7 +97,28 @@ export function OrderDrawer({ orderId, onClose }: Props) {
     ...run,
   });
 
-  const closeMutation = useMutation({ mutationFn: () => closeOrder(orderId), ...run });
+  const printSettingsQuery = useQuery({
+    queryKey: ["printing", "settings", useAuthStore.getState().branchId],
+    queryFn: () => getPrintSettings(useAuthStore.getState().branchId),
+    staleTime: 60_000,
+  });
+
+  const printBillMutation = useMutation({
+    mutationFn: () => printBill(orderId),
+    onError: (e) => setActionError(e instanceof ApiError ? e.message : "Falha ao imprimir a conta."),
+  });
+
+  const closeMutation = useMutation({
+    mutationFn: () => closeOrder(orderId),
+    onSuccess: () => {
+      setActionError(null);
+      refetchOrder();
+      // "Deseja imprimir?" SO aparece com a impressao de contas ligada.
+      if (printSettingsQuery.data?.printBillsEnabled && window.confirm("Deseja imprimir a conta?"))
+        printBillMutation.mutate();
+    },
+    onError,
+  });
   const cancelMutation = useMutation({
     mutationFn: () => cancelOrder(orderId),
     onSuccess: onClose,
@@ -208,6 +244,16 @@ export function OrderDrawer({ orderId, onClose }: Props) {
 
           {actionError && <p className="error-text">{actionError}</p>}
 
+          {awaitingPayment && printSettingsQuery.data?.printBillsEnabled && (
+            <button
+              className="btn-ghost"
+              disabled={printBillMutation.isPending}
+              onClick={() => printBillMutation.mutate()}
+            >
+              {printBillMutation.isPending ? "Imprimindo…" : "🖨 Imprimir conta"}
+            </button>
+          )}
+
           {awaitingPayment && (
             <PaymentPanel
               order={order}
@@ -244,7 +290,26 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                         disabled={addItem.isPending}
                         onClick={() => addItem.mutate(item.id)}
                       >
-                        <span>{item.name}</span>
+                        <span>
+                          {item.name}
+                          {promoByProduct.has(item.id) && (
+                            <span
+                              style={{
+                                marginLeft: 8,
+                                fontFamily: "var(--font-cond)",
+                                fontSize: "0.68rem",
+                                letterSpacing: "0.1em",
+                                color: "var(--amber-ink)",
+                                background: "var(--amber)",
+                                borderRadius: 4,
+                                padding: "2px 6px",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {promoByProduct.get(item.id)}
+                            </span>
+                          )}
+                        </span>
                         <span className="mono-num" style={{ color: "var(--amber)" }}>
                           {formatBRL(item.salePrice)}
                         </span>

@@ -48,6 +48,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<CostType> CostTypes => Set<CostType>();
     public DbSet<OperatingCost> OperatingCosts => Set<OperatingCost>();
     public DbSet<RevenueTarget> RevenueTargets => Set<RevenueTarget>();
+    public DbSet<Promotion> Promotions => Set<Promotion>();
+    public DbSet<Printer> Printers => Set<Printer>();
+    public DbSet<PrinterSetting> PrinterSettings => Set<PrinterSetting>();
     public DbSet<JobTitleFeature> JobTitleFeatures => Set<JobTitleFeature>();
     public DbSet<AppUserFeature> AppUserFeatures => Set<AppUserFeature>();
 

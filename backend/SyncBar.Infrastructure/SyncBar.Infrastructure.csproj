@@ -17,4 +17,7 @@
     <ProjectReference Include="..\SyncBar.Domain\SyncBar.Domain.csproj" />
     <ProjectReference Include="..\SyncBar.Application\SyncBar.Application.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="SyncBar.Tests" />
+  </ItemGroup>
 </Project>

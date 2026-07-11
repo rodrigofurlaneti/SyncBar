@@ -15,5 +15,6 @@
   <ItemGroup>
     <ProjectReference Include="..\SyncBar.Domain\SyncBar.Domain.csproj" />
     <ProjectReference Include="..\SyncBar.Application\SyncBar.Application.csproj" />
+    <ProjectReference Include="..\SyncBar.Infrastructure\SyncBar.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

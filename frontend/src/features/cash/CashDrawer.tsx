@@ -8,6 +8,7 @@ import {
   registerCashMovement,
 } from "./api";
 import { useAuthStore } from "../../stores/authStore";
+import { getPrintSettings, printCashClosing } from "../printing/api";
 import { ApiError } from "../../lib/apiClient";
 import {
   CashMovementType,
@@ -37,6 +38,17 @@ export function CashDrawer({ onClose }: Props) {
   const [countedAmount, setCountedAmount] = useState("");
   const [closeResult, setCloseResult] = useState<CloseCashSessionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const printSettingsQuery = useQuery({
+    queryKey: ["printing", "settings", DEFAULT_CASH_REGISTER_ID],
+    queryFn: () => getPrintSettings(useAuthStore.getState().branchId),
+    staleTime: 60_000,
+  });
+
+  const printClosingMutation = useMutation({
+    mutationFn: (sessionIdToPrint: number) => printCashClosing(sessionIdToPrint),
+    onError: (e) => onApiError(e, "Falha ao imprimir o fechamento."),
+  });
 
   const sessionQuery = useQuery({
     queryKey: ["cash", "open", DEFAULT_CASH_REGISTER_ID],
@@ -140,6 +152,15 @@ export function CashDrawer({ onClose }: Props) {
             </span>
             <span className="mono-num">{formatBRL(Math.abs(closeResult.differenceAmount))}</span>
           </div>
+          {printSettingsQuery.data?.printBillsEnabled && (
+            <button
+              className="btn-primary"
+              disabled={printClosingMutation.isPending}
+              onClick={() => printClosingMutation.mutate(closeResult.cashSessionId)}
+            >
+              {printClosingMutation.isPending ? "Imprimindo…" : "🖨 Imprimir fechamento"}
+            </button>
+          )}
         </div>
       )}
 

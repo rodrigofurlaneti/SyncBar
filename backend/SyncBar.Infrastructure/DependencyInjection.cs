@@ -6,6 +6,7 @@ using SyncBar.Domain.Repositories;
 using SyncBar.Infrastructure.Authentication;
 using SyncBar.Infrastructure.Persistence;
 using SyncBar.Infrastructure.Persistence.Repositories;
+using SyncBar.Infrastructure.Printing;
 
 namespace SyncBar.Infrastructure;
 
@@ -42,6 +43,13 @@ public static class DependencyInjection
         services.AddScoped<IAppUserFeatureRepository, AppUserFeatureRepository>();
         services.AddScoped<IOperatingCostRepository, OperatingCostRepository>();
         services.AddScoped<IRevenueTargetRepository, RevenueTargetRepository>();
+        services.AddScoped<IPromotionRepository, PromotionRepository>();
+        services.AddScoped<IPrinterRepository, PrinterRepository>();
+        services.AddScoped<IPrinterSettingRepository, PrinterSettingRepository>();
+
+        services.AddSingleton<IRawPrinterTransport, WindowsRawPrinterTransport>();
+        services.AddSingleton<IRawPrinterTransport, NetworkRawPrinterTransport>();
+        services.AddScoped<SyncBar.Application.Abstractions.Printing.IPrintingService, PrintingService>();
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IPasswordHasher, PasswordHasher>();

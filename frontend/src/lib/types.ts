@@ -281,6 +281,8 @@ export const featureLabel: Record<string, string> = {
   Caixa: "Caixa",
   Faturamento: "Faturamento",
   Preparo: "Preparo",
+  Promocoes: "Promoções",
+  Impressao: "Impressão",
 };
 
 export interface OperatingCostResponse {
@@ -405,3 +407,65 @@ export const CashSessionStatus = {
   Fechado: 2,
   Conferido: 3,
 } as const;
+
+export interface PromotionResponse {
+  id: number;
+  productId: number;
+  name: string;
+  dayOfWeek: number;
+  startMinuteOfDay: number;
+  endMinuteOfDay: number;
+  promotionTypeId: number;
+  discountRate: number | null;
+}
+
+export interface ActivePromotionResponse {
+  productId: number;
+  name: string;
+  endMinuteOfDay: number;
+  promotionTypeId: number;
+  discountRate: number | null;
+}
+
+export const PromotionType = { EmDobro: 1, Desconto: 2 } as const;
+
+export const promotionBadge = (p: { promotionTypeId: number; discountRate: number | null }): string =>
+  p.promotionTypeId === PromotionType.Desconto && p.discountRate !== null
+    ? `−${Math.round(p.discountRate * 100)}%`
+    : "EM DOBRO";
+
+export const dayOfWeekLabel: Record<number, string> = {
+  0: "Domingo",
+  1: "Segunda",
+  2: "Terça",
+  3: "Quarta",
+  4: "Quinta",
+  5: "Sexta",
+  6: "Sábado",
+};
+
+export const minutesToHHmm = (minutes: number): string =>
+  `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+
+export const hhmmToMinutes = (value: string): number | null => {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const total = Number(match[1]) * 60 + Number(match[2]);
+  return total >= 0 && total <= 1440 ? total : null;
+};
+
+export interface PrinterResponse {
+  id: number;
+  name: string;
+  connectionType: number; // 1 = Windows/USB | 2 = Rede
+  printerName: string | null;
+  ipAddress: string | null;
+  port: number | null;
+  printsOrders: boolean;
+  printsBills: boolean;
+}
+
+export interface PrintSettingsResponse {
+  printOrdersEnabled: boolean;
+  printBillsEnabled: boolean;
+}
