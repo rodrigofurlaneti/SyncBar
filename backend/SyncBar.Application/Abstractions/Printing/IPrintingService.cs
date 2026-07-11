@@ -8,6 +8,7 @@ public interface IPrintingService
     Task PrintOrderItemsAsync(long customerOrderId, IReadOnlyCollection<long> orderItemIds, CancellationToken cancellationToken = default);
 
     Task<Result> PrintBillAsync(long customerOrderId, CancellationToken cancellationToken = default);
+    Task<Result> PrintPaymentReceiptAsync(long saleId, CancellationToken cancellationToken = default);
     Task<Result> PrintCashClosingAsync(long cashSessionId, CancellationToken cancellationToken = default);
     Task<Result> PrintTestAsync(long printerId, CancellationToken cancellationToken = default);
 }

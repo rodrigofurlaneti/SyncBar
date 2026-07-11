@@ -58,6 +58,32 @@ public sealed class TicketFormatterTests
     }
 
     [Fact]
+    public void PaymentReceipt_ShouldContainPaymentsChangeAndOperator()
+    {
+        var content = TicketFormatter.PaymentReceipt(
+            "Restaurante Exemplo", "MESA 9", "Joao", 12, 14,
+            new DateTime(2026, 7, 11, 21, 35, 0), 110m,
+            [
+                new TicketFormatter.ReceiptPayment("Dinheiro", 50m, 20m, null),
+                new TicketFormatter.ReceiptPayment("CartaoCredito", 40m, null, "AUT-001"),
+                new TicketFormatter.ReceiptPayment("CartaoCredito", 40m, null, "AUT-002"),
+            ],
+            "Ana");
+
+        content.Should().Contain("COMPROVANTE DE PAGAMENTO");
+        content.Should().Contain("MESA 9");
+        content.Should().Contain("Venda #12  Pedido #14");
+        content.Should().Contain("11/07/2026 21:35");
+        content.Should().Contain("TOTAL DA CONTA");
+        content.Should().Contain("R$ 110,00");
+        content.Should().Contain("Troco");
+        content.Should().Contain("R$ 20,00");
+        content.Should().Contain("Aut: AUT-001");
+        content.Should().Contain("Operador: Ana");
+        content.Should().Contain("*** CONTA PAGA ***");
+    }
+
+    [Fact]
     public void EscPosNormalize_ShouldStripAccents()
         => EscPos.Normalize("Porção de Batata Frita à moda").Should().Be("Porcao de Batata Frita a moda");
 }

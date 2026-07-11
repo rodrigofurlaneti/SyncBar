@@ -11,6 +11,7 @@ public static class TicketFormatter
     public sealed record OrderTicketItem(decimal Quantity, string ProductName, string? Notes, int LimitMinutes, string? RequestedBy);
     public sealed record BillItem(decimal Quantity, string ProductName, decimal UnitPrice, decimal TotalAmount);
     public sealed record PaymentLine(string Label, decimal Amount);
+    public sealed record ReceiptPayment(string Label, decimal Amount, decimal? Change, string? AuthorizationCode);
 
     public static string OrderTicket(
         string originLabel, string? customerName, long orderId, DateTime printedAt,
@@ -68,6 +69,42 @@ public static class TicketFormatter
         lines.Add(Row("TOTAL", Money(total)));
         lines.Add(Separator());
         lines.Add(Center("Obrigado pela preferencia!"));
+        return string.Join("\n", lines);
+    }
+
+    public static string PaymentReceipt(
+        string establishment, string originLabel, string? customerName,
+        long saleNumber, long orderId, DateTime paidAt,
+        decimal totalAmount, IReadOnlyCollection<ReceiptPayment> payments, string? operatorName)
+    {
+        var lines = new List<string>
+        {
+            Center(establishment.ToUpperInvariant()),
+            Center("COMPROVANTE DE PAGAMENTO"),
+            Center(originLabel),
+            Separator(),
+            $"Venda #{saleNumber}  Pedido #{orderId}",
+            paidAt.ToString("dd/MM/yyyy HH:mm", PtBr),
+        };
+        if (!string.IsNullOrWhiteSpace(customerName))
+            lines.Add($"Cliente: {customerName}");
+        lines.Add(Separator());
+        lines.Add(Row("TOTAL DA CONTA", Money(totalAmount)));
+        lines.Add(Separator());
+
+        foreach (var payment in payments)
+        {
+            lines.Add(Row(payment.Label, Money(payment.Amount)));
+            if (payment.Change is > 0)
+                lines.Add(Row("  Troco", Money(payment.Change.Value)));
+            if (!string.IsNullOrWhiteSpace(payment.AuthorizationCode))
+                lines.Add($"  Aut: {payment.AuthorizationCode}");
+        }
+
+        lines.Add(Separator());
+        if (!string.IsNullOrWhiteSpace(operatorName))
+            lines.Add($"Operador: {operatorName}");
+        lines.Add(Center("*** CONTA PAGA ***"));
         return string.Join("\n", lines);
     }
 

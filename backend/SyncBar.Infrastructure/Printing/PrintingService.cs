@@ -98,6 +98,45 @@ internal sealed class PrintingService(
         return await SendToAllAsync(printers, content, cancellationToken);
     }
 
+    public async Task<Result> PrintPaymentReceiptAsync(long saleId, CancellationToken cancellationToken = default)
+    {
+        var sale = await context.Sales.AsNoTracking()
+            .Include(s => s.Payments)
+            .FirstOrDefaultAsync(s => s.Id == saleId && s.IsActive, cancellationToken);
+        if (sale is null)
+            return Result.Failure(new Error("Sale.NotFound", "Sale not found."));
+
+        var settings = await GetSettingsAsync(sale.BranchId, cancellationToken);
+        if (settings is { PrintBillsEnabled: false })
+            return Result.Failure(new Error("Printing.Disabled", "A impressão de contas está desligada."));
+
+        var printers = await GetPrintersAsync(sale.BranchId, ordersOnly: false, cancellationToken);
+        if (printers.Count == 0)
+            return Result.Failure(new Error("Printing.NoPrinter", "Nenhuma impressora de contas configurada."));
+
+        var order = await context.CustomerOrders.AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == sale.CustomerOrderId, cancellationToken);
+        var methods = await context.PaymentMethods.AsNoTracking().ToListAsync(cancellationToken);
+        var company = await context.Companies.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
+        var operatorName = (await context.Employees.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == sale.EmployeeId, cancellationToken))?.Name;
+
+        var payments = sale.Payments.Where(p => p.IsActive)
+            .Select(p => new TicketFormatter.ReceiptPayment(
+                methods.FirstOrDefault(m => m.Id == p.PaymentMethodId)?.Name ?? $"Forma {p.PaymentMethodId}",
+                p.Amount, p.ChangeAmount, p.AuthorizationCode))
+            .ToList();
+
+        var content = TicketFormatter.PaymentReceipt(
+            company?.TradeName ?? "SyncBar",
+            order is null ? "" : await OriginLabelAsync(order, cancellationToken),
+            ExtractCustomerName(order?.Notes),
+            sale.SaleNumber, sale.CustomerOrderId, DateTime.Now,
+            sale.TotalAmount, payments, operatorName);
+
+        return await SendToAllAsync(printers, content, cancellationToken);
+    }
+
     public async Task<Result> PrintCashClosingAsync(long cashSessionId, CancellationToken cancellationToken = default)
     {
         var session = await context.CashSessions.AsNoTracking()

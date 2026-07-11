@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NSubstitute;
+using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Application.Features.Billing.RegisterSale;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
@@ -18,11 +19,12 @@ public sealed class RegisterSaleCommandHandlerTests
     private readonly IProductRepository _productRepository = Substitute.For<IProductRepository>();
     private readonly IStockItemRepository _stockItemRepository = Substitute.For<IStockItemRepository>();
     private readonly IStockMovementRepository _stockMovementRepository = Substitute.For<IStockMovementRepository>();
+    private readonly IPrintingService _printingService = Substitute.For<IPrintingService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
     private RegisterSaleCommandHandler CreateHandler()
         => new(_orderRepository, _saleRepository, _cashSessionRepository, _diningTableRepository,
-            _comandaRepository, _productRepository, _stockItemRepository, _stockMovementRepository, _unitOfWork);
+            _comandaRepository, _productRepository, _stockItemRepository, _stockMovementRepository, _printingService, _unitOfWork);
 
     private static CustomerOrder ClosedOrder(decimal price = 100m)
     {

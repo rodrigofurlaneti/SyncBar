@@ -1,4 +1,5 @@
 using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -15,6 +16,7 @@ internal sealed class RegisterSaleCommandHandler(
     IProductRepository productRepository,
     IStockItemRepository stockItemRepository,
     IStockMovementRepository stockMovementRepository,
+    IPrintingService printingService,
     IUnitOfWork unitOfWork)
     : ICommandHandler<RegisterSaleCommand, long>
 {
@@ -106,6 +108,16 @@ internal sealed class RegisterSaleCommandHandler(
 
         await saleRepository.AddAsync(sale, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
+
+        // Comprovante de baixa automatico no caixa — falha de impressora nunca desfaz a venda.
+        try
+        {
+            await printingService.PrintPaymentReceiptAsync(sale.Id, cancellationToken);
+        }
+        catch
+        {
+            // silencioso: reimpressao disponivel via POST /api/printing/receipt/{saleId}
+        }
 
         return Result.Success(sale.Id);
     }
