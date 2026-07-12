@@ -63,7 +63,8 @@ public static class TicketFormatter
     public static string Bill(
         string establishment, string originLabel, string? customerName, long orderId,
         DateTime printedAt, IReadOnlyCollection<BillItem> items,
-        decimal subtotal, decimal discount, decimal serviceFee, decimal total)
+        decimal subtotal, decimal discount, decimal serviceFee, decimal total,
+        decimal partialPaid = 0)
     {
         // Cliente le esta via: corpo inteiro em altura dupla, TOTAL gigante.
         var lines = new List<string>
@@ -84,7 +85,18 @@ public static class TicketFormatter
         lines.Add(Tall(Row("Subtotal", Money(subtotal))));
         if (discount > 0) lines.Add(Tall(Row("Desconto", "-" + Money(discount))));
         if (serviceFee > 0) lines.Add(Tall(Row("Servico (10%)", Money(serviceFee))));
-        lines.Add(RowBig("TOTAL", Money(total)));
+
+        if (partialPaid > 0)
+        {
+            // Ja houve pagamento parcial: mostra o abatimento e o restante em destaque.
+            lines.Add(Tall(Row("Total da conta", Money(total))));
+            lines.Add(Tall(Row("Pago parcial", "-" + Money(partialPaid))));
+            lines.Add(RowBig("A PAGAR", Money(total - partialPaid)));
+        }
+        else
+        {
+            lines.Add(RowBig("TOTAL", Money(total)));
+        }
         lines.Add(Tall(Separator()));
         lines.Add(Tall(Center("Obrigado pela preferencia!")));
         return string.Join("\n", lines);

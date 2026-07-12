@@ -88,12 +88,18 @@ internal sealed class PrintingService(
             products.FirstOrDefault(p => p.Id == i.ProductId)?.Name ?? $"Produto {i.ProductId}",
             i.UnitPrice, i.TotalAmount)).ToList();
 
+        // Pagamentos parciais abatem o valor cobrado no cupom.
+        var partialPaid = await context.OrderPartialPayments.AsNoTracking()
+            .Where(p => p.CustomerOrderId == order.Id && p.IsActive)
+            .SumAsync(p => p.Amount, cancellationToken);
+
         var content = TicketFormatter.Bill(
             company?.TradeName ?? "SyncBar",
             await OriginLabelAsync(order, cancellationToken),
             ExtractCustomerName(order.Notes),
             order.Id, DateTime.Now, billItems,
-            order.SubtotalAmount, order.DiscountAmount, order.ServiceFeeAmount, order.TotalAmount);
+            order.SubtotalAmount, order.DiscountAmount, order.ServiceFeeAmount, order.TotalAmount,
+            partialPaid);
 
         return await SendToAllAsync(printers, content, cancellationToken);
     }

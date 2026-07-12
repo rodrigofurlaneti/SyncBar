@@ -84,6 +84,24 @@ public sealed class TicketFormatterTests
     }
 
     [Fact]
+    public void Bill_WithPartialPayment_ShouldChargeOnlyRemaining()
+    {
+        // Conta 269,50 com 65,55 pagos parcialmente → cupom cobra 203,95.
+        var content = TicketFormatter.Bill(
+            "Restaurante Exemplo", "MESA 1", null, 30, DateTime.Now,
+            [new TicketFormatter.BillItem(1, "Consumo", 245m, 245m)],
+            subtotal: 245m, discount: 0m, serviceFee: 24.50m, total: 269.50m,
+            partialPaid: 65.55m);
+
+        content.Should().Contain("Total da conta");
+        content.Should().Contain("R$ 269,50");
+        content.Should().Contain("Pago parcial");
+        content.Should().Contain("-R$ 65,55");
+        content.Should().Contain("A PAGAR");
+        content.Should().Contain("R$ 203,95");
+    }
+
+    [Fact]
     public void Bill_ShouldUseEnlargedFontMarkers()
     {
         var content = TicketFormatter.Bill(
