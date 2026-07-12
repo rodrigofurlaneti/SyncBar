@@ -10,6 +10,7 @@ internal sealed class OpenOrderCommandHandler(
     ICustomerOrderRepository orderRepository,
     IDiningTableRepository diningTableRepository,
     IComandaRepository comandaRepository,
+    IComandaSettingRepository comandaSettingRepository,
     IUnitOfWork unitOfWork)
     : ICommandHandler<OpenOrderCommand, long>
 {
@@ -39,9 +40,17 @@ internal sealed class OpenOrderCommandHandler(
             comanda.ChangeStatus(ComandaStatusIds.EmUso);
         }
 
+        // Comanda nasce com o limite padrao da filial (antifraude de comanda perdida).
+        decimal? creditLimit = null;
+        if (request.ComandaId.HasValue)
+        {
+            var setting = await comandaSettingRepository.GetByBranchAsync(request.BranchId, cancellationToken);
+            creditLimit = setting?.DefaultLimitAmount;
+        }
+
         var order = CustomerOrder.Create(
             request.BranchId, request.DiningTableId, request.ComandaId,
-            request.EmployeeId, request.GuestCount, request.Notes);
+            request.EmployeeId, request.GuestCount, request.Notes, creditLimit);
         if (order.IsFailure)
             return Result.Failure<long>(order.Error);
 

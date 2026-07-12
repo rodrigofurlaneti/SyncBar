@@ -53,5 +53,14 @@ export const closeOrder = (orderId: number, serviceFeeRate = 0.1): Promise<void>
     body: JSON.stringify({ serviceFeeRate }),
   });
 
+export const raiseCreditLimit = (orderId: number, newLimitAmount: number): Promise<void> =>
+  api<void>(`/api/orders/${orderId}/credit-limit`, {
+    method: "PUT",
+    body: JSON.stringify({ newLimitAmount }),
+  });
+
+export const removeServiceFee = (orderId: number): Promise<void> =>
+  api<void>(`/api/orders/${orderId}/remove-service-fee`, { method: "PUT" });
+
 export const cancelOrder = (orderId: number): Promise<void> =>
   api<void>(`/api/orders/${orderId}/cancel`, { method: "PUT" });

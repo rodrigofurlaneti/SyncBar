@@ -18,6 +18,7 @@ internal sealed class CustomerOrderConfiguration : IEntityTypeConfiguration<Cust
         builder.Property(x => x.DiscountAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.ServiceFeeAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)").IsRequired();
+        builder.Property(x => x.CreditLimitAmount).HasColumnType("decimal(18,2)");
         builder.Property(x => x.Notes).HasColumnType("nvarchar(500)");
         builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");

@@ -6,6 +6,8 @@ import {
   cancelOrder,
   closeOrder,
   getOrder,
+  raiseCreditLimit,
+  removeServiceFee,
   updateItemStatus,
 } from "./api";
 import { getMenu } from "../catalog/api";
@@ -126,6 +128,13 @@ export function OrderDrawer({ orderId, onClose }: Props) {
     },
     onError,
   });
+  const removeFeeMutation = useMutation({ mutationFn: () => removeServiceFee(orderId), ...run });
+
+  const raiseLimitMutation = useMutation({
+    mutationFn: (newLimit: number) => raiseCreditLimit(orderId, newLimit),
+    ...run,
+  });
+
   const cancelMutation = useMutation({
     mutationFn: () => cancelOrder(orderId),
     onSuccess: onClose,
@@ -177,6 +186,57 @@ export function OrderDrawer({ orderId, onClose }: Props) {
 
       {order && (
         <>
+          {order.comandaId !== null && order.creditLimitAmount !== null && (
+            <div
+              className="ticket"
+              style={{
+                padding: "10px 16px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 10,
+                flexWrap: "wrap",
+                borderColor:
+                  order.totalAmount >= order.creditLimitAmount ? "var(--danger)" : "var(--line)",
+              }}
+            >
+              <span style={{ fontSize: "0.88rem", color: "var(--ink-dim)" }}>
+                Limite da comanda:{" "}
+                <strong
+                  className="mono-num"
+                  style={{
+                    color:
+                      order.totalAmount >= order.creditLimitAmount
+                        ? "var(--danger)"
+                        : order.totalAmount >= order.creditLimitAmount * 0.8
+                          ? "var(--busy)"
+                          : "var(--ok)",
+                  }}
+                >
+                  {formatBRL(order.totalAmount)} / {formatBRL(order.creditLimitAmount)}
+                </strong>
+              </span>
+              {featuresQuery.data?.canManageAccess && (
+                <button
+                  className="btn-ghost"
+                  style={{ minHeight: 36, padding: "0 12px", fontSize: "0.85rem" }}
+                  disabled={raiseLimitMutation.isPending}
+                  onClick={() => {
+                    const answer = window.prompt(
+                      "Novo limite da comanda (R$):",
+                      String(order.creditLimitAmount! + 100),
+                    );
+                    if (answer === null) return;
+                    const value = Number(answer.replace(",", "."));
+                    if (Number.isFinite(value) && value > 0) raiseLimitMutation.mutate(value);
+                  }}
+                >
+                  Liberar limite (gerente)
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="ticket">
             <div className="ticket-head">
               <span className="display" style={{ fontSize: "1.2rem" }}>
@@ -279,6 +339,19 @@ export function OrderDrawer({ orderId, onClose }: Props) {
             order.totalAmount - order.partialPaidAmount > 0 && (
             <button className="btn-ghost" onClick={() => setPartialOpen(true)}>
               💸 Pagamento parcial (cliente saindo)
+            </button>
+          )}
+
+          {awaitingPayment && order.serviceFeeAmount > 0 && featuresQuery.data?.canManageAccess && (
+            <button
+              className="btn-ghost"
+              disabled={removeFeeMutation.isPending}
+              onClick={() => {
+                if (window.confirm("Retirar a taxa de serviço (10%) desta conta?"))
+                  removeFeeMutation.mutate();
+              }}
+            >
+              {removeFeeMutation.isPending ? "Retirando…" : "Retirar 10% (gerente)"}
             </button>
           )}
 

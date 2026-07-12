@@ -19,6 +19,7 @@ public sealed class CustomerOrder : AggregateRoot
     public decimal DiscountAmount { get; private set; }
     public decimal ServiceFeeAmount { get; private set; }
     public decimal TotalAmount { get; private set; }
+    public decimal? CreditLimitAmount { get; private set; }  // limite da comanda (mesa nao tem)
     public string? Notes { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
@@ -28,8 +29,9 @@ public sealed class CustomerOrder : AggregateRoot
 
     private CustomerOrder() : base(0) { }
 
-    private CustomerOrder(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes) : base(0)
+    private CustomerOrder(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes, decimal? creditLimitAmount) : base(0)
     {
+        CreditLimitAmount = comandaId is null ? null : creditLimitAmount;
         BranchId = branchId;
         DiningTableId = diningTableId;
         ComandaId = comandaId;
@@ -42,14 +44,14 @@ public sealed class CustomerOrder : AggregateRoot
         CreatedAt = DateTime.UtcNow;
     }
 
-    public static Result<CustomerOrder> Create(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes)
+    public static Result<CustomerOrder> Create(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes, decimal? creditLimitAmount = null)
     {
         // Espelha CK_CustomerOrder_Origin: pedido precisa de mesa OU comanda.
         if (diningTableId is null && comandaId is null)
             return Result.Failure<CustomerOrder>(
                 new Error("CustomerOrder.MissingOrigin", "Order must have a dining table or a comanda."));
 
-        return Result.Success(new CustomerOrder(branchId, diningTableId, comandaId, employeeId, guestCount, notes));
+        return Result.Success(new CustomerOrder(branchId, diningTableId, comandaId, employeeId, guestCount, notes, creditLimitAmount));
     }
 
     public Result AddItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId)
@@ -58,6 +60,16 @@ public sealed class CustomerOrder : AggregateRoot
             return Result.Failure(new Error("CustomerOrder.NotOpen", "Items can only be added to an open order."));
         if (quantity <= 0)
             return Result.Failure(new Error("CustomerOrder.InvalidQuantity", "Quantity must be greater than zero."));
+
+        // Antifraude de comanda perdida: lancamento que ultrapassa o limite e
+        // bloqueado — so o gerente libera mais limite.
+        if (CreditLimitAmount.HasValue)
+        {
+            var prospectiveTotal = TotalAmount + Math.Round(unitPrice * quantity, 2);
+            if (prospectiveTotal > CreditLimitAmount.Value)
+                return Result.Failure(new Error("Comanda.LimitExceeded",
+                    $"Limite da comanda atingido (R$ {CreditLimitAmount.Value:N2}, consumo iria a R$ {prospectiveTotal:N2}). Peça ao gerente para liberar mais limite."));
+        }
 
         // UnitPrice congelado no lancamento — nunca recalculado a partir do Product.
         var item = OrderItem.Create(Id, productId, unitPrice, quantity, notes, employeeId);
@@ -118,6 +130,36 @@ public sealed class CustomerOrder : AggregateRoot
         ServiceFeeAmount = Math.Round((SubtotalAmount - DiscountAmount) * serviceFeeRate, 2);
         RecalculateTotals();
         OrderStatusId = OrderStatusIds.AguardandoPagamento;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    // So o gerente libera mais limite (validado na API) — e sempre para MAIS.
+    public Result RaiseCreditLimit(decimal newLimitAmount)
+    {
+        if (ComandaId is null)
+            return Result.Failure(new Error("Comanda.LimitTableOrder", "Limite de consumo só se aplica a comandas."));
+        if (newLimitAmount <= (CreditLimitAmount ?? 0))
+            return Result.Failure(new Error("Comanda.LimitMustIncrease",
+                $"O novo limite deve ser maior que o atual (R$ {CreditLimitAmount ?? 0:N2})."));
+
+        CreditLimitAmount = newLimitAmount;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    // Os 10% sao opcionais — a retirada e prerrogativa do gerente (validado na API).
+    public Result RemoveServiceFee()
+    {
+        if (OrderStatusId != OrderStatusIds.AguardandoPagamento)
+            return Result.Failure(new Error("CustomerOrder.NotAwaitingPayment",
+                "Feche a conta antes de retirar a taxa de serviço."));
+        if (ServiceFeeAmount == 0)
+            return Result.Failure(new Error("CustomerOrder.NoServiceFee",
+                "Esta conta não tem taxa de serviço aplicada."));
+
+        ServiceFeeAmount = 0;
+        RecalculateTotals();
         UpdatedAt = DateTime.UtcNow;
         return Result.Success();
     }

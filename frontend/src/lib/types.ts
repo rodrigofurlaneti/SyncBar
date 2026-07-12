@@ -36,6 +36,7 @@ export interface OrderResponse {
   serviceFeeAmount: number;
   totalAmount: number;
   partialPaidAmount: number;
+  creditLimitAmount: number | null;
   notes: string | null;
   items: OrderItemResponse[];
 }
@@ -470,4 +471,8 @@ export interface PrinterResponse {
 export interface PrintSettingsResponse {
   printOrdersEnabled: boolean;
   printBillsEnabled: boolean;
+}
+
+export interface ComandaSettingResponse {
+  defaultLimitAmount: number;
 }

@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 
 namespace SyncBar.Infrastructure.Printing;
 
@@ -36,23 +36,23 @@ public static class TicketFormatter
     {
         var lines = new List<string>
         {
-            Center("*** PEDIDO ***"),
+            Center("****** PEDIDO ******"),
             CenterBig(originLabel),
             Separator(),
-            $"Pedido #{orderId}  {printedAt.ToString("dd/MM/yyyy HH:mm", PtBr)}",
+            $"Número do pedido #{orderId}  aos {printedAt.ToString("dd/MM/yyyy HH:mm", PtBr)}.",
         };
         if (!string.IsNullOrWhiteSpace(customerName))
-            lines.Add(Tall($"Cliente: {customerName}"));
+            lines.Add(Tall($"Nome do cliente: {customerName}."));
         lines.Add(Separator());
 
         foreach (var item in items)
         {
             lines.Add(Tall($"{item.Quantity:0.###} x {item.ProductName.ToUpperInvariant()}"));
             if (!string.IsNullOrWhiteSpace(item.Notes))
-                lines.Add($"   Obs: {item.Notes}");
-            lines.Add($"   Entrega em ate {item.LimitMinutes} min");
+                lines.Add($"   Observação: {item.Notes}.");
+            lines.Add($"   Entrega em até {item.LimitMinutes} minutos.");
             if (!string.IsNullOrWhiteSpace(item.RequestedBy))
-                lines.Add($"   Lancado por: {item.RequestedBy}");
+                lines.Add($"   Lançado por: {item.RequestedBy}.");
             lines.Add("");
         }
 
@@ -70,12 +70,12 @@ public static class TicketFormatter
         var lines = new List<string>
         {
             CenterBig(establishment.ToUpperInvariant()),
-            CenterBig("CONTA " + originLabel),
+            CenterBig("CONTA - " + originLabel),
             Tall(Separator()),
-            Tall($"Pedido #{orderId}  {printedAt.ToString("dd/MM/yyyy HH:mm", PtBr)}"),
+            Tall($"Número do pedido #{orderId}  aos {printedAt.ToString("dd/MM/yyyy HH:mm", PtBr)}."),
         };
         if (!string.IsNullOrWhiteSpace(customerName))
-            lines.Add(Tall($"Cliente: {customerName}"));
+            lines.Add(Tall($"Nome do cliente: {customerName}."));
         lines.Add(Tall(Separator()));
 
         foreach (var item in items)
@@ -84,7 +84,7 @@ public static class TicketFormatter
         lines.Add(Tall(Separator()));
         lines.Add(Tall(Row("Subtotal", Money(subtotal))));
         if (discount > 0) lines.Add(Tall(Row("Desconto", "-" + Money(discount))));
-        if (serviceFee > 0) lines.Add(Tall(Row("Servico (10%)", Money(serviceFee))));
+        if (serviceFee > 0) lines.Add(Tall(Row("Serviço (10%)", Money(serviceFee))));
 
         if (partialPaid > 0)
         {
@@ -114,16 +114,16 @@ public static class TicketFormatter
             Center("COMPROVANTE DE PAGAMENTO"),
             Center(originLabel),
             Separator(),
-            $"Venda #{saleNumber}  Pedido #{orderId}",
+            $"Número da venda #{saleNumber}  Número do pedido #{orderId}",
             paidAt.ToString("dd/MM/yyyy HH:mm", PtBr),
         };
         if (!string.IsNullOrWhiteSpace(customerName))
-            lines.Add($"Cliente: {customerName}");
+            lines.Add($"Nome do cliente: {customerName}");
         lines.Add(Separator());
         lines.Add(Tall(Row("TOTAL DA CONTA", Money(totalAmount))));
         if (previouslyPaid > 0)
         {
-            lines.Add(Tall(Row("Pago parcial (anterior)", "-" + Money(previouslyPaid))));
+            lines.Add(Tall(Row("Pagamento parcial (anterior)", "-" + Money(previouslyPaid))));
             lines.Add(Tall(Row("Restante quitado agora", Money(totalAmount - previouslyPaid))));
         }
         lines.Add(Separator());
@@ -134,13 +134,14 @@ public static class TicketFormatter
             if (payment.Change is > 0)
                 lines.Add(Row("  Troco", Money(payment.Change.Value)));
             if (!string.IsNullOrWhiteSpace(payment.AuthorizationCode))
-                lines.Add($"  Aut: {payment.AuthorizationCode}");
+                lines.Add($"  Autorização: {payment.AuthorizationCode}");
         }
 
         lines.Add(Separator());
         if (!string.IsNullOrWhiteSpace(operatorName))
-            lines.Add($"Operador: {operatorName}");
+            lines.Add($"Operador do caixa: {operatorName}");
         lines.Add(CenterBig("* CONTA PAGA *"));
+        lines.Add(CenterBig("* Ass:______ *"));
         return string.Join("\n", lines);
     }
 
@@ -155,7 +156,7 @@ public static class TicketFormatter
             Center("PAGAMENTO PARCIAL"),
             Center(originLabel),
             Separator(),
-            $"Pedido #{orderId}  {paidAt.ToString("dd/MM/yyyy HH:mm", PtBr)}",
+            $"Número do pedido #{orderId}  {paidAt.ToString("dd/MM/yyyy HH:mm", PtBr)}",
         };
         if (!string.IsNullOrWhiteSpace(payerName))
             lines.Add($"Pago por: {payerName}");
@@ -163,14 +164,14 @@ public static class TicketFormatter
         lines.Add(RowBig("VALOR PAGO", Money(amount)));
         lines.Add(Row("  " + paymentMethod, Money(amount)));
         if (!string.IsNullOrWhiteSpace(authorizationCode))
-            lines.Add($"  Aut: {authorizationCode}");
+            lines.Add($"  Autorização: {authorizationCode}");
         lines.Add(Separator());
         lines.Add(Tall(Row("Total da conta", Money(orderTotal))));
         lines.Add(Tall(Row("Restante em aberto", Money(remainingAfter))));
         lines.Add(Separator());
         if (!string.IsNullOrWhiteSpace(operatorName))
             lines.Add($"Operador: {operatorName}");
-        lines.Add(Center("*** MESA CONTINUA ABERTA ***"));
+        lines.Add(CenterBig("MESA CONTINUA ABERTA"));
         return string.Join("\n", lines);
     }
 
@@ -186,12 +187,12 @@ public static class TicketFormatter
             Center("FECHAMENTO DE CAIXA"),
             Center(registerName),
             Separator(),
-            $"Sessao #{sessionId}",
-            $"Abertura : {openedAt.ToString("dd/MM HH:mm", PtBr)}  {openedBy}",
-            $"Fechamento: {closedAt?.ToString("dd/MM HH:mm", PtBr)}  {closedBy}",
+            $"Número da sessão #{sessionId}",
+            $"Data e hora da abertura : {openedAt.ToString("dd/MM HH:mm", PtBr)}  {openedBy}",
+            $"Data e hora do fechamento: {closedAt?.ToString("dd/MM HH:mm", PtBr)}  {closedBy}",
             Separator(),
             Row("Fundo de troco", Money(openingAmount)),
-            Row($"Vendas ({salesCount})", Money(salesTotal)),
+            Row($"Quantidade de vendas ({salesCount})", Money(salesTotal)),
         };
 
         foreach (var payment in payments)

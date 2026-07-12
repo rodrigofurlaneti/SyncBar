@@ -10,6 +10,7 @@ internal static class OrderMapping
             order.OrderStatusId, order.GuestCount, order.OpenedAt, order.ClosedAt,
             order.SubtotalAmount, order.DiscountAmount, order.ServiceFeeAmount, order.TotalAmount,
             partialPaidAmount,
+            order.CreditLimitAmount,
             order.Notes,
             order.Items
                 .Where(i => i.IsActive)

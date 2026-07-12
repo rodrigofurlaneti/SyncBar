@@ -8,6 +8,8 @@ using SyncBar.Application.Features.Orders.Close;
 using SyncBar.Application.Features.Orders.GetById;
 using SyncBar.Application.Features.Orders.GetOpenByBranch;
 using SyncBar.Application.Features.Orders.Open;
+using SyncBar.Application.Features.Orders.RaiseComandaLimit;
+using SyncBar.Application.Features.Orders.RemoveServiceFee;
 using SyncBar.Application.Features.Orders.UpdateItemStatus;
 
 namespace SyncBar.API.Controllers;
@@ -67,6 +69,24 @@ public sealed class OrdersController(IMediator mediator) : ApiController(mediato
         return result.IsFailure ? HandleFailure(result) : NoContent();
     }
 
+    // Somente o gerente libera mais limite de comanda.
+    [Authorize(Roles = "Administrador,Gerente")]
+    [HttpPut("{id:long}/credit-limit")]
+    public async Task<IActionResult> RaiseCreditLimit(long id, [FromBody] RaiseCreditLimitRequest request, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new RaiseComandaLimitCommand(id, request.NewLimitAmount), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+
+    // Somente o gerente pode retirar os 10% — role exigida ALEM da policy do controller.
+    [Authorize(Roles = "Administrador,Gerente")]
+    [HttpPut("{id:long}/remove-service-fee")]
+    public async Task<IActionResult> RemoveServiceFee(long id, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new RemoveServiceFeeCommand(id), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+
     [HttpPut("{id:long}/cancel")]
     public async Task<IActionResult> Cancel(long id, CancellationToken ct)
     {
@@ -77,6 +97,7 @@ public sealed class OrdersController(IMediator mediator) : ApiController(mediato
 
 // Requests separados dos commands quando ha parametro de rota.
 public sealed record AddOrderItemRequest(long ProductId, decimal Quantity, string? Notes, long? EmployeeId);
+public sealed record RaiseCreditLimitRequest(decimal NewLimitAmount);
 public sealed record UpdateOrderItemStatusRequest(long OrderItemStatusId);
 public sealed record ApplyOrderDiscountRequest(decimal DiscountAmount);
 public sealed record CloseOrderRequest(decimal ServiceFeeRate = 0.10m);

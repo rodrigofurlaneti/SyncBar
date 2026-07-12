@@ -90,6 +90,95 @@ public sealed class CustomerOrderTests
     }
 
     [Fact]
+    public void AddItem_BeyondComandaLimit_ShouldBeBlocked()
+    {
+        // Comanda com limite de 150: 100 ja consumidos, item de 60 estoura → bloqueia.
+        var order = CustomerOrder.Create(1, null, 37, 1, null, null, creditLimitAmount: 150m).Value;
+        order.AddItem(1, 100m, 1, null, null);
+
+        var result = order.AddItem(2, 60m, 1, null, null);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Comanda.LimitExceeded");
+        order.TotalAmount.Should().Be(100m); // nada foi lancado
+    }
+
+    [Fact]
+    public void AddItem_AfterManagerRaisesLimit_ShouldSucceed()
+    {
+        var order = CustomerOrder.Create(1, null, 37, 1, null, null, creditLimitAmount: 150m).Value;
+        order.AddItem(1, 100m, 1, null, null);
+
+        order.RaiseCreditLimit(250m).IsSuccess.Should().BeTrue();
+        var result = order.AddItem(2, 60m, 1, null, null);
+
+        result.IsSuccess.Should().BeTrue();
+        order.TotalAmount.Should().Be(160m);
+    }
+
+    [Fact]
+    public void RaiseCreditLimit_OnTableOrder_ShouldFail()
+    {
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+
+        var result = order.RaiseCreditLimit(500m);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Comanda.LimitTableOrder");
+    }
+
+    [Fact]
+    public void TableOrder_ShouldHaveNoLimit()
+    {
+        // Mesa nao tem limite mesmo que um valor seja passado.
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, creditLimitAmount: 150m).Value;
+        order.CreditLimitAmount.Should().BeNull();
+
+        order.AddItem(1, 999m, 1, null, null).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void RemoveServiceFee_AfterClose_ShouldZeroFeeAndRecalculate()
+    {
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+        order.AddItem(5, 100m, 1, null, null);
+        order.Close(0.10m); // total 110
+
+        var result = order.RemoveServiceFee();
+
+        result.IsSuccess.Should().BeTrue();
+        order.ServiceFeeAmount.Should().Be(0m);
+        order.TotalAmount.Should().Be(100m);
+        order.OrderStatusId.Should().Be(OrderStatusIds.AguardandoPagamento); // segue aguardando
+    }
+
+    [Fact]
+    public void RemoveServiceFee_BeforeClose_ShouldFail()
+    {
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+        order.AddItem(5, 100m, 1, null, null);
+
+        var result = order.RemoveServiceFee();
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("CustomerOrder.NotAwaitingPayment");
+    }
+
+    [Fact]
+    public void RemoveServiceFee_Twice_ShouldFail()
+    {
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+        order.AddItem(5, 100m, 1, null, null);
+        order.Close(0.10m);
+        order.RemoveServiceFee();
+
+        var result = order.RemoveServiceFee();
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("CustomerOrder.NoServiceFee");
+    }
+
+    [Fact]
     public void Cancel_PaidOrder_ShouldFail()
     {
         var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;

@@ -13,10 +13,11 @@ public sealed class OpenOrderCommandHandlerTests
     private readonly ICustomerOrderRepository _orderRepository = Substitute.For<ICustomerOrderRepository>();
     private readonly IDiningTableRepository _diningTableRepository = Substitute.For<IDiningTableRepository>();
     private readonly IComandaRepository _comandaRepository = Substitute.For<IComandaRepository>();
+    private readonly IComandaSettingRepository _comandaSettingRepository = Substitute.For<IComandaSettingRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
     private OpenOrderCommandHandler CreateHandler()
-        => new(_orderRepository, _diningTableRepository, _comandaRepository, _unitOfWork);
+        => new(_orderRepository, _diningTableRepository, _comandaRepository, _comandaSettingRepository, _unitOfWork);
 
     [Fact]
     public async Task Handle_WithFreeTable_ShouldOpenOrderAndOccupyTable()

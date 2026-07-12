@@ -52,6 +52,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Printer> Printers => Set<Printer>();
     public DbSet<PrinterSetting> PrinterSettings => Set<PrinterSetting>();
     public DbSet<OrderPartialPayment> OrderPartialPayments => Set<OrderPartialPayment>();
+    public DbSet<ComandaSetting> ComandaSettings => Set<ComandaSetting>();
     public DbSet<JobTitleFeature> JobTitleFeatures => Set<JobTitleFeature>();
     public DbSet<AppUserFeature> AppUserFeatures => Set<AppUserFeature>();
 
