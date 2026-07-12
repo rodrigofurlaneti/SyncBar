@@ -21,8 +21,9 @@ public sealed class PreparationController(IMediator mediator) : ApiController(me
     public async Task<IActionResult> UpdateItemStatus(long orderId, long itemId,
         [FromBody] UpdateOrderItemStatusRequest request, CancellationToken ct)
     {
-        var result = await Mediator.Send(
-            new UpdateOrderItemStatusCommand(orderId, itemId, request.OrderItemStatusId), ct);
+        var isManager = User.IsInRole("Administrador") || User.IsInRole("Gerente");
+        var result = await Mediator.Send(new UpdateOrderItemStatusCommand(
+            orderId, itemId, request.OrderItemStatusId, request.ActorEmployeeId, isManager), ct);
         return result.IsFailure ? HandleFailure(result) : NoContent();
     }
 }

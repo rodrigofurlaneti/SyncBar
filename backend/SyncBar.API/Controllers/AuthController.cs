@@ -12,7 +12,12 @@ public sealed class AuthController(IMediator mediator) : ApiController(mediator)
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginCommand command, CancellationToken ct)
     {
-        var result = await Mediator.Send(command, ct);
+        var enriched = command with
+        {
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            UserAgent = Request.Headers.UserAgent.ToString() is { Length: > 0 } ua ? ua[..Math.Min(ua.Length, 300)] : null,
+        };
+        var result = await Mediator.Send(enriched, ct);
         return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
     }
 

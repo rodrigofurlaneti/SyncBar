@@ -65,7 +65,18 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
+
+// Em producao, o segredo JWT NAO pode ser o placeholder do appsettings —
+// defina a variavel de ambiente Jwt__Secret.
+if (!app.Environment.IsDevelopment() &&
+    (builder.Configuration["Jwt:Secret"] ?? "").Contains("TROCAR", StringComparison.OrdinalIgnoreCase))
+{
+    throw new InvalidOperationException(
+        "Jwt:Secret está com o valor placeholder. Configure a variável de ambiente Jwt__Secret antes de subir em produção.");
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -81,5 +92,6 @@ else
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();

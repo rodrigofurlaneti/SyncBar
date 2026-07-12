@@ -14,10 +14,11 @@ public sealed class LoginCommandHandlerTests
     private readonly IRefreshTokenRepository _refreshTokenRepository = Substitute.For<IRefreshTokenRepository>();
     private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
     private readonly IJwtTokenProvider _jwtTokenProvider = Substitute.For<IJwtTokenProvider>();
+    private readonly IAccessLogRepository _accessLogRepository = Substitute.For<IAccessLogRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
     private LoginCommandHandler CreateHandler()
-        => new(_userRepository, _refreshTokenRepository, _passwordHasher, _jwtTokenProvider, _unitOfWork);
+        => new(_userRepository, _refreshTokenRepository, _passwordHasher, _jwtTokenProvider, _accessLogRepository, _unitOfWork);
 
     [Fact]
     public async Task Handle_WithValidCredentials_ShouldReturnTokens()

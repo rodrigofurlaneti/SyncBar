@@ -1,4 +1,5 @@
 import { api } from "../../lib/apiClient";
+import type { SessionSaleResponse } from "../../lib/types";
 
 export interface SalePaymentInput {
   paymentMethodId: number;
@@ -27,4 +28,13 @@ export const registerSale = (
   api<number>("/api/sales", {
     method: "POST",
     body: JSON.stringify({ customerOrderId, cashSessionId, employeeId, payments }),
+  });
+
+export const getSalesBySession = (sessionId: number): Promise<SessionSaleResponse[]> =>
+  api<SessionSaleResponse[]>(`/api/sales/session/${sessionId}`);
+
+export const refundSale = (saleId: number, employeeId: number, reason: string | null): Promise<void> =>
+  api<void>(`/api/sales/${saleId}/refund`, {
+    method: "PUT",
+    body: JSON.stringify({ employeeId, reason }),
   });

@@ -11,6 +11,7 @@ import { UsersPage } from "./features/users/UsersPage";
 import { AccessPage } from "./features/access/AccessPage";
 import { FinancePage } from "./features/finance/FinancePage";
 import { ScenariosPage } from "./features/finance/ScenariosPage";
+import { ReportsPage } from "./features/finance/ReportsPage";
 import { PreparationPage } from "./features/preparation/PreparationPage";
 import { CashHistoryPage } from "./features/cash/CashHistoryPage";
 import { PromotionsPage } from "./features/promotions/PromotionsPage";
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/usuarios" element={<FeatureGate code="Usuarios"><UsersPage /></FeatureGate>} />
         <Route path="/faturamento" element={<FeatureGate code="Faturamento"><FinancePage /></FeatureGate>} />
         <Route path="/cenarios" element={<FeatureGate code="Faturamento"><ScenariosPage /></FeatureGate>} />
+        <Route path="/relatorios" element={<FeatureGate code="Faturamento"><ReportsPage /></FeatureGate>} />
         <Route path="/preparo" element={<FeatureGate code="Preparo"><PreparationPage /></FeatureGate>} />
         <Route path="/fechamentos" element={<FeatureGate code="Caixa"><CashHistoryPage /></FeatureGate>} />
         <Route path="/promocoes" element={<FeatureGate code="Promocoes"><PromotionsPage /></FeatureGate>} />

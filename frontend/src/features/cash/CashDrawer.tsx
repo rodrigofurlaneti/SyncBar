@@ -9,6 +9,8 @@ import {
 } from "./api";
 import { useAuthStore } from "../../stores/authStore";
 import { getPrintSettings, printCashClosing } from "../printing/api";
+import { getSalesBySession, refundSale } from "../billing/api";
+import { useMyFeatures } from "../access/hooks";
 import { ApiError } from "../../lib/apiClient";
 import {
   CashMovementType,
@@ -57,6 +59,26 @@ export function CashDrawer({ onClose }: Props) {
   });
 
   const sessionId = sessionQuery.data?.id;
+  const featuresQuery = useMyFeatures();
+
+  const salesQuery = useQuery({
+    queryKey: ["cash", "sales", sessionId],
+    queryFn: () => getSalesBySession(sessionId!),
+    enabled: sessionId !== undefined,
+    refetchInterval: 30_000,
+  });
+
+  const refundMutation = useMutation({
+    mutationFn: ({ saleId, reason }: { saleId: number; reason: string | null }) =>
+      refundSale(saleId, useAuthStore.getState().employeeId ?? 1, reason),
+    onSuccess: () => {
+      setError(null);
+      invalidateCash();
+      void queryClient.invalidateQueries({ queryKey: ["orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["tables"] });
+    },
+    onError: (e) => onApiError(e, "Falha ao estornar a venda."),
+  });
 
   const summaryQuery = useQuery({
     queryKey: ["cash", "summary", sessionId],
@@ -242,6 +264,42 @@ export function CashDrawer({ onClose }: Props) {
               </>
             )}
           </div>
+
+          {(salesQuery.data ?? []).length > 0 && (
+            <div className="ticket">
+              <div className="ticket-head">
+                <span className="display" style={{ fontSize: "1.1rem" }}>Vendas da sessão</span>
+              </div>
+              {(salesQuery.data ?? []).map((sale) => (
+                <div className="ticket-row" key={sale.id}>
+                  <div style={{ display: "grid", gap: 2 }}>
+                    <span className="mono-num">
+                      Venda #{sale.saleNumber} · pedido #{sale.customerOrderId} · {formatBRL(sale.totalAmount)}
+                    </span>
+                    <span style={{ fontSize: "0.78rem", color: "var(--ink-faint)" }}>
+                      {new Date(sale.soldAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  {featuresQuery.data?.canManageAccess && (
+                    <button
+                      className="btn-danger"
+                      style={{ minHeight: 36, padding: "0 10px", fontSize: "0.82rem" }}
+                      disabled={refundMutation.isPending}
+                      onClick={() => {
+                        const reason = window.prompt(
+                          `Estornar a venda #${sale.saleNumber} (${formatBRL(sale.totalAmount)})? Motivo:`,
+                        );
+                        if (reason !== null)
+                          refundMutation.mutate({ saleId: sale.id, reason: reason.trim() === "" ? null : reason.trim() });
+                      }}
+                    >
+                      Estornar
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div style={{ display: "grid", gap: 8 }}>
             <div className="display" style={{ fontSize: "1.1rem" }}>Sangria / Suprimento</div>

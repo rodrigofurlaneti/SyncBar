@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  backend:
+    name: Backend — build + testes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore SyncBar.sln
+
+      - name: Build (Release)
+        run: dotnet build SyncBar.sln --no-restore --configuration Release -warnaserror
+
+      - name: Testes unitários
+        run: dotnet test SyncBar.Tests --no-build --configuration Release --logger "trx;LogFileName=unit.trx"
+
+      - name: Testes de arquitetura
+        run: dotnet test SyncBar.ArchTests --no-build --configuration Release --logger "trx;LogFileName=arch.trx"
+
+      - name: Testes BDD (Specs)
+        run: dotnet test SyncBar.Specs --no-build --configuration Release --logger "trx;LogFileName=specs.trx"
+
+      - name: Publicar resultados dos testes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: backend/**/TestResults/*.trx
+
+  frontend:
+    name: Frontend — typecheck + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck + build
+        run: npm run build

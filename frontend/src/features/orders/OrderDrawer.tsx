@@ -8,6 +8,7 @@ import {
   getOrder,
   raiseCreditLimit,
   removeServiceFee,
+  reopenOrder,
   updateItemStatus,
 } from "./api";
 import { getMenu } from "../catalog/api";
@@ -97,7 +98,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
 
   const advanceItem = useMutation({
     mutationFn: ({ itemId, statusId }: { itemId: number; statusId: number }) =>
-      updateItemStatus(orderId, itemId, statusId),
+      updateItemStatus(orderId, itemId, statusId, employeeId),
     ...run,
   });
 
@@ -129,6 +130,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
     onError,
   });
   const removeFeeMutation = useMutation({ mutationFn: () => removeServiceFee(orderId), ...run });
+  const reopenMutation = useMutation({ mutationFn: () => reopenOrder(orderId), ...run });
 
   const raiseLimitMutation = useMutation({
     mutationFn: (newLimit: number) => raiseCreditLimit(orderId, newLimit),
@@ -339,6 +341,19 @@ export function OrderDrawer({ orderId, onClose }: Props) {
             order.totalAmount - order.partialPaidAmount > 0 && (
             <button className="btn-ghost" onClick={() => setPartialOpen(true)}>
               💸 Pagamento parcial (cliente saindo)
+            </button>
+          )}
+
+          {awaitingPayment && (
+            <button
+              className="btn-ghost"
+              disabled={reopenMutation.isPending}
+              onClick={() => {
+                if (window.confirm("Reabrir a conta para consumo? A taxa de serviço será recalculada no próximo fechamento."))
+                  reopenMutation.mutate();
+              }}
+            >
+              ↩ Reabrir consumo (fechou por engano)
             </button>
           )}
 

@@ -48,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IPrinterSettingRepository, PrinterSettingRepository>();
         services.AddScoped<IOrderPartialPaymentRepository, OrderPartialPaymentRepository>();
         services.AddScoped<IComandaSettingRepository, ComandaSettingRepository>();
+        services.AddScoped<IAccessLogRepository, AccessLogRepository>();
 
         services.AddSingleton<IRawPrinterTransport, WindowsRawPrinterTransport>();
         services.AddSingleton<IRawPrinterTransport, NetworkRawPrinterTransport>();

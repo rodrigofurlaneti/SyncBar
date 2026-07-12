@@ -8,8 +8,9 @@ export const advanceItemStatus = (
   orderId: number,
   itemId: number,
   orderItemStatusId: number,
+  actorEmployeeId: number | null = null,
 ): Promise<void> =>
   api<void>(`/api/preparation/orders/${orderId}/items/${itemId}/status`, {
     method: "PUT",
-    body: JSON.stringify({ orderItemStatusId }),
+    body: JSON.stringify({ orderItemStatusId, actorEmployeeId }),
   });

@@ -11,6 +11,11 @@ internal sealed class SaleRepository(AppDbContext context) : ISaleRepository
             .Include(x => x.Payments)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public async Task<Sale?> GetByIdForUpdateAsync(long id, CancellationToken cancellationToken = default)
+        => await context.Sales
+            .Include(x => x.Payments)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
     public async Task<IReadOnlyCollection<Sale>> GetByCashSessionAsync(long cashSessionId, CancellationToken cancellationToken = default)
         => await context.Sales.AsNoTracking()
             .Include(x => x.Payments)

@@ -83,7 +83,7 @@ public sealed class CustomerOrder : AggregateRoot
         return Result.Success();
     }
 
-    public Result UpdateItemStatus(long orderItemId, long orderItemStatusId)
+    public Result UpdateItemStatus(long orderItemId, long orderItemStatusId, long? actorEmployeeId = null)
     {
         if (!IsOpen())
             return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
@@ -92,7 +92,7 @@ public sealed class CustomerOrder : AggregateRoot
         if (item is null)
             return Result.Failure(new Error("CustomerOrder.ItemNotFound", "Order item not found."));
 
-        var result = item.UpdateStatus(orderItemStatusId);
+        var result = item.UpdateStatus(orderItemStatusId, actorEmployeeId);
         if (result.IsFailure)
             return result;
 
@@ -171,6 +171,30 @@ public sealed class CustomerOrder : AggregateRoot
 
         OrderStatusId = OrderStatusIds.Pago;
         ClosedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    // Estorno da venda ou fechamento por engano: a conta volta a aguardar pagamento/consumo.
+    public Result ReopenForPayment()
+    {
+        if (OrderStatusId != OrderStatusIds.Pago)
+            return Result.Failure(new Error("CustomerOrder.NotPaid", "Only a paid order can be reopened by refund."));
+
+        OrderStatusId = OrderStatusIds.AguardandoPagamento;
+        ClosedAt = null;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    public Result ReopenForConsumption()
+    {
+        if (OrderStatusId != OrderStatusIds.AguardandoPagamento)
+            return Result.Failure(new Error("CustomerOrder.NotAwaitingPayment", "Only a closed (awaiting payment) order can be reopened."));
+
+        OrderStatusId = OrderStatusIds.EmAndamento;
+        ServiceFeeAmount = 0;
+        RecalculateTotals();
         UpdatedAt = DateTime.UtcNow;
         return Result.Success();
     }

@@ -27,6 +27,19 @@ internal sealed class CustomerOrderRepository(AppDbContext context) : ICustomerO
             .Where(x => x.BranchId == branchId && x.IsActive && OpenStatuses.Contains(x.OrderStatusId))
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyCollection<CustomerOrder>> GetByIdsAsync(IReadOnlyCollection<long> ids, CancellationToken cancellationToken = default)
+        => await context.CustomerOrders.AsNoTracking()
+            .Include(x => x.Items)
+            .Where(x => ids.Contains(x.Id))
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyCollection<CustomerOrder>> GetByBranchAndPeriodAsync(
+        long branchId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
+        => await context.CustomerOrders.AsNoTracking()
+            .Include(x => x.Items)
+            .Where(x => x.BranchId == branchId && x.IsActive && x.OpenedAt >= from && x.OpenedAt < to)
+            .ToListAsync(cancellationToken);
+
     public async Task<bool> HasOpenOrderForTableAsync(long diningTableId, CancellationToken cancellationToken = default)
         => await context.CustomerOrders.AsNoTracking()
             .AnyAsync(x => x.DiningTableId == diningTableId && x.IsActive && OpenStatuses.Contains(x.OrderStatusId), cancellationToken);

@@ -16,6 +16,7 @@ public sealed class OrderItem : Entity
     public string? Notes { get; private set; }
     public DateTime? SentToKitchenAt { get; private set; }
     public DateTime? DeliveredAt { get; private set; }
+    public long? CancelledByEmployeeId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public bool IsActive { get; private set; }
@@ -46,7 +47,7 @@ public sealed class OrderItem : Entity
         return Result.Success(new OrderItem(customerOrderId, productId, unitPrice, quantity, notes, employeeId));
     }
 
-    internal Result UpdateStatus(long orderItemStatusId)
+    internal Result UpdateStatus(long orderItemStatusId, long? actorEmployeeId = null)
     {
         if (OrderItemStatusId is OrderItemStatusIds.Entregue or OrderItemStatusIds.Cancelado)
             return Result.Failure(new Error("OrderItem.FinalStatus", "Delivered or cancelled items cannot change status."));
@@ -54,6 +55,7 @@ public sealed class OrderItem : Entity
         OrderItemStatusId = orderItemStatusId;
         if (orderItemStatusId == OrderItemStatusIds.EnviadoCozinha) SentToKitchenAt = DateTime.UtcNow;
         if (orderItemStatusId == OrderItemStatusIds.Entregue) DeliveredAt = DateTime.UtcNow;
+        if (orderItemStatusId == OrderItemStatusIds.Cancelado) CancelledByEmployeeId = actorEmployeeId;
         UpdatedAt = DateTime.UtcNow;
         return Result.Success();
     }

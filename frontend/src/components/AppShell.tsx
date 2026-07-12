@@ -12,6 +12,7 @@ const links = [
   { to: "/equipe", label: "Equipe", feature: "Equipe" },
   { to: "/usuarios", label: "Usuários", feature: "Usuarios" },
   { to: "/faturamento", label: "Faturamento", feature: "Faturamento" },
+  { to: "/relatorios", label: "Relatórios", feature: "Faturamento" },
   { to: "/cenarios", label: "Cenários", feature: "Faturamento" },
   { to: "/preparo", label: "Preparo", feature: "Preparo" },
   { to: "/fechamentos", label: "Fechamentos", feature: "Caixa" },

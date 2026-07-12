@@ -15,7 +15,16 @@ internal sealed class UpdateOrderItemStatusCommandHandler(
         if (order is null || !order.IsActive)
             return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-        var result = order.UpdateItemStatus(request.OrderItemId, request.OrderItemStatusId);
+        // Antifraude: cancelar item que JA FOI para a cozinha exige gerente.
+        if (request.OrderItemStatusId == Domain.Constants.OrderItemStatusIds.Cancelado && !request.IsManager)
+        {
+            var item = order.Items.FirstOrDefault(i => i.Id == request.OrderItemId);
+            if (item is not null && item.OrderItemStatusId != Domain.Constants.OrderItemStatusIds.Lancado)
+                return Result.Failure(new Error("OrderItem.CancelRequiresManager",
+                    "Item já enviado à cozinha — somente o gerente pode cancelar."));
+        }
+
+        var result = order.UpdateItemStatus(request.OrderItemId, request.OrderItemStatusId, request.ActorEmployeeId);
         if (result.IsFailure)
             return result;
 

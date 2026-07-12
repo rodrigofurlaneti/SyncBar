@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +10,7 @@ using SyncBar.Application.Features.Orders.GetById;
 using SyncBar.Application.Features.Orders.GetOpenByBranch;
 using SyncBar.Application.Features.Orders.Open;
 using SyncBar.Application.Features.Orders.RaiseComandaLimit;
+using SyncBar.Application.Features.Orders.Reopen;
 using SyncBar.Application.Features.Orders.RemoveServiceFee;
 using SyncBar.Application.Features.Orders.UpdateItemStatus;
 
@@ -51,7 +53,9 @@ public sealed class OrdersController(IMediator mediator) : ApiController(mediato
     [HttpPut("{id:long}/items/{itemId:long}/status")]
     public async Task<IActionResult> UpdateItemStatus(long id, long itemId, [FromBody] UpdateOrderItemStatusRequest request, CancellationToken ct)
     {
-        var result = await Mediator.Send(new UpdateOrderItemStatusCommand(id, itemId, request.OrderItemStatusId), ct);
+        var isManager = User.IsInRole("Administrador") || User.IsInRole("Gerente");
+        var result = await Mediator.Send(new UpdateOrderItemStatusCommand(
+            id, itemId, request.OrderItemStatusId, request.ActorEmployeeId, isManager), ct);
         return result.IsFailure ? HandleFailure(result) : NoContent();
     }
 
@@ -66,6 +70,14 @@ public sealed class OrdersController(IMediator mediator) : ApiController(mediato
     public async Task<IActionResult> Close(long id, [FromBody] CloseOrderRequest request, CancellationToken ct)
     {
         var result = await Mediator.Send(new CloseOrderCommand(id, request.ServiceFeeRate), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+
+    // Fechou a conta por engano: reabre para consumo.
+    [HttpPut("{id:long}/reopen")]
+    public async Task<IActionResult> Reopen(long id, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new ReopenOrderCommand(id), ct);
         return result.IsFailure ? HandleFailure(result) : NoContent();
     }
 
@@ -98,6 +110,6 @@ public sealed class OrdersController(IMediator mediator) : ApiController(mediato
 // Requests separados dos commands quando ha parametro de rota.
 public sealed record AddOrderItemRequest(long ProductId, decimal Quantity, string? Notes, long? EmployeeId);
 public sealed record RaiseCreditLimitRequest(decimal NewLimitAmount);
-public sealed record UpdateOrderItemStatusRequest(long OrderItemStatusId);
+public sealed record UpdateOrderItemStatusRequest(long OrderItemStatusId, long? ActorEmployeeId = null);
 public sealed record ApplyOrderDiscountRequest(decimal DiscountAmount);
 public sealed record CloseOrderRequest(decimal ServiceFeeRate = 0.10m);

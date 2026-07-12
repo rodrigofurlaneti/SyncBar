@@ -476,3 +476,58 @@ export interface PrintSettingsResponse {
 export interface ComandaSettingResponse {
   defaultLimitAmount: number;
 }
+
+export interface TopProductResponse {
+  productId: number;
+  productName: string;
+  quantity: number;
+  revenue: number;
+}
+
+export interface EmployeeSalesResponse {
+  employeeId: number;
+  employeeName: string;
+  salesCount: number;
+  revenue: number;
+  serviceFee: number;
+}
+
+export interface WeekdayRevenueResponse {
+  dayOfWeek: number;
+  revenue: number;
+  salesCount: number;
+}
+
+export interface HourRevenueResponse {
+  hour: number;
+  revenue: number;
+}
+
+export interface CancelledItemResponse {
+  productName: string;
+  quantity: number;
+  cancelledBy: string | null;
+  cancelledAt: string;
+}
+
+export interface SalesReportResponse {
+  revenue: number;
+  salesCount: number;
+  averageTicket: number;
+  serviceFeeTotal: number;
+  topProducts: TopProductResponse[];
+  salesByEmployee: EmployeeSalesResponse[];
+  revenueByWeekday: WeekdayRevenueResponse[];
+  revenueByHour: HourRevenueResponse[];
+  cancelledItemsCount: number;
+  cancelledItems: CancelledItemResponse[];
+}
+
+export interface SessionSaleResponse {
+  id: number;
+  saleNumber: number;
+  customerOrderId: number;
+  totalAmount: number;
+  soldAt: string;
+  paymentSummary: string[];
+}

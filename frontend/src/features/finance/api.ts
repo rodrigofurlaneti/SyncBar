@@ -1,5 +1,5 @@
 import { api } from "../../lib/apiClient";
-import type { BillingSummaryResponse, ScenariosResponse } from "../../lib/types";
+import type { BillingSummaryResponse, SalesReportResponse, ScenariosResponse } from "../../lib/types";
 
 export const getBillingSummary = (
   branchId: number,
@@ -42,3 +42,10 @@ export const getScenarios = (
   if (margins.optimistic !== undefined) params.set("optimisticMargin", String(margins.optimistic));
   return api<ScenariosResponse>(`/api/finance/scenarios/branch/${branchId}/${year}/${month}?${params}`);
 };
+
+export const getSalesReport = (
+  branchId: number,
+  year: number,
+  month: number,
+): Promise<SalesReportResponse> =>
+  api<SalesReportResponse>(`/api/finance/reports/sales/branch/${branchId}/${year}/${month}`);

@@ -11,6 +11,7 @@ internal sealed class LoginCommandHandler(
     IRefreshTokenRepository refreshTokenRepository,
     IPasswordHasher passwordHasher,
     IJwtTokenProvider jwtTokenProvider,
+    IAccessLogRepository accessLogRepository,
     IUnitOfWork unitOfWork)
     : ICommandHandler<LoginCommand, LoginResponse>
 {
@@ -22,21 +23,29 @@ internal sealed class LoginCommandHandler(
         // Tracked — o login atualiza contadores de acesso.
         var user = await userRepository.GetByUserNameForUpdateAsync(request.UserName, cancellationToken);
         if (user is null || !user.IsActive)
+        {
+            await LogAsync(null, request, "LoginFailed", cancellationToken);
             return Result.Failure<LoginResponse>(InvalidCredentials);
+        }
 
         if (user.IsLockedOut())
+        {
+            await LogAsync(user.Id, request, "Lockout", cancellationToken);
             return Result.Failure<LoginResponse>(
                 new Error("Auth.LockedOut", "Account is temporarily locked. Try again later."));
+        }
 
         // Senha NUNCA verificada em SQL — BCrypt em C#.
         if (!passwordHasher.Verify(request.Password, user.PasswordHash))
         {
             user.RegisterLoginFailure();
+            await LogAsync(user.Id, request, "LoginFailed", cancellationToken);
             await unitOfWork.CommitAsync(cancellationToken);
             return Result.Failure<LoginResponse>(InvalidCredentials);
         }
 
         user.RegisterLoginSuccess();
+        await LogAsync(user.Id, request, "Login", cancellationToken);
 
         var roles = await userRepository.GetRoleNamesAsync(user.Id, cancellationToken);
         var permissions = await userRepository.GetPermissionCodesAsync(user.Id, cancellationToken);
@@ -55,5 +64,14 @@ internal sealed class LoginCommandHandler(
             accessToken.Token, accessToken.ExpiresAt,
             refreshTokenValue, refreshTokenExpiresAt,
             user.UserName, user.CompanyId, user.EmployeeId));
+    }
+
+    // Trilha de auditoria de acesso (tabela AccessLog).
+    private async Task LogAsync(long? userId, LoginCommand request, string eventType, CancellationToken ct)
+    {
+        var log = Domain.Entities.AccessLog.Create(
+            userId, request.UserName, eventType, request.IpAddress, request.UserAgent);
+        if (log.IsSuccess)
+            await accessLogRepository.AddAsync(log.Value, ct);
     }
 }
