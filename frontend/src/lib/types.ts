@@ -35,6 +35,7 @@ export interface OrderResponse {
   discountAmount: number;
   serviceFeeAmount: number;
   totalAmount: number;
+  partialPaidAmount: number;
   notes: string | null;
   items: OrderItemResponse[];
 }
@@ -126,6 +127,7 @@ export interface CashSummaryResponse {
   suprimentoTotal: number;
   sangriaTotal: number;
   despesaTotal: number;
+  partialPaymentsTotal: number;
   expectedCashAmount: number;
 }
 

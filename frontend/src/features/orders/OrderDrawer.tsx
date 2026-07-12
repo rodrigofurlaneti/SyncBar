@@ -22,6 +22,8 @@ import {
 } from "../../lib/types";
 import { Overlay } from "./Overlay";
 import { PaymentPanel } from "./PaymentPanel";
+import { PartialPaymentDialog } from "./PartialPaymentDialog";
+import { useMyFeatures } from "../access/hooks";
 
 interface Props {
   orderId: number;
@@ -39,6 +41,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
   const queryClient = useQueryClient();
   const { companyId, employeeId } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [partialOpen, setPartialOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [discount, setDiscount] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
@@ -47,6 +50,10 @@ export function OrderDrawer({ orderId, onClose }: Props) {
     queryKey: ["order", orderId],
     queryFn: () => getOrder(orderId),
   });
+
+  const featuresQuery = useMyFeatures();
+  const canUseCash =
+    featuresQuery.data?.canManageAccess || featuresQuery.data?.features.includes("Caixa");
 
   const activePromosQuery = useQuery({
     queryKey: ["promotions", "active"],
@@ -156,6 +163,18 @@ export function OrderDrawer({ orderId, onClose }: Props) {
       {orderQuery.isLoading && <p style={{ color: "var(--ink-dim)" }}>Carregando pedido…</p>}
       {orderQuery.isError && <p className="error-text">Falha ao carregar o pedido.</p>}
 
+      {order && partialOpen && (
+        <PartialPaymentDialog
+          order={order}
+          onClose={() => setPartialOpen(false)}
+          onRegistered={() => {
+            setPartialOpen(false);
+            setActionError(null);
+            refetchOrder();
+          }}
+        />
+      )}
+
       {order && (
         <>
           <div className="ticket">
@@ -234,6 +253,18 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                 <span className="mono-num">{formatBRL(order.serviceFeeAmount)}</span>
               </div>
             )}
+            {order.partialPaidAmount > 0 && (
+              <>
+                <div className="ticket-row" style={{ color: "var(--ok)" }}>
+                  <span>Pago parcial</span>
+                  <span className="mono-num">− {formatBRL(order.partialPaidAmount)}</span>
+                </div>
+                <div className="ticket-row" style={{ color: "var(--amber)" }}>
+                  <span>Restante</span>
+                  <span className="mono-num">{formatBRL(order.totalAmount - order.partialPaidAmount)}</span>
+                </div>
+              </>
+            )}
             <div className="ticket-total">
               <span>Total</span>
               <span className="mono-num" style={{ color: "var(--amber)" }}>
@@ -243,6 +274,13 @@ export function OrderDrawer({ orderId, onClose }: Props) {
           </div>
 
           {actionError && <p className="error-text">{actionError}</p>}
+
+          {isOpen && order.diningTableId !== null && canUseCash &&
+            order.totalAmount - order.partialPaidAmount > 0 && (
+            <button className="btn-ghost" onClick={() => setPartialOpen(true)}>
+              💸 Pagamento parcial (cliente saindo)
+            </button>
+          )}
 
           {awaitingPayment && printSettingsQuery.data?.printBillsEnabled && (
             <button

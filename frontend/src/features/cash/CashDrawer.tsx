@@ -209,6 +209,12 @@ export function CashDrawer({ onClose }: Props) {
                     <span className="mono-num">{formatBRL(total.totalAmount)}</span>
                   </div>
                 ))}
+                {summary.partialPaymentsTotal > 0 && (
+                  <div className="ticket-row" style={{ color: "var(--ok)" }}>
+                    <span>Pagamentos parciais (mesas abertas)</span>
+                    <span className="mono-num">+ {formatBRL(summary.partialPaymentsTotal)}</span>
+                  </div>
+                )}
                 {summary.suprimentoTotal > 0 && (
                   <div className="ticket-row" style={{ color: "var(--ok)" }}>
                     <span>Suprimentos</span>

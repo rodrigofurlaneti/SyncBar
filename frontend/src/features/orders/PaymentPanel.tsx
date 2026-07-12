@@ -65,13 +65,14 @@ export function PaymentPanel({ order, onPaid }: Props) {
     onError: (e) => setError(e instanceof ApiError ? e.message : "Falha ao abrir o caixa."),
   });
 
+  const amountDue = order.totalAmount - order.partialPaidAmount;
   const totalPaid = rows.reduce((sum, row) => sum + parseAmount(row.amount), 0);
   const cashPaid = rows
     .filter((row) => row.paymentMethodId === PaymentMethod.Dinheiro)
     .reduce((sum, row) => sum + parseAmount(row.amount), 0);
-  const change = Math.max(0, Number((totalPaid - order.totalAmount).toFixed(2)));
+  const change = Math.max(0, Number((totalPaid - amountDue).toFixed(2)));
   const changeValid = change === 0 || cashPaid >= change;
-  const canConfirm = totalPaid >= order.totalAmount && changeValid && rows.every((r) => parseAmount(r.amount) > 0);
+  const canConfirm = totalPaid >= amountDue && changeValid && rows.every((r) => parseAmount(r.amount) > 0);
 
   const payMutation = useMutation({
     mutationFn: () => {
@@ -144,8 +145,14 @@ export function PaymentPanel({ order, onPaid }: Props) {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <div className="display" style={{ fontSize: "1.2rem" }}>
-        Pagamento — {formatBRL(order.totalAmount)}
+        Pagamento — {formatBRL(amountDue)}
       </div>
+      {order.partialPaidAmount > 0 && (
+        <p style={{ color: "var(--ink-dim)", fontSize: "0.85rem", margin: 0 }}>
+          Conta de {formatBRL(order.totalAmount)} com{" "}
+          <span style={{ color: "var(--ok)" }}>{formatBRL(order.partialPaidAmount)} já pagos parcialmente</span>.
+        </p>
+      )}
 
       {rows.map((row, index) => (
         <div key={index} style={{ display: "grid", gap: 8, gridTemplateColumns: "1.3fr 0.8fr auto" }}>
@@ -204,7 +211,7 @@ export function PaymentPanel({ order, onPaid }: Props) {
         <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-dim)" }}>
           <span>Restante</span>
           <span className="mono-num">
-            {formatBRL(Math.max(0, order.totalAmount - totalPaid))}
+            {formatBRL(Math.max(0, amountDue - totalPaid))}
           </span>
         </div>
         {change > 0 && (
