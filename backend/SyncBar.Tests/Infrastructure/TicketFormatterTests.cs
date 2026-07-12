@@ -15,13 +15,13 @@ public sealed class TicketFormatterTests
 
         content.Should().Contain("*** PEDIDO ***");
         content.Should().Contain("MESA 9");
-        content.Should().Contain("Pedido #14");
+        content.Should().Contain("Número do pedido #14");
         content.Should().Contain("11/07/2026 18:30");
-        content.Should().Contain("Cliente: Joao");
+        content.Should().Contain("Nome do cliente: Joao");
         content.Should().Contain("2 x CAIPIRINHA DE LIMÃO");
-        content.Should().Contain("Obs: sem açúcar");
-        content.Should().Contain("Entrega em ate 8 min");
-        content.Should().Contain("Lancado por: Maria");
+        content.Should().Contain("Observação: sem açúcar");
+        content.Should().Contain("Entrega em até 8 minutos");
+        content.Should().Contain("Lançado por: Maria");
     }
 
     [Fact]
@@ -32,10 +32,10 @@ public sealed class TicketFormatterTests
             [new TicketFormatter.BillItem(1, "Picanha na Chapa", 79m, 79m)],
             subtotal: 79m, discount: 0m, serviceFee: 7.90m, total: 86.90m);
 
-        content.Should().Contain("CONTA COMANDA 37");
-        content.Should().Contain("Cliente: Ana");
+        content.Should().Contain("CONTA - COMANDA 37");
+        content.Should().Contain("Nome do cliente: Ana");
         content.Should().Contain("R$ 79,00");
-        content.Should().Contain("Servico (10%)");
+        content.Should().Contain("Serviço (10%)");
         content.Should().Contain("R$ 86,90");
     }
 
@@ -72,14 +72,14 @@ public sealed class TicketFormatterTests
 
         content.Should().Contain("COMPROVANTE DE PAGAMENTO");
         content.Should().Contain("MESA 9");
-        content.Should().Contain("Venda #12  Pedido #14");
+        content.Should().Contain("Número da venda #12  Número do pedido #14");
         content.Should().Contain("11/07/2026 21:35");
         content.Should().Contain("TOTAL DA CONTA");
         content.Should().Contain("R$ 110,00");
         content.Should().Contain("Troco");
         content.Should().Contain("R$ 20,00");
-        content.Should().Contain("Aut: AUT-001");
-        content.Should().Contain("Operador: Ana");
+        content.Should().Contain("Autorização: AUT-001");
+        content.Should().Contain("Operador do caixa: Ana");
         content.Should().Contain("* CONTA PAGA *");
     }
 

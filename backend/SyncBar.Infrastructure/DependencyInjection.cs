@@ -7,6 +7,7 @@ using SyncBar.Infrastructure.Authentication;
 using SyncBar.Infrastructure.Persistence;
 using SyncBar.Infrastructure.Persistence.Repositories;
 using SyncBar.Infrastructure.Printing;
+using SyncBar.Infrastructure.Storage;
 
 namespace SyncBar.Infrastructure;
 
@@ -50,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IComandaSettingRepository, ComandaSettingRepository>();
         services.AddScoped<IAccessLogRepository, AccessLogRepository>();
 
+        services.AddSingleton<SyncBar.Application.Abstractions.Storage.IImageStorage, LocalImageStorage>();
         services.AddSingleton<IRawPrinterTransport, WindowsRawPrinterTransport>();
         services.AddSingleton<IRawPrinterTransport, NetworkRawPrinterTransport>();
         services.AddScoped<SyncBar.Application.Abstractions.Printing.IPrintingService, PrintingService>();

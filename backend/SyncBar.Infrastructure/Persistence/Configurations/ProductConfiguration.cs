@@ -16,6 +16,7 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.Description).HasColumnType("nvarchar(500)");
         builder.Property(x => x.Barcode).HasColumnType("varchar(50)");
         builder.Property(x => x.SalePrice).HasColumnType("decimal(18,2)").IsRequired();
+        builder.Property(x => x.ImageUrl).HasColumnType("nvarchar(300)");
         builder.Property(x => x.CostPrice).HasColumnType("decimal(18,2)");
         builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");

@@ -89,6 +89,7 @@ else
     // quebraria o fetch com 307 + certificado autoassinado.
     app.UseHttpsRedirection();
 }
+app.UseStaticFiles(); // /uploads/products (imagens do cardapio)
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

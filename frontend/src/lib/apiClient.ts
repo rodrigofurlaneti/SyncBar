@@ -40,6 +40,42 @@ async function tryRefresh(): Promise<boolean> {
   return refreshing;
 }
 
+// Upload multipart (imagens): mesmo fluxo de auth/refresh, sem Content-Type manual.
+export async function apiUpload<T>(path: string, formData: FormData, retry = true): Promise<T> {
+  const { accessToken } = useAuthStore.getState();
+
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      body: formData,
+    });
+  } catch {
+    throw new ApiError(0, "Network.Unreachable", "Não foi possível conectar à API — ela está rodando?");
+  }
+
+  if (response.status === 401 && retry) {
+    const renewed = await tryRefresh();
+    if (renewed) return apiUpload<T>(path, formData, false);
+    throw new ApiError(401, "Auth.SessionExpired", "Sessão expirada. Entre novamente.");
+  }
+
+  if (!response.ok) {
+    let title: string | undefined;
+    let detail: string | undefined;
+    try {
+      const body = (await response.json()) as ApiProblem & { errors?: Record<string, string[]> };
+      title = body.title;
+      detail = body.detail ?? (body.errors ? Object.values(body.errors).flat().join(" ") : undefined);
+    } catch { /* corpo vazio */ }
+    throw new ApiError(response.status, title ?? `Http.${response.status}`, detail ?? "Falha ao enviar o arquivo.");
+  }
+
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
+}
+
 export async function api<T>(path: string, init?: RequestInit, retry = true): Promise<T> {
   const { accessToken } = useAuthStore.getState();
 

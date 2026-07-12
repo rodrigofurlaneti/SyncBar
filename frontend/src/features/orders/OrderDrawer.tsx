@@ -412,11 +412,18 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                       <button
                         key={item.id}
                         className="btn-ghost"
-                        style={{ display: "flex", justifyContent: "space-between", padding: "0 14px" }}
+                        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 14px", minHeight: 56 }}
                         disabled={addItem.isPending}
                         onClick={() => addItem.mutate(item.id)}
                       >
-                        <span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          {item.imageUrl && (
+                            <img
+                              src={item.imageUrl}
+                              alt=""
+                              style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 8 }}
+                            />
+                          )}
                           {item.name}
                           {promoByProduct.has(item.id) && (
                             <span

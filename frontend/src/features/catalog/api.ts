@@ -1,4 +1,4 @@
-import { api } from "../../lib/apiClient";
+import { api, apiUpload } from "../../lib/apiClient";
 import type { CategoryResponse, MenuItemResponse } from "../../lib/types";
 
 export const getMenu = (companyId: number): Promise<MenuItemResponse[]> =>
@@ -33,3 +33,9 @@ export const updateProduct = (id: number, payload: ProductPayload): Promise<void
 
 export const deactivateProduct = (id: number): Promise<void> =>
   api<void>(`/api/products/${id}/deactivate`, { method: "PUT" });
+
+export const uploadProductImage = (productId: number, file: File): Promise<{ imageUrl: string }> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiUpload<{ imageUrl: string }>(`/api/products/${productId}/image`, formData);
+};

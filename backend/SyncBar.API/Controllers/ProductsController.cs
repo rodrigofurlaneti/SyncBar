@@ -5,6 +5,7 @@ using SyncBar.Application.Features.Catalog.CreateCategory;
 using SyncBar.Application.Features.Catalog.CreateProduct;
 using SyncBar.Application.Features.Catalog.DeactivateProduct;
 using SyncBar.Application.Features.Catalog.GetCategories;
+using SyncBar.Application.Features.Catalog.SetProductImage;
 using SyncBar.Application.Features.Catalog.UpdateProduct;
 
 namespace SyncBar.API.Controllers;
@@ -41,6 +42,22 @@ public sealed class ProductsController(IMediator mediator) : ApiController(media
             request.Barcode, request.SalePrice, request.CostPrice, request.IsStockControlled,
             request.PreparationTimeMinutes), ct);
         return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+
+    // Upload da foto do produto (JPG/PNG/WebP ate 2 MB).
+    [HttpPost("{id:long}/image")]
+    [RequestSizeLimit(3 * 1024 * 1024)]
+    public async Task<IActionResult> UploadImage(long id, IFormFile? file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(new ProblemDetails { Title = "Product.NoFile", Detail = "Envie um arquivo de imagem." });
+
+        using var memory = new MemoryStream();
+        await file.CopyToAsync(memory, ct);
+
+        var result = await Mediator.Send(new SetProductImageCommand(
+            id, Path.GetExtension(file.FileName), memory.ToArray()), ct);
+        return result.IsFailure ? HandleFailure(result) : Ok(new { imageUrl = result.Value });
     }
 
     [HttpPut("{id:long}/deactivate")]

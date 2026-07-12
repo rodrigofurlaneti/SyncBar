@@ -14,6 +14,7 @@ public sealed class Product : AggregateRoot
     public decimal? CostPrice { get; private set; }
     public bool IsStockControlled { get; private set; }
     public int? PreparationTimeMinutes { get; private set; }
+    public string? ImageUrl { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public bool IsActive { get; private set; }
@@ -62,6 +63,12 @@ public sealed class Product : AggregateRoot
         PreparationTimeMinutes = preparationTimeMinutes;
         UpdatedAt = DateTime.UtcNow;
         return Result.Success();
+    }
+
+    public void SetImage(string? imageUrl)
+    {
+        ImageUrl = imageUrl;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void Touch() => UpdatedAt = DateTime.UtcNow;

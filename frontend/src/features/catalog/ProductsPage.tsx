@@ -7,6 +7,7 @@ import {
   getCategories,
   getMenu,
   updateProduct,
+  uploadProductImage,
   type ProductPayload,
 } from "./api";
 import { useAuthStore } from "../../stores/authStore";
@@ -42,6 +43,7 @@ export function ProductsPage() {
   const [editing, setEditing] = useState<MenuItemResponse | "new" | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [newCategory, setNewCategory] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const menuQuery = useQuery({
@@ -67,6 +69,7 @@ export function ProductsPage() {
 
   const openEditor = (product: MenuItemResponse | "new") => {
     setError(null);
+    setImageFile(null);
     setEditing(product);
     if (product === "new") setForm({ ...emptyForm, categoryId: String(categoriesQuery.data?.[0]?.id ?? "") });
     else
@@ -99,10 +102,15 @@ export function ProductsPage() {
     setError(e instanceof ApiError ? e.message : "Operação falhou.");
 
   const saveMutation = useMutation({
-    mutationFn: () =>
-      editing === "new"
-        ? createProduct(companyId ?? 1, buildPayload()).then(() => undefined)
-        : updateProduct((editing as MenuItemResponse).id, buildPayload()),
+    mutationFn: async () => {
+      // Cria/atualiza e, se houver foto selecionada, envia na sequencia.
+      const productId =
+        editing === "new"
+          ? await createProduct(companyId ?? 1, buildPayload())
+          : (editing as MenuItemResponse).id;
+      if (editing !== "new") await updateProduct(productId, buildPayload());
+      if (imageFile !== null) await uploadProductImage(productId, imageFile);
+    },
     onSuccess: () => {
       setEditing(null);
       refresh();
@@ -156,13 +164,26 @@ export function ProductsPage() {
       <div className="ticket rise rise-2">
         {(menuQuery.data ?? []).map((product) => (
           <div className="ticket-row" key={product.id}>
-            <div style={{ display: "grid", gap: 2 }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              {product.imageUrl ? (
+                <img
+                  src={product.imageUrl}
+                  alt={product.name}
+                  style={{ width: 46, height: 46, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line)" }}
+                />
+              ) : (
+                <div style={{ width: 46, height: 46, borderRadius: 8, background: "var(--bg-press)", display: "grid", placeItems: "center", color: "var(--ink-faint)", fontSize: "1.2rem" }}>
+                  🍽
+                </div>
+              )}
+              <div style={{ display: "grid", gap: 2 }}>
               <span>{product.name}</span>
               <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
                 {categoryName.get(product.categoryId) ?? `Categoria ${product.categoryId}`}
                 {product.description ? ` · ${product.description}` : ""}
                 {product.isStockControlled ? " · controla estoque" : " · sem controle de estoque"}
               </span>
+              </div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <span className="mono-num" style={{ color: "var(--amber)" }}>
@@ -249,6 +270,24 @@ export function ProductsPage() {
               <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>Controla estoque</span>
             </label>
           </div>
+          <label style={{ display: "grid", gap: 4 }}>
+            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>
+              Foto do produto (JPG/PNG/WebP, até 2 MB)
+            </span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+              style={{ padding: 10 }}
+            />
+            {(imageFile !== null || (editing !== "new" && editing !== null && editing.imageUrl)) && (
+              <img
+                src={imageFile !== null ? URL.createObjectURL(imageFile) : (editing as MenuItemResponse).imageUrl!}
+                alt="Prévia"
+                style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "1px solid var(--line)" }}
+              />
+            )}
+          </label>
           {error && <p className="error-text">{error}</p>}
           {form.categoryId === "" && (
             <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem", margin: 0 }}>

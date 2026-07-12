@@ -17,7 +17,7 @@ internal sealed class GetMenuQueryHandler(IProductRepository productRepository)
             .OrderBy(p => p.CategoryId).ThenBy(p => p.Name)
             .Select(p => new MenuItemResponse(
                 p.Id, p.CategoryId, p.UnitOfMeasureId, p.Name, p.Description, p.Barcode,
-                p.SalePrice, p.CostPrice, p.IsStockControlled, p.PreparationTimeMinutes))
+                p.SalePrice, p.CostPrice, p.IsStockControlled, p.PreparationTimeMinutes, p.ImageUrl))
             .ToList();
 
         return Result.Success(response);

@@ -10,4 +10,5 @@ public sealed record MenuItemResponse(
     decimal SalePrice,
     decimal? CostPrice,
     bool IsStockControlled,
-    int? PreparationTimeMinutes);
+    int? PreparationTimeMinutes,
+    string? ImageUrl);

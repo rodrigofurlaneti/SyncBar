@@ -52,6 +52,7 @@ export interface MenuItemResponse {
   costPrice: number | null;
   isStockControlled: boolean;
   preparationTimeMinutes: number | null;
+  imageUrl: string | null;
 }
 
 export interface TableResponse {
