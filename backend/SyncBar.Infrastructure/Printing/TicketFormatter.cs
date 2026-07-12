@@ -6,7 +6,24 @@ namespace SyncBar.Infrastructure.Printing;
 public static class TicketFormatter
 {
     public const int Width = 42;
+    public const int BigWidth = 21; // linhas Big tem largura dupla → metade das colunas
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
+
+    // Marcadores de tamanho interpretados pelo EscPos (linha a linha).
+    private static string Tall(string line) => EscPos.TallMarker + line;
+    private static string Big(string line) => EscPos.BigMarker + line;
+
+    private static string CenterBig(string text)
+        => Big(text.Length >= BigWidth
+            ? text[..BigWidth]
+            : text.PadLeft((BigWidth + text.Length) / 2).TrimEnd().PadLeft(0));
+
+    private static string RowBig(string left, string right)
+    {
+        var space = BigWidth - right.Length;
+        var label = left.Length > space - 1 ? left[..Math.Max(0, space - 1)] : left;
+        return Big(label.PadRight(Math.Max(label.Length + 1, space)) + right);
+    }
 
     public sealed record OrderTicketItem(decimal Quantity, string ProductName, string? Notes, int LimitMinutes, string? RequestedBy);
     public sealed record BillItem(decimal Quantity, string ProductName, decimal UnitPrice, decimal TotalAmount);
@@ -20,17 +37,17 @@ public static class TicketFormatter
         var lines = new List<string>
         {
             Center("*** PEDIDO ***"),
-            Center(originLabel),
+            CenterBig(originLabel),
             Separator(),
             $"Pedido #{orderId}  {printedAt.ToString("dd/MM/yyyy HH:mm", PtBr)}",
         };
         if (!string.IsNullOrWhiteSpace(customerName))
-            lines.Add($"Cliente: {customerName}");
+            lines.Add(Tall($"Cliente: {customerName}"));
         lines.Add(Separator());
 
         foreach (var item in items)
         {
-            lines.Add($"{item.Quantity:0.###} x {item.ProductName.ToUpperInvariant()}");
+            lines.Add(Tall($"{item.Quantity:0.###} x {item.ProductName.ToUpperInvariant()}"));
             if (!string.IsNullOrWhiteSpace(item.Notes))
                 lines.Add($"   Obs: {item.Notes}");
             lines.Add($"   Entrega em ate {item.LimitMinutes} min");
@@ -48,27 +65,28 @@ public static class TicketFormatter
         DateTime printedAt, IReadOnlyCollection<BillItem> items,
         decimal subtotal, decimal discount, decimal serviceFee, decimal total)
     {
+        // Cliente le esta via: corpo inteiro em altura dupla, TOTAL gigante.
         var lines = new List<string>
         {
-            Center(establishment.ToUpperInvariant()),
-            Center("CONTA - " + originLabel),
-            Separator(),
-            $"Pedido #{orderId}  {printedAt.ToString("dd/MM/yyyy HH:mm", PtBr)}",
+            CenterBig(establishment.ToUpperInvariant()),
+            CenterBig("CONTA " + originLabel),
+            Tall(Separator()),
+            Tall($"Pedido #{orderId}  {printedAt.ToString("dd/MM/yyyy HH:mm", PtBr)}"),
         };
         if (!string.IsNullOrWhiteSpace(customerName))
-            lines.Add($"Cliente: {customerName}");
-        lines.Add(Separator());
+            lines.Add(Tall($"Cliente: {customerName}"));
+        lines.Add(Tall(Separator()));
 
         foreach (var item in items)
-            lines.Add(Row($"{item.Quantity:0.###}x {item.ProductName}", Money(item.TotalAmount)));
+            lines.Add(Tall(Row($"{item.Quantity:0.###}x {item.ProductName}", Money(item.TotalAmount))));
 
-        lines.Add(Separator());
-        lines.Add(Row("Subtotal", Money(subtotal)));
-        if (discount > 0) lines.Add(Row("Desconto", "-" + Money(discount)));
-        if (serviceFee > 0) lines.Add(Row("Servico (10%)", Money(serviceFee)));
-        lines.Add(Row("TOTAL", Money(total)));
-        lines.Add(Separator());
-        lines.Add(Center("Obrigado pela preferencia!"));
+        lines.Add(Tall(Separator()));
+        lines.Add(Tall(Row("Subtotal", Money(subtotal))));
+        if (discount > 0) lines.Add(Tall(Row("Desconto", "-" + Money(discount))));
+        if (serviceFee > 0) lines.Add(Tall(Row("Servico (10%)", Money(serviceFee))));
+        lines.Add(RowBig("TOTAL", Money(total)));
+        lines.Add(Tall(Separator()));
+        lines.Add(Tall(Center("Obrigado pela preferencia!")));
         return string.Join("\n", lines);
     }
 
@@ -90,11 +108,11 @@ public static class TicketFormatter
         if (!string.IsNullOrWhiteSpace(customerName))
             lines.Add($"Cliente: {customerName}");
         lines.Add(Separator());
-        lines.Add(Row("TOTAL DA CONTA", Money(totalAmount)));
+        lines.Add(Tall(Row("TOTAL DA CONTA", Money(totalAmount))));
         if (previouslyPaid > 0)
         {
-            lines.Add(Row("Pago parcial (anterior)", "-" + Money(previouslyPaid)));
-            lines.Add(Row("Restante quitado agora", Money(totalAmount - previouslyPaid)));
+            lines.Add(Tall(Row("Pago parcial (anterior)", "-" + Money(previouslyPaid))));
+            lines.Add(Tall(Row("Restante quitado agora", Money(totalAmount - previouslyPaid))));
         }
         lines.Add(Separator());
 
@@ -110,7 +128,7 @@ public static class TicketFormatter
         lines.Add(Separator());
         if (!string.IsNullOrWhiteSpace(operatorName))
             lines.Add($"Operador: {operatorName}");
-        lines.Add(Center("*** CONTA PAGA ***"));
+        lines.Add(CenterBig("* CONTA PAGA *"));
         return string.Join("\n", lines);
     }
 
@@ -130,13 +148,13 @@ public static class TicketFormatter
         if (!string.IsNullOrWhiteSpace(payerName))
             lines.Add($"Pago por: {payerName}");
         lines.Add(Separator());
-        lines.Add(Row("VALOR PAGO", Money(amount)));
+        lines.Add(RowBig("VALOR PAGO", Money(amount)));
         lines.Add(Row("  " + paymentMethod, Money(amount)));
         if (!string.IsNullOrWhiteSpace(authorizationCode))
             lines.Add($"  Aut: {authorizationCode}");
         lines.Add(Separator());
-        lines.Add(Row("Total da conta", Money(orderTotal)));
-        lines.Add(Row("Restante em aberto", Money(remainingAfter)));
+        lines.Add(Tall(Row("Total da conta", Money(orderTotal))));
+        lines.Add(Tall(Row("Restante em aberto", Money(remainingAfter))));
         lines.Add(Separator());
         if (!string.IsNullOrWhiteSpace(operatorName))
             lines.Add($"Operador: {operatorName}");
@@ -176,11 +194,12 @@ public static class TicketFormatter
         lines.Add(Row("Contado na gaveta", Money(counted)));
         lines.Add(Separator());
 
-        lines.Add(Center(difference == 0
+        var verdict = difference == 0
             ? "*** BATEU O CAIXA ***"
             : difference > 0
                 ? $"*** SOBRA DE CAIXA: {Money(difference)} ***"
-                : $"*** FALTA DE CAIXA: {Money(Math.Abs(difference))} ***"));
+                : $"*** FALTA DE CAIXA: {Money(Math.Abs(difference))} ***";
+        lines.Add(verdict.Length <= BigWidth ? CenterBig(verdict) : Tall(Center(verdict)));
 
         return string.Join("\n", lines);
     }

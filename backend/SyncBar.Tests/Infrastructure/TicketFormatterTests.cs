@@ -32,7 +32,7 @@ public sealed class TicketFormatterTests
             [new TicketFormatter.BillItem(1, "Picanha na Chapa", 79m, 79m)],
             subtotal: 79m, discount: 0m, serviceFee: 7.90m, total: 86.90m);
 
-        content.Should().Contain("CONTA - COMANDA 37");
+        content.Should().Contain("CONTA COMANDA 37");
         content.Should().Contain("Cliente: Ana");
         content.Should().Contain("R$ 79,00");
         content.Should().Contain("Servico (10%)");
@@ -80,7 +80,20 @@ public sealed class TicketFormatterTests
         content.Should().Contain("R$ 20,00");
         content.Should().Contain("Aut: AUT-001");
         content.Should().Contain("Operador: Ana");
-        content.Should().Contain("*** CONTA PAGA ***");
+        content.Should().Contain("* CONTA PAGA *");
+    }
+
+    [Fact]
+    public void Bill_ShouldUseEnlargedFontMarkers()
+    {
+        var content = TicketFormatter.Bill(
+            "Restaurante Exemplo", "MESA 9", null, 20, DateTime.Now,
+            [new TicketFormatter.BillItem(1, "Picanha", 79m, 79m)],
+            79m, 0m, 7.90m, 86.90m);
+
+        // TOTAL em fonte gigante (Big) e itens em altura dupla (Tall).
+        content.Should().Contain(EscPos.BigMarker + "TOTAL");
+        content.Split('\n').Count(l => l.StartsWith(EscPos.TallMarker)).Should().BeGreaterThan(3);
     }
 
     [Fact]
