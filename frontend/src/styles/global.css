@@ -357,3 +357,23 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
 @media (prefers-reduced-motion: reduce) {
   .rise, .toast, .skeleton, .btn-loading::after { animation: none !important; }
 }
+
+/* --- Switch (interruptor) ------------------------------------ */
+.switch {
+  position: relative;
+  width: 58px; min-width: 58px; height: 32px; min-height: 32px;
+  border-radius: 999px;
+  background: var(--bg-press);
+  border: 1px solid var(--line);
+  padding: 0;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.switch .switch-knob {
+  position: absolute; top: 3px; left: 3px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--ink-faint);
+  transition: transform 140ms ease, background 140ms ease;
+}
+.switch.is-on { background: var(--amber); border-color: var(--amber-deep); }
+.switch.is-on .switch-knob { transform: translateX(26px); background: var(--amber-ink); }
+.switch:disabled { opacity: 0.5; cursor: not-allowed; }

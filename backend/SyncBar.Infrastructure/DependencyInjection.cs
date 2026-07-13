@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IPrinterSettingRepository, PrinterSettingRepository>();
         services.AddScoped<IOrderPartialPaymentRepository, OrderPartialPaymentRepository>();
         services.AddScoped<IComandaSettingRepository, ComandaSettingRepository>();
+        services.AddScoped<IServiceFeeSettingRepository, ServiceFeeSettingRepository>();
         services.AddScoped<IAccessLogRepository, AccessLogRepository>();
 
         services.AddSingleton<SyncBar.Application.Abstractions.Storage.IImageStorage, LocalImageStorage>();

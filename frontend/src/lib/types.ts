@@ -478,6 +478,10 @@ export interface ComandaSettingResponse {
   defaultLimitAmount: number;
 }
 
+export interface ServiceFeeSettingResponse {
+  enabled: boolean;
+}
+
 export interface TopProductResponse {
   productId: number;
   productName: string;

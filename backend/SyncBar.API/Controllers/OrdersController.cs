@@ -12,6 +12,7 @@ using SyncBar.Application.Features.Orders.Open;
 using SyncBar.Application.Features.Orders.RaiseComandaLimit;
 using SyncBar.Application.Features.Orders.Reopen;
 using SyncBar.Application.Features.Orders.RemoveServiceFee;
+using SyncBar.Application.Features.Orders.ServiceFeeSetting;
 using SyncBar.Application.Features.Orders.UpdateItemStatus;
 
 namespace SyncBar.API.Controllers;
@@ -96,6 +97,23 @@ public sealed class OrdersController(IMediator mediator) : ApiController(mediato
     public async Task<IActionResult> RemoveServiceFee(long id, CancellationToken ct)
     {
         var result = await Mediator.Send(new RemoveServiceFeeCommand(id), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+
+    // Config da taxa de servico (10%) por filial — leitura liberada a quem ve o Salao.
+    [HttpGet("service-fee-setting/branch/{branchId:long}")]
+    public async Task<IActionResult> GetServiceFeeSetting(long branchId, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new GetServiceFeeSettingQuery(branchId), ct);
+        return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+    }
+
+    // Ligar/desligar os 10% — somente o gerente.
+    [Authorize(Roles = "Administrador,Gerente")]
+    [HttpPut("service-fee-setting")]
+    public async Task<IActionResult> SetServiceFeeEnabled([FromBody] SetServiceFeeEnabledCommand command, CancellationToken ct)
+    {
+        var result = await Mediator.Send(command, ct);
         return result.IsFailure ? HandleFailure(result) : NoContent();
     }
 

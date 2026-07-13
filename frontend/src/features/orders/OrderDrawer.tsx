@@ -28,6 +28,7 @@ import { PaymentPanel } from "./PaymentPanel";
 import { PartialPaymentDialog } from "./PartialPaymentDialog";
 import { useMyFeatures } from "../access/hooks";
 import { useDialog } from "../../ui/Dialog";
+import { getServiceFeeSetting } from "../settings/api";
 
 interface Props {
   orderId: number;
@@ -114,6 +115,13 @@ export function OrderDrawer({ orderId, onClose }: Props) {
     queryFn: () => getPrintSettings(useAuthStore.getState().branchId),
     staleTime: 60_000,
   });
+
+  const serviceFeeSettingQuery = useQuery({
+    queryKey: ["orders", "service-fee-setting", useAuthStore.getState().branchId],
+    queryFn: () => getServiceFeeSetting(useAuthStore.getState().branchId),
+    staleTime: 60_000,
+  });
+  const serviceFeeOn = serviceFeeSettingQuery.data?.enabled ?? true;
 
   const printBillMutation = useMutation({
     mutationFn: () => printBill(orderId),
@@ -518,7 +526,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                   disabled={order.items.length === 0 || closeMutation.isPending}
                   onClick={() => closeMutation.mutate()}
                 >
-                  Fechar conta (+10%)
+                  {serviceFeeOn ? "Fechar conta (+10%)" : "Fechar conta (sem 10%)"}
                 </button>
               </div>
             </>

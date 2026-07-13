@@ -9,6 +9,7 @@ import { StockPage } from "./features/stock/StockPage";
 import { EmployeesPage } from "./features/employees/EmployeesPage";
 import { UsersPage } from "./features/users/UsersPage";
 import { AccessPage } from "./features/access/AccessPage";
+import { SettingsPage } from "./features/settings/SettingsPage";
 import { FinancePage } from "./features/finance/FinancePage";
 import { ScenariosPage } from "./features/finance/ScenariosPage";
 import { ReportsPage } from "./features/finance/ReportsPage";
@@ -46,16 +47,17 @@ export default function App() {
         <Route path="/" element={<FeatureGate code="Salao"><OrdersPage /></FeatureGate>} />
         <Route path="/produtos" element={<FeatureGate code="Cardapio"><ProductsPage /></FeatureGate>} />
         <Route path="/estoque" element={<FeatureGate code="Estoque"><StockPage /></FeatureGate>} />
-        <Route path="/equipe" element={<FeatureGate code="Equipe"><EmployeesPage /></FeatureGate>} />
-        <Route path="/usuarios" element={<FeatureGate code="Usuarios"><UsersPage /></FeatureGate>} />
-        <Route path="/faturamento" element={<FeatureGate code="Faturamento"><FinancePage /></FeatureGate>} />
-        <Route path="/cenarios" element={<FeatureGate code="Faturamento"><ScenariosPage /></FeatureGate>} />
-        <Route path="/relatorios" element={<FeatureGate code="Faturamento"><ReportsPage /></FeatureGate>} />
+        <Route path="/equipe" element={<ManagerGate><EmployeesPage /></ManagerGate>} />
+        <Route path="/usuarios" element={<ManagerGate><UsersPage /></ManagerGate>} />
+        <Route path="/faturamento" element={<ManagerGate><FinancePage /></ManagerGate>} />
+        <Route path="/cenarios" element={<ManagerGate><ScenariosPage /></ManagerGate>} />
+        <Route path="/relatorios" element={<ManagerGate><ReportsPage /></ManagerGate>} />
         <Route path="/preparo" element={<FeatureGate code="Preparo"><PreparationPage /></FeatureGate>} />
-        <Route path="/fechamentos" element={<FeatureGate code="Caixa"><CashHistoryPage /></FeatureGate>} />
-        <Route path="/promocoes" element={<FeatureGate code="Promocoes"><PromotionsPage /></FeatureGate>} />
-        <Route path="/impressao" element={<FeatureGate code="Impressao"><PrintingPage /></FeatureGate>} />
+        <Route path="/fechamentos" element={<ManagerGate><CashHistoryPage /></ManagerGate>} />
+        <Route path="/promocoes" element={<ManagerGate><PromotionsPage /></ManagerGate>} />
+        <Route path="/impressao" element={<ManagerGate><PrintingPage /></ManagerGate>} />
         <Route path="/acessos" element={<ManagerGate><AccessPage /></ManagerGate>} />
+        <Route path="/configuracoes" element={<ManagerGate><SettingsPage /></ManagerGate>} />
         <Route path="/sem-acesso" element={<NoAccessPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,9 +1,8 @@
 import { useMemo, useState, type CSSProperties } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getTablesByBranch } from "../tables/api";
 import { getOpenOrdersByBranch } from "./api";
-import { getComandaSetting, getComandasByBranch, setComandaDefaultLimit } from "../comandas/api";
-import { useMyFeatures } from "../access/hooks";
+import { getComandaSetting, getComandasByBranch } from "../comandas/api";
 import { OpenComandaDialog } from "../comandas/OpenComandaDialog";
 import { useAuthStore } from "../../stores/authStore";
 import { ComandaStatus, TableStatus, formatBRL } from "../../lib/types";
@@ -49,7 +48,6 @@ export function OrdersPage() {
   const [openingTable, setOpeningTable] = useState<TableResponse | null>(null);
   const [openingComanda, setOpeningComanda] = useState<ComandaResponse | null>(null);
   const [comandaSearch, setComandaSearch] = useState("");
-  const [limitInput, setLimitInput] = useState("");
 
   const tablesQuery = useQuery({
     queryKey: ["tables", branchId],
@@ -57,19 +55,10 @@ export function OrdersPage() {
     refetchInterval: 15_000,
   });
 
-  const featuresQuery = useMyFeatures();
-
+  // Limite padrão da comanda: exibido como contexto (edição fica em Config).
   const comandaSettingQuery = useQuery({
     queryKey: ["comandas", "setting", branchId],
     queryFn: () => getComandaSetting(branchId),
-  });
-
-  const limitMutation = useMutation({
-    mutationFn: (value: number) => setComandaDefaultLimit(branchId, value),
-    onSuccess: () => {
-      setLimitInput("");
-      void queryClient.invalidateQueries({ queryKey: ["comandas", "setting"] });
-    },
   });
 
   const comandasQuery = useQuery({
@@ -114,7 +103,6 @@ export function OrdersPage() {
 
   return (
     <>
-
       <main style={{ padding: "22px", maxWidth: 1240, margin: "0 auto" }}>
         <section className="rise">
           <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 14 }}>
@@ -175,28 +163,6 @@ export function OrdersPage() {
             {comandaSettingQuery.data && (
               <span className="chip" style={{ "--dot": "var(--busy)" } as CSSProperties}>
                 limite {formatBRL(comandaSettingQuery.data.defaultLimitAmount)}
-              </span>
-            )}
-            {featuresQuery.data?.canManageAccess && (
-              <span style={{ display: "flex", gap: 6 }}>
-                <input
-                  placeholder="novo limite"
-                  inputMode="decimal"
-                  value={limitInput}
-                  onChange={(e) => setLimitInput(e.target.value)}
-                  style={{ width: 120 }}
-                />
-                <button
-                  className="btn-ghost"
-                  style={{ minHeight: 44 }}
-                  disabled={limitMutation.isPending || limitInput.trim() === ""}
-                  onClick={() => {
-                    const value = Number(limitInput.replace(",", "."));
-                    if (Number.isFinite(value) && value > 0) limitMutation.mutate(value);
-                  }}
-                >
-                  Salvar
-                </button>
               </span>
             )}
             <input

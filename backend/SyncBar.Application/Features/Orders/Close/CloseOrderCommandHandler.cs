@@ -8,6 +8,7 @@ namespace SyncBar.Application.Features.Orders.Close;
 internal sealed class CloseOrderCommandHandler(
     ICustomerOrderRepository orderRepository,
     IDiningTableRepository diningTableRepository,
+    IServiceFeeSettingRepository serviceFeeSettingRepository,
     IUnitOfWork unitOfWork)
     : ICommandHandler<CloseOrderCommand>
 {
@@ -17,7 +18,13 @@ internal sealed class CloseOrderCommandHandler(
         if (order is null || !order.IsActive)
             return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-        var result = order.Close(request.ServiceFeeRate);
+        // A filial pode ter a taxa de servico DESLIGADA (eventos sem 10%):
+        // nesse caso a conta fecha com 0% e a taxa nem aparece na impressao.
+        var feeSetting = await serviceFeeSettingRepository.GetByBranchAsync(order.BranchId, cancellationToken);
+        var serviceFeeEnabled = feeSetting?.Enabled ?? true;
+        var effectiveServiceFeeRate = serviceFeeEnabled ? request.ServiceFeeRate : 0m;
+
+        var result = order.Close(effectiveServiceFeeRate);
         if (result.IsFailure)
             return result;
 

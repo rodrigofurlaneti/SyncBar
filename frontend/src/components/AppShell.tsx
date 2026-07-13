@@ -5,19 +5,13 @@ import { useAuthStore } from "../stores/authStore";
 import { CashDrawer } from "../features/cash/CashDrawer";
 import { useMyFeatures } from "../features/access/hooks";
 
+// Somente o operacional fica no topo. Os itens administrativos ficam
+// agrupados dentro de "Config." (só gerente/admin).
 const links = [
   { to: "/", label: "Salão", feature: "Salao" },
   { to: "/produtos", label: "Cardápio", feature: "Cardapio" },
   { to: "/estoque", label: "Estoque", feature: "Estoque" },
-  { to: "/equipe", label: "Equipe", feature: "Equipe" },
-  { to: "/usuarios", label: "Usuários", feature: "Usuarios" },
-  { to: "/faturamento", label: "Faturamento", feature: "Faturamento" },
-  { to: "/relatorios", label: "Relatórios", feature: "Faturamento" },
-  { to: "/cenarios", label: "Cenários", feature: "Faturamento" },
   { to: "/preparo", label: "Preparo", feature: "Preparo" },
-  { to: "/fechamentos", label: "Fechamentos", feature: "Caixa" },
-  { to: "/promocoes", label: "Promoções", feature: "Promocoes" },
-  { to: "/impressao", label: "Impressão", feature: "Impressao" },
 ];
 
 export function AppShell() {
@@ -61,7 +55,7 @@ export function AppShell() {
           ))}
           {access?.canManageAccess && (
             <NavLink
-              to="/acessos"
+              to="/configuracoes"
               style={({ isActive }) => ({
                 padding: "8px 14px",
                 borderRadius: 8,
@@ -76,7 +70,7 @@ export function AppShell() {
                 border: "1px dashed var(--amber-deep)",
               })}
             >
-              Acessos
+              Config.
             </NavLink>
           )}
         </nav>
