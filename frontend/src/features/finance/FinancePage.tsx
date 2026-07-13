@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDialog } from "../../ui/Dialog";
 import {
   createOperatingCost,
   deactivateOperatingCost,
@@ -48,6 +49,7 @@ function Card({ label, value, tone }: { label: string; value: string; tone?: str
 
 export function FinancePage() {
   const queryClient = useQueryClient();
+  const dialog = useDialog();
   const { branchId } = useAuthStore();
   const [monthValue, setMonthValue] = useState(currentMonthValue());
   const [description, setDescription] = useState("");
@@ -246,10 +248,19 @@ export function FinancePage() {
                   <span className="mono-num">{formatBRL(cost.amount)}</span>
                   <button
                     className="btn-danger"
+                    aria-label={`Remover custo ${cost.description}`}
+                    title="Remover custo"
                     style={{ minHeight: 36, padding: "0 10px", fontSize: "0.85rem" }}
                     disabled={removeCostMutation.isPending}
-                    onClick={() => {
-                      if (window.confirm(`Remover o custo "${cost.description}"?`))
+                    onClick={async () => {
+                      if (
+                        await dialog.confirm({
+                          title: "Remover custo",
+                          message: `Remover o custo "${cost.description}"?`,
+                          confirmLabel: "Remover",
+                          danger: true,
+                        })
+                      )
                         removeCostMutation.mutate(cost.id);
                     }}
                   >

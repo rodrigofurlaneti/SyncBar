@@ -174,6 +174,8 @@ export function PaymentPanel({ order, onPaid }: Props) {
           />
           <button
             className="btn-ghost"
+            aria-label="Remover forma de pagamento"
+            title="Remover forma de pagamento"
             style={{ minHeight: 44, padding: "0 12px" }}
             disabled={rows.length === 1}
             onClick={() => setRows((current) => current.filter((_, i) => i !== index))}

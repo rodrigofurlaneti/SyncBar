@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDialog } from "../../ui/Dialog";
 import { createPromotion, deactivatePromotion, getPromotionsByBranch } from "./api";
 import { getMenu } from "../catalog/api";
 import { useAuthStore } from "../../stores/authStore";
@@ -10,6 +11,7 @@ import { Overlay } from "../orders/Overlay";
 
 export function PromotionsPage() {
   const queryClient = useQueryClient();
+  const dialog = useDialog();
   const { branchId, companyId } = useAuthStore();
   const [creating, setCreating] = useState(false);
   const [productId, setProductId] = useState("");
@@ -142,8 +144,15 @@ export function PromotionsPage() {
                     className="btn-danger"
                     style={{ minHeight: 36, padding: "0 10px", fontSize: "0.85rem" }}
                     disabled={removeMutation.isPending}
-                    onClick={() => {
-                      if (window.confirm(`Encerrar a promoção "${promo.name}"?`))
+                    onClick={async () => {
+                      if (
+                        await dialog.confirm({
+                          title: "Encerrar promoção",
+                          message: `Encerrar a promoção "${promo.name}"?`,
+                          confirmLabel: "Encerrar",
+                          danger: true,
+                        })
+                      )
                         removeMutation.mutate(promo.id);
                     }}
                   >

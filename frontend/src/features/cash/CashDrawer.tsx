@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDialog } from "../../ui/Dialog";
 import {
   closeCashSession,
   getCashSummary,
@@ -32,6 +33,7 @@ const parseAmount = (raw: string): number => {
 
 export function CashDrawer({ onClose }: Props) {
   const queryClient = useQueryClient();
+  const dialog = useDialog();
   const { employeeId } = useAuthStore();
   const [openingAmount, setOpeningAmount] = useState("");
   const [movementType, setMovementType] = useState<number>(CashMovementType.Suprimento);
@@ -285,10 +287,13 @@ export function CashDrawer({ onClose }: Props) {
                       className="btn-danger"
                       style={{ minHeight: 36, padding: "0 10px", fontSize: "0.82rem" }}
                       disabled={refundMutation.isPending}
-                      onClick={() => {
-                        const reason = window.prompt(
-                          `Estornar a venda #${sale.saleNumber} (${formatBRL(sale.totalAmount)})? Motivo:`,
-                        );
+                      onClick={async () => {
+                        const reason = await dialog.prompt({
+                          title: "Estornar venda",
+                          message: `Estornar a venda #${sale.saleNumber} (${formatBRL(sale.totalAmount)})?`,
+                          label: "Motivo (opcional)",
+                          confirmLabel: "Estornar",
+                        });
                         if (reason !== null)
                           refundMutation.mutate({ saleId: sale.id, reason: reason.trim() === "" ? null : reason.trim() });
                       }}
@@ -342,8 +347,15 @@ export function CashDrawer({ onClose }: Props) {
             <button
               className="btn-danger"
               disabled={countedAmount.trim() === "" || closeMutation.isPending}
-              onClick={() => {
-                if (window.confirm("Fechar o caixa? Pedidos aguardando pagamento não poderão ser recebidos."))
+              onClick={async () => {
+                if (
+                  await dialog.confirm({
+                    title: "Fechar caixa",
+                    message: "Fechar o caixa? Pedidos aguardando pagamento não poderão ser recebidos.",
+                    confirmLabel: "Fechar caixa",
+                    danger: true,
+                  })
+                )
                   closeMutation.mutate();
               }}
             >

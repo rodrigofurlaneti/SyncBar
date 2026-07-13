@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDialog } from "../../ui/Dialog";
 import {
   createPrinter,
   deactivatePrinter,
@@ -25,6 +26,7 @@ const emptyForm = {
 
 export function PrintingPage() {
   const queryClient = useQueryClient();
+  const dialog = useDialog();
   const { branchId } = useAuthStore();
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -174,8 +176,15 @@ export function PrintingPage() {
               <button
                 className="btn-danger"
                 style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
-                onClick={() => {
-                  if (window.confirm(`Remover a impressora "${printer.name}"?`))
+                onClick={async () => {
+                  if (
+                    await dialog.confirm({
+                      title: "Remover impressora",
+                      message: `Remover a impressora "${printer.name}"?`,
+                      confirmLabel: "Remover",
+                      danger: true,
+                    })
+                  )
                     removeMutation.mutate(printer.id);
                 }}
               >

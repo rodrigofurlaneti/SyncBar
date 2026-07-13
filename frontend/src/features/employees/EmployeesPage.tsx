@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDialog } from "../../ui/Dialog";
 import {
   createEmployee,
   dismissEmployee,
@@ -25,6 +26,7 @@ const parseNum = (raw: string): number | null => {
 
 export function EmployeesPage() {
   const queryClient = useQueryClient();
+  const dialog = useDialog();
   const { branchId, companyId } = useAuthStore();
   const [editing, setEditing] = useState<EmployeeResponse | "new" | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -137,8 +139,15 @@ export function EmployeesPage() {
               <button
                 className="btn-danger"
                 style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
-                onClick={() => {
-                  if (window.confirm(`Demitir "${employee.name}"? O acesso e o CPF serão liberados.`))
+                onClick={async () => {
+                  if (
+                    await dialog.confirm({
+                      title: "Demitir",
+                      message: `Demitir "${employee.name}"? O acesso e o CPF serão liberados.`,
+                      confirmLabel: "Demitir",
+                      danger: true,
+                    })
+                  )
                     dismissMutation.mutate(employee.id);
                 }}
               >

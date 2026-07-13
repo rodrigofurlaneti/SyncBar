@@ -12,8 +12,8 @@
   --line-soft: #26262d;
 
   --ink: #ece9e2;
-  --ink-dim: #a7a29a;
-  --ink-faint: #6d6963;
+  --ink-dim: #b6b1a8;   /* clareado p/ WCAG AA em texto pequeno */
+  --ink-faint: #8f8a81; /* clareado p/ WCAG AA em texto pequeno */
 
   --amber: #f5a524;
   --amber-deep: #c47d09;
@@ -232,3 +232,128 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
   50% { background: rgba(239, 75, 61, 0.12); }
 }
 .kds-overdue { animation: kds-pulse 1.6s ease-in-out infinite; }
+
+/* ============================================================
+   Biblioteca de UI (src/ui) — classes consumindo os tokens.
+   Objetivo: tirar estilo inline das telas e padronizar
+   estados (hover/focus/disabled/loading) e acessibilidade.
+   ============================================================ */
+
+/* foco visível consistente para teclado */
+:where(button, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* --- Button --------------------------------------------------- */
+.btn-sm { min-height: 38px; padding: 0 12px; font-size: 0.85rem; }
+.btn-block { width: 100%; }
+
+.btn-icon {
+  min-height: var(--touch);
+  min-width: var(--touch);
+  display: inline-grid;
+  place-items: center;
+  padding: 0 10px;
+}
+.btn-icon.btn-sm { min-height: 38px; min-width: 38px; }
+
+.btn-loading { position: relative; color: transparent !important; }
+.btn-loading::after {
+  content: "";
+  position: absolute;
+  width: 16px; height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: ui-spin 0.7s linear infinite;
+  color: var(--amber-ink);
+}
+.btn-ghost.btn-loading::after, .btn-danger.btn-loading::after { color: var(--ink); }
+@keyframes ui-spin { to { transform: rotate(360deg); } }
+
+/* --- Field / inputs ------------------------------------------ */
+.field { display: grid; gap: 6px; }
+.field-label { color: var(--ink-dim); font-size: 0.9rem; }
+.field-hint { color: var(--ink-faint); font-size: 0.8rem; }
+.field-error { color: var(--danger); font-size: 0.85rem; }
+input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--danger); }
+
+/* --- Cluster / Stack (layout helpers) ------------------------ */
+.ui-row { display: flex; align-items: center; gap: 10px; }
+.ui-row-wrap { flex-wrap: wrap; }
+.ui-stack { display: grid; gap: 12px; }
+.ui-spacer { flex: 1; }
+
+/* --- Modal / Drawer acessível -------------------------------- */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(10, 10, 12, 0.66);
+  backdrop-filter: blur(3px);
+  display: grid;
+  z-index: 50;
+}
+.modal-backdrop.is-center { place-items: center; padding: 16px; }
+.modal-backdrop.is-drawer { place-items: stretch end; }
+
+.modal-panel {
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  overflow-y: auto;
+}
+.modal-panel.is-center { width: min(420px, 92vw); max-height: 92vh; }
+.modal-panel.is-center.is-wide { width: min(560px, 94vw); }
+.modal-panel.is-drawer {
+  width: min(480px, 96vw);
+  height: 100%;
+  border-radius: 16px 0 0 16px;
+}
+.modal-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+}
+
+/* --- Toast --------------------------------------------------- */
+.toast-stack {
+  position: fixed;
+  right: 18px; bottom: 18px;
+  display: grid;
+  gap: 10px;
+  z-index: 80;
+  width: min(360px, calc(100vw - 36px));
+}
+.toast {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--bg-press);
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--ink);
+  font-size: 0.92rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  animation: rise 200ms ease both;
+}
+.toast--success { border-left-color: var(--ok); }
+.toast--error { border-left-color: var(--danger); }
+.toast--info { border-left-color: var(--reserved); }
+.toast-close { background: transparent; color: var(--ink-faint); min-height: auto; padding: 0 4px; }
+.toast-close:hover { color: var(--ink); }
+
+/* --- Skeleton / EmptyState ----------------------------------- */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-press) 25%, var(--line) 37%, var(--bg-press) 63%);
+  background-size: 400% 100%;
+  animation: ui-shimmer 1.2s ease-in-out infinite;
+  border-radius: 8px;
+}
+@keyframes ui-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .toast, .skeleton, .btn-loading::after { animation: none !important; }
+}

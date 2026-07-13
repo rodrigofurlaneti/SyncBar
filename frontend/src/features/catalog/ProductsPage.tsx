@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDialog } from "../../ui/Dialog";
 import {
   createCategory,
   createProduct,
@@ -39,6 +40,7 @@ const parseNum = (raw: string): number | null => {
 
 export function ProductsPage() {
   const queryClient = useQueryClient();
+  const dialog = useDialog();
   const { companyId } = useAuthStore();
   const [editing, setEditing] = useState<MenuItemResponse | "new" | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -199,8 +201,16 @@ export function ProductsPage() {
               <button
                 className="btn-danger"
                 style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
-                onClick={() => {
-                  if (window.confirm(`Desativar "${product.name}"?`)) deactivateMutation.mutate(product.id);
+                onClick={async () => {
+                  if (
+                    await dialog.confirm({
+                      title: "Desativar produto",
+                      message: `Desativar "${product.name}"?`,
+                      confirmLabel: "Desativar",
+                      danger: true,
+                    })
+                  )
+                    deactivateMutation.mutate(product.id);
                 }}
               >
                 Desativar

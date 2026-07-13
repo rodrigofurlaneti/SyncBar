@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDialog } from "../../ui/Dialog";
 import { createUser, deactivateUser, getRoles, getUsersByCompany, updateUserRoles } from "./api";
 import { getEmployeesByBranch } from "../employees/api";
 import { useAuthStore } from "../../stores/authStore";
@@ -10,6 +11,7 @@ import { QueryError } from "../../components/QueryError";
 
 export function UsersPage() {
   const queryClient = useQueryClient();
+  const dialog = useDialog();
   const { companyId, branchId } = useAuthStore();
   const [creating, setCreating] = useState(false);
   const [editingRoles, setEditingRoles] = useState<UserResponse | null>(null);
@@ -159,8 +161,15 @@ export function UsersPage() {
                 <button
                   className="btn-danger"
                   style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
-                  onClick={() => {
-                    if (window.confirm(`Desativar o usuário "${user.userName}"?`))
+                  onClick={async () => {
+                    if (
+                      await dialog.confirm({
+                        title: "Desativar usuário",
+                        message: `Desativar o usuário "${user.userName}"?`,
+                        confirmLabel: "Desativar",
+                        danger: true,
+                      })
+                    )
                       deactivateMutation.mutate(user.id);
                   }}
                 >

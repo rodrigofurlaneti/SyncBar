@@ -27,6 +27,7 @@ import { Overlay } from "./Overlay";
 import { PaymentPanel } from "./PaymentPanel";
 import { PartialPaymentDialog } from "./PartialPaymentDialog";
 import { useMyFeatures } from "../access/hooks";
+import { useDialog } from "../../ui/Dialog";
 
 interface Props {
   orderId: number;
@@ -42,6 +43,7 @@ const nextItemStatus: Record<number, number> = {
 
 export function OrderDrawer({ orderId, onClose }: Props) {
   const queryClient = useQueryClient();
+  const dialog = useDialog();
   const { companyId, employeeId } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [partialOpen, setPartialOpen] = useState(false);
@@ -124,8 +126,12 @@ export function OrderDrawer({ orderId, onClose }: Props) {
       setActionError(null);
       refetchOrder();
       // "Deseja imprimir?" SO aparece com a impressao de contas ligada.
-      if (printSettingsQuery.data?.printBillsEnabled && window.confirm("Deseja imprimir a conta?"))
-        printBillMutation.mutate();
+      if (printSettingsQuery.data?.printBillsEnabled)
+        void dialog
+          .confirm({ title: "Imprimir conta", message: "Deseja imprimir a conta?", confirmLabel: "Imprimir" })
+          .then((ok) => {
+            if (ok) printBillMutation.mutate();
+          });
     },
     onError,
   });
@@ -223,11 +229,13 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                   className="btn-ghost"
                   style={{ minHeight: 36, padding: "0 12px", fontSize: "0.85rem" }}
                   disabled={raiseLimitMutation.isPending}
-                  onClick={() => {
-                    const answer = window.prompt(
-                      "Novo limite da comanda (R$):",
-                      String(order.creditLimitAmount! + 100),
-                    );
+                  onClick={async () => {
+                    const answer = await dialog.prompt({
+                      title: "Liberar limite",
+                      label: "Novo limite da comanda (R$)",
+                      inputMode: "decimal",
+                      defaultValue: String(order.creditLimitAmount! + 100),
+                    });
                     if (answer === null) return;
                     const value = Number(answer.replace(",", "."));
                     if (Number.isFinite(value) && value > 0) raiseLimitMutation.mutate(value);
@@ -286,6 +294,8 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                       </button>
                       <button
                         className="btn-danger"
+                        aria-label={`Cancelar item ${productNameById.get(item.productId) ?? ""}`.trim()}
+                        title="Cancelar item"
                         style={{ minHeight: 38, padding: "0 10px", fontSize: "0.85rem" }}
                         onClick={() =>
                           advanceItem.mutate({ itemId: item.id, statusId: OrderItemStatus.Cancelado })
@@ -348,8 +358,15 @@ export function OrderDrawer({ orderId, onClose }: Props) {
             <button
               className="btn-ghost"
               disabled={reopenMutation.isPending}
-              onClick={() => {
-                if (window.confirm("Reabrir a conta para consumo? A taxa de serviço será recalculada no próximo fechamento."))
+              onClick={async () => {
+                if (
+                  await dialog.confirm({
+                    title: "Reabrir consumo",
+                    message:
+                      "Reabrir a conta para consumo? A taxa de serviço será recalculada no próximo fechamento.",
+                    confirmLabel: "Reabrir",
+                  })
+                )
                   reopenMutation.mutate();
               }}
             >
@@ -361,8 +378,14 @@ export function OrderDrawer({ orderId, onClose }: Props) {
             <button
               className="btn-ghost"
               disabled={removeFeeMutation.isPending}
-              onClick={() => {
-                if (window.confirm("Retirar a taxa de serviço (10%) desta conta?"))
+              onClick={async () => {
+                if (
+                  await dialog.confirm({
+                    title: "Retirar taxa de serviço",
+                    message: "Retirar a taxa de serviço (10%) desta conta?",
+                    confirmLabel: "Retirar 10%",
+                  })
+                )
                   removeFeeMutation.mutate();
               }}
             >
@@ -474,8 +497,16 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                   className="btn-danger"
                   style={{ flex: 1 }}
                   disabled={cancelMutation.isPending}
-                  onClick={() => {
-                    if (window.confirm("Cancelar este pedido? A mesa/comanda será liberada."))
+                  onClick={async () => {
+                    if (
+                      await dialog.confirm({
+                        title: "Cancelar pedido",
+                        message: "Cancelar este pedido? A mesa/comanda será liberada.",
+                        confirmLabel: "Cancelar pedido",
+                        cancelLabel: "Voltar",
+                        danger: true,
+                      })
+                    )
                       cancelMutation.mutate();
                   }}
                 >
