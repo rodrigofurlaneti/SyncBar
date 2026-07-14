@@ -87,16 +87,48 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
         modelBuilder.Entity<Supplier>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
 
-        // TODO (fast-follow): entidades operacionais (DiningTable, Comanda, CustomerOrder, Employee,
-        // StockItem, CashRegister, Printer, Promotion, OperatingCost, RevenueTarget, ComandaSetting,
-        // ServiceFeeSetting) são escopadas por BranchId, não por CompanyId diretamente. Para isolar
-        // essas por tenant, adicione um filtro do tipo:
-        //   modelBuilder.Entity<DiningTable>().HasQueryFilter(e =>
-        //       !_currentTenant!.CompanyId.HasValue ||
-        //       Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-        // Isso não foi aplicado ainda para todas porque exige confirmar, entidade por entidade, qual
-        // propriedade referencia a filial (BranchId vs Table.BranchId etc.) — ver ArchitectureTests
-        // para garantir que nenhuma consulta passe a ignorar filtros sem IgnoreQueryFilters() explícito.
+        // Entidades escopadas por BranchId (não por CompanyId diretamente): filtra via
+        // subquery em Branchs (que já tem seu próprio filtro por CompanyId — EF compõe os dois
+        // como AND, redundante mas correto). Cobre as 16 entidades com BranchId direto.
+        modelBuilder.Entity<DiningTable>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<CustomerOrder>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<TableReservation>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<Employee>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<Purchase>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<ServiceFeeSetting>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<ComandaSetting>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<Sale>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<Printer>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<PrinterSetting>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<Promotion>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<RevenueTarget>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<OperatingCost>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<StockItem>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<Comanda>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<CashRegister>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+
+        // TODO (próximo fast-follow): entidades "netas" da filial — filhas de uma entidade já
+        // filtrada por BranchId, mas sem BranchId próprio (StockMovement via StockItemId,
+        // CashSession/CashMovement via CashRegisterId ou CashSessionId, SalePayment via SaleId,
+        // OrderItem via CustomerOrderId, PurchaseItem via PurchaseId). Essas só ficam 100% isoladas
+        // quando sempre acessadas através do pai já filtrado (Include) — repositórios que
+        // consultam esses DbSets diretamente por Id ainda não têm o filtro em cascata.
     }
 
     public async Task<int> CommitAsync(CancellationToken cancellationToken = default)

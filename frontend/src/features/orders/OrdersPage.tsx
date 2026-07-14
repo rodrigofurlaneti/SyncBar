@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getTablesByBranch } from "../tables/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { generateTableQrToken, getTablesByBranch } from "../tables/api";
 import { getOpenOrdersByBranch } from "./api";
 import { getComandaSetting, getComandasByBranch } from "../comandas/api";
 import { OpenComandaDialog } from "../comandas/OpenComandaDialog";
@@ -9,7 +9,9 @@ import { ComandaStatus, TableStatus, formatBRL } from "../../lib/types";
 import type { ComandaResponse, OrderResponse, TableResponse } from "../../lib/types";
 import { OrderDrawer } from "./OrderDrawer";
 import { OpenOrderDialog } from "./OpenOrderDialog";
+import { OpenDeliveryOrderDialog } from "./OpenDeliveryOrderDialog";
 import { QueryError } from "../../components/QueryError";
+import { Overlay } from "./Overlay";
 
 const statusColor: Record<number, string> = {
   [TableStatus.Livre]: "var(--free)",
@@ -48,6 +50,14 @@ export function OrdersPage() {
   const [openingTable, setOpeningTable] = useState<TableResponse | null>(null);
   const [openingComanda, setOpeningComanda] = useState<ComandaResponse | null>(null);
   const [comandaSearch, setComandaSearch] = useState("");
+  const [qrTable, setQrTable] = useState<TableResponse | null>(null);
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [openingDelivery, setOpeningDelivery] = useState(false);
+
+  const qrMutation = useMutation({
+    mutationFn: (tableId: number) => generateTableQrToken(tableId),
+    onSuccess: (result) => setQrUrl(`${window.location.origin}/pedido/${result.token}`),
+  });
 
   const tablesQuery = useQuery({
     queryKey: ["tables", branchId],
@@ -112,6 +122,17 @@ export function OrdersPage() {
             <span style={{ color: "var(--ink-faint)", fontSize: "0.9rem" }}>
               toque numa mesa livre para abrir um pedido
             </span>
+            <span style={{ flex: 1 }} />
+            <button className="btn-ghost" onClick={() => setOpeningDelivery(true)}>
+              + Retirada / Delivery
+            </button>
+            <button
+              className="btn-ghost"
+              disabled={(tablesQuery.data ?? []).length === 0}
+              onClick={() => { setQrUrl(null); setQrTable(tablesQuery.data?.[0] ?? null); }}
+            >
+              Gerar QR de autoatendimento
+            </button>
           </div>
 
           {tablesQuery.isLoading && <p style={{ color: "var(--ink-dim)" }}>Carregando mesas…</p>}
@@ -260,6 +281,61 @@ export function OrdersPage() {
             refresh();
           }}
         />
+      )}
+
+      {openingDelivery && (
+        <OpenDeliveryOrderDialog
+          onClose={() => setOpeningDelivery(false)}
+          onOpened={(orderId) => {
+            setOpeningDelivery(false);
+            refresh();
+            setSelectedOrderId(orderId);
+          }}
+        />
+      )}
+
+      {qrTable && (
+        <Overlay title="QR Code de autoatendimento" onClose={() => setQrTable(null)}>
+          <label style={{ display: "grid", gap: 4 }}>
+            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Mesa</span>
+            <select
+              value={qrTable.id}
+              onChange={(e) => {
+                const table = (tablesQuery.data ?? []).find((t) => t.id === Number(e.target.value)) ?? null;
+                setQrTable(table);
+                setQrUrl(null);
+              }}
+            >
+              {(tablesQuery.data ?? []).map((t) => (
+                <option key={t.id} value={t.id}>Mesa {t.number}</option>
+              ))}
+            </select>
+          </label>
+
+          {qrMutation.isError && (
+            <p className="error-text">
+              Falha ao gerar o QR Code — confirme que existe um funcionário configurado
+              para autoatendimento em Config. → Filial.
+            </p>
+          )}
+
+          {qrUrl ? (
+            <div style={{ display: "grid", gap: 10, justifyItems: "center" }}>
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrUrl)}`}
+                alt={`QR Code de autoatendimento da mesa ${qrTable.number}`}
+                width={220}
+                height={220}
+                style={{ borderRadius: 8, background: "#fff" }}
+              />
+              <input readOnly value={qrUrl} onFocus={(e) => e.target.select()} style={{ width: "100%" }} />
+            </div>
+          ) : (
+            <button className="btn-primary" disabled={qrMutation.isPending} onClick={() => qrMutation.mutate(qrTable.id)}>
+              {qrMutation.isPending ? "Gerando…" : "Gerar QR Code"}
+            </button>
+          )}
+        </Overlay>
       )}
     </>
   );

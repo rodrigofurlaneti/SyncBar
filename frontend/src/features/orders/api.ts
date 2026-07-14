@@ -8,6 +8,10 @@ export interface OpenOrderPayload {
   employeeId: number;
   guestCount: number | null;
   notes: string | null;
+  orderTypeId?: number;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  deliveryAddress?: string | null;
 }
 
 export const getOrder = (id: number): Promise<OrderResponse> =>

@@ -25,8 +25,17 @@ BEGIN
         CONSTRAINT CK_Customer_LoyaltyPoints CHECK (LoyaltyPoints >= 0),
         CONSTRAINT FK_Customer_Company FOREIGN KEY (CompanyId) REFERENCES dbo.Company(Id)
     );
+END;
+GO
 
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Customer_CompanyId')
+BEGIN
     CREATE INDEX IX_Customer_CompanyId ON dbo.Customer(CompanyId);
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_Customer_Cpf')
+BEGIN
     CREATE UNIQUE INDEX UQ_Customer_Cpf ON dbo.Customer(CompanyId, Cpf) WHERE Cpf IS NOT NULL AND IsActive = 1;
 END;
 GO
@@ -34,7 +43,17 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.CustomerOrder') AND name = 'CustomerId')
 BEGIN
     ALTER TABLE dbo.CustomerOrder ADD CustomerId BIGINT NULL;
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_CustomerOrder_Customer')
+BEGIN
     ALTER TABLE dbo.CustomerOrder ADD CONSTRAINT FK_CustomerOrder_Customer FOREIGN KEY (CustomerId) REFERENCES dbo.Customer(Id);
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CustomerOrder_CustomerId')
+BEGIN
     CREATE INDEX IX_CustomerOrder_CustomerId ON dbo.CustomerOrder(CustomerId);
 END;
 GO

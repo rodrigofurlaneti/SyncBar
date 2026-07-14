@@ -30,8 +30,17 @@ BEGIN
         CONSTRAINT FK_TableReservation_Branch FOREIGN KEY (BranchId) REFERENCES dbo.Branch(Id),
         CONSTRAINT FK_TableReservation_DiningTable FOREIGN KEY (DiningTableId) REFERENCES dbo.DiningTable(Id)
     );
+END;
+GO
 
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TableReservation_BranchId_ReservedFor')
+BEGIN
     CREATE INDEX IX_TableReservation_BranchId_ReservedFor ON dbo.TableReservation(BranchId, ReservedFor);
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_TableReservation_DiningTableId')
+BEGIN
     CREATE INDEX IX_TableReservation_DiningTableId ON dbo.TableReservation(DiningTableId);
 END;
 GO

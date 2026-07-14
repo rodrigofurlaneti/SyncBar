@@ -536,3 +536,109 @@ export interface SessionSaleResponse {
   soldAt: string;
   paymentSummary: string[];
 }
+
+// --- Compras e Fornecedores ---
+
+export interface SupplierResponse {
+  id: number;
+  legalName: string;
+  tradeName: string | null;
+  cnpj: string | null;
+  email: string | null;
+  phone: string | null;
+  isActive: boolean;
+}
+
+export interface PurchaseItemResponse {
+  productId: number;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+export interface PurchaseResponse {
+  id: number;
+  supplierId: number;
+  documentNumber: string | null;
+  purchasedAt: string;
+  totalAmount: number;
+  notes: string | null;
+  items: PurchaseItemResponse[];
+}
+
+// --- Reservas de mesa ---
+
+export const ReservationStatus = {
+  Pending: 1,
+  Confirmed: 2,
+  Cancelled: 3,
+  Seated: 4,
+  NoShow: 5,
+} as const;
+
+export const reservationStatusLabel: Record<number, string> = {
+  1: "Pendente",
+  2: "Confirmada",
+  3: "Cancelada",
+  4: "Sentou",
+  5: "Não veio",
+};
+
+export interface ReservationResponse {
+  id: number;
+  branchId: number;
+  diningTableId: number | null;
+  customerName: string;
+  customerPhone: string | null;
+  partySize: number;
+  reservedFor: string;
+  reservationStatusId: number;
+  notes: string | null;
+}
+
+// --- Clientes / CRM e fidelidade ---
+
+export interface CustomerResponse {
+  id: number;
+  name: string;
+  phone: string | null;
+  cpf: string | null;
+  email: string | null;
+  loyaltyPoints: number;
+  isActive: boolean;
+}
+
+// --- Delivery / retirada ---
+
+export const OrderType = {
+  Mesa: 1,
+  Retirada: 2,
+  Delivery: 3,
+} as const;
+
+export const orderTypeLabel: Record<number, string> = {
+  1: "Mesa",
+  2: "Retirada",
+  3: "Delivery",
+};
+
+// --- Pedido via QR Code (autoatendimento) ---
+
+export interface PublicMenuResponse {
+  branchName: string;
+  tableNumber: number;
+  items: MenuItemResponse[];
+}
+
+// --- Split de conta ---
+
+export interface BillShareResponse {
+  personNumber: number;
+  amount: number;
+}
+
+export interface BillSplitResponse {
+  totalAmount: number;
+  peopleCount: number;
+  shares: BillShareResponse[];
+}

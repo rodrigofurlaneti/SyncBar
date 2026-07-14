@@ -18,6 +18,10 @@ import { PreparationPage } from "./features/preparation/PreparationPage";
 import { CashHistoryPage } from "./features/cash/CashHistoryPage";
 import { PromotionsPage } from "./features/promotions/PromotionsPage";
 import { PrintingPage } from "./features/printing/PrintingPage";
+import { PurchasingPage } from "./features/purchasing/PurchasingPage";
+import { ReservationsPage } from "./features/reservations/ReservationsPage";
+import { CustomersPage } from "./features/customers/CustomersPage";
+import { PublicOrderPage } from "./features/publicOrdering/PublicOrderPage";
 import { FeatureGate, NoAccessPage } from "./features/access/FeatureGate";
 import { useMyFeatures } from "./features/access/hooks";
 
@@ -39,6 +43,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/cadastro" element={<SignupPage />} />
+      <Route path="/pedido/:token" element={<PublicOrderPage />} />
       <Route
         element={
           <RequireAuth>
@@ -58,6 +63,9 @@ export default function App() {
         <Route path="/fechamentos" element={<ManagerGate><CashHistoryPage /></ManagerGate>} />
         <Route path="/promocoes" element={<ManagerGate><PromotionsPage /></ManagerGate>} />
         <Route path="/impressao" element={<ManagerGate><PrintingPage /></ManagerGate>} />
+        <Route path="/compras" element={<FeatureGate code="Estoque"><PurchasingPage /></FeatureGate>} />
+        <Route path="/reservas" element={<FeatureGate code="Salao"><ReservationsPage /></FeatureGate>} />
+        <Route path="/clientes" element={<FeatureGate code="Salao"><CustomersPage /></FeatureGate>} />
         <Route path="/acessos" element={<ManagerGate><AccessPage /></ManagerGate>} />
         <Route path="/configuracoes" element={<ManagerGate><SettingsPage /></ManagerGate>} />
         <Route path="/sem-acesso" element={<NoAccessPage />} />
