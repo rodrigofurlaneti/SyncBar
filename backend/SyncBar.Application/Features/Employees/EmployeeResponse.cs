@@ -11,6 +11,7 @@ public sealed record EmployeeResponse(
     DateTime HiredAt,
     DateTime? DismissedAt,
     decimal? Salary,
+    decimal? CommissionPercent,
     bool IsActive);
 
 public sealed record JobTitleResponse(long Id, string Name);

@@ -12,6 +12,10 @@ internal static class OrderMapping
             partialPaidAmount,
             order.CreditLimitAmount,
             order.Notes,
+            order.OrderTypeId,
+            order.CustomerName,
+            order.CustomerPhone,
+            order.DeliveryAddress,
             order.Items
                 .Where(i => i.IsActive)
                 .Select(i => new OrderItemResponse(

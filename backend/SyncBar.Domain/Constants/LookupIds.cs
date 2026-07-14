@@ -29,6 +29,27 @@ public static class TableStatusIds
     public const long Interditada = 5;
 }
 
+// Não é lookup seedado — coluna TINYINT OrderTypeId (CHECK 1-3 em
+// BarRestaurante_DeliveryRetirada.sql). Mesa continua exigindo DiningTableId/ComandaId;
+// Retirada/Delivery não (ver CustomerOrder.Create).
+public static class OrderTypeIds
+{
+    public const long Mesa = 1;
+    public const long Retirada = 2;
+    public const long Delivery = 3;
+}
+
+// Não é lookup seedado (sem tabela própria) — só uma constante de código para a
+// coluna TINYINT ReservationStatusId (CHECK 1-5 em BarRestaurante_ReservaMesa.sql).
+public static class ReservationStatusIds
+{
+    public const long Pending = 1;
+    public const long Confirmed = 2;
+    public const long Cancelled = 3;
+    public const long Seated = 4;
+    public const long NoShow = 5;
+}
+
 public static class ComandaStatusIds
 {
     public const long Disponivel = 1;

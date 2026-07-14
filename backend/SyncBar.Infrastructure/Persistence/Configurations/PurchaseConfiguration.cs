@@ -24,5 +24,8 @@ internal sealed class PurchaseConfiguration : IEntityTypeConfiguration<Purchase>
         
         builder.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).HasConstraintName("FK_Purchase_Branch").OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Supplier>().WithMany().HasForeignKey(x => x.SupplierId).HasConstraintName("FK_Purchase_Supplier").OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(x => x.Items).WithOne().HasForeignKey(i => i.PurchaseId).HasConstraintName("FK_PurchaseItem_Purchase").OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Items).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

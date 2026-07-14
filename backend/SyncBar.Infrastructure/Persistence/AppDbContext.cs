@@ -39,6 +39,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<Purchase> Purchases => Set<Purchase>();
     public DbSet<PurchaseItem> PurchaseItems => Set<PurchaseItem>();
     public DbSet<DiningTable> DiningTables => Set<DiningTable>();
+    public DbSet<TableReservation> TableReservations => Set<TableReservation>();
+    public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Comanda> Comandas => Set<Comanda>();
     public DbSet<CustomerOrder> CustomerOrders => Set<CustomerOrder>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();

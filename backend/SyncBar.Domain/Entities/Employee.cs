@@ -13,6 +13,8 @@ public sealed class Employee : AggregateRoot
     public DateTime HiredAt { get; private set; }
     public DateTime? DismissedAt { get; private set; }
     public decimal? Salary { get; private set; }
+    // % de comissão sobre vendas (0 a 100) — usado no relatório de comissão por vendedor/garçom.
+    public decimal? CommissionPercent { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public bool IsActive { get; private set; }
@@ -53,6 +55,16 @@ public sealed class Employee : AggregateRoot
         Email = email;
         Phone = phone;
         Salary = salary;
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    public Result SetCommissionPercent(decimal? commissionPercent)
+    {
+        if (commissionPercent is < 0 or > 100)
+            return Result.Failure(new Error("Employee.InvalidCommission", "Commission percent must be between 0 and 100."));
+
+        CommissionPercent = commissionPercent;
         UpdatedAt = DateTime.UtcNow;
         return Result.Success();
     }

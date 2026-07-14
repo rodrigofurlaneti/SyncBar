@@ -44,6 +44,11 @@ internal sealed class CustomerOrderRepository(AppDbContext context) : ICustomerO
         => await context.CustomerOrders.AsNoTracking()
             .AnyAsync(x => x.DiningTableId == diningTableId && x.IsActive && OpenStatuses.Contains(x.OrderStatusId), cancellationToken);
 
+    public async Task<CustomerOrder?> GetOpenByTableForUpdateAsync(long diningTableId, CancellationToken cancellationToken = default)
+        => await context.CustomerOrders
+            .Include(x => x.Items)
+            .FirstOrDefaultAsync(x => x.DiningTableId == diningTableId && x.IsActive && OpenStatuses.Contains(x.OrderStatusId), cancellationToken);
+
     public async Task<bool> HasOpenOrderForComandaAsync(long comandaId, CancellationToken cancellationToken = default)
         => await context.CustomerOrders.AsNoTracking()
             .AnyAsync(x => x.ComandaId == comandaId && x.IsActive && OpenStatuses.Contains(x.OrderStatusId), cancellationToken);

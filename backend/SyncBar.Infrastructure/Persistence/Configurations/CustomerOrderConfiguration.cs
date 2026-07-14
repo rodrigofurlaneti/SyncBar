@@ -19,6 +19,11 @@ internal sealed class CustomerOrderConfiguration : IEntityTypeConfiguration<Cust
         builder.Property(x => x.ServiceFeeAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.CreditLimitAmount).HasColumnType("decimal(18,2)");
+        builder.Property(x => x.OrderTypeId).HasColumnType("tinyint").IsRequired();
+        builder.Property(x => x.CustomerName).HasColumnType("nvarchar(150)");
+        builder.Property(x => x.CustomerPhone).HasColumnType("varchar(20)");
+        builder.Property(x => x.DeliveryAddress).HasColumnType("nvarchar(300)");
+        builder.HasOne<Customer>().WithMany().HasForeignKey(x => x.CustomerId).HasConstraintName("FK_CustomerOrder_Customer").OnDelete(DeleteBehavior.Restrict);
         builder.Property(x => x.Notes).HasColumnType("nvarchar(500)");
         builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
@@ -29,6 +34,7 @@ internal sealed class CustomerOrderConfiguration : IEntityTypeConfiguration<Cust
         builder.HasIndex(x => x.EmployeeId).HasDatabaseName("IX_CustomerOrder_EmployeeId");
         builder.HasIndex(x => x.OrderStatusId).HasDatabaseName("IX_CustomerOrder_OrderStatusId");
         builder.HasIndex(x => x.OpenedAt).HasDatabaseName("IX_CustomerOrder_OpenedAt");
+        builder.HasIndex(x => x.CustomerId).HasDatabaseName("IX_CustomerOrder_CustomerId");
         
         builder.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).HasConstraintName("FK_CustomerOrder_Branch").OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<DiningTable>().WithMany().HasForeignKey(x => x.DiningTableId).HasConstraintName("FK_CustomerOrder_DiningTable").OnDelete(DeleteBehavior.Restrict);

@@ -12,6 +12,15 @@ public sealed class CustomerOrder : AggregateRoot
     public long? ComandaId { get; private set; }
     public long EmployeeId { get; private set; }
     public long OrderStatusId { get; private set; }
+    // Mesa (padrão) exige DiningTableId/ComandaId; Retirada/Delivery não — usam
+    // CustomerName/CustomerPhone/DeliveryAddress no lugar.
+    public long OrderTypeId { get; private set; }
+    public string? CustomerName { get; private set; }
+    public string? CustomerPhone { get; private set; }
+    public string? DeliveryAddress { get; private set; }
+    // Vínculo opcional com o cadastro de cliente (CRM/fidelidade) — pedidos antigos
+    // e pedidos de balcão sem identificação continuam com CustomerId nulo.
+    public long? CustomerId { get; private set; }
     public int? GuestCount { get; private set; }
     public DateTime OpenedAt { get; private set; }
     public DateTime? ClosedAt { get; private set; }
@@ -29,7 +38,7 @@ public sealed class CustomerOrder : AggregateRoot
 
     private CustomerOrder() : base(0) { }
 
-    private CustomerOrder(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes, decimal? creditLimitAmount) : base(0)
+    private CustomerOrder(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes, decimal? creditLimitAmount, long orderTypeId, string? customerName, string? customerPhone, string? deliveryAddress, long? customerId) : base(0)
     {
         CreditLimitAmount = comandaId is null ? null : creditLimitAmount;
         BranchId = branchId;
@@ -38,20 +47,40 @@ public sealed class CustomerOrder : AggregateRoot
         EmployeeId = employeeId;
         GuestCount = guestCount;
         Notes = notes;
+        OrderTypeId = orderTypeId;
+        CustomerName = customerName;
+        CustomerPhone = customerPhone;
+        DeliveryAddress = deliveryAddress;
+        CustomerId = customerId;
         OrderStatusId = OrderStatusIds.Aberto;
         OpenedAt = DateTime.UtcNow;
         IsActive = true;
         CreatedAt = DateTime.UtcNow;
     }
 
-    public static Result<CustomerOrder> Create(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes, decimal? creditLimitAmount = null)
+    public static Result<CustomerOrder> Create(
+        long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes,
+        decimal? creditLimitAmount = null, long orderTypeId = OrderTypeIds.Mesa,
+        string? customerName = null, string? customerPhone = null, string? deliveryAddress = null,
+        long? customerId = null)
     {
-        // Espelha CK_CustomerOrder_Origin: pedido precisa de mesa OU comanda.
-        if (diningTableId is null && comandaId is null)
+        // Espelha CK_CustomerOrder_Origin: pedido de MESA precisa de mesa OU comanda.
+        // Retirada/Delivery não têm mesa/comanda — usam nome/telefone/endereço do cliente.
+        if (orderTypeId == OrderTypeIds.Mesa && diningTableId is null && comandaId is null)
             return Result.Failure<CustomerOrder>(
                 new Error("CustomerOrder.MissingOrigin", "Order must have a dining table or a comanda."));
 
-        return Result.Success(new CustomerOrder(branchId, diningTableId, comandaId, employeeId, guestCount, notes, creditLimitAmount));
+        if (orderTypeId != OrderTypeIds.Mesa && string.IsNullOrWhiteSpace(customerName))
+            return Result.Failure<CustomerOrder>(
+                new Error("CustomerOrder.MissingCustomerName", "Takeaway/delivery orders require a customer name."));
+
+        if (orderTypeId == OrderTypeIds.Delivery && string.IsNullOrWhiteSpace(deliveryAddress))
+            return Result.Failure<CustomerOrder>(
+                new Error("CustomerOrder.MissingDeliveryAddress", "Delivery orders require a delivery address."));
+
+        return Result.Success(new CustomerOrder(
+            branchId, diningTableId, comandaId, employeeId, guestCount, notes, creditLimitAmount,
+            orderTypeId, customerName, customerPhone, deliveryAddress, customerId));
     }
 
     public Result AddItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId)

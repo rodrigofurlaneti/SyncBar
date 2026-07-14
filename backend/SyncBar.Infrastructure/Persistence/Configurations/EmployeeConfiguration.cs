@@ -19,6 +19,7 @@ internal sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.Property(x => x.HiredAt).HasColumnType("datetime2").IsRequired();
         builder.Property(x => x.DismissedAt).HasColumnType("datetime2");
         builder.Property(x => x.Salary).HasColumnType("decimal(18,2)");
+        builder.Property(x => x.CommissionPercent).HasColumnType("decimal(5,2)");
         builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
         

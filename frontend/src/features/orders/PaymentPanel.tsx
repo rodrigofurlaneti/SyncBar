@@ -41,6 +41,7 @@ export function PaymentPanel({ order, onPaid }: Props) {
   ]);
   const [openingAmount, setOpeningAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [splitCount, setSplitCount] = useState("2");
 
   const sessionQuery = useQuery({
     queryKey: ["cash", "open", DEFAULT_CASH_REGISTER_ID],
@@ -104,6 +105,23 @@ export function PaymentPanel({ order, onPaid }: Props) {
   const setRow = (index: number, patch: Partial<PaymentRow>) =>
     setRows((current) => current.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
+  // Divide o valor restante em N partes iguais (em centavos — nunca perde/sobra 1 centavo,
+  // o resto vai para as primeiras pessoas), uma linha de pagamento por pessoa.
+  const applySplit = () => {
+    const people = Math.max(1, Math.trunc(Number(splitCount) || 1));
+    const totalCents = Math.round(amountDue * 100);
+    const baseCents = Math.floor(totalCents / people);
+    const remainder = totalCents % people;
+
+    setRows(
+      Array.from({ length: people }, (_, i) => ({
+        paymentMethodId: PaymentMethod.Dinheiro,
+        amount: ((baseCents + (i < remainder ? 1 : 0)) / 100).toFixed(2).replace(".", ","),
+        authorizationCode: "",
+      })),
+    );
+  };
+
   if (sessionQuery.isLoading)
     return <p style={{ color: "var(--ink-dim)" }}>Verificando caixa…</p>;
 
@@ -153,6 +171,18 @@ export function PaymentPanel({ order, onPaid }: Props) {
           <span style={{ color: "var(--ok)" }}>{formatBRL(order.partialPaidAmount)} já pagos parcialmente</span>.
         </p>
       )}
+
+      <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr auto", alignItems: "center" }}>
+        <input
+          placeholder="Dividir entre quantas pessoas?"
+          inputMode="numeric"
+          value={splitCount}
+          onChange={(e) => setSplitCount(e.target.value)}
+        />
+        <button className="btn-ghost" type="button" onClick={applySplit}>
+          Dividir conta
+        </button>
+      </div>
 
       {rows.map((row, index) => (
         <div key={index} style={{ display: "grid", gap: 8, gridTemplateColumns: "1.3fr 0.8fr auto" }}>

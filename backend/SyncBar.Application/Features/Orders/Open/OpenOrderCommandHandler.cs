@@ -50,7 +50,8 @@ internal sealed class OpenOrderCommandHandler(
 
         var order = CustomerOrder.Create(
             request.BranchId, request.DiningTableId, request.ComandaId,
-            request.EmployeeId, request.GuestCount, request.Notes, creditLimit);
+            request.EmployeeId, request.GuestCount, request.Notes, creditLimit,
+            request.OrderTypeId, request.CustomerName, request.CustomerPhone, request.DeliveryAddress);
         if (order.IsFailure)
             return Result.Failure<long>(order.Error);
 

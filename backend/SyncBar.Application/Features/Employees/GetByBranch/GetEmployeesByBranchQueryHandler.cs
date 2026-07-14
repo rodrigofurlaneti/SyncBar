@@ -16,7 +16,7 @@ internal sealed class GetEmployeesByBranchQueryHandler(IEmployeeRepository emplo
             .OrderBy(e => e.Name)
             .Select(e => new EmployeeResponse(
                 e.Id, e.BranchId, e.JobTitleId, e.Name, e.Cpf, e.Email, e.Phone,
-                e.HiredAt, e.DismissedAt, e.Salary, e.IsActive))
+                e.HiredAt, e.DismissedAt, e.Salary, e.CommissionPercent, e.IsActive))
             .ToList();
 
         return Result.Success(response);

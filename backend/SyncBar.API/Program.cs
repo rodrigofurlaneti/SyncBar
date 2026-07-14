@@ -112,6 +112,18 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
+
+    // Autoatendimento via QR Code: sem login, então mais generoso que "auth" (um cliente
+    // pode lançar vários itens), mas ainda limitado por IP para não virar vetor de abuso.
+    options.AddPolicy("public-ordering", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
 });
 
 builder.Services.AddEndpointsApiExplorer();

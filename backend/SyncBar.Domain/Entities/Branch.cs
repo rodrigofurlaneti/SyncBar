@@ -14,6 +14,10 @@ public sealed class Branch : AggregateRoot
     public string? AddressCity { get; private set; }
     public string? AddressState { get; private set; }
     public string? AddressZipCode { get; private set; }
+    // Funcionário "dono" dos pedidos abertos pelo autoatendimento via QR Code — CustomerOrder.EmployeeId
+    // é obrigatório e o cliente final não tem login, então autoatendimento precisa de um funcionário
+    // configurado (normalmente o gerente ou um usuário "Salão"). Nulo = autoatendimento desativado.
+    public long? SelfServiceEmployeeId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public bool IsActive { get; private set; }
@@ -41,6 +45,12 @@ public sealed class Branch : AggregateRoot
         if (string.IsNullOrWhiteSpace(name))
             return Result.Failure<Branch>(new Error("Branch.EmptyName", "Name is required."));
         return Result.Success(new Branch(companyId, name, cnpj, phone, addressStreet, addressNumber, addressDistrict, addressCity, addressState, addressZipCode));
+    }
+
+    public void SetSelfServiceEmployee(long? employeeId)
+    {
+        SelfServiceEmployeeId = employeeId;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void Touch() => UpdatedAt = DateTime.UtcNow;

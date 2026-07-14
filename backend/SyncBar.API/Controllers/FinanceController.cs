@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Finance.CreateCost;
 using SyncBar.Application.Features.Finance.DeactivateCost;
+using SyncBar.Application.Features.Finance.GetCommissionReport;
 using SyncBar.Application.Features.Finance.GetSalesReport;
 using SyncBar.Application.Features.Finance.GetScenarios;
 using SyncBar.Application.Features.Finance.GetSummary;
@@ -38,6 +39,14 @@ public sealed class FinanceController(IMediator mediator) : ApiController(mediat
     {
         var result = await Mediator.Send(new GetScenariosQuery(
             branchId, year, month, desiredProfit, pessimisticMargin, normalMargin, optimisticMargin), ct);
+        return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+    }
+
+    [HttpGet("commissions/branch/{branchId:long}")]
+    public async Task<IActionResult> GetCommissionReport(
+        long branchId, [FromQuery] DateTime from, [FromQuery] DateTime to, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new GetCommissionReportQuery(branchId, from, to), ct);
         return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
     }
 

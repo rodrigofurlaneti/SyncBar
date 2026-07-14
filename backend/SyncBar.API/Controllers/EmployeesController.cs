@@ -5,6 +5,7 @@ using SyncBar.Application.Features.Employees.Create;
 using SyncBar.Application.Features.Employees.Dismiss;
 using SyncBar.Application.Features.Employees.GetByBranch;
 using SyncBar.Application.Features.Employees.GetJobTitles;
+using SyncBar.Application.Features.Employees.SetCommission;
 using SyncBar.Application.Features.Employees.Update;
 
 namespace SyncBar.API.Controllers;
@@ -52,6 +53,16 @@ public sealed class EmployeesController(IMediator mediator) : ApiController(medi
         var result = await Mediator.Send(new DismissEmployeeCommand(id), ct);
         return result.IsFailure ? HandleFailure(result) : NoContent();
     }
+
+    // Prerrogativa do gerente — define o % de comissão sobre vendas do garçom/vendedor.
+    [Authorize(Roles = "Administrador,Gerente")]
+    [HttpPut("{id:long}/commission")]
+    public async Task<IActionResult> SetCommission(long id, [FromBody] SetCommissionRequest request, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new SetCommissionCommand(id, request.CommissionPercent), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
 }
 
 public sealed record UpdateEmployeeRequest(long JobTitleId, string Name, string? Email, string? Phone, decimal? Salary);
+public sealed record SetCommissionRequest(decimal? CommissionPercent);

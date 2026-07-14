@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuthStore } from "./stores/authStore";
 import { AppShell } from "./components/AppShell";
 import { LoginPage } from "./features/auth/LoginPage";
+import { SignupPage } from "./features/auth/SignupPage";
 import { OrdersPage } from "./features/orders/OrdersPage";
 import { ProductsPage } from "./features/catalog/ProductsPage";
 import { StockPage } from "./features/stock/StockPage";
@@ -37,6 +38,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/cadastro" element={<SignupPage />} />
       <Route
         element={
           <RequireAuth>

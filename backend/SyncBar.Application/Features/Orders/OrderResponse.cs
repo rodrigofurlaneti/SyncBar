@@ -27,4 +27,8 @@ public sealed record OrderResponse(
     decimal PartialPaidAmount,
     decimal? CreditLimitAmount,
     string? Notes,
+    long OrderTypeId,
+    string? CustomerName,
+    string? CustomerPhone,
+    string? DeliveryAddress,
     IReadOnlyCollection<OrderItemResponse> Items);

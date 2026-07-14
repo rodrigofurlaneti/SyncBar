@@ -58,6 +58,12 @@ public static class DependencyInjection
         services.AddScoped<IComandaSettingRepository, ComandaSettingRepository>();
         services.AddScoped<IServiceFeeSettingRepository, ServiceFeeSettingRepository>();
         services.AddScoped<IAccessLogRepository, AccessLogRepository>();
+        services.AddScoped<ISupplierRepository, SupplierRepository>();
+        services.AddScoped<IPurchaseRepository, PurchaseRepository>();
+        services.AddScoped<ICompanyRepository, CompanyRepository>();
+        services.AddScoped<IBranchRepository, BranchRepository>();
+        services.AddScoped<ITableReservationRepository, TableReservationRepository>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
 
         services.AddSingleton<SyncBar.Application.Abstractions.Storage.IImageStorage, LocalImageStorage>();
         services.AddSingleton<IRawPrinterTransport, WindowsRawPrinterTransport>();

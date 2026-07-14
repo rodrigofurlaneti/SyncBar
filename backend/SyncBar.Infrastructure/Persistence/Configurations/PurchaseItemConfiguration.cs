@@ -21,7 +21,8 @@ internal sealed class PurchaseItemConfiguration : IEntityTypeConfiguration<Purch
         builder.HasIndex(x => x.PurchaseId).HasDatabaseName("IX_PurchaseItem_PurchaseId");
         builder.HasIndex(x => x.ProductId).HasDatabaseName("IX_PurchaseItem_ProductId");
         
-        builder.HasOne<Purchase>().WithMany().HasForeignKey(x => x.PurchaseId).HasConstraintName("FK_PurchaseItem_Purchase").OnDelete(DeleteBehavior.Cascade);
+        // Relação com Purchase é declarada em PurchaseConfiguration via HasMany(x => x.Items) —
+        // não duplicar aqui (evita EF criar duas FKs para a mesma coluna PurchaseId).
         builder.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).HasConstraintName("FK_PurchaseItem_Product").OnDelete(DeleteBehavior.Restrict);
     }
 }

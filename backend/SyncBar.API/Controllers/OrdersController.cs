@@ -13,6 +13,7 @@ using SyncBar.Application.Features.Orders.RaiseComandaLimit;
 using SyncBar.Application.Features.Orders.Reopen;
 using SyncBar.Application.Features.Orders.RemoveServiceFee;
 using SyncBar.Application.Features.Orders.ServiceFeeSetting;
+using SyncBar.Application.Features.Orders.SplitBill;
 using SyncBar.Application.Features.Orders.UpdateItemStatus;
 
 namespace SyncBar.API.Controllers;
@@ -115,6 +116,15 @@ public sealed class OrdersController(IMediator mediator) : ApiController(mediato
     {
         var result = await Mediator.Send(command, ct);
         return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+
+    // Divide a conta em N partes iguais (em centavos, sem perder nem sobrar 1 centavo) —
+    // o caixa registra cada parte como um pagamento na mesma venda (RegisterSaleCommand.Payments).
+    [HttpGet("{id:long}/split/{peopleCount:int}")]
+    public async Task<IActionResult> CalculateSplit(long id, int peopleCount, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new CalculateBillSplitQuery(id, peopleCount), ct);
+        return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
     }
 
     [HttpPut("{id:long}/cancel")]

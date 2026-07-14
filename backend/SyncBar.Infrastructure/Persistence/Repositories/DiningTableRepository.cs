@@ -18,6 +18,10 @@ internal sealed class DiningTableRepository(AppDbContext context) : IDiningTable
             .Where(x => x.BranchId == branchId && x.IsActive)
             .ToListAsync(cancellationToken);
 
+    public async Task<DiningTable?> GetByQrTokenAsync(Guid token, CancellationToken cancellationToken = default)
+        => await context.DiningTables.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.QrToken == token && x.IsActive, cancellationToken);
+
     public async Task AddAsync(DiningTable entity, CancellationToken cancellationToken = default)
         => await context.DiningTables.AddAsync(entity, cancellationToken);
 }

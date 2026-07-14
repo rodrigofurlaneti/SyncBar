@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { login } from "./api";
 import { useAuthStore } from "../../stores/authStore";
@@ -98,6 +98,10 @@ export function LoginPage() {
         <button className="btn-primary" type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? "Entrando…" : "Entrar"}
         </button>
+
+        <Link to="/cadastro" style={{ textAlign: "center", color: "var(--ink-dim)", fontSize: "0.85rem" }}>
+          Ainda não tem conta? Cadastre seu bar
+        </Link>
       </form>
     </main>
   );

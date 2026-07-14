@@ -8,6 +8,10 @@ public sealed class DiningTable : AggregateRoot
     public long TableStatusId { get; private set; }
     public int Number { get; private set; }
     public int? Capacity { get; private set; }
+    // Token público (link do QR Code na mesa) — só existe depois de gerado; nulo = QR
+    // ainda não emitido para esta mesa. Nunca reutilizar/prever: é o único "segredo" do
+    // autoatendimento (não há login para o cliente final).
+    public Guid? QrToken { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public bool IsActive { get; private set; }
@@ -34,6 +38,14 @@ public sealed class DiningTable : AggregateRoot
     {
         TableStatusId = tableStatusId;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Gera (ou regenera, se o QR for perdido/comprometido) o token público desta mesa.
+    public Guid GenerateQrToken()
+    {
+        QrToken = Guid.NewGuid();
+        UpdatedAt = DateTime.UtcNow;
+        return QrToken.Value;
     }
 
     public void Touch() => UpdatedAt = DateTime.UtcNow;

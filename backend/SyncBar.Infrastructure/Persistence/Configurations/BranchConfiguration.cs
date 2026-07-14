@@ -25,7 +25,8 @@ internal sealed class BranchConfiguration : IEntityTypeConfiguration<Branch>
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
         
         builder.HasIndex(x => x.CompanyId).HasDatabaseName("IX_Branch_CompanyId");
-        
+
         builder.HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).HasConstraintName("FK_Branch_Company").OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Employee>().WithMany().HasForeignKey(x => x.SelfServiceEmployeeId).HasConstraintName("FK_Branch_SelfServiceEmployee").OnDelete(DeleteBehavior.Restrict);
     }
 }
