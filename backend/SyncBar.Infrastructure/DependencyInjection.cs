@@ -2,12 +2,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SyncBar.Application.Abstractions.Authentication;
+using SyncBar.Application.Abstractions.Tenancy;
 using SyncBar.Domain.Repositories;
 using SyncBar.Infrastructure.Authentication;
+using SyncBar.Infrastructure.Fiscal;
+using SyncBar.Infrastructure.Payments;
 using SyncBar.Infrastructure.Persistence;
 using SyncBar.Infrastructure.Persistence.Repositories;
 using SyncBar.Infrastructure.Printing;
 using SyncBar.Infrastructure.Storage;
+using SyncBar.Infrastructure.Tenancy;
 
 namespace SyncBar.Infrastructure;
 
@@ -16,6 +20,9 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentTenantService, CurrentTenantService>();
+
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
                 sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)));
@@ -60,6 +67,11 @@ public static class DependencyInjection
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IJwtTokenProvider, JwtTokenProvider>();
+
+        // Pagamento (Pix/gateway) e fiscal (NFC-e): implementação fake por padrão —
+        // trocar por um provider real (ex.: MercadoPago, Focus NFe) quando houver credenciais.
+        services.AddScoped<SyncBar.Application.Abstractions.Payments.IPaymentGatewayService, FakePaymentGatewayService>();
+        services.AddScoped<SyncBar.Application.Abstractions.Fiscal.IFiscalDocumentService, FakeFiscalDocumentService>();
 
         return services;
     }

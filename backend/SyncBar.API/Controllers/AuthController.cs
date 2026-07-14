@@ -1,11 +1,13 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SyncBar.Application.Features.Auth.Login;
 using SyncBar.Application.Features.Auth.Refresh;
 
 namespace SyncBar.API.Controllers;
 
+[EnableRateLimiting("auth")]
 public sealed class AuthController(IMediator mediator) : ApiController(mediator)
 {
     [AllowAnonymous]

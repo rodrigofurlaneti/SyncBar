@@ -1,0 +1,52 @@
+# Ambiente completo local/staging — NÃO use estes segredos em produção real.
+# Uso: docker compose up --build
+# Antes de subir em produção: trocar SA_PASSWORD e Jwt__Secret por variáveis de ambiente
+# reais (ex.: via arquivo .env não versionado ou secret manager do provedor de nuvem).
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD:-TrocarEssaSenha!2026}"
+    ports:
+      - "1433:1433"
+    volumes:
+      - syncbar-sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=BarRestauranteDb;User Id=sa;Password=${SA_PASSWORD:-TrocarEssaSenha!2026};TrustServerCertificate=True"
+      Jwt__Secret: "${JWT_SECRET:?defina JWT_SECRET com pelo menos 64 caracteres antes de subir}"
+      Jwt__Issuer: "SyncBar"
+      Jwt__Audience: "SyncBar.Client"
+      Cors__AllowedOrigins__0: "${FRONTEND_ORIGIN:-http://localhost:8081}"
+    ports:
+      - "8080:8080"
+    volumes:
+      - syncbar-uploads:/app/wwwroot/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "8081:80"
+
+volumes:
+  syncbar-sqldata:
+  syncbar-uploads:

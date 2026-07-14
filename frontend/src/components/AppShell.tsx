@@ -19,24 +19,38 @@ export function AppShell() {
   const queryClient = useQueryClient();
   const { userName, branchId, clear } = useAuthStore();
   const [cashOpen, setCashOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const featuresQuery = useMyFeatures();
   const access = featuresQuery.data;
   // Fail-closed: sem resposta de acessos, nenhum link aparece.
   const canSee = (feature: string) =>
     access !== undefined && (access.canManageAccess || access.features.includes(feature));
 
+  const closeNav = () => setNavOpen(false);
+
   return (
     <>
       <header className="topbar">
+        <button
+          type="button"
+          className="nav-toggle"
+          aria-label={navOpen ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={navOpen}
+          aria-controls="topbar-nav"
+          onClick={() => setNavOpen((open) => !open)}
+        >
+          {navOpen ? "✕" : "☰"}
+        </button>
         <span className="brand">
           SYNC<em>BAR</em>
         </span>
-        <nav style={{ display: "flex", gap: 4 }}>
+        <nav id="topbar-nav" className={`topbar-nav${navOpen ? " is-open" : ""}`}>
           {links.filter((link) => canSee(link.feature)).map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
               end={link.to === "/"}
+              onClick={closeNav}
               style={({ isActive }) => ({
                 padding: "8px 14px",
                 borderRadius: 8,
@@ -56,6 +70,7 @@ export function AppShell() {
           {access?.canManageAccess && (
             <NavLink
               to="/configuracoes"
+              onClick={closeNav}
               style={({ isActive }) => ({
                 padding: "8px 14px",
                 borderRadius: 8,
@@ -83,7 +98,9 @@ export function AppShell() {
             Caixa
           </button>
         )}
-        <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>{userName}</span>
+        <span className="topbar-username" style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+          {userName}
+        </span>
         <button
           className="btn-ghost"
           onClick={() => {

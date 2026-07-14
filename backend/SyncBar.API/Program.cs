@@ -1,12 +1,35 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Serilog;
 using SharpGrip.FluentValidation.AutoValidation.Mvc.Extensions;
+using SyncBar.API.Middleware;
 using SyncBar.Application;
 using SyncBar.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// --- Logging estruturado (Serilog): console sempre, arquivo com retenção em prod ---
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .WriteTo.Console();
+
+    if (!context.HostingEnvironment.IsDevelopment())
+    {
+        configuration.WriteTo.File(
+            path: "logs/syncbar-.log",
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 30,
+            shared: true);
+    }
+});
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -40,6 +63,57 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
     SyncBar.API.Authorization.FeatureAuthorizationHandler>();
 
+// --- CORS: origens permitidas vêm de configuração (Cors:AllowedOrigins), nunca "*" com credenciais ---
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? Array.Empty<string>();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Default", policy =>
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+        else if (builder.Environment.IsDevelopment())
+        {
+            // Sem config em dev: libera qualquer origem local (Vite roda em porta variável).
+            policy.SetIsOriginAllowed(origin => new Uri(origin).IsLoopback)
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+    });
+});
+
+// --- Rate limiting: janela fixa global + limite mais rígido em login/refresh (força bruta) ---
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 200,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -65,7 +139,11 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")!,
+        name: "sqlserver",
+        tags: ["ready"]);
 
 var app = builder.Build();
 
@@ -77,6 +155,9 @@ if (!app.Environment.IsDevelopment() &&
     throw new InvalidOperationException(
         "Jwt:Secret está com o valor placeholder. Configure a variável de ambiente Jwt__Secret antes de subir em produção.");
 }
+
+app.UseSerilogRequestLogging();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -90,9 +171,13 @@ else
     app.UseHttpsRedirection();
 }
 app.UseStaticFiles(); // /uploads/products (imagens do cardapio)
+app.UseCors("Default");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
 app.Run();
+
+public partial class Program { } // exposto para testes de integração (WebApplicationFactory)

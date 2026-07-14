@@ -1,12 +1,17 @@
 using Microsoft.EntityFrameworkCore;
+using SyncBar.Application.Abstractions.Tenancy;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Infrastructure.Persistence;
 
-public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenantService? currentTenant = null)
     : DbContext(options), IUnitOfWork
 {
+    // ICurrentTenantService é opcional para não quebrar cenários sem DI (design-time/migrations).
+    // Fora de uma requisição HTTP autenticada, CompanyId é null e os filtros abaixo não restringem nada —
+    // é responsabilidade de quem chama fora do pipeline HTTP (jobs, seeds) ter certeza do escopo.
+    private readonly ICurrentTenantService? _currentTenant = currentTenant;
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<Branch> Branchs => Set<Branch>();
     public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
@@ -58,7 +63,39 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AppUserFeature> AppUserFeatures => Set<AppUserFeature>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
-        => modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+    {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // --- Isolamento multi-tenant (SaaS) ---
+        // Entidades que carregam CompanyId diretamente: filtradas por igualdade simples.
+        // Quando _currentTenant é null (sem HTTP context) ou CompanyId é null (sem usuário autenticado),
+        // o filtro vira "true" e não restringe — use IgnoreQueryFilters() conscientemente em jobs internos.
+        modelBuilder.Entity<Branch>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
+        modelBuilder.Entity<AppUser>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
+        modelBuilder.Entity<Category>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
+        modelBuilder.Entity<JobTitle>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
+        modelBuilder.Entity<Product>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
+        modelBuilder.Entity<Role>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
+        modelBuilder.Entity<Supplier>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
+
+        // TODO (fast-follow): entidades operacionais (DiningTable, Comanda, CustomerOrder, Employee,
+        // StockItem, CashRegister, Printer, Promotion, OperatingCost, RevenueTarget, ComandaSetting,
+        // ServiceFeeSetting) são escopadas por BranchId, não por CompanyId diretamente. Para isolar
+        // essas por tenant, adicione um filtro do tipo:
+        //   modelBuilder.Entity<DiningTable>().HasQueryFilter(e =>
+        //       !_currentTenant!.CompanyId.HasValue ||
+        //       Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        // Isso não foi aplicado ainda para todas porque exige confirmar, entidade por entidade, qual
+        // propriedade referencia a filial (BranchId vs Table.BranchId etc.) — ver ArchitectureTests
+        // para garantir que nenhuma consulta passe a ignorar filtros sem IgnoreQueryFilters() explícito.
+    }
 
     public async Task<int> CommitAsync(CancellationToken cancellationToken = default)
         => await SaveChangesAsync(cancellationToken);
