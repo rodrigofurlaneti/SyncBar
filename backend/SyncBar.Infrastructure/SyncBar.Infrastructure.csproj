@@ -12,7 +12,12 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.5" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Necessário para IHttpContextAccessor/AddHttpContextAccessor (CurrentTenantService lê o
+         usuário autenticado). Essas APIs vivem no shared framework do ASP.NET Core, não em um
+         pacote NuGet isolado — por isso a referência é via FrameworkReference, não PackageReference. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SyncBar.Domain\SyncBar.Domain.csproj" />
