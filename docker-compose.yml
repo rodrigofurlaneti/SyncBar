@@ -21,7 +21,7 @@ services:
 
   api:
     build:
-      context: ./backend
+      context: ./backend/src
       dockerfile: Dockerfile
     depends_on:
       sqlserver:

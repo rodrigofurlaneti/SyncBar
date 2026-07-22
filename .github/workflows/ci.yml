@@ -1,18 +1,30 @@
 name: CI
 
+# Roda em pushes e pull requests para as branches principais (e permite disparo manual).
 on:
   push:
     branches: [main, master, develop]
   pull_request:
     branches: [main, master, develop]
+  workflow_dispatch:
+
+# Cancela execucoes antigas do mesmo branch/PR quando um novo push chega.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
 
 jobs:
   backend:
-    name: Backend — build + testes
+    name: Backend — build + testes (.NET 9)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: backend/src
     steps:
       - uses: actions/checkout@v4
 
@@ -35,13 +47,13 @@ jobs:
         run: dotnet build SyncBar.sln --no-restore --configuration Release -warnaserror
 
       - name: Testes unitários
-        run: dotnet test SyncBar.Tests --no-build --configuration Release --logger "trx;LogFileName=unit.trx"
+        run: dotnet test ../test/SyncBar.Tests --no-build --configuration Release --logger "trx;LogFileName=unit.trx"
 
       - name: Testes de arquitetura
-        run: dotnet test SyncBar.ArchTests --no-build --configuration Release --logger "trx;LogFileName=arch.trx"
+        run: dotnet test ../test/SyncBar.ArchTests --no-build --configuration Release --logger "trx;LogFileName=arch.trx"
 
       - name: Testes BDD (Specs)
-        run: dotnet test SyncBar.Specs --no-build --configuration Release --logger "trx;LogFileName=specs.trx"
+        run: dotnet test ../test/SyncBar.Specs --no-build --configuration Release --logger "trx;LogFileName=specs.trx"
 
       - name: Publicar resultados dos testes
         if: always()
@@ -49,6 +61,7 @@ jobs:
         with:
           name: test-results
           path: backend/**/TestResults/*.trx
+          if-no-files-found: warn
 
   frontend:
     name: Frontend — typecheck + build
@@ -82,8 +95,8 @@ jobs:
       - name: Build imagem da API
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
+          context: ./backend/src
+          file: ./backend/src/Dockerfile
           push: false
           tags: syncbar-api:ci
 

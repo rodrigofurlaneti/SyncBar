@@ -13,9 +13,9 @@
     <PackageReference Include="NetArchTest.Rules" Version="1.3.2" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SyncBar.Domain\SyncBar.Domain.csproj" />
-    <ProjectReference Include="..\SyncBar.Application\SyncBar.Application.csproj" />
-    <ProjectReference Include="..\SyncBar.Infrastructure\SyncBar.Infrastructure.csproj" />
-    <ProjectReference Include="..\SyncBar.API\SyncBar.API.csproj" />
+    <ProjectReference Include="..\..\src\SyncBar.Domain\SyncBar.Domain.csproj" />
+    <ProjectReference Include="..\..\src\SyncBar.Application\SyncBar.Application.csproj" />
+    <ProjectReference Include="..\..\src\SyncBar.Infrastructure\SyncBar.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\SyncBar.API\SyncBar.API.csproj" />
   </ItemGroup>
 </Project>
