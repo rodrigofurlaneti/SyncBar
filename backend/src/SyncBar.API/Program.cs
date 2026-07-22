@@ -159,13 +159,17 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// Em producao, o segredo JWT NAO pode ser o placeholder do appsettings —
-// defina a variavel de ambiente Jwt__Secret.
-if (!app.Environment.IsDevelopment() &&
-    (builder.Configuration["Jwt:Secret"] ?? "").Contains("TROCAR", StringComparison.OrdinalIgnoreCase))
+// O segredo JWT é validado igualmente em TODOS os ambientes (Development, Staging,
+// Production): precisa existir, não pode ser o placeholder ("TROCAR") e deve ter
+// tamanho mínimo — HS256 exige uma chave de pelo menos 32 bytes (256 bits).
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "";
+if (string.IsNullOrWhiteSpace(jwtSecret) ||
+    jwtSecret.Contains("TROCAR", StringComparison.OrdinalIgnoreCase) ||
+    jwtSecret.Length < 32)
 {
     throw new InvalidOperationException(
-        "Jwt:Secret está com o valor placeholder. Configure a variável de ambiente Jwt__Secret antes de subir em produção.");
+        "Jwt:Secret inválido. Defina Jwt__Secret com um segredo real " +
+        "(mínimo 32 caracteres, recomendado 64) antes de iniciar a aplicação.");
 }
 
 app.UseSerilogRequestLogging();
