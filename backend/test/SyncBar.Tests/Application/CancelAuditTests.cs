@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using NSubstitute;
 using SyncBar.Application.Features.Orders.UpdateItemStatus;
 using SyncBar.Domain.Constants;
@@ -12,16 +12,18 @@ public sealed class CancelAuditTests
 {
     private readonly ICustomerOrderRepository _orderRepository = Substitute.For<ICustomerOrderRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
 
     private UpdateOrderItemStatusCommandHandler CreateHandler()
-        => new(_orderRepository, _unitOfWork);
+        => new(_orderRepository, _unitOfWork, _timeProvider);
 
     private static CustomerOrder OrderWithSentItem()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
-        order.AddItem(1, 30m, 1, null, null);
+        var now = DateTime.UtcNow;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
+        order.AddItem(1, 30m, 1, null, null, now);
         var item = order.Items.First();
-        order.UpdateItemStatus(item.Id, OrderItemStatusIds.EnviadoCozinha);
+        order.UpdateItemStatus(item.Id, OrderItemStatusIds.EnviadoCozinha, now);
         return order;
     }
 
@@ -58,8 +60,9 @@ public sealed class CancelAuditTests
     public async Task CancelFreshItem_AsWaiter_ShouldSucceed()
     {
         // Item ainda Lancado (nao foi para a cozinha) — garcom corrige na hora.
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
-        order.AddItem(1, 30m, 1, null, null);
+        var now = DateTime.UtcNow;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
+        order.AddItem(1, 30m, 1, null, null, now);
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
 
         var result = await CreateHandler().Handle(new UpdateOrderItemStatusCommand(

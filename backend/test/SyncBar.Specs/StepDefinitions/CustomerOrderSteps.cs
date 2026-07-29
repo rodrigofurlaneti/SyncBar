@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Reqnroll;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
@@ -14,30 +14,30 @@ public sealed class CustomerOrderSteps
 
     [When(@"I open an order without a table and without a comanda")]
     public void WhenIOpenAnOrderWithoutTableAndComanda()
-        => _createResult = CustomerOrder.Create(1, null, null, 1, null, null);
+        => _createResult = CustomerOrder.Create(1, null, null, 1, null, null, DateTime.UtcNow);
 
     [When(@"I open an order for table (.*)")]
     public void WhenIOpenAnOrderForTable(long tableId)
     {
-        _createResult = CustomerOrder.Create(1, tableId, null, 1, null, null);
+        _createResult = CustomerOrder.Create(1, tableId, null, 1, null, null, DateTime.UtcNow);
         _order = _createResult.IsSuccess ? _createResult.Value : null;
     }
 
     [Given(@"an open order for table (.*)")]
     public void GivenAnOpenOrderForTable(long tableId)
-        => _order = CustomerOrder.Create(1, tableId, null, 1, null, null).Value;
+        => _order = CustomerOrder.Create(1, tableId, null, 1, null, null, DateTime.UtcNow).Value;
 
     [Given(@"the order has (.*) unit of a product priced at (.*)")]
     public void GivenTheOrderHasUnits(decimal quantity, decimal price)
-        => _order!.AddItem(1, price, quantity, null, null);
+        => _order!.AddItem(1, price, quantity, null, null, DateTime.UtcNow);
 
     [When(@"I add (.*) units of a product priced at (.*)")]
     public void WhenIAddUnits(decimal quantity, decimal price)
-        => _order!.AddItem(1, price, quantity, null, null);
+        => _order!.AddItem(1, price, quantity, null, null, DateTime.UtcNow);
 
     [When(@"I close the order with a service fee of (.*) percent")]
     public void WhenICloseTheOrder(decimal percent)
-        => _order!.Close(percent / 100m);
+        => _order!.Close(percent / 100m, DateTime.UtcNow);
 
     [Then(@"the order creation should fail with error ""(.*)""")]
     public void ThenTheOrderCreationShouldFail(string errorCode)

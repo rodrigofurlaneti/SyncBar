@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
@@ -6,7 +6,8 @@ namespace SyncBar.Application.Features.Orders.UpdateItemStatus;
 
 internal sealed class UpdateOrderItemStatusCommandHandler(
     ICustomerOrderRepository orderRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider) 
     : ICommandHandler<UpdateOrderItemStatusCommand>
 {
     public async Task<Result> Handle(UpdateOrderItemStatusCommand request, CancellationToken cancellationToken)
@@ -24,7 +25,11 @@ internal sealed class UpdateOrderItemStatusCommandHandler(
                     "Item já enviado à cozinha — somente o gerente pode cancelar."));
         }
 
-        var result = order.UpdateItemStatus(request.OrderItemId, request.OrderItemStatusId, request.ActorEmployeeId);
+        // 2. CAPTURA A HORA ATUAL DO TIMEPROVIDER
+        var currentTime = timeProvider.GetLocalNow().DateTime;
+
+        // 3. PASSA NA ORDEM CORRETA: ID do Item, Status, Data/Hora, e por fim o Funcionário
+        var result = order.UpdateItemStatus(request.OrderItemId, request.OrderItemStatusId, currentTime, request.ActorEmployeeId);
         if (result.IsFailure)
             return result;
 

@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using Xunit;
@@ -7,10 +7,12 @@ namespace SyncBar.Tests.Domain;
 
 public sealed class CustomerOrderTests
 {
+    private readonly DateTime _now = DateTime.UtcNow;
+
     [Fact]
     public void Create_WithoutTableAndComanda_ShouldFail()
     {
-        var result = CustomerOrder.Create(1, null, null, 1, null, null);
+        var result = CustomerOrder.Create(1, null, null, 1, null, null, _now);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("CustomerOrder.MissingOrigin");
@@ -19,7 +21,7 @@ public sealed class CustomerOrderTests
     [Fact]
     public void Create_WithTable_ShouldOpenWithStatusAberto()
     {
-        var result = CustomerOrder.Create(1, 10, null, 1, 4, null);
+        var result = CustomerOrder.Create(1, 10, null, 1, 4, null, _now);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.OrderStatusId.Should().Be(OrderStatusIds.Aberto);
@@ -29,9 +31,9 @@ public sealed class CustomerOrderTests
     [Fact]
     public void AddItem_ShouldFreezeUnitPriceAndRecalculateTotals()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now).Value;
 
-        var result = order.AddItem(productId: 5, unitPrice: 14.90m, quantity: 2, notes: null, employeeId: null);
+        var result = order.AddItem(productId: 5, unitPrice: 14.90m, quantity: 2, notes: null, employeeId: null, utcNow: _now);
 
         result.IsSuccess.Should().BeTrue();
         order.Items.Should().HaveCount(1);
@@ -44,9 +46,9 @@ public sealed class CustomerOrderTests
     [Fact]
     public void AddItem_WithZeroQuantity_ShouldFail()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now).Value;
 
-        var result = order.AddItem(5, 10m, 0, null, null);
+        var result = order.AddItem(5, 10m, 0, null, null, _now);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("CustomerOrder.InvalidQuantity");
@@ -55,10 +57,10 @@ public sealed class CustomerOrderTests
     [Fact]
     public void ApplyDiscount_GreaterThanSubtotal_ShouldFail()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
-        order.AddItem(5, 10m, 1, null, null);
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now).Value;
+        order.AddItem(5, 10m, 1, null, null, _now);
 
-        var result = order.ApplyDiscount(50m);
+        var result = order.ApplyDiscount(50m, _now);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("CustomerOrder.DiscountExceedsSubtotal");
@@ -67,10 +69,10 @@ public sealed class CustomerOrderTests
     [Fact]
     public void Close_ShouldApplyServiceFeeAndSetAwaitingPayment()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
-        order.AddItem(5, 100m, 1, null, null);
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now).Value;
+        order.AddItem(5, 100m, 1, null, null, _now);
 
-        var result = order.Close(serviceFeeRate: 0.10m);
+        var result = order.Close(serviceFeeRate: 0.10m, utcNow: _now);
 
         result.IsSuccess.Should().BeTrue();
         order.ServiceFeeAmount.Should().Be(10m);
@@ -81,9 +83,9 @@ public sealed class CustomerOrderTests
     [Fact]
     public void Close_WithoutItems_ShouldFail()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now).Value;
 
-        var result = order.Close(0.10m);
+        var result = order.Close(0.10m, _now);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("CustomerOrder.NoItems");
@@ -93,10 +95,10 @@ public sealed class CustomerOrderTests
     public void AddItem_BeyondComandaLimit_ShouldBeBlocked()
     {
         // Comanda com limite de 150: 100 ja consumidos, item de 60 estoura → bloqueia.
-        var order = CustomerOrder.Create(1, null, 37, 1, null, null, creditLimitAmount: 150m).Value;
-        order.AddItem(1, 100m, 1, null, null);
+        var order = CustomerOrder.Create(1, null, 37, 1, null, null, _now, creditLimitAmount: 150m).Value;
+        order.AddItem(1, 100m, 1, null, null, _now);
 
-        var result = order.AddItem(2, 60m, 1, null, null);
+        var result = order.AddItem(2, 60m, 1, null, null, _now);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Comanda.LimitExceeded");
@@ -106,11 +108,11 @@ public sealed class CustomerOrderTests
     [Fact]
     public void AddItem_AfterManagerRaisesLimit_ShouldSucceed()
     {
-        var order = CustomerOrder.Create(1, null, 37, 1, null, null, creditLimitAmount: 150m).Value;
-        order.AddItem(1, 100m, 1, null, null);
+        var order = CustomerOrder.Create(1, null, 37, 1, null, null, _now, creditLimitAmount: 150m).Value;
+        order.AddItem(1, 100m, 1, null, null, _now);
 
-        order.RaiseCreditLimit(250m).IsSuccess.Should().BeTrue();
-        var result = order.AddItem(2, 60m, 1, null, null);
+        order.RaiseCreditLimit(250m, _now).IsSuccess.Should().BeTrue();
+        var result = order.AddItem(2, 60m, 1, null, null, _now);
 
         result.IsSuccess.Should().BeTrue();
         order.TotalAmount.Should().Be(160m);
@@ -119,9 +121,9 @@ public sealed class CustomerOrderTests
     [Fact]
     public void RaiseCreditLimit_OnTableOrder_ShouldFail()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now).Value;
 
-        var result = order.RaiseCreditLimit(500m);
+        var result = order.RaiseCreditLimit(500m, _now);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Comanda.LimitTableOrder");
@@ -131,20 +133,20 @@ public sealed class CustomerOrderTests
     public void TableOrder_ShouldHaveNoLimit()
     {
         // Mesa nao tem limite mesmo que um valor seja passado.
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null, creditLimitAmount: 150m).Value;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now, creditLimitAmount: 150m).Value;
         order.CreditLimitAmount.Should().BeNull();
 
-        order.AddItem(1, 999m, 1, null, null).IsSuccess.Should().BeTrue();
+        order.AddItem(1, 999m, 1, null, null, _now).IsSuccess.Should().BeTrue();
     }
 
     [Fact]
     public void RemoveServiceFee_AfterClose_ShouldZeroFeeAndRecalculate()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
-        order.AddItem(5, 100m, 1, null, null);
-        order.Close(0.10m); // total 110
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now).Value;
+        order.AddItem(5, 100m, 1, null, null, _now);
+        order.Close(0.10m, _now); // total 110
 
-        var result = order.RemoveServiceFee();
+        var result = order.RemoveServiceFee(_now);
 
         result.IsSuccess.Should().BeTrue();
         order.ServiceFeeAmount.Should().Be(0m);
@@ -155,10 +157,10 @@ public sealed class CustomerOrderTests
     [Fact]
     public void RemoveServiceFee_BeforeClose_ShouldFail()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
-        order.AddItem(5, 100m, 1, null, null);
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now).Value;
+        order.AddItem(5, 100m, 1, null, null, _now);
 
-        var result = order.RemoveServiceFee();
+        var result = order.RemoveServiceFee(_now);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("CustomerOrder.NotAwaitingPayment");
@@ -167,12 +169,12 @@ public sealed class CustomerOrderTests
     [Fact]
     public void RemoveServiceFee_Twice_ShouldFail()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
-        order.AddItem(5, 100m, 1, null, null);
-        order.Close(0.10m);
-        order.RemoveServiceFee();
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now).Value;
+        order.AddItem(5, 100m, 1, null, null, _now);
+        order.Close(0.10m, _now);
+        order.RemoveServiceFee(_now);
 
-        var result = order.RemoveServiceFee();
+        var result = order.RemoveServiceFee(_now);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("CustomerOrder.NoServiceFee");
@@ -181,12 +183,12 @@ public sealed class CustomerOrderTests
     [Fact]
     public void Cancel_PaidOrder_ShouldFail()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
-        order.AddItem(5, 100m, 1, null, null);
-        order.Close(0.10m);
-        order.MarkAsPaid();
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now).Value;
+        order.AddItem(5, 100m, 1, null, null, _now);
+        order.Close(0.10m, _now);
+        order.MarkAsPaid(_now);
 
-        var result = order.Cancel();
+        var result = order.Cancel(_now);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("CustomerOrder.AlreadyPaid");

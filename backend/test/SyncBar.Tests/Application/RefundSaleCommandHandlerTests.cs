@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using NSubstitute;
 using SyncBar.Application.Features.Billing.RefundSale;
 using SyncBar.Domain.Constants;
@@ -17,17 +17,19 @@ public sealed class RefundSaleCommandHandlerTests
     private readonly IDiningTableRepository _diningTableRepository = Substitute.For<IDiningTableRepository>();
     private readonly IComandaRepository _comandaRepository = Substitute.For<IComandaRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
 
     private RefundSaleCommandHandler CreateHandler()
         => new(_saleRepository, _orderRepository, _cashSessionRepository, _cashMovementRepository,
-            _diningTableRepository, _comandaRepository, _unitOfWork);
+            _diningTableRepository, _comandaRepository, _unitOfWork, _timeProvider);
 
     private static (Sale sale, CustomerOrder order) PaidScenario()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
-        order.AddItem(1, 100m, 1, null, null);
-        order.Close(0.10m);
-        order.MarkAsPaid();
+        var now = DateTime.UtcNow;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
+        order.AddItem(1, 100m, 1, null, null, now);
+        order.Close(0.10m, now);
+        order.MarkAsPaid(now);
         var sale = Sale.Create(1, 1, 7, 1, 5, 100m, 0m, 10m).Value;
         return (sale, order);
     }

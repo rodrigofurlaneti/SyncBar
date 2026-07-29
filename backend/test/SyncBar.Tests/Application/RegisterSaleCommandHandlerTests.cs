@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using NSubstitute;
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Application.Features.Billing.RegisterSale;
@@ -22,16 +22,18 @@ public sealed class RegisterSaleCommandHandlerTests
     private readonly IOrderPartialPaymentRepository _partialRepository = Substitute.For<IOrderPartialPaymentRepository>();
     private readonly IPrintingService _printingService = Substitute.For<IPrintingService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
 
     private RegisterSaleCommandHandler CreateHandler()
         => new(_orderRepository, _saleRepository, _cashSessionRepository, _diningTableRepository,
-            _comandaRepository, _productRepository, _stockItemRepository, _stockMovementRepository, _partialRepository, _printingService, _unitOfWork);
+            _comandaRepository, _productRepository, _stockItemRepository, _stockMovementRepository, _partialRepository, _printingService, _unitOfWork, _timeProvider);
 
     private static CustomerOrder ClosedOrder(decimal price = 100m)
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
-        order.AddItem(5, price, 1, null, null);
-        order.Close(0.10m);
+        var now = DateTime.UtcNow;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
+        order.AddItem(5, price, 1, null, null, now);
+        order.Close(0.10m, now);
         return order;
     }
 
@@ -135,7 +137,8 @@ public sealed class RegisterSaleCommandHandlerTests
     [Fact]
     public async Task Handle_WithOrderNotClosed_ShouldFail()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value; // Aberto
+        var now = DateTime.UtcNow;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value; // Aberto
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
 
         var result = await CreateHandler().Handle(

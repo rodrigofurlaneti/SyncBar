@@ -1,5 +1,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
+VisualStudioVersion = 17.14.37411.7 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncBar.Domain", "SyncBar.Domain\SyncBar.Domain.csproj", "{F2C46EC0-EE38-4BBB-B4CC-55AB1C2C73A8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncBar.Application", "SyncBar.Application\SyncBar.Application.csproj", "{AC33DB1E-780B-4961-8469-FFC88101184D}"
@@ -13,6 +15,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncBar.Specs", "..\test\SyncBar.Specs\SyncBar.Specs.csproj", "{FA0E2BCF-8D4B-4CDA-B4DE-2CD9B52E0BE5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyncBar.ArchTests", "..\test\SyncBar.ArchTests\SyncBar.ArchTests.csproj", "{84336333-6C1D-4B6B-887F-05E9728D8AEB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Source", "Source", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{2483618D-60BA-4264-91D6-16BB0BD7358B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -48,5 +54,17 @@ Global
 		{84336333-6C1D-4B6B-887F-05E9728D8AEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{84336333-6C1D-4B6B-887F-05E9728D8AEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{84336333-6C1D-4B6B-887F-05E9728D8AEB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F2C46EC0-EE38-4BBB-B4CC-55AB1C2C73A8} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{AC33DB1E-780B-4961-8469-FFC88101184D} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{440A65CE-B75E-44BE-92D6-DE3DC6CDB91B} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{49E247BF-91F9-46D8-9AF7-1E100561BC1B} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{D85EC999-3016-4161-A84B-0F1F7F2D03A2} = {2483618D-60BA-4264-91D6-16BB0BD7358B}
+		{FA0E2BCF-8D4B-4CDA-B4DE-2CD9B52E0BE5} = {2483618D-60BA-4264-91D6-16BB0BD7358B}
+		{84336333-6C1D-4B6B-887F-05E9728D8AEB} = {2483618D-60BA-4264-91D6-16BB0BD7358B}
 	EndGlobalSection
 EndGlobal

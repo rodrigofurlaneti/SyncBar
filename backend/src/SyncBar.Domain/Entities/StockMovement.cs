@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -21,7 +21,18 @@ public sealed class StockMovement : Entity
 
     private StockMovement() : base(0) { }
 
-    private StockMovement(long stockItemId, long stockMovementTypeId, long? purchaseItemId, long? orderItemId, long? employeeId, decimal quantity, decimal? unitCost, decimal? totalCost, string? documentNumber, DateTime movedAt, string? notes) : base(0)
+    private StockMovement(
+            long stockItemId,
+            long stockMovementTypeId,
+            long? purchaseItemId,
+            long? orderItemId,
+            long? employeeId, 
+            decimal quantity,
+            decimal? unitCost,
+            decimal? totalCost,
+            string? documentNumber,
+            DateTime movedAt,
+            string? notes) : base(0)
     {
         StockItemId = stockItemId;
         StockMovementTypeId = stockMovementTypeId;
@@ -38,10 +49,31 @@ public sealed class StockMovement : Entity
         CreatedAt = DateTime.UtcNow;
     }
 
-    public static Result<StockMovement> Create(long stockItemId, long stockMovementTypeId, long? purchaseItemId, long? orderItemId, long? employeeId, decimal quantity, decimal? unitCost, decimal? totalCost, string? documentNumber, DateTime movedAt, string? notes)
+    public static Result<StockMovement> Create(
+        long stockItemId,
+        long stockMovementTypeId,
+        long? purchaseItemId,
+        long? orderItemId,
+        long? employeeId, 
+        decimal quantity,
+        decimal? unitCost,
+        decimal? totalCost,
+        string? documentNumber,
+        DateTime movedAt,
+        string? notes)
     {
-        // No required-string invariants for this entity.
-        return Result.Success(new StockMovement(stockItemId, stockMovementTypeId, purchaseItemId, orderItemId, employeeId, quantity, unitCost, totalCost, documentNumber, movedAt, notes));
+        return Result.Success(new StockMovement(
+            stockItemId, 
+            stockMovementTypeId, 
+            purchaseItemId, 
+            orderItemId,
+            employeeId, 
+            quantity, 
+            unitCost, 
+            totalCost, 
+            documentNumber, 
+            movedAt, 
+            notes));
     }
 
     public void Touch() => UpdatedAt = DateTime.UtcNow;

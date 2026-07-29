@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -8,7 +8,8 @@ namespace SyncBar.Application.Features.Orders.Reopen;
 internal sealed class ReopenOrderCommandHandler(
     ICustomerOrderRepository orderRepository,
     IDiningTableRepository diningTableRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider)
     : ICommandHandler<ReopenOrderCommand>
 {
     public async Task<Result> Handle(ReopenOrderCommand request, CancellationToken cancellationToken)
@@ -17,8 +18,9 @@ internal sealed class ReopenOrderCommandHandler(
         if (order is null || !order.IsActive)
             return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-        // Fechou a conta por engano: volta a EmAndamento (taxa recalcula no proximo fechamento).
-        var result = order.ReopenForConsumption();
+        var currentTime = timeProvider.GetLocalNow().DateTime;
+
+        var result = order.ReopenForConsumption(currentTime);
         if (result.IsFailure)
             return result;
 

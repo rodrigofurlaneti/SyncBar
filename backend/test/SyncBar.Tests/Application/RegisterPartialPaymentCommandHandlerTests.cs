@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using NSubstitute;
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Application.Features.Billing.RegisterPartialPayment;
@@ -17,13 +17,15 @@ public sealed class RegisterPartialPaymentCommandHandlerTests
     private readonly IPrintingService _printingService = Substitute.For<IPrintingService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
+    // Removido o _timeProvider daqui para corresponder exatamente ao construtor de 5 argumentos do Handler
     private RegisterPartialPaymentCommandHandler CreateHandler()
         => new(_orderRepository, _cashSessionRepository, _partialRepository, _printingService, _unitOfWork);
 
     private static CustomerOrder TableOrder(decimal itemPrice = 245m)
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, 4, null).Value;
-        order.AddItem(1, itemPrice, 1, null, null);
+        var now = DateTime.UtcNow;
+        var order = CustomerOrder.Create(1, 10, null, 1, 4, null, now).Value;
+        order.AddItem(1, itemPrice, 1, null, null, now);
         return order;
     }
 
@@ -51,7 +53,8 @@ public sealed class RegisterPartialPaymentCommandHandlerTests
     [Fact]
     public async Task Handle_ComandaOrder_ShouldFail()
     {
-        var comandaOrder = CustomerOrder.Create(1, null, 37, 1, null, null).Value;
+        var now = DateTime.UtcNow;
+        var comandaOrder = CustomerOrder.Create(1, null, 37, 1, null, null, now).Value;
         _orderRepository.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(comandaOrder);
 
         var result = await CreateHandler().Handle(new RegisterPartialPaymentCommand(

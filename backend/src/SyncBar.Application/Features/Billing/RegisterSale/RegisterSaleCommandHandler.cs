@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
@@ -18,12 +18,12 @@ internal sealed class RegisterSaleCommandHandler(
     IStockMovementRepository stockMovementRepository,
     IOrderPartialPaymentRepository partialPaymentRepository,
     IPrintingService printingService,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider)
     : ICommandHandler<RegisterSaleCommand, long>
 {
     public async Task<Result<long>> Handle(RegisterSaleCommand request, CancellationToken cancellationToken)
     {
-        // 1. Pedido precisa existir e estar aguardando pagamento (conta fechada).
         var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
         if (order is null || !order.IsActive)
             return Result.Failure<long>(new Error("CustomerOrder.NotFound", "Order not found."));
@@ -31,16 +31,13 @@ internal sealed class RegisterSaleCommandHandler(
             return Result.Failure<long>(new Error("Sale.OrderNotAwaitingPayment",
                 "Close the order before registering the payment."));
 
-        // 2. Nunca registrar venda sem caixa aberto.
         var session = await cashSessionRepository.GetByIdAsync(request.CashSessionId, cancellationToken);
         if (session is null || !session.IsActive || !session.IsOpen())
             return Result.Failure<long>(new Error("CashSession.NotOpen", "Cash session is not open."));
 
-        // 3. Uma venda ativa por pedido (espelha UQ_Sale_CustomerOrderId).
         if (await saleRepository.ExistsActiveByOrderAsync(order.Id, cancellationToken))
             return Result.Failure<long>(new Error("Sale.Duplicate", "Order already has an active sale."));
 
-        // 4. Criar a venda com numeracao sequencial por filial.
         var saleNumber = await saleRepository.GetNextSaleNumberAsync(order.BranchId, cancellationToken);
         var saleResult = Sale.Create(
             order.BranchId, order.Id, session.Id, request.EmployeeId, saleNumber,
@@ -50,7 +47,6 @@ internal sealed class RegisterSaleCommandHandler(
 
         var sale = saleResult.Value;
 
-        // 5. Pagamentos multiplos — troco apenas em dinheiro; comprovante no AuthorizationCode.
         foreach (var payment in request.Payments)
         {
             var allowsChange = payment.PaymentMethodId == PaymentMethodIds.Dinheiro;
@@ -61,7 +57,6 @@ internal sealed class RegisterSaleCommandHandler(
                 return Result.Failure<long>(added.Error);
         }
 
-        // Pagamentos parciais (cliente que saiu antes) abatem o total no acerto final.
         var partials = await partialPaymentRepository.GetByOrderAsync(order.Id, cancellationToken);
         var partiallyPaid = partials.Sum(p => p.Amount);
 
@@ -69,8 +64,9 @@ internal sealed class RegisterSaleCommandHandler(
         if (fullyPaid.IsFailure)
             return Result.Failure<long>(fullyPaid.Error);
 
-        // 6. Pedido pago; mesa/comanda liberadas.
-        var paid = order.MarkAsPaid();
+        var currentTime = timeProvider.GetLocalNow().DateTime;
+
+        var paid = order.MarkAsPaid(currentTime);
         if (paid.IsFailure)
             return Result.Failure<long>(paid.Error);
 
@@ -100,13 +96,18 @@ internal sealed class RegisterSaleCommandHandler(
 
             var decreased = stockItem.Decrease(item.Quantity);
             if (decreased.IsFailure)
-                continue; // saldo insuficiente nao bloqueia a venda; ajuste de inventario corrige depois
+                continue;
 
             var movement = StockMovement.Create(
-                stockItem.Id, StockMovementTypeIds.SaidaVenda, null, item.Id,
-                request.EmployeeId, item.Quantity, product.CostPrice,
+                stockItem.Id,
+                StockMovementTypeIds.SaidaVenda,
+                null,
+                item.Id,
+                request.EmployeeId,
+                item.Quantity,
+                product.CostPrice,
                 product.CostPrice is null ? null : Math.Round(product.CostPrice.Value * item.Quantity, 2),
-                null, DateTime.UtcNow, null);
+                null, currentTime, null); 
             if (movement.IsSuccess)
                 await stockMovementRepository.AddAsync(movement.Value, cancellationToken);
         }
@@ -114,14 +115,13 @@ internal sealed class RegisterSaleCommandHandler(
         await saleRepository.AddAsync(sale, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
 
-        // Comprovante de baixa automatico no caixa — falha de impressora nunca desfaz a venda.
         try
         {
             await printingService.PrintPaymentReceiptAsync(sale.Id, cancellationToken);
         }
         catch
         {
-            // silencioso: reimpressao disponivel via POST /api/printing/receipt/{saleId}
+
         }
 
         return Result.Success(sale.Id);

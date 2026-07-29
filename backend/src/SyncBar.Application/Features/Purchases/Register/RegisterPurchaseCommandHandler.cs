@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -53,7 +53,11 @@ internal sealed class RegisterPurchaseCommandHandler(
                 return Result.Failure<long>(increased.Error);
 
             var movement = StockMovement.Create(
-                stockItem.Id, StockMovementTypeIds.EntradaCompra, item.Id, null, request.EmployeeId,
+                stockItem.Id, 
+                StockMovementTypeIds.EntradaCompra, 
+                item.Id, 
+                null, 
+                request.EmployeeId,
                 item.Quantity, item.UnitCost, item.TotalCost, request.DocumentNumber, request.PurchasedAt,
                 request.Notes);
             if (movement.IsFailure)

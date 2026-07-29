@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using NSubstitute;
 using SyncBar.Application.Features.Preparation.GetQueue;
 using SyncBar.Domain.Constants;
@@ -28,9 +28,10 @@ public sealed class GetPreparationQueueQueryHandlerTests
     [Fact]
     public async Task Handle_ShouldBuildTicketsWithKitchenTimeAndBarTolerance()
     {
-        var order = WithId(CustomerOrder.Create(1, 10, null, 1, null, null).Value, 77);
-        order.AddItem(1, 14.90m, 2, null, 5);      // lancado pelo funcionario 5 (Maria)
-        order.AddItem(2, 32m, 1, "sem sal", null); // sem responsavel no item → garcom do pedido (1, Joao)
+        var now = DateTime.UtcNow;
+        var order = WithId(CustomerOrder.Create(1, 10, null, 1, null, null, now).Value, 77);
+        order.AddItem(1, 14.90m, 2, null, 5, now);      // lancado pelo funcionario 5 (Maria)
+        order.AddItem(2, 32m, 1, "sem sal", null, now); // sem responsavel no item → garcom do pedido (1, Joao)
         _orderRepository.GetOpenByBranchAsync(1, Arg.Any<CancellationToken>())
             .Returns(new List<CustomerOrder> { order });
 
@@ -73,11 +74,12 @@ public sealed class GetPreparationQueueQueryHandlerTests
     [Fact]
     public async Task Handle_OrderWithOnlyDeliveredItems_ShouldNotAppear()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
-        order.AddItem(1, 10m, 1, null, null);
+        var now = DateTime.UtcNow;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
+        order.AddItem(1, 10m, 1, null, null, now);
         var item = order.Items.First();
-        order.UpdateItemStatus(item.Id, OrderItemStatusIds.EnviadoCozinha);
-        order.UpdateItemStatus(item.Id, OrderItemStatusIds.Entregue);
+        order.UpdateItemStatus(item.Id, OrderItemStatusIds.EnviadoCozinha, now);
+        order.UpdateItemStatus(item.Id, OrderItemStatusIds.Entregue, now);
 
         _orderRepository.GetOpenByBranchAsync(1, Arg.Any<CancellationToken>())
             .Returns(new List<CustomerOrder> { order });

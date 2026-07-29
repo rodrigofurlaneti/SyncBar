@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using NSubstitute;
 using SyncBar.Application.Features.Orders.Open;
 using SyncBar.Domain.Constants;
@@ -15,9 +15,10 @@ public sealed class OpenOrderCommandHandlerTests
     private readonly IComandaRepository _comandaRepository = Substitute.For<IComandaRepository>();
     private readonly IComandaSettingRepository _comandaSettingRepository = Substitute.For<IComandaSettingRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly TimeProvider _timeProvider = TimeProvider.System; // Adicionado TimeProvider
 
     private OpenOrderCommandHandler CreateHandler()
-        => new(_orderRepository, _diningTableRepository, _comandaRepository, _comandaSettingRepository, _unitOfWork);
+        => new(_orderRepository, _diningTableRepository, _comandaRepository, _comandaSettingRepository, _unitOfWork, _timeProvider);
 
     [Fact]
     public async Task Handle_WithFreeTable_ShouldOpenOrderAndOccupyTable()

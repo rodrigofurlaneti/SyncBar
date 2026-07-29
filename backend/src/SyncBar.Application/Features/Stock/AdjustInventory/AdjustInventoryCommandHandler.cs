@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -47,8 +47,13 @@ internal sealed class AdjustInventoryCommandHandler(
             var movement = StockMovement.Create(
                 stockItem.Id,
                 difference > 0 ? StockMovementTypeIds.AjusteEntrada : StockMovementTypeIds.AjusteSaida,
-                null, null, request.EmployeeId,
-                Math.Abs(difference), null, null, null,
+                null, 
+                null, 
+                request.EmployeeId,
+                Math.Abs(difference), 
+                null, 
+                null, 
+                null,
                 DateTime.UtcNow, "Inventário");
             if (movement.IsFailure)
                 return Result.Failure<IReadOnlyCollection<InventoryAdjustmentResponse>>(movement.Error);

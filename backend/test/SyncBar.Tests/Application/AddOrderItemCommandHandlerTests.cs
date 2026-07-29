@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using NSubstitute;
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Application.Features.Orders.AddItem;
@@ -13,20 +13,27 @@ public sealed class AddOrderItemCommandHandlerTests
     private readonly ICustomerOrderRepository _orderRepository = Substitute.For<ICustomerOrderRepository>();
     private readonly IProductRepository _productRepository = Substitute.For<IProductRepository>();
     private readonly IPromotionRepository _promotionRepository = Substitute.For<IPromotionRepository>();
+    private readonly IProductStockRepository _stockRepository = Substitute.For<IProductStockRepository>();
     private readonly IPrintingService _printingService = Substitute.For<IPrintingService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
+    private AddOrderItemCommandHandler CreateHandler()
+        => new(_orderRepository, _productRepository, _promotionRepository, _stockRepository, _printingService, _unitOfWork, _timeProvider);
 
     [Fact]
     public async Task Handle_ShouldFreezeMenuPriceOnItem()
     {
         _promotionRepository.GetByBranchAsync(Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(new List<Promotion>());
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+        var now = DateTime.UtcNow;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         var product = Product.Create(1, 1, 1, "Cerveja Pilsen 600ml", null, null, 14.90m, 6.50m, true, null).Value;
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
         _productRepository.GetByIdAsync(5, Arg.Any<CancellationToken>()).Returns(product);
+        _stockRepository.GetByProductIdAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns((ProductStock?)null);
 
-        var handler = new AddOrderItemCommandHandler(_orderRepository, _productRepository, _promotionRepository, _printingService, _unitOfWork);
+        var handler = CreateHandler();
         var result = await handler.Handle(new AddOrderItemCommand(1, 5, 2, null, null), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -38,11 +45,12 @@ public sealed class AddOrderItemCommandHandlerTests
     [Fact]
     public async Task Handle_WithUnknownProduct_ShouldFail()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+        var now = DateTime.UtcNow;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
         _productRepository.GetByIdAsync(99, Arg.Any<CancellationToken>()).Returns((Product?)null);
 
-        var handler = new AddOrderItemCommandHandler(_orderRepository, _productRepository, _promotionRepository, _printingService, _unitOfWork);
+        var handler = CreateHandler();
         var result = await handler.Handle(new AddOrderItemCommand(1, 99, 1, null, null), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
@@ -55,8 +63,13 @@ public sealed class AddOrderItemPromotionTests
     private readonly ICustomerOrderRepository _orderRepository = Substitute.For<ICustomerOrderRepository>();
     private readonly IProductRepository _productRepository = Substitute.For<IProductRepository>();
     private readonly IPromotionRepository _promotionRepository = Substitute.For<IPromotionRepository>();
+    private readonly IProductStockRepository _stockRepository = Substitute.For<IProductStockRepository>();
     private readonly IPrintingService _printingService = Substitute.For<IPrintingService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
+    private AddOrderItemCommandHandler CreateHandler()
+        => new(_orderRepository, _productRepository, _promotionRepository, _stockRepository, _printingService, _unitOfWork, _timeProvider);
 
     private static T WithId<T>(T entity, long id) where T : SyncBar.Domain.Primitives.Entity
     {
@@ -67,10 +80,12 @@ public sealed class AddOrderItemPromotionTests
     [Fact]
     public async Task Handle_WithActivePromotion_ShouldAddFreeBonusLine()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+        var now = DateTime.UtcNow;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         var caipirinha = WithId(Product.Create(1, 2, 6, "Caipirinha", null, null, 22m, 7m, false, 8).Value, 3);
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
         _productRepository.GetByIdAsync(3, Arg.Any<CancellationToken>()).Returns(caipirinha);
+        _stockRepository.GetByProductIdAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns((ProductStock?)null);
 
         // Promocao valida para HOJE, o dia inteiro — o teste roda em qualquer horario.
         var today = (int)DateTime.Now.DayOfWeek;
@@ -78,7 +93,7 @@ public sealed class AddOrderItemPromotionTests
         _promotionRepository.GetByBranchAsync(1, Arg.Any<CancellationToken>())
             .Returns(new List<Promotion> { promo });
 
-        var handler = new AddOrderItemCommandHandler(_orderRepository, _productRepository, _promotionRepository, _printingService, _unitOfWork);
+        var handler = CreateHandler();
         var result = await handler.Handle(new AddOrderItemCommand(1, 3, 1, null, null), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -92,10 +107,12 @@ public sealed class AddOrderItemPromotionTests
     [Fact]
     public async Task Handle_OutsidePromotionWindow_ShouldChargeNormalPrice()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+        var now = DateTime.UtcNow;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         var caipirinha = WithId(Product.Create(1, 2, 6, "Caipirinha", null, null, 22m, 7m, false, 8).Value, 3);
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
         _productRepository.GetByIdAsync(3, Arg.Any<CancellationToken>()).Returns(caipirinha);
+        _stockRepository.GetByProductIdAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns((ProductStock?)null);
 
         // Promocao de OUTRO dia da semana — fora da janela agora.
         var otherDay = ((int)DateTime.Now.DayOfWeek + 1) % 7;
@@ -103,7 +120,7 @@ public sealed class AddOrderItemPromotionTests
         _promotionRepository.GetByBranchAsync(1, Arg.Any<CancellationToken>())
             .Returns(new List<Promotion> { promo });
 
-        var handler = new AddOrderItemCommandHandler(_orderRepository, _productRepository, _promotionRepository, _printingService, _unitOfWork);
+        var handler = CreateHandler();
         var result = await handler.Handle(new AddOrderItemCommand(1, 3, 1, null, null), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -117,8 +134,13 @@ public sealed class AddOrderItemDiscountPromotionTests
     private readonly ICustomerOrderRepository _orderRepository = Substitute.For<ICustomerOrderRepository>();
     private readonly IProductRepository _productRepository = Substitute.For<IProductRepository>();
     private readonly IPromotionRepository _promotionRepository = Substitute.For<IPromotionRepository>();
+    private readonly IProductStockRepository _stockRepository = Substitute.For<IProductStockRepository>();
     private readonly IPrintingService _printingService = Substitute.For<IPrintingService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
+    private AddOrderItemCommandHandler CreateHandler()
+        => new(_orderRepository, _productRepository, _promotionRepository, _stockRepository, _printingService, _unitOfWork, _timeProvider);
 
     private static T WithId<T>(T entity, long id) where T : SyncBar.Domain.Primitives.Entity
     {
@@ -129,10 +151,12 @@ public sealed class AddOrderItemDiscountPromotionTests
     [Fact]
     public async Task Handle_WithActiveDiscountPromotion_ShouldChargeDiscountedFrozenPrice()
     {
-        var order = CustomerOrder.Create(1, 10, null, 1, null, null).Value;
+        var now = DateTime.UtcNow;
+        var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         var chapa = WithId(Product.Create(1, 4, 7, "Porção Chapa Mista", null, null, 80m, 30m, false, 25).Value, 9);
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
         _productRepository.GetByIdAsync(9, Arg.Any<CancellationToken>()).Returns(chapa);
+        _stockRepository.GetByProductIdAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns((ProductStock?)null);
 
         var today = (int)DateTime.Now.DayOfWeek;
         var promo = Promotion.Create(1, 9, "Domingo da chapa -25%", today, 0, 1440,
@@ -140,7 +164,7 @@ public sealed class AddOrderItemDiscountPromotionTests
         _promotionRepository.GetByBranchAsync(1, Arg.Any<CancellationToken>())
             .Returns(new List<Promotion> { promo });
 
-        var handler = new AddOrderItemCommandHandler(_orderRepository, _productRepository, _promotionRepository, _printingService, _unitOfWork);
+        var handler = CreateHandler();
         var result = await handler.Handle(new AddOrderItemCommand(1, 9, 1, null, null), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();

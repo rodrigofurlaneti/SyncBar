@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -9,7 +9,8 @@ internal sealed class CancelOrderCommandHandler(
     ICustomerOrderRepository orderRepository,
     IDiningTableRepository diningTableRepository,
     IComandaRepository comandaRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider)
     : ICommandHandler<CancelOrderCommand>
 {
     public async Task<Result> Handle(CancelOrderCommand request, CancellationToken cancellationToken)
@@ -18,7 +19,9 @@ internal sealed class CancelOrderCommandHandler(
         if (order is null || !order.IsActive)
             return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-        var result = order.Cancel();
+        var currentTime = timeProvider.GetLocalNow().DateTime;
+
+        var result = order.Cancel(currentTime);
         if (result.IsFailure)
             return result;
 

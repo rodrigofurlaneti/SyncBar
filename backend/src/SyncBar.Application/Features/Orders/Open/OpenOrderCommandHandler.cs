@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -11,7 +11,8 @@ internal sealed class OpenOrderCommandHandler(
     IDiningTableRepository diningTableRepository,
     IComandaRepository comandaRepository,
     IComandaSettingRepository comandaSettingRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider) // Injecao adicionada
     : ICommandHandler<OpenOrderCommand, long>
 {
     public async Task<Result<long>> Handle(OpenOrderCommand request, CancellationToken cancellationToken)
@@ -40,7 +41,6 @@ internal sealed class OpenOrderCommandHandler(
             comanda.ChangeStatus(ComandaStatusIds.EmUso);
         }
 
-        // Comanda nasce com o limite padrao da filial (antifraude de comanda perdida).
         decimal? creditLimit = null;
         if (request.ComandaId.HasValue)
         {
@@ -48,10 +48,13 @@ internal sealed class OpenOrderCommandHandler(
             creditLimit = setting?.DefaultLimitAmount;
         }
 
+        var currentTime = timeProvider.GetLocalNow().DateTime;
+
         var order = CustomerOrder.Create(
             request.BranchId, request.DiningTableId, request.ComandaId,
-            request.EmployeeId, request.GuestCount, request.Notes, creditLimit,
+            request.EmployeeId, request.GuestCount, request.Notes, currentTime, creditLimit,
             request.OrderTypeId, request.CustomerName, request.CustomerPhone, request.DeliveryAddress);
+
         if (order.IsFailure)
             return Result.Failure<long>(order.Error);
 

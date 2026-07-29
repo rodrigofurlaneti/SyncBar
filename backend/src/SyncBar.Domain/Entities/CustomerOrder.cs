@@ -1,4 +1,4 @@
-using SyncBar.Domain.Constants;
+﻿using SyncBar.Domain.Constants;
 using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
@@ -12,14 +12,10 @@ public sealed class CustomerOrder : AggregateRoot
     public long? ComandaId { get; private set; }
     public long EmployeeId { get; private set; }
     public long OrderStatusId { get; private set; }
-    // Mesa (padrão) exige DiningTableId/ComandaId; Retirada/Delivery não — usam
-    // CustomerName/CustomerPhone/DeliveryAddress no lugar.
     public long OrderTypeId { get; private set; }
     public string? CustomerName { get; private set; }
     public string? CustomerPhone { get; private set; }
     public string? DeliveryAddress { get; private set; }
-    // Vínculo opcional com o cadastro de cliente (CRM/fidelidade) — pedidos antigos
-    // e pedidos de balcão sem identificação continuam com CustomerId nulo.
     public long? CustomerId { get; private set; }
     public int? GuestCount { get; private set; }
     public DateTime OpenedAt { get; private set; }
@@ -28,17 +24,15 @@ public sealed class CustomerOrder : AggregateRoot
     public decimal DiscountAmount { get; private set; }
     public decimal ServiceFeeAmount { get; private set; }
     public decimal TotalAmount { get; private set; }
-    public decimal? CreditLimitAmount { get; private set; }  // limite da comanda (mesa nao tem)
+    public decimal? CreditLimitAmount { get; private set; }
     public string? Notes { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public bool IsActive { get; private set; }
-
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
-
     private CustomerOrder() : base(0) { }
 
-    private CustomerOrder(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes, decimal? creditLimitAmount, long orderTypeId, string? customerName, string? customerPhone, string? deliveryAddress, long? customerId) : base(0)
+    private CustomerOrder(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes, decimal? creditLimitAmount, long orderTypeId, string? customerName, string? customerPhone, string? deliveryAddress, long? customerId, DateTime utcNow) : base(0)
     {
         CreditLimitAmount = comandaId is null ? null : creditLimitAmount;
         BranchId = branchId;
@@ -53,19 +47,18 @@ public sealed class CustomerOrder : AggregateRoot
         DeliveryAddress = deliveryAddress;
         CustomerId = customerId;
         OrderStatusId = OrderStatusIds.Aberto;
-        OpenedAt = DateTime.UtcNow;
+        OpenedAt = utcNow;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = utcNow;
     }
 
     public static Result<CustomerOrder> Create(
         long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes,
+        DateTime utcNow,
         decimal? creditLimitAmount = null, long orderTypeId = OrderTypeIds.Mesa,
         string? customerName = null, string? customerPhone = null, string? deliveryAddress = null,
         long? customerId = null)
     {
-        // Espelha CK_CustomerOrder_Origin: pedido de MESA precisa de mesa OU comanda.
-        // Retirada/Delivery não têm mesa/comanda — usam nome/telefone/endereço do cliente.
         if (orderTypeId == OrderTypeIds.Mesa && diningTableId is null && comandaId is null)
             return Result.Failure<CustomerOrder>(
                 new Error("CustomerOrder.MissingOrigin", "Order must have a dining table or a comanda."));
@@ -80,18 +73,42 @@ public sealed class CustomerOrder : AggregateRoot
 
         return Result.Success(new CustomerOrder(
             branchId, diningTableId, comandaId, employeeId, guestCount, notes, creditLimitAmount,
-            orderTypeId, customerName, customerPhone, deliveryAddress, customerId));
+            orderTypeId, customerName, customerPhone, deliveryAddress, customerId, utcNow));
+    }
+    
+    public Result AddItemWithPromotion(Product product, decimal quantity, string? notes, Promotion? activePromotion, long employeeId, DateTime utcNow)
+    {
+        var unitPrice = product.SalePrice;
+        var finalNotes = notes;
+
+        if (activePromotion?.PromotionTypeId == PromotionTypeIds.Desconto && activePromotion.DiscountRate is not null)
+        {
+            unitPrice = Math.Round(product.SalePrice * (1 - activePromotion.DiscountRate.Value), 2);
+            var tag = $"🏷 {activePromotion.Name} (−{activePromotion.DiscountRate.Value:P0})";
+            finalNotes = string.IsNullOrWhiteSpace(finalNotes) ? tag : $"{finalNotes} · {tag}";
+        }
+
+        var result = AddItem(product.Id, unitPrice, quantity, finalNotes, employeeId == 0 ? null : employeeId, utcNow);
+        if (result.IsFailure)
+            return result;
+
+        if (activePromotion?.PromotionTypeId == PromotionTypeIds.EmDobro)
+        {
+            var bonus = AddItem(product.Id, 0m, quantity, $"🎁 {activePromotion.Name}", employeeId == 0 ? null : employeeId, utcNow);
+            if (bonus.IsFailure)
+                return bonus;
+        }
+
+        return Result.Success();
     }
 
-    public Result AddItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId)
+    public Result AddItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime utcNow)
     {
         if (!IsOpen())
             return Result.Failure(new Error("CustomerOrder.NotOpen", "Items can only be added to an open order."));
         if (quantity <= 0)
             return Result.Failure(new Error("CustomerOrder.InvalidQuantity", "Quantity must be greater than zero."));
 
-        // Antifraude de comanda perdida: lancamento que ultrapassa o limite e
-        // bloqueado — so o gerente libera mais limite.
         if (CreditLimitAmount.HasValue)
         {
             var prospectiveTotal = TotalAmount + Math.Round(unitPrice * quantity, 2);
@@ -100,19 +117,21 @@ public sealed class CustomerOrder : AggregateRoot
                     $"Limite da comanda atingido (R$ {CreditLimitAmount.Value:N2}, consumo iria a R$ {prospectiveTotal:N2}). Peça ao gerente para liberar mais limite."));
         }
 
-        // UnitPrice congelado no lancamento — nunca recalculado a partir do Product.
-        var item = OrderItem.Create(Id, productId, unitPrice, quantity, notes, employeeId);
+        // Defensiva contra IDs zerados ou inválidos vindos de requisições abertas
+        long? safeEmployeeId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : null;
+
+        var item = OrderItem.Create(Id, productId, unitPrice, quantity, notes, safeEmployeeId, utcNow);
         if (item.IsFailure)
             return Result.Failure(item.Error);
 
         _items.Add(item.Value);
         OrderStatusId = OrderStatusIds.EmAndamento;
         RecalculateTotals();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = utcNow;
         return Result.Success();
     }
 
-    public Result UpdateItemStatus(long orderItemId, long orderItemStatusId, long? actorEmployeeId = null)
+    public Result UpdateItemStatus(long orderItemId, long orderItemStatusId, DateTime utcNow, long? actorEmployeeId = null)
     {
         if (!IsOpen())
             return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
@@ -121,18 +140,18 @@ public sealed class CustomerOrder : AggregateRoot
         if (item is null)
             return Result.Failure(new Error("CustomerOrder.ItemNotFound", "Order item not found."));
 
-        var result = item.UpdateStatus(orderItemStatusId, actorEmployeeId);
+        var result = item.UpdateStatus(orderItemStatusId, actorEmployeeId, utcNow);
         if (result.IsFailure)
             return result;
 
         if (orderItemStatusId == OrderItemStatusIds.Cancelado)
             RecalculateTotals();
 
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = utcNow;
         return Result.Success();
     }
 
-    public Result ApplyDiscount(decimal discountAmount)
+    public Result ApplyDiscount(decimal discountAmount, DateTime utcNow)
     {
         if (!IsOpen())
             return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
@@ -143,11 +162,11 @@ public sealed class CustomerOrder : AggregateRoot
 
         DiscountAmount = discountAmount;
         RecalculateTotals();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = utcNow;
         return Result.Success();
     }
 
-    public Result Close(decimal serviceFeeRate)
+    public Result Close(decimal serviceFeeRate, DateTime utcNow)
     {
         if (!IsOpen())
             return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
@@ -159,12 +178,11 @@ public sealed class CustomerOrder : AggregateRoot
         ServiceFeeAmount = Math.Round((SubtotalAmount - DiscountAmount) * serviceFeeRate, 2);
         RecalculateTotals();
         OrderStatusId = OrderStatusIds.AguardandoPagamento;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = utcNow;
         return Result.Success();
     }
 
-    // So o gerente libera mais limite (validado na API) — e sempre para MAIS.
-    public Result RaiseCreditLimit(decimal newLimitAmount)
+    public Result RaiseCreditLimit(decimal newLimitAmount, DateTime utcNow)
     {
         if (ComandaId is null)
             return Result.Failure(new Error("Comanda.LimitTableOrder", "Limite de consumo só se aplica a comandas."));
@@ -173,12 +191,11 @@ public sealed class CustomerOrder : AggregateRoot
                 $"O novo limite deve ser maior que o atual (R$ {CreditLimitAmount ?? 0:N2})."));
 
         CreditLimitAmount = newLimitAmount;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = utcNow;
         return Result.Success();
     }
 
-    // Os 10% sao opcionais — a retirada e prerrogativa do gerente (validado na API).
-    public Result RemoveServiceFee()
+    public Result RemoveServiceFee(DateTime utcNow)
     {
         if (OrderStatusId != OrderStatusIds.AguardandoPagamento)
             return Result.Failure(new Error("CustomerOrder.NotAwaitingPayment",
@@ -189,34 +206,33 @@ public sealed class CustomerOrder : AggregateRoot
 
         ServiceFeeAmount = 0;
         RecalculateTotals();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = utcNow;
         return Result.Success();
     }
 
-    public Result MarkAsPaid()
+    public Result MarkAsPaid(DateTime utcNow)
     {
         if (OrderStatusId != OrderStatusIds.AguardandoPagamento)
             return Result.Failure(new Error("CustomerOrder.NotAwaitingPayment", "Order is not awaiting payment."));
 
         OrderStatusId = OrderStatusIds.Pago;
-        ClosedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        ClosedAt = utcNow;
+        UpdatedAt = utcNow;
         return Result.Success();
     }
 
-    // Estorno da venda ou fechamento por engano: a conta volta a aguardar pagamento/consumo.
-    public Result ReopenForPayment()
+    public Result ReopenForPayment(DateTime utcNow)
     {
         if (OrderStatusId != OrderStatusIds.Pago)
             return Result.Failure(new Error("CustomerOrder.NotPaid", "Only a paid order can be reopened by refund."));
 
         OrderStatusId = OrderStatusIds.AguardandoPagamento;
         ClosedAt = null;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = utcNow;
         return Result.Success();
     }
 
-    public Result ReopenForConsumption()
+    public Result ReopenForConsumption(DateTime utcNow)
     {
         if (OrderStatusId != OrderStatusIds.AguardandoPagamento)
             return Result.Failure(new Error("CustomerOrder.NotAwaitingPayment", "Only a closed (awaiting payment) order can be reopened."));
@@ -224,11 +240,11 @@ public sealed class CustomerOrder : AggregateRoot
         OrderStatusId = OrderStatusIds.EmAndamento;
         ServiceFeeAmount = 0;
         RecalculateTotals();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = utcNow;
         return Result.Success();
     }
 
-    public Result Cancel()
+    public Result Cancel(DateTime utcNow)
     {
         if (OrderStatusId == OrderStatusIds.Pago)
             return Result.Failure(new Error("CustomerOrder.AlreadyPaid", "Paid orders must be refunded, not cancelled."));
@@ -236,15 +252,15 @@ public sealed class CustomerOrder : AggregateRoot
             return Result.Failure(new Error("CustomerOrder.AlreadyCancelled", "Order is already cancelled."));
 
         OrderStatusId = OrderStatusIds.Cancelado;
-        ClosedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        ClosedAt = utcNow;
+        UpdatedAt = utcNow;
         return Result.Success();
     }
 
-    public void Deactivate()
+    public void Deactivate(DateTime utcNow)
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = utcNow;
     }
 
     private bool IsOpen()

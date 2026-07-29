@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
@@ -7,15 +7,14 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.PublicOrdering.AddItem;
 
-// NOTA: não aplica promoções (Promotion) como o lançamento feito pelo garçom —
-// simplificação da primeira versão do autoatendimento; fast-follow natural.
 internal sealed class AddPublicOrderItemCommandHandler(
     IDiningTableRepository diningTableRepository,
     IBranchRepository branchRepository,
     IProductRepository productRepository,
     ICustomerOrderRepository orderRepository,
     IPrintingService printingService,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider) // Injecao do TimeProvider adicionada
     : ICommandHandler<AddPublicOrderItemCommand, long>
 {
     public async Task<Result<long>> Handle(AddPublicOrderItemCommand request, CancellationToken cancellationToken)
@@ -35,21 +34,23 @@ internal sealed class AddPublicOrderItemCommandHandler(
         if (product is null || !product.IsActive || product.CompanyId != branch.CompanyId)
             return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
 
-        // Reaproveita (ou abre) o pedido da mesa — o cliente pode chamar isso várias vezes
-        // (um item por toque) durante a mesma visita.
+        var currentTime = timeProvider.GetLocalNow().DateTime;
+
         var order = await orderRepository.GetOpenByTableForUpdateAsync(table.Id, cancellationToken);
         var isNewOrder = order is null;
         if (order is null)
         {
+            // Passando o currentTime para o Create
             var created = CustomerOrder.Create(
                 table.BranchId, table.Id, null, branch.SelfServiceEmployeeId.Value,
-                null, "Pedido via QR Code", null, OrderTypeIds.Mesa);
+                null, "Pedido via QR Code", currentTime, null, OrderTypeIds.Mesa);
+
             if (created.IsFailure)
                 return Result.Failure<long>(created.Error);
 
             order = created.Value;
             await orderRepository.AddAsync(order, cancellationToken);
-            await unitOfWork.CommitAsync(cancellationToken); // garante Id antes de lançar o item
+            await unitOfWork.CommitAsync(cancellationToken);
         }
 
         if (isNewOrder)
@@ -57,8 +58,8 @@ internal sealed class AddPublicOrderItemCommandHandler(
 
         var itemCountBefore = order.Items.Count;
 
-        // employeeId nulo no item — identifica que foi o próprio cliente quem lançou.
-        var added = order.AddItem(product.Id, product.SalePrice, request.Quantity, request.Notes, null);
+        // Passando o currentTime para o AddItem
+        var added = order.AddItem(product.Id, product.SalePrice, request.Quantity, request.Notes, null, currentTime);
         if (added.IsFailure)
             return Result.Failure<long>(added.Error);
 
@@ -71,7 +72,7 @@ internal sealed class AddPublicOrderItemCommandHandler(
         }
         catch
         {
-            // silencioso: a cozinha também vê a fila de preparo pela tela (GetQueue).
+            // silencioso
         }
 
         return Result.Success(order.Id);

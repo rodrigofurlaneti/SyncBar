@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -13,7 +13,8 @@ internal sealed class RefundSaleCommandHandler(
     ICashMovementRepository cashMovementRepository,
     IDiningTableRepository diningTableRepository,
     IComandaRepository comandaRepository,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider) // 1. TimeProvider injetado aqui
     : ICommandHandler<RefundSaleCommand>
 {
     public async Task<Result> Handle(RefundSaleCommand request, CancellationToken cancellationToken)
@@ -29,14 +30,13 @@ internal sealed class RefundSaleCommandHandler(
             return Result.Failure(new Error("Sale.SessionClosed",
                 "A sessão de caixa desta venda já foi fechada — estorno indisponível."));
 
-        // Soft delete da venda: pagamentos saem do esperado do caixa automaticamente.
         sale.Deactivate();
 
-        // Pedido volta a aguardar pagamento; mesa/comanda re-ocupadas.
         var order = await orderRepository.GetByIdForUpdateAsync(sale.CustomerOrderId, cancellationToken);
         if (order is not null)
         {
-            var reopened = order.ReopenForPayment();
+            var currentTime = timeProvider.GetLocalNow().DateTime;
+            var reopened = order.ReopenForPayment(currentTime);
             if (reopened.IsFailure)
                 return reopened;
 
@@ -52,8 +52,6 @@ internal sealed class RefundSaleCommandHandler(
             }
         }
 
-        // Trilha de auditoria no caixa (sem impacto no esperado — o calculo ja
-        // exclui a venda desativada).
         var movement = CashMovement.Create(
             sale.CashSessionId, CashMovementTypeIds.EstornoVenda, sale.Id,
             request.EmployeeId, sale.TotalAmount,
