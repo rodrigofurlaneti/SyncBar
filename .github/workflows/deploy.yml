@@ -1,4 +1,4 @@
-name: Deploy to VM
+﻿name: Deploy to VM
 
 # Publica a SyncBar.API na mesma VM dos demais servicos, na porta 84,
 # apos um build/test verde do workflow "CI" na main, ou manualmente
@@ -51,7 +51,7 @@ jobs:
       - name: Build e push
         uses: docker/build-push-action@v6
         with:
-          # A solucao/Dockerfile do backend ficam em backend/src.
+          # O Dockerfile do backend continua em backend/src.
           context: ./backend/src
           file: ./backend/src/Dockerfile
           push: true

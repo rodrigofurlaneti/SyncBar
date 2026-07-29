@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 # Roda em pushes e pull requests para as branches principais (e permite disparo manual).
 on:
@@ -24,7 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend/src
+        # Ajustado para apontar para a pasta backend onde está o SyncBar.sln
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
@@ -47,13 +48,13 @@ jobs:
         run: dotnet build SyncBar.sln --no-restore --configuration Release -warnaserror
 
       - name: Testes unitários
-        run: dotnet test ../test/SyncBar.Tests --no-build --configuration Release --logger "trx;LogFileName=unit.trx"
+        run: dotnet test test/SyncBar.Tests --no-build --configuration Release --logger "trx;LogFileName=unit.trx"
 
       - name: Testes de arquitetura
-        run: dotnet test ../test/SyncBar.ArchTests --no-build --configuration Release --logger "trx;LogFileName=arch.trx"
+        run: dotnet test test/SyncBar.ArchTests --no-build --configuration Release --logger "trx;LogFileName=arch.trx"
 
       - name: Testes BDD (Specs)
-        run: dotnet test ../test/SyncBar.Specs --no-build --configuration Release --logger "trx;LogFileName=specs.trx"
+        run: dotnet test test/SyncBar.Specs --no-build --configuration Release --logger "trx;LogFileName=specs.trx"
 
       - name: Publicar resultados dos testes
         if: always()
