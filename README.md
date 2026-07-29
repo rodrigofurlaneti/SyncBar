@@ -1,4 +1,4 @@
-# SyncBar
+﻿# SyncBar
 
 Sistema de gestão para bares e restaurantes: pedidos em mesa e comanda, cozinha/preparo, caixa, faturamento, estoque e cadastros — construído com **.NET 9 + EF Core + SQL Server** no backend (Clean Architecture / DDD / CQRS) e **React + TypeScript + Vite** no frontend.
 
@@ -66,12 +66,12 @@ O frontend espelha esses módulos em `features/` (access, auth, billing, cash, c
 ```
 SyncBar/
 ├── backend/
-│   ├── src/                         # código de produção + solution + Dockerfile
+│   ├── SyncBar.sln                  # solution principal na raiz do backend
+│   ├── src/                         # código de produção + Dockerfile
 │   │   ├── SyncBar.Domain           # entidades e regras — zero dependências externas
-│   │   ├── SyncBar.Application       # CQRS (MediatR) + FluentValidation
-│   │   ├── SyncBar.Infrastructure    # EF Core + repositórios
-│   │   ├── SyncBar.API               # controllers + JWT + Swagger
-│   │   ├── SyncBar.sln
+│   │   ├── SyncBar.Application      # CQRS (MediatR) + FluentValidation
+│   │   ├── SyncBar.Infrastructure   # EF Core + repositórios
+│   │   ├── SyncBar.API              # controllers + JWT + Swagger
 │   │   └── Dockerfile
 │   └── test/                        # projetos de teste
 │       ├── SyncBar.Tests            # unitários (xUnit)
@@ -81,8 +81,8 @@ SyncBar/
 │   └── src/{components,features,lib,stores,styles,ui}
 ├── sql/                             # DDL, seeds, modelagem e diagrama ER
 ├── deploy/                          # .env.example e guia de deploy (CI/CD)
-├── .github/workflows/              # ci.yml (build+testes) e deploy.yml (GHCR + SSH)
-└── docker-compose.yml               # SQL Server + API + frontend (ambiente local)
+├── .github/workflows/               # ci.yml (build+testes) e deploy.yml (GHCR + SSH)
+└── docker-compose.yml               # SQL Server + API + frontend (ambiente loca
 ```
 
 ---
