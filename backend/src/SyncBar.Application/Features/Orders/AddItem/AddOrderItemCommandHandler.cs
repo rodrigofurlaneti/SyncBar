@@ -20,37 +20,32 @@ internal sealed class AddOrderItemCommandHandler(
 {
     public async Task<Result> Handle(AddOrderItemCommand request, CancellationToken cancellationToken)
     {
-        var orderTask = orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
-        var productTask = productRepository.GetByIdAsync(request.ProductId, cancellationToken);
-
-        await Task.WhenAll(orderTask, productTask);
-
-        var order = orderTask.Result;
+        // 1. Busca o pedido sequencialmente
+        var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
         if (order is null || !order.IsActive)
             return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-        var product = productTask.Result;
+        // 2. Busca o produto sequencialmente
+        var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
         if (product is null || !product.IsActive)
             return Result.Failure(new Error("Product.NotFound", "Product not found."));
 
-        var promotionsTask = promotionRepository.GetByBranchAsync(order.BranchId, cancellationToken);
-        var stockSnapshotTask = stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
+        // 3. Busca as promoções sequencialmente
+        var promotions = await promotionRepository.GetByBranchAsync(order.BranchId, cancellationToken);
 
-        await Task.WhenAll(promotionsTask, stockSnapshotTask);
+        // 4. Busca o estoque sequencialmente
+        var stockSnapshot = await stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
 
         var itemCountBefore = order.Items.Count;
         var currentTime = timeProvider.GetLocalNow().DateTime;
 
-        var promotions = promotionsTask.Result;
         var activePromotion = promotions.FirstOrDefault(promo =>
             promo.ProductId == product.Id && promo.IsActiveAt(currentTime));
 
-        // Corrigido aqui com ?? 0 para atender ao long esperado pelo método de domínio
         var result = order.AddItemWithPromotion(product, request.Quantity, request.Notes, activePromotion, request.EmployeeId ?? 0, currentTime);
         if (result.IsFailure)
             return result;
 
-        var stockSnapshot = stockSnapshotTask.Result;
         if (stockSnapshot is not null)
         {
             var totalQuantityAdded = order.Items.Skip(itemCountBefore).Sum(i => i.Quantity);
