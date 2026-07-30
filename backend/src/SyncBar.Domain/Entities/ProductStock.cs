@@ -2,20 +2,24 @@
 
 namespace SyncBar.Domain.Entities;
 
-public sealed class ProductStock : Entity
+public sealed class ProductStock
 {
     public long ProductId { get; private set; }
-    public long StockItemId { get; private set; }
     public decimal CurrentBalance { get; private set; }
+    public decimal MinimumQuantity { get; private set; }
     public byte[] RowVersion { get; private set; } = [];
+    public DateTime CreatedAt { get; private set; }
+    public DateTime? UpdatedAt { get; private set; }
+    public bool IsActive { get; private set; } = true;
 
-    private ProductStock() : base(0) { }
+    private ProductStock() { }
 
-    public ProductStock(long productId, long stockItemId, decimal initialBalance) : base(0)
+    public ProductStock(long productId, decimal initialBalance, decimal minimumQuantity)
     {
         ProductId = productId;
-        StockItemId = stockItemId;
         CurrentBalance = initialBalance;
+        MinimumQuantity = minimumQuantity;
+        CreatedAt = DateTime.UtcNow;
     }
 
     public Result Deduct(decimal quantity)
@@ -31,6 +35,7 @@ public sealed class ProductStock : Entity
         }
 
         CurrentBalance -= quantity;
+        UpdatedAt = DateTime.UtcNow;
         return Result.Success();
     }
 }

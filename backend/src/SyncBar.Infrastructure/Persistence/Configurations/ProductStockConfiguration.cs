@@ -8,10 +8,18 @@ namespace SyncBar.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<ProductStock> builder)
         {
+            builder.ToTable("ProductStock");
+
             builder.HasKey(x => x.ProductId);
 
+            builder.Property(x => x.ProductId)
+                   .HasColumnName("ProductId");
+
             builder.Property(x => x.CurrentBalance)
-                   .HasPrecision(18, 4);
+                   .HasPrecision(18, 3);
+
+            builder.Property(x => x.MinimumQuantity)
+                   .HasPrecision(18, 3);
 
             builder.Property(x => x.RowVersion)
                    .IsRowVersion();

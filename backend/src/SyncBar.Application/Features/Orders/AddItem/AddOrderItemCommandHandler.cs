@@ -56,7 +56,7 @@ internal sealed class AddOrderItemCommandHandler(
             long? movementEmployeeId = request.EmployeeId != 0 ? request.EmployeeId : null;
 
             var movementResult = StockMovement.Create(
-                stockItemId: stockSnapshot.StockItemId,
+                stockItemId: stockSnapshot.ProductId,
                 stockMovementTypeId: 2,
                 purchaseItemId: null,
                 orderItemId: order.Items.Last().Id,
