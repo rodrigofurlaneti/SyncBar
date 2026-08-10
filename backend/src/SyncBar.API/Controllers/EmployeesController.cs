@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-using System.Security.Claims;
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Employees.Create;
@@ -9,7 +7,6 @@ using SyncBar.Application.Features.Employees.GetByBranch;
 using SyncBar.Application.Features.Employees.GetJobTitles;
 using SyncBar.Application.Features.Employees.SetCommission;
 using SyncBar.Application.Features.Employees.Update;
-using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
@@ -22,7 +19,7 @@ public sealed class EmployeesController(
 {
     [HttpGet("branch/{branchId:long}")]
     public Task<IActionResult> GetByBranch(long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(GetByBranch), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(GetByBranch), async () =>
         {
             var result = await Mediator.Send(new GetEmployeesByBranchQuery(branchId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
@@ -30,7 +27,7 @@ public sealed class EmployeesController(
 
     [HttpGet("jobtitles/company/{companyId:long}")]
     public Task<IActionResult> GetJobTitles(long companyId, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(GetJobTitles), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(GetJobTitles), async () =>
         {
             var result = await Mediator.Send(new GetJobTitlesQuery(companyId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
@@ -39,7 +36,7 @@ public sealed class EmployeesController(
     [Authorize(Policy = "Feature:Equipe")]
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateEmployeeCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(Create), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(Create), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure
@@ -50,7 +47,7 @@ public sealed class EmployeesController(
     [Authorize(Policy = "Feature:Equipe")]
     [HttpPut("{id:long}")]
     public Task<IActionResult> Update(long id, [FromBody] UpdateEmployeeRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(Update), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(Update), async () =>
         {
             var result = await Mediator.Send(
                 new UpdateEmployeeCommand(id, request.JobTitleId, request.Name, request.Email, request.Phone, request.Salary), ct);
@@ -60,7 +57,7 @@ public sealed class EmployeesController(
     [Authorize(Policy = "Feature:Equipe")]
     [HttpPut("{id:long}/dismiss")]
     public Task<IActionResult> Dismiss(long id, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(Dismiss), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(Dismiss), async () =>
         {
             var result = await Mediator.Send(new DismissEmployeeCommand(id), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
@@ -70,84 +67,11 @@ public sealed class EmployeesController(
     [Authorize(Roles = "Administrador,Gerente")]
     [HttpPut("{id:long}/commission")]
     public Task<IActionResult> SetCommission(long id, [FromBody] SetCommissionRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(SetCommission), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(SetCommission), async () =>
         {
             var result = await Mediator.Send(new SetCommissionCommand(id, request.CommissionPercent), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
-
-    // --- WRAPPER DE LOG ---
-    private async Task<IActionResult> ExecuteWithLogAsync(string methodName, Func<Task<IActionResult>> action)
-    {
-        var stopwatch = Stopwatch.StartNew();
-
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        long? appUserId = long.TryParse(userIdClaim, out var id) ? id : null;
-
-        var log = new LogTracker(0)
-        {
-            AppUserId = appUserId,
-            DirectoryName = "Controllers",
-            ClassName = nameof(EmployeesController),
-            MethodName = methodName,
-            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
-        };
-
-        try
-        {
-            var result = await action();
-
-            if (result is OkObjectResult or NoContentResult or CreatedAtActionResult)
-            {
-                log.IsSuccess = true;
-                log.Message = "Executado com sucesso.";
-            }
-            else
-            {
-                log.IsSuccess = false;
-                log.Message = "Falha na regra de negócio.";
-
-                if (result is ObjectResult objResult && objResult.Value != null)
-                {
-                    var valueType = objResult.Value.GetType();
-                    var detailProp = valueType.GetProperty("Detail") ?? valueType.GetProperty("detail");
-                    var titleProp = valueType.GetProperty("Title") ?? valueType.GetProperty("title");
-
-                    var detailValue = detailProp?.GetValue(objResult.Value)?.ToString();
-                    var titleValue = titleProp?.GetValue(objResult.Value)?.ToString();
-
-                    log.ErrorMessage = !string.IsNullOrEmpty(detailValue)
-                        ? $"{titleValue}: {detailValue}"
-                        : (titleValue ?? objResult.Value.ToString());
-                }
-            }
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            log.IsSuccess = false;
-            log.Message = "Erro interno no servidor.";
-            log.ErrorMessage = ex.Message;
-            log.StackTrace = ex.StackTrace;
-            throw;
-        }
-        finally
-        {
-            stopwatch.Stop();
-            log.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
-
-            try
-            {
-                await logRepository.AddAsync(log);
-                await unitOfWork.CommitAsync();
-            }
-            catch
-            {
-                // Evita que falhas na auditoria quebrem o fluxo principal da resposta HTTP
-            }
-        }
-    }
 }
 
 public sealed record UpdateEmployeeRequest(long JobTitleId, string Name, string? Email, string? Phone, decimal? Salary);

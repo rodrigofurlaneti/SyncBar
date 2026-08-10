@@ -21,7 +21,7 @@ public sealed class ReservationsController(
     [HttpGet("branch/{branchId:long}")]
     public Task<IActionResult> GetByBranchAndDate(
         long branchId, [FromQuery] DateTime from, [FromQuery] DateTime to, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(GetByBranchAndDate), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ReservationsController), nameof(GetByBranchAndDate), async () =>
         {
             var result = await Mediator.Send(new GetReservationsByBranchAndDateQuery(branchId, from, to), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
@@ -29,7 +29,7 @@ public sealed class ReservationsController(
 
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateReservationCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(Create), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ReservationsController), nameof(Create), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
@@ -37,7 +37,7 @@ public sealed class ReservationsController(
 
     [HttpPut("{id:long}/confirm")]
     public Task<IActionResult> Confirm(long id, [FromBody] ConfirmReservationRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(Confirm), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ReservationsController), nameof(Confirm), async () =>
         {
             var result = await Mediator.Send(new ConfirmReservationCommand(id, request.DiningTableId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
@@ -45,84 +45,11 @@ public sealed class ReservationsController(
 
     [HttpPut("{id:long}/cancel")]
     public Task<IActionResult> Cancel(long id, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(Cancel), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ReservationsController), nameof(Cancel), async () =>
         {
             var result = await Mediator.Send(new CancelReservationCommand(id), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
-
-    // --- WRAPPER DE LOG ---
-    private async Task<IActionResult> ExecuteWithLogAsync(string methodName, Func<Task<IActionResult>> action)
-    {
-        var stopwatch = Stopwatch.StartNew();
-
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        long? appUserId = long.TryParse(userIdClaim, out var id) ? id : null;
-
-        var log = new LogTracker(0)
-        {
-            AppUserId = appUserId,
-            DirectoryName = "Controllers",
-            ClassName = nameof(ReservationsController),
-            MethodName = methodName,
-            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
-        };
-
-        try
-        {
-            var result = await action();
-
-            if (result is OkObjectResult or NoContentResult or CreatedAtActionResult)
-            {
-                log.IsSuccess = true;
-                log.Message = "Executado com sucesso.";
-            }
-            else
-            {
-                log.IsSuccess = false;
-                log.Message = "Falha na regra de negócio.";
-
-                if (result is ObjectResult objResult && objResult.Value != null)
-                {
-                    var valueType = objResult.Value.GetType();
-                    var detailProp = valueType.GetProperty("Detail") ?? valueType.GetProperty("detail");
-                    var titleProp = valueType.GetProperty("Title") ?? valueType.GetProperty("title");
-
-                    var detailValue = detailProp?.GetValue(objResult.Value)?.ToString();
-                    var titleValue = titleProp?.GetValue(objResult.Value)?.ToString();
-
-                    log.ErrorMessage = !string.IsNullOrEmpty(detailValue)
-                        ? $"{titleValue}: {detailValue}"
-                        : (titleValue ?? objResult.Value.ToString());
-                }
-            }
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            log.IsSuccess = false;
-            log.Message = "Erro interno no servidor.";
-            log.ErrorMessage = ex.Message;
-            log.StackTrace = ex.StackTrace;
-            throw;
-        }
-        finally
-        {
-            stopwatch.Stop();
-            log.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
-
-            try
-            {
-                await logRepository.AddAsync(log);
-                await unitOfWork.CommitAsync();
-            }
-            catch
-            {
-                // Evita que falhas na auditoria quebrem o fluxo principal da resposta HTTP
-            }
-        }
-    }
 }
 
 public sealed record ConfirmReservationRequest(long DiningTableId);

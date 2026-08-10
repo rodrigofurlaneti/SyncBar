@@ -101,9 +101,9 @@ public sealed class PrintersController(
                     var detailValue = detailProp?.GetValue(objResult.Value)?.ToString();
                     var titleValue = titleProp?.GetValue(objResult.Value)?.ToString();
 
-                    log.ErrorMessage = !string.IsNullOrEmpty(detailValue)
+                    log.ErrorMessage = !string.IsNullOrEmpty(detailValue!)
                         ? $"{titleValue}: {detailValue}"
-                        : (titleValue ?? objResult.Value.ToString());
+                        : (titleValue ?? objResult.Value.ToString()!);
                 }
             }
 

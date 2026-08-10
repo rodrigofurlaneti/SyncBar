@@ -11,7 +11,6 @@ using SyncBar.Application.Features.Catalog.DeactivateProduct;
 using SyncBar.Application.Features.Catalog.GetCategories;
 using SyncBar.Application.Features.Catalog.SetProductImage;
 using SyncBar.Application.Features.Catalog.UpdateProduct;
-using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
@@ -24,7 +23,7 @@ public sealed class ProductsController(
 {
     [HttpGet("categories/company/{companyId:long}")]
     public Task<IActionResult> GetCategories(long companyId, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(GetCategories), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(GetCategories), async () =>
         {
             var result = await Mediator.Send(new GetCategoriesQuery(companyId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
@@ -32,7 +31,7 @@ public sealed class ProductsController(
 
     [HttpPost("categories")]
     public Task<IActionResult> CreateCategory([FromBody] CreateCategoryCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(CreateCategory), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(CreateCategory), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
@@ -40,7 +39,7 @@ public sealed class ProductsController(
 
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateProductCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(Create), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(Create), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
@@ -48,7 +47,7 @@ public sealed class ProductsController(
 
     [HttpPut("{id:long}")]
     public Task<IActionResult> Update(long id, [FromBody] UpdateProductRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(Update), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(Update), async () =>
         {
             var result = await Mediator.Send(new UpdateProductCommand(
                 id, request.CategoryId, request.UnitOfMeasureId, request.Name, request.Description,
@@ -61,7 +60,7 @@ public sealed class ProductsController(
     [HttpPost("{id:long}/image")]
     [RequestSizeLimit(3 * 1024 * 1024)]
     public Task<IActionResult> UploadImage(long id, IFormFile? file, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(UploadImage), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(UploadImage), async () =>
         {
             if (file is null || file.Length == 0)
                 return BadRequest(new ProblemDetails { Title = "Product.NoFile", Detail = "Envie um arquivo de imagem." });
@@ -76,84 +75,11 @@ public sealed class ProductsController(
 
     [HttpPut("{id:long}/deactivate")]
     public Task<IActionResult> Deactivate(long id, CancellationToken ct) =>
-        ExecuteWithLogAsync(nameof(Deactivate), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(Deactivate), async () =>
         {
             var result = await Mediator.Send(new DeactivateProductCommand(id), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
-
-    // --- WRAPPER DE LOG ---
-    private async Task<IActionResult> ExecuteWithLogAsync(string methodName, Func<Task<IActionResult>> action)
-    {
-        var stopwatch = Stopwatch.StartNew();
-
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        long? appUserId = long.TryParse(userIdClaim, out var id) ? id : null;
-
-        var log = new LogTracker(0)
-        {
-            AppUserId = appUserId,
-            DirectoryName = "Controllers",
-            ClassName = nameof(ProductsController),
-            MethodName = methodName,
-            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
-        };
-
-        try
-        {
-            var result = await action();
-
-            if (result is OkObjectResult or NoContentResult or CreatedAtActionResult)
-            {
-                log.IsSuccess = true;
-                log.Message = "Executado com sucesso.";
-            }
-            else
-            {
-                log.IsSuccess = false;
-                log.Message = "Falha na regra de negócio ou validação.";
-
-                if (result is ObjectResult objResult && objResult.Value != null)
-                {
-                    var valueType = objResult.Value.GetType();
-                    var detailProp = valueType.GetProperty("Detail") ?? valueType.GetProperty("detail");
-                    var titleProp = valueType.GetProperty("Title") ?? valueType.GetProperty("title");
-
-                    var detailValue = detailProp?.GetValue(objResult.Value)?.ToString();
-                    var titleValue = titleProp?.GetValue(objResult.Value)?.ToString();
-
-                    log.ErrorMessage = !string.IsNullOrEmpty(detailValue)
-                        ? $"{titleValue}: {detailValue}"
-                        : (titleValue ?? objResult.Value.ToString());
-                }
-            }
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            log.IsSuccess = false;
-            log.Message = "Erro interno no servidor.";
-            log.ErrorMessage = ex.Message;
-            log.StackTrace = ex.StackTrace;
-            throw;
-        }
-        finally
-        {
-            stopwatch.Stop();
-            log.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
-
-            try
-            {
-                await logRepository.AddAsync(log);
-                await unitOfWork.CommitAsync();
-            }
-            catch
-            {
-                // Evita que falhas na auditoria quebrem o fluxo principal da resposta HTTP
-            }
-        }
-    }
 }
 
 public sealed record UpdateProductRequest(
