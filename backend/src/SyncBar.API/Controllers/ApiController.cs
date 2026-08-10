@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -26,7 +27,7 @@ public abstract class ApiController(IMediator mediator) : ControllerBase
     protected static ProblemDetails CreateProblemDetails(Result result)
         => new() { Title = result.Error.Code, Detail = result.Error.Message };
 
-    // --- WRAPPER DE LOG CENTRALIZADO ---
+    // --- SOBRECARGA 1: Recebe os repositórios explicitamente (5 argumentos) ---
     protected async Task<IActionResult> ExecuteWithLogAsync(
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork,
@@ -38,6 +39,7 @@ public abstract class ApiController(IMediator mediator) : ControllerBase
 
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
         long? appUserId = long.TryParse(userIdClaim, out var id) ? id : null;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
         var log = new LogTracker(0)
         {
@@ -45,7 +47,9 @@ public abstract class ApiController(IMediator mediator) : ControllerBase
             DirectoryName = "Controllers",
             ClassName = className,
             MethodName = methodName,
-            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
+            IpAddress = ipAddress,
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
         };
 
         try
@@ -64,16 +68,25 @@ public abstract class ApiController(IMediator mediator) : ControllerBase
 
                 if (result is ObjectResult objResult && objResult.Value != null)
                 {
-                    var valueType = objResult.Value.GetType();
-                    var detailProp = valueType.GetProperty("Detail") ?? valueType.GetProperty("detail");
-                    var titleProp = valueType.GetProperty("Title") ?? valueType.GetProperty("title");
+                    if (objResult.Value is ProblemDetails problemDetails)
+                    {
+                        log.ErrorMessage = !string.IsNullOrEmpty(problemDetails.Detail)
+                            ? $"{problemDetails.Title}: {problemDetails.Detail}"
+                            : problemDetails.Title;
+                    }
+                    else
+                    {
+                        var valueType = objResult.Value.GetType();
+                        var detailProp = valueType.GetProperty("Detail") ?? valueType.GetProperty("detail");
+                        var titleProp = valueType.GetProperty("Title") ?? valueType.GetProperty("title");
 
-                    var detailValue = detailProp?.GetValue(objResult.Value)?.ToString();
-                    var titleValue = titleProp?.GetValue(objResult.Value)?.ToString();
+                        var detailValue = detailProp?.GetValue(objResult.Value)?.ToString();
+                        var titleValue = titleProp?.GetValue(objResult.Value)?.ToString();
 
-                    log.ErrorMessage = !string.IsNullOrEmpty(detailValue!)
-                        ? $"{titleValue}: {detailValue}"
-                        : (titleValue ?? objResult.Value.ToString()!);
+                        log.ErrorMessage = !string.IsNullOrEmpty(detailValue)
+                            ? $"{titleValue}: {detailValue}"
+                            : (titleValue ?? objResult.Value.ToString()!);
+                    }
                 }
             }
 
@@ -102,5 +115,18 @@ public abstract class ApiController(IMediator mediator) : ControllerBase
                 // Evita que falhas na auditoria quebrem o fluxo principal da resposta HTTP
             }
         }
+    }
+
+    // --- SOBRECARGA 2: Resolve os repositórios via DI automaticamente (3 argumentos) ---
+    protected async Task<IActionResult> ExecuteWithLogAsync(
+        string className,
+        string methodName,
+        Func<Task<IActionResult>> action)
+    {
+        using var scope = HttpContext.RequestServices.CreateScope();
+        var logRepo = scope.ServiceProvider.GetRequiredService<ILogTrackerRepository>();
+        var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        return await ExecuteWithLogAsync(logRepo, uow, className, methodName, action);
     }
 }

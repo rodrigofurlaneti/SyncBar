@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Authentication;
+﻿using SyncBar.Application.Abstractions.Authentication;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -12,59 +12,63 @@ internal sealed class LoginCommandHandler(
     IPasswordHasher passwordHasher,
     IJwtTokenProvider jwtTokenProvider,
     IAccessLogRepository accessLogRepository,
+    ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : ICommandHandler<LoginCommand, LoginResponse>
+    : BaseCommandHandler<LoginCommand, LoginResponse>(logRepository, unitOfWork)
 {
     private static readonly Error InvalidCredentials =
         new("Auth.InvalidCredentials", "Invalid user name or password.");
 
-    public async Task<Result<LoginResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
-    {
-        // Tracked — o login atualiza contadores de acesso.
-        var user = await userRepository.GetByUserNameForUpdateAsync(request.UserName, cancellationToken);
-        if (user is null || !user.IsActive)
+    public override Task<Result<LoginResponse>> Handle(LoginCommand request, CancellationToken cancellationToken) =>
+        ExecuteWithLogAsync(nameof(LoginCommandHandler), nameof(Handle), request.IpAddress, async (userIdBox) =>
         {
-            await LogAsync(null, request, "LoginFailed", cancellationToken);
-            return Result.Failure<LoginResponse>(InvalidCredentials);
-        }
+            // Tracked — o login atualiza contadores de acesso.
+            var user = await userRepository.GetByUserNameForUpdateAsync(request.UserName, cancellationToken);
+            if (user is null || !user.IsActive)
+            {
+                await LogAsync(null, request, "LoginFailed", cancellationToken);
+                return Result.Failure<LoginResponse>(InvalidCredentials);
+            }
 
-        if (user.IsLockedOut())
-        {
-            await LogAsync(user.Id, request, "Lockout", cancellationToken);
-            return Result.Failure<LoginResponse>(
-                new Error("Auth.LockedOut", "Account is temporarily locked. Try again later."));
-        }
+            userIdBox.Value = user.Id;
 
-        // Senha NUNCA verificada em SQL — BCrypt em C#.
-        if (!passwordHasher.Verify(request.Password, user.PasswordHash))
-        {
-            user.RegisterLoginFailure();
-            await LogAsync(user.Id, request, "LoginFailed", cancellationToken);
+            if (user.IsLockedOut())
+            {
+                await LogAsync(user.Id, request, "Lockout", cancellationToken);
+                return Result.Failure<LoginResponse>(
+                    new Error("Auth.LockedOut", "Account is temporarily locked. Try again later."));
+            }
+
+            // Senha NUNCA verificada em SQL — BCrypt em C#.
+            if (!passwordHasher.Verify(request.Password, user.PasswordHash))
+            {
+                user.RegisterLoginFailure();
+                await LogAsync(user.Id, request, "LoginFailed", cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
+                return Result.Failure<LoginResponse>(InvalidCredentials);
+            }
+
+            user.RegisterLoginSuccess();
+            await LogAsync(user.Id, request, "Login", cancellationToken);
+
+            var roles = await userRepository.GetRoleNamesAsync(user.Id, cancellationToken);
+            var permissions = await userRepository.GetPermissionCodesAsync(user.Id, cancellationToken);
+            var accessToken = jwtTokenProvider.GenerateToken(user, roles, permissions);
+
+            var refreshTokenValue = jwtTokenProvider.GenerateRefreshToken();
+            var refreshTokenExpiresAt = DateTime.UtcNow.AddDays(7);
+            var refreshToken = RefreshToken.Create(user.Id, refreshTokenValue, refreshTokenExpiresAt);
+            if (refreshToken.IsFailure)
+                return Result.Failure<LoginResponse>(refreshToken.Error);
+
+            await refreshTokenRepository.AddAsync(refreshToken.Value, cancellationToken);
             await unitOfWork.CommitAsync(cancellationToken);
-            return Result.Failure<LoginResponse>(InvalidCredentials);
-        }
 
-        user.RegisterLoginSuccess();
-        await LogAsync(user.Id, request, "Login", cancellationToken);
-
-        var roles = await userRepository.GetRoleNamesAsync(user.Id, cancellationToken);
-        var permissions = await userRepository.GetPermissionCodesAsync(user.Id, cancellationToken);
-        var accessToken = jwtTokenProvider.GenerateToken(user, roles, permissions);
-
-        var refreshTokenValue = jwtTokenProvider.GenerateRefreshToken();
-        var refreshTokenExpiresAt = DateTime.UtcNow.AddDays(7);
-        var refreshToken = RefreshToken.Create(user.Id, refreshTokenValue, refreshTokenExpiresAt);
-        if (refreshToken.IsFailure)
-            return Result.Failure<LoginResponse>(refreshToken.Error);
-
-        await refreshTokenRepository.AddAsync(refreshToken.Value, cancellationToken);
-        await unitOfWork.CommitAsync(cancellationToken);
-
-        return Result.Success(new LoginResponse(
-            accessToken.Token, accessToken.ExpiresAt,
-            refreshTokenValue, refreshTokenExpiresAt,
-            user.UserName, user.CompanyId, user.EmployeeId));
-    }
+            return Result.Success(new LoginResponse(
+                accessToken.Token, accessToken.ExpiresAt,
+                refreshTokenValue, refreshTokenExpiresAt,
+                user.UserName, user.CompanyId, user.EmployeeId));
+        });
 
     // Trilha de auditoria de acesso (tabela AccessLog).
     private async Task LogAsync(long? userId, LoginCommand request, string eventType, CancellationToken ct)

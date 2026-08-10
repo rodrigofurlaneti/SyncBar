@@ -9,21 +9,17 @@ using SyncBar.Application.Features.Access.GetUserFeatures;
 using SyncBar.Application.Features.Access.SetJobTitleFeatures;
 using SyncBar.Application.Features.Access.SetUserFeatures;
 using SyncBar.Domain.Constants;
-using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
 [Authorize]
-public sealed class AccessController(
-    IMediator mediator,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork) : ApiController(mediator)
+public sealed class AccessController(IMediator mediator) : ApiController(mediator)
 {
     private const string ManagerRoles = "Administrador,Gerente";
 
     [HttpGet("my-features")]
     public Task<IActionResult> GetMyFeatures(CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AccessController), nameof(GetMyFeatures), async () =>
+        ExecuteWithLogAsync(nameof(AccessController), nameof(GetMyFeatures), async () =>
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
             if (!long.TryParse(userIdClaim, out var userId))
@@ -34,11 +30,10 @@ public sealed class AccessController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Gestao de acessos: somente Gerente/Administrador.
     [Authorize(Roles = ManagerRoles)]
     [HttpGet("features")]
     public Task<IActionResult> GetFeatures(CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AccessController), nameof(GetFeatures), async () =>
+        ExecuteWithLogAsync(nameof(AccessController), nameof(GetFeatures), async () =>
         {
             var result = await Mediator.Send(new GetFeaturesQuery(), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
@@ -47,7 +42,7 @@ public sealed class AccessController(
     [Authorize(Roles = ManagerRoles)]
     [HttpGet("jobtitles/{jobTitleId:long}/features")]
     public Task<IActionResult> GetJobTitleFeatures(long jobTitleId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AccessController), nameof(GetJobTitleFeatures), async () =>
+        ExecuteWithLogAsync(nameof(AccessController), nameof(GetJobTitleFeatures), async () =>
         {
             var result = await Mediator.Send(new GetJobTitleFeaturesQuery(jobTitleId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
@@ -56,16 +51,16 @@ public sealed class AccessController(
     [Authorize(Roles = ManagerRoles)]
     [HttpPut("jobtitles/{jobTitleId:long}/features")]
     public Task<IActionResult> SetJobTitleFeatures(long jobTitleId, [FromBody] SetFeaturesRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AccessController), nameof(SetJobTitleFeatures), async () =>
+        ExecuteWithLogAsync(nameof(AccessController), nameof(SetJobTitleFeatures), async () =>
         {
-            var result = await Mediator.Send(new SetJobTitleFeaturesCommand(jobTitleId, request.FeatureIds), ct);
+            var result = await Mediator.Send(new SetJobTitleFeaturesCommand(jobTitleId, request.FeatureIds.ToList()), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
     [Authorize(Roles = ManagerRoles)]
     [HttpGet("users/{appUserId:long}/features")]
     public Task<IActionResult> GetUserFeatures(long appUserId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AccessController), nameof(GetUserFeatures), async () =>
+        ExecuteWithLogAsync(nameof(AccessController), nameof(GetUserFeatures), async () =>
         {
             var result = await Mediator.Send(new GetUserFeaturesQuery(appUserId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
@@ -74,9 +69,9 @@ public sealed class AccessController(
     [Authorize(Roles = ManagerRoles)]
     [HttpPut("users/{appUserId:long}/features")]
     public Task<IActionResult> SetUserFeatures(long appUserId, [FromBody] SetFeaturesRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AccessController), nameof(SetUserFeatures), async () =>
+        ExecuteWithLogAsync(nameof(AccessController), nameof(SetUserFeatures), async () =>
         {
-            var result = await Mediator.Send(new SetUserFeaturesCommand(appUserId, request.FeatureIds), ct);
+            var result = await Mediator.Send(new SetUserFeaturesCommand(appUserId, request.FeatureIds.ToList()), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 }
