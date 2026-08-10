@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SyncBar.Application.Abstractions.Tenancy;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
@@ -63,6 +63,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<ServiceFeeSetting> ServiceFeeSettings => Set<ServiceFeeSetting>();
     public DbSet<JobTitleFeature> JobTitleFeatures => Set<JobTitleFeature>();
     public DbSet<AppUserFeature> AppUserFeatures => Set<AppUserFeature>();
+    public DbSet<LogTracker> LogTrackers { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

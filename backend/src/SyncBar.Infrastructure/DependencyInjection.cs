@@ -65,6 +65,7 @@ public static class DependencyInjection
         services.AddScoped<ITableReservationRepository, TableReservationRepository>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<IProductStockRepository, ProductStockRepository>();
+        services.AddScoped<ILogTrackerRepository, LogTrackerRepository>();
 
         services.AddSingleton<SyncBar.Application.Abstractions.Storage.IImageStorage, LocalImageStorage>();
         services.AddSingleton<IRawPrinterTransport, WindowsRawPrinterTransport>();
