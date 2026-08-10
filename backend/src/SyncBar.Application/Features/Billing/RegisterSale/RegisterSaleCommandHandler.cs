@@ -18,112 +18,116 @@ internal sealed class RegisterSaleCommandHandler(
     IStockMovementRepository stockMovementRepository,
     IOrderPartialPaymentRepository partialPaymentRepository,
     IPrintingService printingService,
+    ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider)
-    : ICommandHandler<RegisterSaleCommand, long>
+    : BaseCommandHandler<RegisterSaleCommand, long>(logRepository, unitOfWork)
 {
-    public async Task<Result<long>> Handle(RegisterSaleCommand request, CancellationToken cancellationToken)
-    {
-        var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
-        if (order is null || !order.IsActive)
-            return Result.Failure<long>(new Error("CustomerOrder.NotFound", "Order not found."));
-        if (order.OrderStatusId != OrderStatusIds.AguardandoPagamento)
-            return Result.Failure<long>(new Error("Sale.OrderNotAwaitingPayment",
-                "Close the order before registering the payment."));
-
-        var session = await cashSessionRepository.GetByIdAsync(request.CashSessionId, cancellationToken);
-        if (session is null || !session.IsActive || !session.IsOpen())
-            return Result.Failure<long>(new Error("CashSession.NotOpen", "Cash session is not open."));
-
-        if (await saleRepository.ExistsActiveByOrderAsync(order.Id, cancellationToken))
-            return Result.Failure<long>(new Error("Sale.Duplicate", "Order already has an active sale."));
-
-        var saleNumber = await saleRepository.GetNextSaleNumberAsync(order.BranchId, cancellationToken);
-        var saleResult = Sale.Create(
-            order.BranchId, order.Id, session.Id, request.EmployeeId, saleNumber,
-            order.SubtotalAmount, order.DiscountAmount, order.ServiceFeeAmount);
-        if (saleResult.IsFailure)
-            return Result.Failure<long>(saleResult.Error);
-
-        var sale = saleResult.Value;
-
-        foreach (var payment in request.Payments)
+    public override Task<Result<long>> Handle(RegisterSaleCommand request, CancellationToken cancellationToken) =>
+        ExecuteWithLogAsync(nameof(RegisterSaleCommandHandler), nameof(Handle), null, async (userIdBox) =>
         {
-            var allowsChange = payment.PaymentMethodId == PaymentMethodIds.Dinheiro;
-            var added = sale.AddPayment(
-                payment.PaymentMethodId, payment.Amount, payment.ChangeAmount,
-                payment.AuthorizationCode, allowsChange);
-            if (added.IsFailure)
-                return Result.Failure<long>(added.Error);
-        }
+            userIdBox.Value = request.EmployeeId;
 
-        var partials = await partialPaymentRepository.GetByOrderAsync(order.Id, cancellationToken);
-        var partiallyPaid = partials.Sum(p => p.Amount);
+            var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
+            if (order is null || !order.IsActive)
+                return Result.Failure<long>(new Error("CustomerOrder.NotFound", "Order not found."));
+            if (order.OrderStatusId != OrderStatusIds.AguardandoPagamento)
+                return Result.Failure<long>(new Error("Sale.OrderNotAwaitingPayment",
+                    "Close the order before registering the payment."));
 
-        var fullyPaid = sale.EnsureFullyPaid(partiallyPaid);
-        if (fullyPaid.IsFailure)
-            return Result.Failure<long>(fullyPaid.Error);
+            var session = await cashSessionRepository.GetByIdAsync(request.CashSessionId, cancellationToken);
+            if (session is null || !session.IsActive || !session.IsOpen())
+                return Result.Failure<long>(new Error("CashSession.NotOpen", "Cash session is not open."));
 
-        var currentTime = timeProvider.GetLocalNow().DateTime;
+            if (await saleRepository.ExistsActiveByOrderAsync(order.Id, cancellationToken))
+                return Result.Failure<long>(new Error("Sale.Duplicate", "Order already has an active sale."));
 
-        var paid = order.MarkAsPaid(currentTime);
-        if (paid.IsFailure)
-            return Result.Failure<long>(paid.Error);
+            var saleNumber = await saleRepository.GetNextSaleNumberAsync(order.BranchId, cancellationToken);
+            var saleResult = Sale.Create(
+                order.BranchId, order.Id, session.Id, request.EmployeeId, saleNumber,
+                order.SubtotalAmount, order.DiscountAmount, order.ServiceFeeAmount);
+            if (saleResult.IsFailure)
+                return Result.Failure<long>(saleResult.Error);
 
-        if (order.DiningTableId.HasValue)
-        {
-            var table = await diningTableRepository.GetByIdForUpdateAsync(order.DiningTableId.Value, cancellationToken);
-            table?.ChangeStatus(TableStatusIds.Livre);
-        }
+            var sale = saleResult.Value;
 
-        if (order.ComandaId.HasValue)
-        {
-            var comanda = await comandaRepository.GetByIdForUpdateAsync(order.ComandaId.Value, cancellationToken);
-            comanda?.ChangeStatus(ComandaStatusIds.Disponivel);
-        }
+            foreach (var payment in request.Payments)
+            {
+                var allowsChange = payment.PaymentMethodId == PaymentMethodIds.Dinheiro;
+                var added = sale.AddPayment(
+                    payment.PaymentMethodId, payment.Amount, payment.ChangeAmount,
+                    payment.AuthorizationCode, allowsChange);
+                if (added.IsFailure)
+                    return Result.Failure<long>(added.Error);
+            }
 
-        // 7. Baixa de estoque com livro-razao (apenas produtos controlados).
-        foreach (var item in order.Items.Where(i => i.IsActive && i.OrderItemStatusId != OrderItemStatusIds.Cancelado))
-        {
-            var product = await productRepository.GetByIdAsync(item.ProductId, cancellationToken);
-            if (product is null || !product.IsStockControlled)
-                continue;
+            var partials = await partialPaymentRepository.GetByOrderAsync(order.Id, cancellationToken);
+            var partiallyPaid = partials.Sum(p => p.Amount);
 
-            var stockItem = await stockItemRepository.GetByBranchAndProductForUpdateAsync(
-                order.BranchId, item.ProductId, cancellationToken);
-            if (stockItem is null)
-                continue;
+            var fullyPaid = sale.EnsureFullyPaid(partiallyPaid);
+            if (fullyPaid.IsFailure)
+                return Result.Failure<long>(fullyPaid.Error);
 
-            var decreased = stockItem.Decrease(item.Quantity);
-            if (decreased.IsFailure)
-                continue;
+            var currentTime = timeProvider.GetLocalNow().DateTime;
 
-            var movement = StockMovement.Create(
-                stockItem.Id,
-                StockMovementTypeIds.SaidaVenda,
-                null,
-                item.Id,
-                request.EmployeeId,
-                item.Quantity,
-                product.CostPrice,
-                product.CostPrice is null ? null : Math.Round(product.CostPrice.Value * item.Quantity, 2),
-                null, currentTime, null); 
-            if (movement.IsSuccess)
-                await stockMovementRepository.AddAsync(movement.Value, cancellationToken);
-        }
+            var paid = order.MarkAsPaid(currentTime);
+            if (paid.IsFailure)
+                return Result.Failure<long>(paid.Error);
 
-        await saleRepository.AddAsync(sale, cancellationToken);
-        await unitOfWork.CommitAsync(cancellationToken);
+            if (order.DiningTableId.HasValue)
+            {
+                var table = await diningTableRepository.GetByIdForUpdateAsync(order.DiningTableId.Value, cancellationToken);
+                table?.ChangeStatus(TableStatusIds.Livre);
+            }
 
-        try
-        {
-            await printingService.PrintPaymentReceiptAsync(sale.Id, cancellationToken);
-        }
-        catch
-        {
+            if (order.ComandaId.HasValue)
+            {
+                var comanda = await comandaRepository.GetByIdForUpdateAsync(order.ComandaId.Value, cancellationToken);
+                comanda?.ChangeStatus(ComandaStatusIds.Disponivel);
+            }
 
-        }
+            // Baixa de estoque com livro-razao (apenas produtos controlados).
+            foreach (var item in order.Items.Where(i => i.IsActive && i.OrderItemStatusId != OrderItemStatusIds.Cancelado))
+            {
+                var product = await productRepository.GetByIdAsync(item.ProductId, cancellationToken);
+                if (product is null || !product.IsStockControlled)
+                    continue;
 
-        return Result.Success(sale.Id);
-    }
+                var stockItem = await stockItemRepository.GetByBranchAndProductForUpdateAsync(
+                    order.BranchId, item.ProductId, cancellationToken);
+                if (stockItem is null)
+                    continue;
+
+                var decreased = stockItem.Decrease(item.Quantity);
+                if (decreased.IsFailure)
+                    continue;
+
+                var movement = StockMovement.Create(
+                    stockItem.Id,
+                    StockMovementTypeIds.SaidaVenda,
+                    null,
+                    item.Id,
+                    request.EmployeeId,
+                    item.Quantity,
+                    product.CostPrice,
+                    product.CostPrice is null ? null : Math.Round(product.CostPrice.Value * item.Quantity, 2),
+                    null, currentTime, null);
+                if (movement.IsSuccess)
+                    await stockMovementRepository.AddAsync(movement.Value, cancellationToken);
+            }
+
+            await saleRepository.AddAsync(sale, cancellationToken);
+            await unitOfWork.CommitAsync(cancellationToken);
+
+            try
+            {
+                await printingService.PrintPaymentReceiptAsync(sale.Id, cancellationToken);
+            }
+            catch
+            {
+                // Ignora falhas de impressão para não quebrar o fluxo da venda
+            }
+
+            return Result.Success(sale.Id);
+        });
 }
