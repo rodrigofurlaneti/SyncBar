@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -17,7 +17,7 @@ public sealed class StockMovementType : Entity
         Name = name;
         IsInflow = isInflow;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<StockMovementType> Create(string name, bool isInflow)
@@ -27,11 +27,11 @@ public sealed class StockMovementType : Entity
         return Result.Success(new StockMovementType(name, isInflow));
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

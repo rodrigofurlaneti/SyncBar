@@ -19,7 +19,7 @@ public sealed class ProductStock
         ProductId = productId;
         CurrentBalance = initialBalance;
         MinimumQuantity = minimumQuantity;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public Result Deduct(decimal quantity)
@@ -35,7 +35,7 @@ public sealed class ProductStock
         }
 
         CurrentBalance -= quantity;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 }

@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -19,7 +19,7 @@ public sealed class Category : AggregateRoot
         Name = name;
         DisplayOrder = displayOrder;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<Category> Create(long companyId, string name, int displayOrder)
@@ -29,11 +29,11 @@ public sealed class Category : AggregateRoot
         return Result.Success(new Category(companyId, name, displayOrder));
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

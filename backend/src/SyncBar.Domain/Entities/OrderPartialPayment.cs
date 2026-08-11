@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -28,7 +28,7 @@ public sealed class OrderPartialPayment : Entity
         AuthorizationCode = authorizationCode;
         PayerName = payerName;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<OrderPartialPayment> Create(long customerOrderId, long cashSessionId,
@@ -44,6 +44,6 @@ public sealed class OrderPartialPayment : Entity
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -23,7 +23,7 @@ public sealed class PurchaseItem : Entity
         UnitCost = unitCost;
         TotalCost = totalCost;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<PurchaseItem> Create(long purchaseId, long productId, decimal quantity, decimal unitCost, decimal totalCost)
@@ -32,11 +32,11 @@ public sealed class PurchaseItem : Entity
         return Result.Success(new PurchaseItem(purchaseId, productId, quantity, unitCost, totalCost));
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

@@ -54,7 +54,7 @@ internal sealed class AdjustInventoryCommandHandler(
                 null, 
                 null, 
                 null,
-                DateTime.UtcNow, "Inventário");
+                DateTime.Now, "Inventário");
             if (movement.IsFailure)
                 return Result.Failure<IReadOnlyCollection<InventoryAdjustmentResponse>>(movement.Error);
 

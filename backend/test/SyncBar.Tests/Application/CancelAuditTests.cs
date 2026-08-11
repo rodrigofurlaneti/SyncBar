@@ -19,7 +19,7 @@ public sealed class CancelAuditTests
 
     private static CustomerOrder OrderWithSentItem()
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         order.AddItem(1, 30m, 1, null, null, now);
         var item = order.Items.First();
@@ -60,7 +60,7 @@ public sealed class CancelAuditTests
     public async Task CancelFreshItem_AsWaiter_ShouldSucceed()
     {
         // Item ainda Lancado (nao foi para a cozinha) — garcom corrige na hora.
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         order.AddItem(1, 30m, 1, null, null, now);
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);

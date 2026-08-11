@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Storage;
+﻿using SyncBar.Application.Abstractions.Storage;
 
 namespace SyncBar.Infrastructure.Storage;
 
@@ -20,6 +20,6 @@ internal sealed class LocalImageStorage : IImageStorage
         await File.WriteAllBytesAsync(Path.Combine(Root, fileName), content, cancellationToken);
 
         // Cache-busting: o navegador recarrega quando a imagem muda.
-        return $"/uploads/products/{fileName}?v={DateTime.UtcNow.Ticks}";
+        return $"/uploads/products/{fileName}?v={DateTime.Now.Ticks}";
     }
 }

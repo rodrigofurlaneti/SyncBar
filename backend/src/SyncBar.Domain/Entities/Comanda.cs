@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -19,7 +19,7 @@ public sealed class Comanda : AggregateRoot
         ComandaStatusId = comandaStatusId;
         Code = code;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<Comanda> Create(long branchId, long comandaStatusId, string code)
@@ -32,14 +32,14 @@ public sealed class Comanda : AggregateRoot
     public void ChangeStatus(long comandaStatusId)
     {
         ComandaStatusId = comandaStatusId;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

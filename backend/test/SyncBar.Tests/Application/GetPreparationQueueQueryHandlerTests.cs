@@ -28,7 +28,7 @@ public sealed class GetPreparationQueueQueryHandlerTests
     [Fact]
     public async Task Handle_ShouldBuildTicketsWithKitchenTimeAndBarTolerance()
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var order = WithId(CustomerOrder.Create(1, 10, null, 1, null, null, now).Value, 77);
         order.AddItem(1, 14.90m, 2, null, 5, now);      // lancado pelo funcionario 5 (Maria)
         order.AddItem(2, 32m, 1, "sem sal", null, now); // sem responsavel no item → garcom do pedido (1, Joao)
@@ -44,8 +44,8 @@ public sealed class GetPreparationQueueQueryHandlerTests
         _diningTableRepository.GetByBranchAsync(1, Arg.Any<CancellationToken>())
             .Returns(new List<DiningTable> { table });
 
-        var joao = WithId(Employee.Create(1, 2, "João", "11111111111", null, null, DateTime.UtcNow, null, null).Value, 1);
-        var maria = WithId(Employee.Create(1, 2, "Maria", "22222222222", null, null, DateTime.UtcNow, null, null).Value, 5);
+        var joao = WithId(Employee.Create(1, 2, "João", "11111111111", null, null, DateTime.Now, null, null).Value, 1);
+        var maria = WithId(Employee.Create(1, 2, "Maria", "22222222222", null, null, DateTime.Now, null, null).Value, 5);
         _employeeRepository.GetByBranchAsync(1, Arg.Any<CancellationToken>())
             .Returns(new List<Employee> { joao, maria });
 
@@ -74,7 +74,7 @@ public sealed class GetPreparationQueueQueryHandlerTests
     [Fact]
     public async Task Handle_OrderWithOnlyDeliveredItems_ShouldNotAppear()
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         order.AddItem(1, 10m, 1, null, null, now);
         var item = order.Items.First();

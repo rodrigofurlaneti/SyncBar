@@ -1,4 +1,4 @@
-using SyncBar.Domain.Constants;
+﻿using SyncBar.Domain.Constants;
 using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
@@ -27,9 +27,9 @@ public sealed class CashSession : AggregateRoot
         OpenedByEmployeeId = openedByEmployeeId;
         OpeningAmount = openingAmount;
         CashSessionStatusId = CashSessionStatusIds.Aberto;
-        OpenedAt = DateTime.UtcNow;
+        OpenedAt = DateTime.Now;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<CashSession> Open(long cashRegisterId, long openedByEmployeeId, decimal openingAmount)
@@ -52,8 +52,8 @@ public sealed class CashSession : AggregateRoot
         ExpectedAmount = expectedAmount;
         DifferenceAmount = closingAmount - expectedAmount;
         CashSessionStatusId = CashSessionStatusIds.Fechado;
-        ClosedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        ClosedAt = DateTime.Now;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -63,7 +63,7 @@ public sealed class CashSession : AggregateRoot
             return Result.Failure(new Error("CashSession.NotClosed", "Only a closed session can be reviewed."));
 
         CashSessionStatusId = CashSessionStatusIds.Conferido;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -72,6 +72,6 @@ public sealed class CashSession : AggregateRoot
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

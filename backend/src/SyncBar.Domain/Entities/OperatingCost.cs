@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -26,7 +26,7 @@ public sealed class OperatingCost : AggregateRoot
         ReferenceYear = referenceYear;
         ReferenceMonth = referenceMonth;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<OperatingCost> Create(long branchId, long costTypeId, string description,
@@ -47,6 +47,6 @@ public sealed class OperatingCost : AggregateRoot
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

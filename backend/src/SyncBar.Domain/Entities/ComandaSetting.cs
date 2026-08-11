@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -17,7 +17,7 @@ public sealed class ComandaSetting : AggregateRoot
         BranchId = branchId;
         DefaultLimitAmount = defaultLimitAmount;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<ComandaSetting> Create(long branchId, decimal defaultLimitAmount)
@@ -34,7 +34,7 @@ public sealed class ComandaSetting : AggregateRoot
             return Result.Failure(new Error("ComandaSetting.InvalidLimit", "Limit must be greater than zero."));
 
         DefaultLimitAmount = defaultLimitAmount;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 }

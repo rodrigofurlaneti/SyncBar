@@ -7,7 +7,7 @@ namespace SyncBar.Tests.Domain;
 
 public sealed class CustomerOrderTests
 {
-    private readonly DateTime _now = DateTime.UtcNow;
+    private readonly DateTime _now = DateTime.Now;
 
     [Fact]
     public void Create_WithoutTableAndComanda_ShouldFail()
@@ -33,7 +33,7 @@ public sealed class CustomerOrderTests
     {
         var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now).Value;
 
-        var result = order.AddItem(productId: 5, unitPrice: 14.90m, quantity: 2, notes: null, employeeId: null, utcNow: _now);
+        var result = order.AddItem(productId: 5, unitPrice: 14.90m, quantity: 2, notes: null, employeeId: null, Now: _now);
 
         result.IsSuccess.Should().BeTrue();
         order.Items.Should().HaveCount(1);
@@ -72,7 +72,7 @@ public sealed class CustomerOrderTests
         var order = CustomerOrder.Create(1, 10, null, 1, null, null, _now).Value;
         order.AddItem(5, 100m, 1, null, null, _now);
 
-        var result = order.Close(serviceFeeRate: 0.10m, utcNow: _now);
+        var result = order.Close(serviceFeeRate: 0.10m, Now: _now);
 
         result.IsSuccess.Should().BeTrue();
         order.ServiceFeeAmount.Should().Be(10m);

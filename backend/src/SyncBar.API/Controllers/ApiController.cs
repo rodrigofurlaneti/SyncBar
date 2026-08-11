@@ -48,7 +48,7 @@ public abstract class ApiController(IMediator mediator) : ControllerBase
             ClassName = className,
             MethodName = methodName,
             IpAddress = ipAddress,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.Now,
             IsActive = true
         };
 

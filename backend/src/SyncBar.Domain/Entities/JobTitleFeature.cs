@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -17,7 +17,7 @@ public sealed class JobTitleFeature : Entity
         JobTitleId = jobTitleId;
         AppFeatureId = appFeatureId;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<JobTitleFeature> Create(long jobTitleId, long appFeatureId)
@@ -31,12 +31,12 @@ public sealed class JobTitleFeature : Entity
     public void Reactivate()
     {
         IsActive = true;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

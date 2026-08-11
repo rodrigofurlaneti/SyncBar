@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -31,7 +31,7 @@ public sealed class AppUser : AggregateRoot
         PasswordHash = passwordHash;
         FailedAccessCount = 0;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<AppUser> Create(long companyId, long? employeeId, string userName, string email, string passwordHash)
@@ -46,22 +46,22 @@ public sealed class AppUser : AggregateRoot
         return Result.Success(new AppUser(companyId, employeeId, userName, email, passwordHash));
     }
 
-    public bool IsLockedOut() => LockoutEndAt.HasValue && LockoutEndAt.Value > DateTime.UtcNow;
+    public bool IsLockedOut() => LockoutEndAt.HasValue && LockoutEndAt.Value > DateTime.Now;
 
     public void RegisterLoginFailure()
     {
         FailedAccessCount++;
         if (FailedAccessCount >= MaxFailedAccessAttempts)
-            LockoutEndAt = DateTime.UtcNow.Add(LockoutDuration);
-        UpdatedAt = DateTime.UtcNow;
+            LockoutEndAt = DateTime.Now.Add(LockoutDuration);
+        UpdatedAt = DateTime.Now;
     }
 
     public void RegisterLoginSuccess()
     {
         FailedAccessCount = 0;
         LockoutEndAt = null;
-        LastLoginAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        LastLoginAt = DateTime.Now;
+        UpdatedAt = DateTime.Now;
     }
 
     public Result ChangePasswordHash(string passwordHash)
@@ -70,13 +70,13 @@ public sealed class AppUser : AggregateRoot
             return Result.Failure(new Error("AppUser.EmptyPasswordHash", "Password hash is required."));
 
         PasswordHash = passwordHash;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

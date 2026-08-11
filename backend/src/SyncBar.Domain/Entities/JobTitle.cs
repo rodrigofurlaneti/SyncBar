@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -17,7 +17,7 @@ public sealed class JobTitle : AggregateRoot
         CompanyId = companyId;
         Name = name;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<JobTitle> Create(long companyId, string name)
@@ -27,11 +27,11 @@ public sealed class JobTitle : AggregateRoot
         return Result.Success(new JobTitle(companyId, name));
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

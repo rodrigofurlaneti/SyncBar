@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -28,7 +28,7 @@ public sealed class Purchase : AggregateRoot
         PurchasedAt = purchasedAt;
         Notes = notes;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     // TotalAmount agora e derivado dos itens (RecalculateTotal) — nunca informado direto,
@@ -50,18 +50,18 @@ public sealed class Purchase : AggregateRoot
 
         _items.Add(item.Value);
         RecalculateTotal();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
     private void RecalculateTotal()
         => TotalAmount = _items.Where(i => i.IsActive).Sum(i => i.TotalCost);
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

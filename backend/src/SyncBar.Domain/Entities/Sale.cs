@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -36,9 +36,9 @@ public sealed class Sale : AggregateRoot
         DiscountAmount = discountAmount;
         ServiceFeeAmount = serviceFeeAmount;
         TotalAmount = subtotalAmount - discountAmount + serviceFeeAmount;
-        SoldAt = DateTime.UtcNow;
+        SoldAt = DateTime.Now;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<Sale> Create(long branchId, long customerOrderId, long cashSessionId, long employeeId,
@@ -63,7 +63,7 @@ public sealed class Sale : AggregateRoot
             return Result.Failure(payment.Error);
 
         _payments.Add(payment.Value);
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -80,6 +80,6 @@ public sealed class Sale : AggregateRoot
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

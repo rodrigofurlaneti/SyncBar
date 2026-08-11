@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -25,7 +25,7 @@ public sealed class Customer : AggregateRoot
         Email = email;
         LoyaltyPoints = 0;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<Customer> Create(long companyId, string name, string? phone, string? cpf, string? email)
@@ -44,7 +44,7 @@ public sealed class Customer : AggregateRoot
         Name = name;
         Phone = phone;
         Email = email;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -56,7 +56,7 @@ public sealed class Customer : AggregateRoot
             return Result.Failure(new Error("Customer.InvalidPoints", "Points must be greater than zero."));
 
         LoyaltyPoints += points;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -68,13 +68,13 @@ public sealed class Customer : AggregateRoot
             return Result.Failure(new Error("Customer.InsufficientPoints", "Not enough loyalty points."));
 
         LoyaltyPoints -= points;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

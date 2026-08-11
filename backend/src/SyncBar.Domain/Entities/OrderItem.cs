@@ -23,7 +23,7 @@ public sealed class OrderItem : Entity
 
     private OrderItem() : base(0) { }
 
-    private OrderItem(long customerOrderId, long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime utcNow) : base(0)
+    private OrderItem(long customerOrderId, long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now) : base(0)
     {
         CustomerOrderId = customerOrderId;
         ProductId = productId;
@@ -34,36 +34,36 @@ public sealed class OrderItem : Entity
         OrderItemStatusId = OrderItemStatusIds.Lancado;
         TotalAmount = Math.Round(unitPrice * quantity, 2);
         IsActive = true;
-        CreatedAt = utcNow;
+        CreatedAt = Now;
     }
 
-    internal static Result<OrderItem> Create(long customerOrderId, long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime utcNow)
+    internal static Result<OrderItem> Create(long customerOrderId, long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now)
     {
         if (quantity <= 0)
             return Result.Failure<OrderItem>(new Error("OrderItem.InvalidQuantity", "Quantity must be greater than zero."));
         if (unitPrice < 0)
             return Result.Failure<OrderItem>(new Error("OrderItem.InvalidUnitPrice", "Unit price cannot be negative."));
 
-        return Result.Success(new OrderItem(customerOrderId, productId, unitPrice, quantity, notes, employeeId, utcNow));
+        return Result.Success(new OrderItem(customerOrderId, productId, unitPrice, quantity, notes, employeeId, Now));
     }
 
-    internal Result UpdateStatus(long orderItemStatusId, long? actorEmployeeId, DateTime utcNow)
+    internal Result UpdateStatus(long orderItemStatusId, long? actorEmployeeId, DateTime Now)
     {
         if (OrderItemStatusId is OrderItemStatusIds.Entregue or OrderItemStatusIds.Cancelado)
             return Result.Failure(new Error("OrderItem.FinalStatus", "Delivered or cancelled items cannot change status."));
 
         OrderItemStatusId = orderItemStatusId;
-        if (orderItemStatusId == OrderItemStatusIds.EnviadoCozinha) SentToKitchenAt = utcNow;
-        if (orderItemStatusId == OrderItemStatusIds.Entregue) DeliveredAt = utcNow;
+        if (orderItemStatusId == OrderItemStatusIds.EnviadoCozinha) SentToKitchenAt = Now;
+        if (orderItemStatusId == OrderItemStatusIds.Entregue) DeliveredAt = Now;
         if (orderItemStatusId == OrderItemStatusIds.Cancelado) CancelledByEmployeeId = actorEmployeeId;
 
-        UpdatedAt = utcNow;
+        UpdatedAt = Now;
         return Result.Success();
     }
 
-    public void Deactivate(DateTime utcNow)
+    public void Deactivate(DateTime Now)
     {
         IsActive = false;
-        UpdatedAt = utcNow;
+        UpdatedAt = Now;
     }
 }

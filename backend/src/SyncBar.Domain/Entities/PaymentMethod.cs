@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -17,7 +17,7 @@ public sealed class PaymentMethod : Entity
         Name = name;
         AllowsChange = allowsChange;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<PaymentMethod> Create(string name, bool allowsChange)
@@ -27,11 +27,11 @@ public sealed class PaymentMethod : Entity
         return Result.Success(new PaymentMethod(name, allowsChange));
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

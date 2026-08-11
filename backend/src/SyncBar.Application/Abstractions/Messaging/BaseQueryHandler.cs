@@ -55,7 +55,7 @@ public abstract class BaseQueryHandler<TRequest, TResponse>(
                 ErrorMessage = errorMessage,
                 StackTrace = stackTrace,
                 IpAddress = ipAddress,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.Now,
                 IsActive = true
             };
 

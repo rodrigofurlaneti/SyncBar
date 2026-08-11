@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -25,7 +25,7 @@ public sealed class CashMovement : Entity
         Amount = amount;
         Description = description;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<CashMovement> Create(long cashSessionId, long cashMovementTypeId, long? saleId, long employeeId, decimal amount, string? description)
@@ -34,11 +34,11 @@ public sealed class CashMovement : Entity
         return Result.Success(new CashMovement(cashSessionId, cashMovementTypeId, saleId, employeeId, amount, description));
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

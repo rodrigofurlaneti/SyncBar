@@ -32,7 +32,7 @@ public sealed class CustomerOrder : AggregateRoot
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
     private CustomerOrder() : base(0) { }
 
-    private CustomerOrder(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes, decimal? creditLimitAmount, long orderTypeId, string? customerName, string? customerPhone, string? deliveryAddress, long? customerId, DateTime utcNow) : base(0)
+    private CustomerOrder(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes, decimal? creditLimitAmount, long orderTypeId, string? customerName, string? customerPhone, string? deliveryAddress, long? customerId, DateTime Now) : base(0)
     {
         CreditLimitAmount = comandaId is null ? null : creditLimitAmount;
         BranchId = branchId;
@@ -47,14 +47,14 @@ public sealed class CustomerOrder : AggregateRoot
         DeliveryAddress = deliveryAddress;
         CustomerId = customerId;
         OrderStatusId = OrderStatusIds.Aberto;
-        OpenedAt = utcNow;
+        OpenedAt = Now;
         IsActive = true;
-        CreatedAt = utcNow;
+        CreatedAt = Now;
     }
 
     public static Result<CustomerOrder> Create(
         long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes,
-        DateTime utcNow,
+        DateTime Now,
         decimal? creditLimitAmount = null, long orderTypeId = OrderTypeIds.Mesa,
         string? customerName = null, string? customerPhone = null, string? deliveryAddress = null,
         long? customerId = null)
@@ -73,10 +73,10 @@ public sealed class CustomerOrder : AggregateRoot
 
         return Result.Success(new CustomerOrder(
             branchId, diningTableId, comandaId, employeeId, guestCount, notes, creditLimitAmount,
-            orderTypeId, customerName, customerPhone, deliveryAddress, customerId, utcNow));
+            orderTypeId, customerName, customerPhone, deliveryAddress, customerId, Now));
     }
     
-    public Result AddItemWithPromotion(Product product, decimal quantity, string? notes, Promotion? activePromotion, long employeeId, DateTime utcNow)
+    public Result AddItemWithPromotion(Product product, decimal quantity, string? notes, Promotion? activePromotion, long employeeId, DateTime Now)
     {
         var unitPrice = product.SalePrice;
         var finalNotes = notes;
@@ -88,13 +88,13 @@ public sealed class CustomerOrder : AggregateRoot
             finalNotes = string.IsNullOrWhiteSpace(finalNotes) ? tag : $"{finalNotes} · {tag}";
         }
 
-        var result = AddItem(product.Id, unitPrice, quantity, finalNotes, employeeId == 0 ? null : employeeId, utcNow);
+        var result = AddItem(product.Id, unitPrice, quantity, finalNotes, employeeId == 0 ? null : employeeId, Now);
         if (result.IsFailure)
             return result;
 
         if (activePromotion?.PromotionTypeId == PromotionTypeIds.EmDobro)
         {
-            var bonus = AddItem(product.Id, 0m, quantity, $"🎁 {activePromotion.Name}", employeeId == 0 ? null : employeeId, utcNow);
+            var bonus = AddItem(product.Id, 0m, quantity, $"🎁 {activePromotion.Name}", employeeId == 0 ? null : employeeId, Now);
             if (bonus.IsFailure)
                 return bonus;
         }
@@ -102,7 +102,7 @@ public sealed class CustomerOrder : AggregateRoot
         return Result.Success();
     }
 
-    public Result AddItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime utcNow)
+    public Result AddItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now)
     {
         if (!IsOpen())
             return Result.Failure(new Error("CustomerOrder.NotOpen", "Items can only be added to an open order."));
@@ -120,18 +120,18 @@ public sealed class CustomerOrder : AggregateRoot
         // Defensiva contra IDs zerados ou inválidos vindos de requisições abertas
         long? safeEmployeeId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : null;
 
-        var item = OrderItem.Create(Id, productId, unitPrice, quantity, notes, safeEmployeeId, utcNow);
+        var item = OrderItem.Create(Id, productId, unitPrice, quantity, notes, safeEmployeeId, Now);
         if (item.IsFailure)
             return Result.Failure(item.Error);
 
         _items.Add(item.Value);
         OrderStatusId = OrderStatusIds.EmAndamento;
         RecalculateTotals();
-        UpdatedAt = utcNow;
+        UpdatedAt = Now;
         return Result.Success();
     }
 
-    public Result UpdateItemStatus(long orderItemId, long orderItemStatusId, DateTime utcNow, long? actorEmployeeId = null)
+    public Result UpdateItemStatus(long orderItemId, long orderItemStatusId, DateTime Now, long? actorEmployeeId = null)
     {
         if (!IsOpen())
             return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
@@ -140,18 +140,18 @@ public sealed class CustomerOrder : AggregateRoot
         if (item is null)
             return Result.Failure(new Error("CustomerOrder.ItemNotFound", "Order item not found."));
 
-        var result = item.UpdateStatus(orderItemStatusId, actorEmployeeId, utcNow);
+        var result = item.UpdateStatus(orderItemStatusId, actorEmployeeId, Now);
         if (result.IsFailure)
             return result;
 
         if (orderItemStatusId == OrderItemStatusIds.Cancelado)
             RecalculateTotals();
 
-        UpdatedAt = utcNow;
+        UpdatedAt = Now;
         return Result.Success();
     }
 
-    public Result ApplyDiscount(decimal discountAmount, DateTime utcNow)
+    public Result ApplyDiscount(decimal discountAmount, DateTime Now)
     {
         if (!IsOpen())
             return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
@@ -162,11 +162,11 @@ public sealed class CustomerOrder : AggregateRoot
 
         DiscountAmount = discountAmount;
         RecalculateTotals();
-        UpdatedAt = utcNow;
+        UpdatedAt = Now;
         return Result.Success();
     }
 
-    public Result Close(decimal serviceFeeRate, DateTime utcNow)
+    public Result Close(decimal serviceFeeRate, DateTime Now)
     {
         if (!IsOpen())
             return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
@@ -178,11 +178,11 @@ public sealed class CustomerOrder : AggregateRoot
         ServiceFeeAmount = Math.Round((SubtotalAmount - DiscountAmount) * serviceFeeRate, 2);
         RecalculateTotals();
         OrderStatusId = OrderStatusIds.AguardandoPagamento;
-        UpdatedAt = utcNow;
+        UpdatedAt = Now;
         return Result.Success();
     }
 
-    public Result RaiseCreditLimit(decimal newLimitAmount, DateTime utcNow)
+    public Result RaiseCreditLimit(decimal newLimitAmount, DateTime Now)
     {
         if (ComandaId is null)
             return Result.Failure(new Error("Comanda.LimitTableOrder", "Limite de consumo só se aplica a comandas."));
@@ -191,11 +191,11 @@ public sealed class CustomerOrder : AggregateRoot
                 $"O novo limite deve ser maior que o atual (R$ {CreditLimitAmount ?? 0:N2})."));
 
         CreditLimitAmount = newLimitAmount;
-        UpdatedAt = utcNow;
+        UpdatedAt = Now;
         return Result.Success();
     }
 
-    public Result RemoveServiceFee(DateTime utcNow)
+    public Result RemoveServiceFee(DateTime Now)
     {
         if (OrderStatusId != OrderStatusIds.AguardandoPagamento)
             return Result.Failure(new Error("CustomerOrder.NotAwaitingPayment",
@@ -206,33 +206,33 @@ public sealed class CustomerOrder : AggregateRoot
 
         ServiceFeeAmount = 0;
         RecalculateTotals();
-        UpdatedAt = utcNow;
+        UpdatedAt = Now;
         return Result.Success();
     }
 
-    public Result MarkAsPaid(DateTime utcNow)
+    public Result MarkAsPaid(DateTime Now)
     {
         if (OrderStatusId != OrderStatusIds.AguardandoPagamento)
             return Result.Failure(new Error("CustomerOrder.NotAwaitingPayment", "Order is not awaiting payment."));
 
         OrderStatusId = OrderStatusIds.Pago;
-        ClosedAt = utcNow;
-        UpdatedAt = utcNow;
+        ClosedAt = Now;
+        UpdatedAt = Now;
         return Result.Success();
     }
 
-    public Result ReopenForPayment(DateTime utcNow)
+    public Result ReopenForPayment(DateTime Now)
     {
         if (OrderStatusId != OrderStatusIds.Pago)
             return Result.Failure(new Error("CustomerOrder.NotPaid", "Only a paid order can be reopened by refund."));
 
         OrderStatusId = OrderStatusIds.AguardandoPagamento;
         ClosedAt = null;
-        UpdatedAt = utcNow;
+        UpdatedAt = Now;
         return Result.Success();
     }
 
-    public Result ReopenForConsumption(DateTime utcNow)
+    public Result ReopenForConsumption(DateTime Now)
     {
         if (OrderStatusId != OrderStatusIds.AguardandoPagamento)
             return Result.Failure(new Error("CustomerOrder.NotAwaitingPayment", "Only a closed (awaiting payment) order can be reopened."));
@@ -240,11 +240,11 @@ public sealed class CustomerOrder : AggregateRoot
         OrderStatusId = OrderStatusIds.EmAndamento;
         ServiceFeeAmount = 0;
         RecalculateTotals();
-        UpdatedAt = utcNow;
+        UpdatedAt = Now;
         return Result.Success();
     }
 
-    public Result Cancel(DateTime utcNow)
+    public Result Cancel(DateTime Now)
     {
         if (OrderStatusId == OrderStatusIds.Pago)
             return Result.Failure(new Error("CustomerOrder.AlreadyPaid", "Paid orders must be refunded, not cancelled."));
@@ -252,15 +252,15 @@ public sealed class CustomerOrder : AggregateRoot
             return Result.Failure(new Error("CustomerOrder.AlreadyCancelled", "Order is already cancelled."));
 
         OrderStatusId = OrderStatusIds.Cancelado;
-        ClosedAt = utcNow;
-        UpdatedAt = utcNow;
+        ClosedAt = Now;
+        UpdatedAt = Now;
         return Result.Success();
     }
 
-    public void Deactivate(DateTime utcNow)
+    public void Deactivate(DateTime Now)
     {
         IsActive = false;
-        UpdatedAt = utcNow;
+        UpdatedAt = Now;
     }
 
     private bool IsOpen()

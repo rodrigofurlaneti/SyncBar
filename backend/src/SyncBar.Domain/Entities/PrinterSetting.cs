@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -19,7 +19,7 @@ public sealed class PrinterSetting : AggregateRoot
         PrintOrdersEnabled = printOrdersEnabled;
         PrintBillsEnabled = printBillsEnabled;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<PrinterSetting> Create(long branchId, bool printOrdersEnabled, bool printBillsEnabled)
@@ -29,6 +29,6 @@ public sealed class PrinterSetting : AggregateRoot
     {
         PrintOrdersEnabled = printOrdersEnabled;
         PrintBillsEnabled = printBillsEnabled;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

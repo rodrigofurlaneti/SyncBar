@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using NSubstitute;
 using SyncBar.Application.Features.Employees.Create;
 using SyncBar.Domain.Entities;
@@ -24,7 +24,7 @@ public sealed class CreateEmployeeCommandHandlerTests
             .Returns(JobTitle.Create(1, "Garçom").Value);
 
         var result = await CreateHandler().Handle(
-            new CreateEmployeeCommand(1, 2, "João Silva", "12345678901", null, null, DateTime.UtcNow, 2500m),
+            new CreateEmployeeCommand(1, 2, "João Silva", "12345678901", null, null, DateTime.Now, 2500m),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -38,7 +38,7 @@ public sealed class CreateEmployeeCommandHandlerTests
         _employeeRepository.ExistsByCpfAsync("12345678901", Arg.Any<CancellationToken>()).Returns(true);
 
         var result = await CreateHandler().Handle(
-            new CreateEmployeeCommand(1, 2, "João Silva", "12345678901", null, null, DateTime.UtcNow, null),
+            new CreateEmployeeCommand(1, 2, "João Silva", "12345678901", null, null, DateTime.Now, null),
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();

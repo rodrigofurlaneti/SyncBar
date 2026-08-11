@@ -26,7 +26,7 @@ public sealed class AddOrderItemCommandHandlerTests
     {
         _promotionRepository.GetByBranchAsync(Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(new List<Promotion>());
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         var product = Product.Create(1, 1, 1, "Cerveja Pilsen 600ml", null, null, 14.90m, 6.50m, true, null).Value;
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
@@ -45,7 +45,7 @@ public sealed class AddOrderItemCommandHandlerTests
     [Fact]
     public async Task Handle_WithUnknownProduct_ShouldFail()
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
         _productRepository.GetByIdAsync(99, Arg.Any<CancellationToken>()).Returns((Product?)null);
@@ -80,7 +80,7 @@ public sealed class AddOrderItemPromotionTests
     [Fact]
     public async Task Handle_WithActivePromotion_ShouldAddFreeBonusLine()
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         var caipirinha = WithId(Product.Create(1, 2, 6, "Caipirinha", null, null, 22m, 7m, false, 8).Value, 3);
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
@@ -107,7 +107,7 @@ public sealed class AddOrderItemPromotionTests
     [Fact]
     public async Task Handle_OutsidePromotionWindow_ShouldChargeNormalPrice()
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         var caipirinha = WithId(Product.Create(1, 2, 6, "Caipirinha", null, null, 22m, 7m, false, 8).Value, 3);
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
@@ -151,7 +151,7 @@ public sealed class AddOrderItemDiscountPromotionTests
     [Fact]
     public async Task Handle_WithActiveDiscountPromotion_ShouldChargeDiscountedFrozenPrice()
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         var chapa = WithId(Product.Create(1, 4, 7, "Porção Chapa Mista", null, null, 80m, 30m, false, 25).Value, 9);
         _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);

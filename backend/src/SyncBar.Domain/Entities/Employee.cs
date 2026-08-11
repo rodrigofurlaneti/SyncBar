@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -33,7 +33,7 @@ public sealed class Employee : AggregateRoot
         DismissedAt = dismissedAt;
         Salary = salary;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<Employee> Create(long branchId, long jobTitleId, string name, string cpf, string? email, string? phone, DateTime hiredAt, DateTime? dismissedAt, decimal? salary)
@@ -55,7 +55,7 @@ public sealed class Employee : AggregateRoot
         Email = email;
         Phone = phone;
         Salary = salary;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -65,7 +65,7 @@ public sealed class Employee : AggregateRoot
             return Result.Failure(new Error("Employee.InvalidCommission", "Commission percent must be between 0 and 100."));
 
         CommissionPercent = commissionPercent;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -74,17 +74,17 @@ public sealed class Employee : AggregateRoot
         if (DismissedAt is not null)
             return Result.Failure(new Error("Employee.AlreadyDismissed", "Employee is already dismissed."));
 
-        DismissedAt = DateTime.UtcNow;
+        DismissedAt = DateTime.Now;
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

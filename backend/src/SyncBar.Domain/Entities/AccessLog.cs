@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -23,7 +23,7 @@ public sealed class AccessLog : Entity
         IpAddress = ipAddress;
         UserAgent = userAgent;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<AccessLog> Create(long? appUserId, string userName, string eventType, string? ipAddress, string? userAgent)
@@ -35,11 +35,11 @@ public sealed class AccessLog : Entity
         return Result.Success(new AccessLog(appUserId, userName, eventType, ipAddress, userAgent));
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

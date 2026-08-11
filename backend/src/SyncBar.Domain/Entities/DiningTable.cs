@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -25,7 +25,7 @@ public sealed class DiningTable : AggregateRoot
         Number = number;
         Capacity = capacity;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<DiningTable> Create(long branchId, long tableStatusId, int number, int? capacity)
@@ -37,22 +37,22 @@ public sealed class DiningTable : AggregateRoot
     public void ChangeStatus(long tableStatusId)
     {
         TableStatusId = tableStatusId;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 
     // Gera (ou regenera, se o QR for perdido/comprometido) o token público desta mesa.
     public Guid GenerateQrToken()
     {
         QrToken = Guid.NewGuid();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return QrToken.Value;
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

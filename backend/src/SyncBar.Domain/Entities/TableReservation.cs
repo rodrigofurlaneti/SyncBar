@@ -1,4 +1,4 @@
-using SyncBar.Domain.Constants;
+﻿using SyncBar.Domain.Constants;
 using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
@@ -30,7 +30,7 @@ public sealed class TableReservation : AggregateRoot
         Notes = notes;
         ReservationStatusId = ReservationStatusIds.Pending;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<TableReservation> Create(
@@ -41,7 +41,7 @@ public sealed class TableReservation : AggregateRoot
             return Result.Failure<TableReservation>(new Error("TableReservation.EmptyCustomerName", "Customer name is required."));
         if (partySize <= 0)
             return Result.Failure<TableReservation>(new Error("TableReservation.InvalidPartySize", "Party size must be greater than zero."));
-        if (reservedFor <= DateTime.UtcNow)
+        if (reservedFor <= DateTime.Now)
             return Result.Failure<TableReservation>(new Error("TableReservation.PastDate", "Reservation date must be in the future."));
 
         return Result.Success(new TableReservation(branchId, diningTableId, customerName, customerPhone, partySize, reservedFor, notes));
@@ -54,7 +54,7 @@ public sealed class TableReservation : AggregateRoot
 
         DiningTableId = diningTableId;
         ReservationStatusId = ReservationStatusIds.Confirmed;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -64,7 +64,7 @@ public sealed class TableReservation : AggregateRoot
             return Result.Failure(new Error("TableReservation.NotConfirmed", "Only a confirmed reservation can be seated."));
 
         ReservationStatusId = ReservationStatusIds.Seated;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -74,7 +74,7 @@ public sealed class TableReservation : AggregateRoot
             return Result.Failure(new Error("TableReservation.CannotCancel", "This reservation can no longer be cancelled."));
 
         ReservationStatusId = ReservationStatusIds.Cancelled;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -84,13 +84,13 @@ public sealed class TableReservation : AggregateRoot
             return Result.Failure(new Error("TableReservation.NotConfirmed", "Only a confirmed reservation can be marked as no-show."));
 
         ReservationStatusId = ReservationStatusIds.NoShow;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

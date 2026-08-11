@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -37,7 +37,7 @@ public sealed class Branch : AggregateRoot
         AddressState = addressState;
         AddressZipCode = addressZipCode;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<Branch> Create(long companyId, string name, string? cnpj, string? phone, string? addressStreet, string? addressNumber, string? addressDistrict, string? addressCity, string? addressState, string? addressZipCode)
@@ -50,14 +50,14 @@ public sealed class Branch : AggregateRoot
     public void SetSelfServiceEmployee(long? employeeId)
     {
         SelfServiceEmployeeId = employeeId;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Fiscal;
+﻿using SyncBar.Application.Abstractions.Fiscal;
 
 namespace SyncBar.Infrastructure.Fiscal;
 
@@ -17,7 +17,7 @@ internal sealed class FakeFiscalDocumentService : IFiscalDocumentService
             DocumentId: documentId,
             Status: FiscalDocumentStatus.Authorized,
             AccessKey: string.Concat(Enumerable.Repeat("0", 44)),
-            AuthorizationProtocol: $"PROT-{DateTime.UtcNow:yyyyMMddHHmmss}",
+            AuthorizationProtocol: $"PROT-{DateTime.Now:yyyyMMddHHmmss}",
             DanfeUrl: null));
     }
 

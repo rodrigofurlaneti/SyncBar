@@ -5,6 +5,9 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Abstractions.Messaging;
 
+// =====================================================================
+// 1. VERSÃO PARA COMANDOS QUE RETORNAM UM VALOR (Ex: Result<long>)
+// =====================================================================
 public abstract class BaseCommandHandler<TRequest, TResponse>(
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<TRequest, TResponse>
@@ -55,7 +58,82 @@ public abstract class BaseCommandHandler<TRequest, TResponse>(
                 ErrorMessage = errorMessage,
                 StackTrace = stackTrace,
                 IpAddress = ipAddress,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.Now,
+                IsActive = true
+            };
+
+            try
+            {
+                await logRepository.AddAsync(log);
+                await unitOfWork.CommitAsync();
+            }
+            catch
+            {
+                // Evita que falhas de log quebrem a execução principal
+            }
+        }
+    }
+
+    protected class UserIdBox
+    {
+        public long? Value { get; set; }
+    }
+}
+
+// =====================================================================
+// 2. VERSÃO PARA COMANDOS QUE NÃO RETORNAM DADOS (Ex: Result)
+// =====================================================================
+public abstract class BaseCommandHandler<TRequest>(
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork) : ICommandHandler<TRequest>
+    where TRequest : ICommand
+{
+    public abstract Task<Result> Handle(TRequest request, CancellationToken cancellationToken);
+
+    protected async Task<Result> ExecuteWithLogAsync(
+        string className,
+        string methodName,
+        string? ipAddress,
+        Func<UserIdBox, Task<Result>> action)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var userIdBox = new UserIdBox();
+        var isSuccess = true;
+        string? errorMessage = null;
+        string? stackTrace = null;
+
+        try
+        {
+            var result = await action(userIdBox);
+            isSuccess = !result.IsFailure;
+            if (result.IsFailure)
+            {
+                errorMessage = result.Error.Message;
+            }
+            return result;
+        }
+        catch (Exception ex)
+        {
+            isSuccess = false;
+            errorMessage = ex.Message;
+            stackTrace = ex.StackTrace;
+            throw;
+        }
+        finally
+        {
+            stopwatch.Stop();
+            var log = new LogTracker(0)
+            {
+                AppUserId = userIdBox.Value,
+                DirectoryName = "Application/Features",
+                ClassName = className,
+                MethodName = methodName,
+                IsSuccess = isSuccess,
+                ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
+                ErrorMessage = errorMessage,
+                StackTrace = stackTrace,
+                IpAddress = ipAddress,
+                CreatedAt = DateTime.Now,
                 IsActive = true
             };
 

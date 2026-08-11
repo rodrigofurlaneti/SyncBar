@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -20,24 +20,24 @@ public sealed class RefreshToken : Entity
         Token = token;
         ExpiresAt = expiresAt;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<RefreshToken> Create(long appUserId, string token, DateTime expiresAt)
     {
         if (string.IsNullOrWhiteSpace(token))
             return Result.Failure<RefreshToken>(new Error("RefreshToken.EmptyToken", "Token is required."));
-        if (expiresAt <= DateTime.UtcNow)
+        if (expiresAt <= DateTime.Now)
             return Result.Failure<RefreshToken>(new Error("RefreshToken.InvalidExpiration", "Expiration must be in the future."));
 
         return Result.Success(new RefreshToken(appUserId, token, expiresAt));
     }
 
-    public bool IsValid() => RevokedAt is null && ExpiresAt > DateTime.UtcNow && IsActive;
+    public bool IsValid() => RevokedAt is null && ExpiresAt > DateTime.Now && IsActive;
 
     public void Revoke()
     {
-        RevokedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
+        RevokedAt = DateTime.Now;
+        UpdatedAt = DateTime.Now;
     }
 }

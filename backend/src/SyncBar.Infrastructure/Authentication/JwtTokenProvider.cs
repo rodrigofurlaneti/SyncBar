@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -26,7 +26,7 @@ internal sealed class JwtTokenProvider(IOptions<JwtOptions> options) : IJwtToken
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
         claims.AddRange(permissions.Select(p => new Claim("permission", p)));
 
-        var expiresAt = DateTime.UtcNow.AddMinutes(_options.ExpiresInMinutes);
+        var expiresAt = DateTime.Now.AddMinutes(_options.ExpiresInMinutes);
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Secret)),
             SecurityAlgorithms.HmacSha256);
@@ -35,7 +35,7 @@ internal sealed class JwtTokenProvider(IOptions<JwtOptions> options) : IJwtToken
             issuer: _options.Issuer,
             audience: _options.Audience,
             claims: claims,
-            notBefore: DateTime.UtcNow,
+            notBefore: DateTime.Now,
             expires: expiresAt,
             signingCredentials: credentials);
 

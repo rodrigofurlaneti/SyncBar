@@ -37,7 +37,7 @@ internal sealed class RefreshTokenCommandHandler(
             var accessToken = jwtTokenProvider.GenerateToken(user, roles, permissions);
 
             var newTokenValue = jwtTokenProvider.GenerateRefreshToken();
-            var newTokenExpiresAt = DateTime.UtcNow.AddDays(7);
+            var newTokenExpiresAt = DateTime.Now.AddDays(7);
             var newToken = RefreshToken.Create(user.Id, newTokenValue, newTokenExpiresAt);
             if (newToken.IsFailure)
                 return Result.Failure<LoginResponse>(newToken.Error);

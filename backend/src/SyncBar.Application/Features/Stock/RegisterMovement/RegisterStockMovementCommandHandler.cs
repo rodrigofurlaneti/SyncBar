@@ -53,7 +53,7 @@ internal sealed class RegisterStockMovementCommandHandler(
             request.EmployeeId,
             request.Quantity, request.UnitCost,
             request.UnitCost is null ? null : Math.Round(request.UnitCost.Value * request.Quantity, 2),
-            request.DocumentNumber, DateTime.UtcNow, request.Notes);
+            request.DocumentNumber, DateTime.Now, request.Notes);
         if (movement.IsFailure)
             return Result.Failure<long>(movement.Error);
 

@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -33,7 +33,7 @@ public sealed class Printer : AggregateRoot
         PrintsOrders = printsOrders;
         PrintsBills = printsBills;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<Printer> Create(long branchId, string name, int connectionType,
@@ -56,6 +56,6 @@ public sealed class Printer : AggregateRoot
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

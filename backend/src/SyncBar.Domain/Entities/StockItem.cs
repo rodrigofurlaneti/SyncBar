@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -23,7 +23,7 @@ public sealed class StockItem : AggregateRoot
         MinimumQuantity = minimumQuantity;
         MaximumQuantity = maximumQuantity;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<StockItem> Create(long branchId, long productId, decimal minimumQuantity, decimal? maximumQuantity)
@@ -41,7 +41,7 @@ public sealed class StockItem : AggregateRoot
             return Result.Failure(new Error("StockItem.InvalidQuantity", "Quantity must be greater than zero."));
 
         CurrentQuantity += quantity;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -53,7 +53,7 @@ public sealed class StockItem : AggregateRoot
             return Result.Failure(new Error("StockItem.InsufficientStock", "Stock cannot become negative."));
 
         CurrentQuantity -= quantity;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -66,7 +66,7 @@ public sealed class StockItem : AggregateRoot
 
         MinimumQuantity = minimumQuantity;
         MaximumQuantity = maximumQuantity;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
@@ -75,6 +75,6 @@ public sealed class StockItem : AggregateRoot
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

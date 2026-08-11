@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -34,7 +34,7 @@ public sealed class Product : AggregateRoot
         IsStockControlled = isStockControlled;
         PreparationTimeMinutes = preparationTimeMinutes;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<Product> Create(long companyId, long categoryId, long unitOfMeasureId, string name, string? description, string? barcode, decimal salePrice, decimal? costPrice, bool isStockControlled, int? preparationTimeMinutes)
@@ -61,21 +61,21 @@ public sealed class Product : AggregateRoot
         CostPrice = costPrice;
         IsStockControlled = isStockControlled;
         PreparationTimeMinutes = preparationTimeMinutes;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
     public void SetImage(string? imageUrl)
     {
         ImageUrl = imageUrl;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

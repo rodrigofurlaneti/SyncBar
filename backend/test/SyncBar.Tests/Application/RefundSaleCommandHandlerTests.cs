@@ -25,7 +25,7 @@ public sealed class RefundSaleCommandHandlerTests
 
     private static (Sale sale, CustomerOrder order) PaidScenario()
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var order = CustomerOrder.Create(1, 10, null, 1, null, null, now).Value;
         order.AddItem(1, 100m, 1, null, null, now);
         order.Close(0.10m, now);

@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -19,7 +19,7 @@ public sealed class ServiceFeeSetting : AggregateRoot
         BranchId = branchId;
         Enabled = enabled;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<ServiceFeeSetting> Create(long branchId, bool enabled)
@@ -28,7 +28,7 @@ public sealed class ServiceFeeSetting : AggregateRoot
     public Result SetEnabled(bool enabled)
     {
         Enabled = enabled;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 }

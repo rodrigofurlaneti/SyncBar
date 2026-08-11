@@ -46,7 +46,7 @@ public sealed class StockMovement : Entity
         MovedAt = movedAt;
         Notes = notes;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<StockMovement> Create(
@@ -76,11 +76,11 @@ public sealed class StockMovement : Entity
             notes));
     }
 
-    public void Touch() => UpdatedAt = DateTime.UtcNow;
+    public void Touch() => UpdatedAt = DateTime.Now;
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

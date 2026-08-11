@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -23,7 +23,7 @@ public sealed class SalePayment : Entity
         ChangeAmount = changeAmount;
         AuthorizationCode = authorizationCode;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     internal static Result<SalePayment> Create(long saleId, long paymentMethodId, decimal amount, decimal? changeAmount, string? authorizationCode)
@@ -37,6 +37,6 @@ public sealed class SalePayment : Entity
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

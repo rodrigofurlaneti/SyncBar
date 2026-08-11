@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -21,7 +21,7 @@ public sealed class RevenueTarget : AggregateRoot
         ReferenceMonth = referenceMonth;
         TargetAmount = targetAmount;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<RevenueTarget> Create(long branchId, int referenceYear, int referenceMonth, decimal targetAmount)
@@ -42,13 +42,13 @@ public sealed class RevenueTarget : AggregateRoot
             return Result.Failure(new Error("RevenueTarget.InvalidAmount", "Target must be greater than zero."));
 
         TargetAmount = targetAmount;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
         return Result.Success();
     }
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }

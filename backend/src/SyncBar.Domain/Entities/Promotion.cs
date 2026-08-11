@@ -1,4 +1,4 @@
-using SyncBar.Domain.Constants;
+﻿using SyncBar.Domain.Constants;
 using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
@@ -31,7 +31,7 @@ public sealed class Promotion : AggregateRoot
         PromotionTypeId = promotionTypeId;
         DiscountRate = discountRate;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        CreatedAt = DateTime.Now;
     }
 
     public static Result<Promotion> Create(long branchId, long productId, string name,
@@ -68,6 +68,6 @@ public sealed class Promotion : AggregateRoot
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.Now;
     }
 }
