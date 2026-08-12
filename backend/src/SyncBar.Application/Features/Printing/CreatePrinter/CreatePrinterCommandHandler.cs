@@ -5,12 +5,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Printing.CreatePrinter;
 
-internal sealed class CreatePrinterCommandHandler(
-    IPrinterRepository printerRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CreatePrinterCommand, long>(logRepository, unitOfWork)
+internal sealed class CreatePrinterCommandHandler : BaseCommandHandler<CreatePrinterCommand, long>
 {
+    private readonly IPrinterRepository _printerRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreatePrinterCommandHandler(
+        IPrinterRepository printerRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _printerRepository = printerRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result<long>> Handle(CreatePrinterCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -30,8 +39,8 @@ internal sealed class CreatePrinterCommandHandler(
                 if (printer.IsFailure)
                     return Result.Failure<long>(printer.Error);
 
-                await printerRepository.AddAsync(printer.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _printerRepository.AddAsync(printer.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(printer.Value.Id);
             });

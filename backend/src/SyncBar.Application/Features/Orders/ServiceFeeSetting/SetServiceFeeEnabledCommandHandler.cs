@@ -5,12 +5,21 @@ using DomainServiceFeeSetting = SyncBar.Domain.Entities.ServiceFeeSetting;
 
 namespace SyncBar.Application.Features.Orders.ServiceFeeSetting;
 
-internal sealed class SetServiceFeeEnabledCommandHandler(
-    IServiceFeeSettingRepository settingRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<SetServiceFeeEnabledCommand>(logRepository, unitOfWork)
+internal sealed class SetServiceFeeEnabledCommandHandler : BaseCommandHandler<SetServiceFeeEnabledCommand>
 {
+    private readonly IServiceFeeSettingRepository _settingRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public SetServiceFeeEnabledCommandHandler(
+        IServiceFeeSettingRepository settingRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _settingRepository = settingRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(SetServiceFeeEnabledCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -23,14 +32,14 @@ internal sealed class SetServiceFeeEnabledCommandHandler(
                 // userIdBox.Value = request.UserId;
 
                 // Upsert por filial (espelha UQ_ServiceFeeSetting_BranchId filtrado).
-                var setting = await settingRepository.GetByBranchForUpdateAsync(request.BranchId, cancellationToken);
+                var setting = await _settingRepository.GetByBranchForUpdateAsync(request.BranchId, cancellationToken);
                 if (setting is null)
                 {
                     var created = DomainServiceFeeSetting.Create(request.BranchId, request.Enabled);
                     if (created.IsFailure)
                         return Result.Failure(created.Error);
 
-                    await settingRepository.AddAsync(created.Value, cancellationToken);
+                    await _settingRepository.AddAsync(created.Value, cancellationToken);
                 }
                 else
                 {
@@ -39,7 +48,7 @@ internal sealed class SetServiceFeeEnabledCommandHandler(
                         return updated;
                 }
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }

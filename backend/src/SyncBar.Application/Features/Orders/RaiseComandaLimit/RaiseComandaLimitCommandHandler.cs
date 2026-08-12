@@ -4,13 +4,24 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Orders.RaiseComandaLimit;
 
-internal sealed class RaiseComandaLimitCommandHandler(
-    ICustomerOrderRepository orderRepository,
-    TimeProvider timeProvider,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<RaiseComandaLimitCommand>(logRepository, unitOfWork)
+internal sealed class RaiseComandaLimitCommandHandler : BaseCommandHandler<RaiseComandaLimitCommand>
 {
+    private readonly ICustomerOrderRepository _orderRepository;
+    private readonly TimeProvider _timeProvider;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public RaiseComandaLimitCommandHandler(
+        ICustomerOrderRepository orderRepository,
+        TimeProvider timeProvider,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _orderRepository = orderRepository;
+        _timeProvider = timeProvider;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(RaiseComandaLimitCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -22,17 +33,17 @@ internal sealed class RaiseComandaLimitCommandHandler(
                 // Se o seu request possuir o Id do usuário/gerente responsável pela liberação do limite, preencha:
                 // userIdBox.Value = request.UserId; 
 
-                var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
+                var order = await _orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
                 if (order is null || !order.IsActive)
                     return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-                var currentTime = timeProvider.GetLocalNow().DateTime;
+                var currentTime = _timeProvider.GetLocalNow().DateTime;
 
                 var result = order.RaiseCreditLimit(request.NewLimitAmount, currentTime);
                 if (result.IsFailure)
                     return result;
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }

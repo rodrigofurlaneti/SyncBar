@@ -7,17 +7,36 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.PublicOrdering.AddItem;
 
-internal sealed class AddPublicOrderItemCommandHandler(
-    IDiningTableRepository diningTableRepository,
-    IBranchRepository branchRepository,
-    IProductRepository productRepository,
-    ICustomerOrderRepository orderRepository,
-    IPrintingService printingService,
-    TimeProvider timeProvider,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<AddPublicOrderItemCommand, long>(logRepository, unitOfWork)
+internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddPublicOrderItemCommand, long>
 {
+    private readonly IDiningTableRepository _diningTableRepository;
+    private readonly IBranchRepository _branchRepository;
+    private readonly IProductRepository _productRepository;
+    private readonly ICustomerOrderRepository _orderRepository;
+    private readonly IPrintingService _printingService;
+    private readonly TimeProvider _timeProvider;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public AddPublicOrderItemCommandHandler(
+        IDiningTableRepository diningTableRepository,
+        IBranchRepository branchRepository,
+        IProductRepository productRepository,
+        ICustomerOrderRepository orderRepository,
+        IPrintingService printingService,
+        TimeProvider timeProvider,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _diningTableRepository = diningTableRepository;
+        _branchRepository = branchRepository;
+        _productRepository = productRepository;
+        _orderRepository = orderRepository;
+        _printingService = printingService;
+        _timeProvider = timeProvider;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result<long>> Handle(AddPublicOrderItemCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -26,11 +45,11 @@ internal sealed class AddPublicOrderItemCommandHandler(
             null, // Substitua pelo IP do cliente lido no request, caso aplicável
             async (userIdBox) =>
             {
-                var table = await diningTableRepository.GetByQrTokenAsync(request.Token, cancellationToken);
+                var table = await _diningTableRepository.GetByQrTokenAsync(request.Token, cancellationToken);
                 if (table is null || !table.IsActive)
                     return Result.Failure<long>(new Error("DiningTable.InvalidToken", "Invalid or expired QR code."));
 
-                var branch = await branchRepository.GetByIdAsync(table.BranchId, cancellationToken);
+                var branch = await _branchRepository.GetByIdAsync(table.BranchId, cancellationToken);
                 if (branch is null || !branch.IsActive)
                     return Result.Failure<long>(new Error("Branch.NotFound", "Branch not found."));
                 if (!branch.SelfServiceEmployeeId.HasValue)
@@ -40,13 +59,13 @@ internal sealed class AddPublicOrderItemCommandHandler(
                 // Associa a ação no log ao funcionário "virtual" de autoatendimento configurado na filial
                 userIdBox.Value = branch.SelfServiceEmployeeId.Value;
 
-                var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
+                var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
                 if (product is null || !product.IsActive || product.CompanyId != branch.CompanyId)
                     return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
 
-                var currentTime = timeProvider.GetLocalNow().DateTime;
+                var currentTime = _timeProvider.GetLocalNow().DateTime;
 
-                var order = await orderRepository.GetOpenByTableForUpdateAsync(table.Id, cancellationToken);
+                var order = await _orderRepository.GetOpenByTableForUpdateAsync(table.Id, cancellationToken);
                 var isNewOrder = order is null;
                 if (order is null)
                 {
@@ -59,8 +78,8 @@ internal sealed class AddPublicOrderItemCommandHandler(
                         return Result.Failure<long>(created.Error);
 
                     order = created.Value;
-                    await orderRepository.AddAsync(order, cancellationToken);
-                    await unitOfWork.CommitAsync(cancellationToken);
+                    await _orderRepository.AddAsync(order, cancellationToken);
+                    await _unitOfWork.CommitAsync(cancellationToken);
                 }
 
                 if (isNewOrder)
@@ -73,12 +92,12 @@ internal sealed class AddPublicOrderItemCommandHandler(
                 if (added.IsFailure)
                     return Result.Failure<long>(added.Error);
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 var newItemIds = order.Items.Skip(itemCountBefore).Select(i => i.Id).ToList();
                 try
                 {
-                    await printingService.PrintOrderItemsAsync(order.Id, newItemIds, cancellationToken);
+                    await _printingService.PrintOrderItemsAsync(order.Id, newItemIds, cancellationToken);
                 }
                 catch
                 {

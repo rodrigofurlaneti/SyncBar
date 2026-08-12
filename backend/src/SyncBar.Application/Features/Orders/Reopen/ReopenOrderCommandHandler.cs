@@ -5,14 +5,27 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Orders.Reopen;
 
-internal sealed class ReopenOrderCommandHandler(
-    ICustomerOrderRepository orderRepository,
-    IDiningTableRepository diningTableRepository,
-    TimeProvider timeProvider,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<ReopenOrderCommand>(logRepository, unitOfWork)
+internal sealed class ReopenOrderCommandHandler : BaseCommandHandler<ReopenOrderCommand>
 {
+    private readonly ICustomerOrderRepository _orderRepository;
+    private readonly IDiningTableRepository _diningTableRepository;
+    private readonly TimeProvider _timeProvider;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public ReopenOrderCommandHandler(
+        ICustomerOrderRepository orderRepository,
+        IDiningTableRepository diningTableRepository,
+        TimeProvider timeProvider,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _orderRepository = orderRepository;
+        _diningTableRepository = diningTableRepository;
+        _timeProvider = timeProvider;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(ReopenOrderCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -24,11 +37,11 @@ internal sealed class ReopenOrderCommandHandler(
                 // Se o seu request possuir o Id do usuário/gerente responsável pela reabertura, preencha:
                 // userIdBox.Value = request.UserId; 
 
-                var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
+                var order = await _orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
                 if (order is null || !order.IsActive)
                     return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-                var currentTime = timeProvider.GetLocalNow().DateTime;
+                var currentTime = _timeProvider.GetLocalNow().DateTime;
 
                 var result = order.ReopenForConsumption(currentTime);
                 if (result.IsFailure)
@@ -36,11 +49,11 @@ internal sealed class ReopenOrderCommandHandler(
 
                 if (order.DiningTableId.HasValue)
                 {
-                    var table = await diningTableRepository.GetByIdForUpdateAsync(order.DiningTableId.Value, cancellationToken);
+                    var table = await _diningTableRepository.GetByIdForUpdateAsync(order.DiningTableId.Value, cancellationToken);
                     table?.ChangeStatus(TableStatusIds.Ocupada);
                 }
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }

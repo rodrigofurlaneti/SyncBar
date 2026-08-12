@@ -5,12 +5,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Reservations.Create;
 
-internal sealed class CreateReservationCommandHandler(
-    ITableReservationRepository reservationRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CreateReservationCommand, long>(logRepository, unitOfWork)
+internal sealed class CreateReservationCommandHandler : BaseCommandHandler<CreateReservationCommand, long>
 {
+    private readonly ITableReservationRepository _reservationRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateReservationCommandHandler(
+        ITableReservationRepository reservationRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _reservationRepository = reservationRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result<long>> Handle(CreateReservationCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -29,8 +38,8 @@ internal sealed class CreateReservationCommandHandler(
                 if (reservation.IsFailure)
                     return Result.Failure<long>(reservation.Error);
 
-                await reservationRepository.AddAsync(reservation.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _reservationRepository.AddAsync(reservation.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(reservation.Value.Id);
             });

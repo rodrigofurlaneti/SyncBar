@@ -4,12 +4,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Stock.SetLimits;
 
-internal sealed class SetStockLimitsCommandHandler(
-    IStockItemRepository stockItemRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<SetStockLimitsCommand>(logRepository, unitOfWork)
+internal sealed class SetStockLimitsCommandHandler : BaseCommandHandler<SetStockLimitsCommand>
 {
+    private readonly IStockItemRepository _stockItemRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public SetStockLimitsCommandHandler(
+        IStockItemRepository stockItemRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _stockItemRepository = stockItemRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(SetStockLimitsCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -21,7 +30,7 @@ internal sealed class SetStockLimitsCommandHandler(
                 // Se o seu request possuir o Id do usuário ou gerente definindo os limites, preencha:
                 // userIdBox.Value = request.UserId;
 
-                var stockItem = await stockItemRepository.GetByIdForUpdateAsync(request.StockItemId, cancellationToken);
+                var stockItem = await _stockItemRepository.GetByIdForUpdateAsync(request.StockItemId, cancellationToken);
                 if (stockItem is null || !stockItem.IsActive)
                     return Result.Failure(new Error("StockItem.NotFound", "Stock item not found."));
 
@@ -29,7 +38,7 @@ internal sealed class SetStockLimitsCommandHandler(
                 if (result.IsFailure)
                     return result;
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }

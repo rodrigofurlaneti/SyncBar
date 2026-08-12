@@ -4,12 +4,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Printing.DeactivatePrinter;
 
-internal sealed class DeactivatePrinterCommandHandler(
-    IPrinterRepository printerRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<DeactivatePrinterCommand>(logRepository, unitOfWork)
+internal sealed class DeactivatePrinterCommandHandler : BaseCommandHandler<DeactivatePrinterCommand>
 {
+    private readonly IPrinterRepository _printerRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public DeactivatePrinterCommandHandler(
+        IPrinterRepository printerRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _printerRepository = printerRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(DeactivatePrinterCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -21,12 +30,12 @@ internal sealed class DeactivatePrinterCommandHandler(
                 // Se o seu request possuir o Id do usuário responsável pela desativação, preencha:
                 // userIdBox.Value = request.UserId;
 
-                var printer = await printerRepository.GetByIdForUpdateAsync(request.PrinterId, cancellationToken);
+                var printer = await _printerRepository.GetByIdForUpdateAsync(request.PrinterId, cancellationToken);
                 if (printer is null || !printer.IsActive)
                     return Result.Failure(new Error("Printer.NotFound", "Printer not found."));
 
                 printer.Deactivate();
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }

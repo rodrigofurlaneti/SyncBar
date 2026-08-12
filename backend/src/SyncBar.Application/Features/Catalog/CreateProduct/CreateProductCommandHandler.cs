@@ -5,13 +5,24 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Catalog.CreateProduct;
 
-internal sealed class CreateProductCommandHandler(
-    IProductRepository productRepository,
-    ICategoryRepository categoryRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CreateProductCommand, long>(logRepository, unitOfWork)
+internal sealed class CreateProductCommandHandler : BaseCommandHandler<CreateProductCommand, long>
 {
+    private readonly IProductRepository _productRepository;
+    private readonly ICategoryRepository _categoryRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateProductCommandHandler(
+        IProductRepository productRepository,
+        ICategoryRepository categoryRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _productRepository = productRepository;
+        _categoryRepository = categoryRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override Task<Result<long>> Handle(CreateProductCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(
             nameof(CreateProductCommandHandler),
@@ -19,7 +30,7 @@ internal sealed class CreateProductCommandHandler(
             null, // Substitua por request.IpAddress se o IP estiver disponível no Command
             async (userIdBox) =>
             {
-                var category = await categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken);
+                var category = await _categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken);
                 if (category is null || !category.IsActive || category.CompanyId != request.CompanyId)
                     return Result.Failure<long>(new Error("Category.NotFound", "Category not found for this company."));
 
@@ -31,8 +42,8 @@ internal sealed class CreateProductCommandHandler(
                 if (product.IsFailure)
                     return Result.Failure<long>(product.Error);
 
-                await productRepository.AddAsync(product.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _productRepository.AddAsync(product.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(product.Value.Id);
             });

@@ -5,13 +5,24 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Promotions.Create;
 
-internal sealed class CreatePromotionCommandHandler(
-    IPromotionRepository promotionRepository,
-    IProductRepository productRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CreatePromotionCommand, long>(logRepository, unitOfWork)
+internal sealed class CreatePromotionCommandHandler : BaseCommandHandler<CreatePromotionCommand, long>
 {
+    private readonly IPromotionRepository _promotionRepository;
+    private readonly IProductRepository _productRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreatePromotionCommandHandler(
+        IPromotionRepository promotionRepository,
+        IProductRepository productRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _promotionRepository = promotionRepository;
+        _productRepository = productRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result<long>> Handle(CreatePromotionCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -23,7 +34,7 @@ internal sealed class CreatePromotionCommandHandler(
                 // Se o seu request possuir o Id do usuário/gerente que está criando a promoção, preencha:
                 // userIdBox.Value = request.UserId;
 
-                var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
+                var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
                 if (product is null || !product.IsActive)
                     return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
 
@@ -35,8 +46,8 @@ internal sealed class CreatePromotionCommandHandler(
                 if (promotion.IsFailure)
                     return Result.Failure<long>(promotion.Error);
 
-                await promotionRepository.AddAsync(promotion.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _promotionRepository.AddAsync(promotion.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(promotion.Value.Id);
             });

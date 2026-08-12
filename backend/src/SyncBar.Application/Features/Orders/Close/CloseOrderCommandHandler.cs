@@ -5,15 +5,30 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Orders.Close;
 
-internal sealed class CloseOrderCommandHandler(
-    ICustomerOrderRepository orderRepository,
-    IDiningTableRepository diningTableRepository,
-    IServiceFeeSettingRepository serviceFeeSettingRepository,
-    TimeProvider timeProvider,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CloseOrderCommand>(logRepository, unitOfWork)
+internal sealed class CloseOrderCommandHandler : BaseCommandHandler<CloseOrderCommand>
 {
+    private readonly ICustomerOrderRepository _orderRepository;
+    private readonly IDiningTableRepository _diningTableRepository;
+    private readonly IServiceFeeSettingRepository _serviceFeeSettingRepository;
+    private readonly TimeProvider _timeProvider;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CloseOrderCommandHandler(
+        ICustomerOrderRepository orderRepository,
+        IDiningTableRepository diningTableRepository,
+        IServiceFeeSettingRepository serviceFeeSettingRepository,
+        TimeProvider timeProvider,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _orderRepository = orderRepository;
+        _diningTableRepository = diningTableRepository;
+        _serviceFeeSettingRepository = serviceFeeSettingRepository;
+        _timeProvider = timeProvider;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(CloseOrderCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -25,15 +40,15 @@ internal sealed class CloseOrderCommandHandler(
                 // Se o seu request possuir o Id do usuário/funcionário responsável pela ação, preencha:
                 // userIdBox.Value = request.EmployeeId; // ou request.UserId
 
-                var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
+                var order = await _orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
                 if (order is null || !order.IsActive)
                     return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-                var feeSetting = await serviceFeeSettingRepository.GetByBranchAsync(order.BranchId, cancellationToken);
+                var feeSetting = await _serviceFeeSettingRepository.GetByBranchAsync(order.BranchId, cancellationToken);
                 var serviceFeeEnabled = feeSetting?.Enabled ?? true;
                 var effectiveServiceFeeRate = serviceFeeEnabled ? request.ServiceFeeRate : 0m;
 
-                var currentTime = timeProvider.GetLocalNow().DateTime;
+                var currentTime = _timeProvider.GetLocalNow().DateTime;
 
                 var result = order.Close(effectiveServiceFeeRate, currentTime);
                 if (result.IsFailure)
@@ -41,11 +56,11 @@ internal sealed class CloseOrderCommandHandler(
 
                 if (order.DiningTableId.HasValue)
                 {
-                    var table = await diningTableRepository.GetByIdForUpdateAsync(order.DiningTableId.Value, cancellationToken);
+                    var table = await _diningTableRepository.GetByIdForUpdateAsync(order.DiningTableId.Value, cancellationToken);
                     table?.ChangeStatus(TableStatusIds.EmFechamento);
                 }
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }

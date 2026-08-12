@@ -5,12 +5,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Suppliers.Create;
 
-internal sealed class CreateSupplierCommandHandler(
-    ISupplierRepository supplierRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CreateSupplierCommand, long>(logRepository, unitOfWork)
+internal sealed class CreateSupplierCommandHandler : BaseCommandHandler<CreateSupplierCommand, long>
 {
+    private readonly ISupplierRepository _supplierRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateSupplierCommandHandler(
+        ISupplierRepository supplierRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _supplierRepository = supplierRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result<long>> Handle(CreateSupplierCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -28,8 +37,8 @@ internal sealed class CreateSupplierCommandHandler(
                 if (supplier.IsFailure)
                     return Result.Failure<long>(supplier.Error);
 
-                await supplierRepository.AddAsync(supplier.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _supplierRepository.AddAsync(supplier.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(supplier.Value.Id);
             });

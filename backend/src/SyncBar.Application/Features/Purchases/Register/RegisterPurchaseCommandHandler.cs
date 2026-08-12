@@ -6,14 +6,27 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Purchases.Register;
 
-internal sealed class RegisterPurchaseCommandHandler(
-    IPurchaseRepository purchaseRepository,
-    IStockItemRepository stockItemRepository,
-    IStockMovementRepository stockMovementRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<RegisterPurchaseCommand, long>(logRepository, unitOfWork)
+internal sealed class RegisterPurchaseCommandHandler : BaseCommandHandler<RegisterPurchaseCommand, long>
 {
+    private readonly IPurchaseRepository _purchaseRepository;
+    private readonly IStockItemRepository _stockItemRepository;
+    private readonly IStockMovementRepository _stockMovementRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public RegisterPurchaseCommandHandler(
+        IPurchaseRepository purchaseRepository,
+        IStockItemRepository stockItemRepository,
+        IStockMovementRepository stockMovementRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _purchaseRepository = purchaseRepository;
+        _stockItemRepository = stockItemRepository;
+        _stockMovementRepository = stockMovementRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result<long>> Handle(RegisterPurchaseCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -40,13 +53,13 @@ internal sealed class RegisterPurchaseCommandHandler(
 
                 // Salva a compra e os itens primeiro — precisamos dos Ids gerados (PurchaseItem.Id)
                 // para referenciar no livro-razão de estoque (StockMovement.PurchaseItemId).
-                await purchaseRepository.AddAsync(purchase, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _purchaseRepository.AddAsync(purchase, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Entrada de estoque: sobe o saldo e registra o movimento — nunca um sem o outro.
                 foreach (var item in purchase.Items)
                 {
-                    var stockItem = await stockItemRepository.GetByBranchAndProductForUpdateAsync(
+                    var stockItem = await _stockItemRepository.GetByBranchAndProductForUpdateAsync(
                         request.BranchId, item.ProductId, cancellationToken);
                     if (stockItem is null)
                     {
@@ -55,8 +68,8 @@ internal sealed class RegisterPurchaseCommandHandler(
                             return Result.Failure<long>(created.Error);
 
                         stockItem = created.Value;
-                        await stockItemRepository.AddAsync(stockItem, cancellationToken);
-                        await unitOfWork.CommitAsync(cancellationToken); // garante Id antes do movimento
+                        await _stockItemRepository.AddAsync(stockItem, cancellationToken);
+                        await _unitOfWork.CommitAsync(cancellationToken); // garante Id antes do movimento
                     }
 
                     var increased = stockItem.Increase(item.Quantity);
@@ -74,10 +87,10 @@ internal sealed class RegisterPurchaseCommandHandler(
                     if (movement.IsFailure)
                         return Result.Failure<long>(movement.Error);
 
-                    await stockMovementRepository.AddAsync(movement.Value, cancellationToken);
+                    await _stockMovementRepository.AddAsync(movement.Value, cancellationToken);
                 }
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(purchase.Id);
             });
