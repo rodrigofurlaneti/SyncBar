@@ -6,25 +6,42 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Auth.Login;
 
-internal sealed class LoginCommandHandler(
-    IAppUserRepository userRepository,
-    IRefreshTokenRepository refreshTokenRepository,
-    IPasswordHasher passwordHasher,
-    IJwtTokenProvider jwtTokenProvider,
-    IAccessLogRepository accessLogRepository,
-    ILogTrackerRepository logRepository,
-    // ✅ 1. Renomeie o parâmetro aqui para _unitOfWork (com underline)
-    IUnitOfWork _unitOfWork)
-    // ✅ 2. Passe a variável renomeada para a classe base
-    : BaseCommandHandler<LoginCommand, LoginResponse>(logRepository, _unitOfWork)
+internal sealed class LoginCommandHandler : BaseCommandHandler<LoginCommand, LoginResponse>
 {
+    private readonly IAppUserRepository _userRepository;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IPasswordHasher _passwordHasher;
+    private readonly IJwtTokenProvider _jwtTokenProvider;
+    private readonly IAccessLogRepository _accessLogRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
     private static readonly Error InvalidCredentials =
         new("Auth.InvalidCredentials", "Invalid user name or password.");
+
+    // ✅ Construtor tradicional substitui o construtor primário
+    public LoginCommandHandler(
+        IAppUserRepository userRepository,
+        IRefreshTokenRepository refreshTokenRepository,
+        IPasswordHasher passwordHasher,
+        IJwtTokenProvider jwtTokenProvider,
+        IAccessLogRepository accessLogRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork) // Passa para a base
+    {
+        // Atribui os campos locais
+        _userRepository = userRepository;
+        _refreshTokenRepository = refreshTokenRepository;
+        _passwordHasher = passwordHasher;
+        _jwtTokenProvider = jwtTokenProvider;
+        _accessLogRepository = accessLogRepository;
+        _unitOfWork = unitOfWork;
+    }
 
     public override Task<Result<LoginResponse>> Handle(LoginCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(nameof(LoginCommandHandler), nameof(Handle), request.IpAddress, async (userIdBox) =>
         {
-            var user = await userRepository.GetByUserNameForUpdateAsync(request.UserName, cancellationToken);
+            var user = await _userRepository.GetByUserNameForUpdateAsync(request.UserName, cancellationToken);
             if (user is null || !user.IsActive)
             {
                 await LogAsync(null, request, "LoginFailed", cancellationToken);
@@ -40,12 +57,11 @@ internal sealed class LoginCommandHandler(
                     new Error("Auth.LockedOut", "Account is temporarily locked. Try again later."));
             }
 
-            if (!passwordHasher.Verify(request.Password, user.PasswordHash))
+            if (!_passwordHasher.Verify(request.Password, user.PasswordHash))
             {
                 user.RegisterLoginFailure();
                 await LogAsync(user.Id, request, "LoginFailed", cancellationToken);
 
-                // ✅ 3. Use _unitOfWork aqui normalmente
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Failure<LoginResponse>(InvalidCredentials);
@@ -54,19 +70,18 @@ internal sealed class LoginCommandHandler(
             user.RegisterLoginSuccess();
             await LogAsync(user.Id, request, "Login", cancellationToken);
 
-            var roles = await userRepository.GetRoleNamesAsync(user.Id, cancellationToken);
-            var permissions = await userRepository.GetPermissionCodesAsync(user.Id, cancellationToken);
-            var accessToken = jwtTokenProvider.GenerateToken(user, roles, permissions);
+            var roles = await _userRepository.GetRoleNamesAsync(user.Id, cancellationToken);
+            var permissions = await _userRepository.GetPermissionCodesAsync(user.Id, cancellationToken);
+            var accessToken = _jwtTokenProvider.GenerateToken(user, roles, permissions);
 
-            var refreshTokenValue = jwtTokenProvider.GenerateRefreshToken();
+            var refreshTokenValue = _jwtTokenProvider.GenerateRefreshToken();
             var refreshTokenExpiresAt = DateTime.Now.AddDays(7);
             var refreshToken = RefreshToken.Create(user.Id, refreshTokenValue, refreshTokenExpiresAt);
             if (refreshToken.IsFailure)
                 return Result.Failure<LoginResponse>(refreshToken.Error);
 
-            await refreshTokenRepository.AddAsync(refreshToken.Value, cancellationToken);
+            await _refreshTokenRepository.AddAsync(refreshToken.Value, cancellationToken);
 
-            // ✅ 4. Use _unitOfWork aqui normalmente
             await _unitOfWork.CommitAsync(cancellationToken);
 
             return Result.Success(new LoginResponse(
@@ -80,6 +95,6 @@ internal sealed class LoginCommandHandler(
         var log = Domain.Entities.AccessLog.Create(
             userId, request.UserName, eventType, request.IpAddress, request.UserAgent);
         if (log.IsSuccess)
-            await accessLogRepository.AddAsync(log.Value, ct);
+            await _accessLogRepository.AddAsync(log.Value, ct);
     }
 }
