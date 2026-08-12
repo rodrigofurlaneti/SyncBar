@@ -5,12 +5,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Catalog.CreateCategory;
 
-internal sealed class CreateCategoryCommandHandler(
-    ICategoryRepository categoryRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CreateCategoryCommand, long>(logRepository, unitOfWork)
+internal sealed class CreateCategoryCommandHandler : BaseCommandHandler<CreateCategoryCommand, long>
 {
+    private readonly ICategoryRepository _categoryRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateCategoryCommandHandler(
+        ICategoryRepository categoryRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _categoryRepository = categoryRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override Task<Result<long>> Handle(CreateCategoryCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(
             nameof(CreateCategoryCommandHandler),
@@ -22,8 +31,8 @@ internal sealed class CreateCategoryCommandHandler(
                 if (category.IsFailure)
                     return Result.Failure<long>(category.Error);
 
-                await categoryRepository.AddAsync(category.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _categoryRepository.AddAsync(category.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(category.Value.Id);
             });

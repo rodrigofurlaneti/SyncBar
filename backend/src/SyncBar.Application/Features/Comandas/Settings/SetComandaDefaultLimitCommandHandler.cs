@@ -5,12 +5,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Comandas.Settings;
 
-internal sealed class SetComandaDefaultLimitCommandHandler(
-    IComandaSettingRepository settingRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<SetComandaDefaultLimitCommand>(logRepository, unitOfWork)
+internal sealed class SetComandaDefaultLimitCommandHandler : BaseCommandHandler<SetComandaDefaultLimitCommand>
 {
+    private readonly IComandaSettingRepository _settingRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public SetComandaDefaultLimitCommandHandler(
+        IComandaSettingRepository settingRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _settingRepository = settingRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(SetComandaDefaultLimitCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -23,14 +32,14 @@ internal sealed class SetComandaDefaultLimitCommandHandler(
                 // userIdBox.Value = request.UserId;
 
                 // Upsert por filial (espelha UQ_ComandaSetting_BranchId filtrado).
-                var setting = await settingRepository.GetByBranchForUpdateAsync(request.BranchId, cancellationToken);
+                var setting = await _settingRepository.GetByBranchForUpdateAsync(request.BranchId, cancellationToken);
                 if (setting is null)
                 {
                     var created = ComandaSetting.Create(request.BranchId, request.DefaultLimitAmount);
                     if (created.IsFailure)
                         return Result.Failure(created.Error);
 
-                    await settingRepository.AddAsync(created.Value, cancellationToken);
+                    await _settingRepository.AddAsync(created.Value, cancellationToken);
                 }
                 else
                 {
@@ -39,7 +48,7 @@ internal sealed class SetComandaDefaultLimitCommandHandler(
                         return updated;
                 }
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }

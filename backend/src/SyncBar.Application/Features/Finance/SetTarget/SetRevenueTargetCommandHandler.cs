@@ -5,12 +5,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Finance.SetTarget;
 
-internal sealed class SetRevenueTargetCommandHandler(
-    IRevenueTargetRepository targetRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<SetRevenueTargetCommand, long>(logRepository, unitOfWork)
+internal sealed class SetRevenueTargetCommandHandler : BaseCommandHandler<SetRevenueTargetCommand, long>
 {
+    private readonly IRevenueTargetRepository _targetRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public SetRevenueTargetCommandHandler(
+        IRevenueTargetRepository targetRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _targetRepository = targetRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result<long>> Handle(SetRevenueTargetCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -23,7 +32,7 @@ internal sealed class SetRevenueTargetCommandHandler(
                 // userIdBox.Value = request.UserId;
 
                 // Upsert: uma meta ativa por filial/mes (espelha UQ_RevenueTarget filtrado).
-                var existing = await targetRepository.GetByBranchAndMonthForUpdateAsync(
+                var existing = await _targetRepository.GetByBranchAndMonthForUpdateAsync(
                     request.BranchId, request.ReferenceYear, request.ReferenceMonth, cancellationToken);
 
                 if (existing is not null)
@@ -32,7 +41,7 @@ internal sealed class SetRevenueTargetCommandHandler(
                     if (updated.IsFailure)
                         return Result.Failure<long>(updated.Error);
 
-                    await unitOfWork.CommitAsync(cancellationToken);
+                    await _unitOfWork.CommitAsync(cancellationToken);
                     return Result.Success(existing.Id);
                 }
 
@@ -41,8 +50,8 @@ internal sealed class SetRevenueTargetCommandHandler(
                 if (target.IsFailure)
                     return Result.Failure<long>(target.Error);
 
-                await targetRepository.AddAsync(target.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _targetRepository.AddAsync(target.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(target.Value.Id);
             });

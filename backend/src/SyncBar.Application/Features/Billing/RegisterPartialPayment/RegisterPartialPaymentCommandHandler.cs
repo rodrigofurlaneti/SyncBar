@@ -7,21 +7,36 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Billing.RegisterPartialPayment;
 
-internal sealed class RegisterPartialPaymentCommandHandler(
-    ICustomerOrderRepository orderRepository,
-    ICashSessionRepository cashSessionRepository,
-    IOrderPartialPaymentRepository partialPaymentRepository,
-    IPrintingService printingService,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<RegisterPartialPaymentCommand, long>(logRepository, unitOfWork)
+internal sealed class RegisterPartialPaymentCommandHandler : BaseCommandHandler<RegisterPartialPaymentCommand, long>
 {
+    private readonly ICustomerOrderRepository _orderRepository;
+    private readonly ICashSessionRepository _cashSessionRepository;
+    private readonly IOrderPartialPaymentRepository _partialPaymentRepository;
+    private readonly IPrintingService _printingService;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public RegisterPartialPaymentCommandHandler(
+        ICustomerOrderRepository orderRepository,
+        ICashSessionRepository cashSessionRepository,
+        IOrderPartialPaymentRepository partialPaymentRepository,
+        IPrintingService printingService,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _orderRepository = orderRepository;
+        _cashSessionRepository = cashSessionRepository;
+        _partialPaymentRepository = partialPaymentRepository;
+        _printingService = printingService;
+        _unitOfWork = unitOfWork;
+    }
+
     public override Task<Result<long>> Handle(RegisterPartialPaymentCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(nameof(RegisterPartialPaymentCommandHandler), nameof(Handle), null, async (userIdBox) =>
         {
             userIdBox.Value = request.EmployeeId;
 
-            var order = await orderRepository.GetByIdAsync(request.CustomerOrderId, cancellationToken);
+            var order = await _orderRepository.GetByIdAsync(request.CustomerOrderId, cancellationToken);
             if (order is null || !order.IsActive)
                 return Result.Failure<long>(new Error("CustomerOrder.NotFound", "Order not found."));
 
@@ -32,11 +47,11 @@ internal sealed class RegisterPartialPaymentCommandHandler(
             if (order.OrderStatusId is OrderStatusIds.Pago or OrderStatusIds.Cancelado)
                 return Result.Failure<long>(new Error("PartialPayment.OrderClosed", "Order is already settled."));
 
-            var session = await cashSessionRepository.GetByIdAsync(request.CashSessionId, cancellationToken);
+            var session = await _cashSessionRepository.GetByIdAsync(request.CashSessionId, cancellationToken);
             if (session is null || !session.IsActive || !session.IsOpen())
                 return Result.Failure<long>(new Error("CashSession.NotOpen", "Cash session is not open."));
 
-            var partials = await partialPaymentRepository.GetByOrderAsync(order.Id, cancellationToken);
+            var partials = await _partialPaymentRepository.GetByOrderAsync(order.Id, cancellationToken);
             var alreadyPaid = partials.Sum(p => p.Amount);
             var remaining = order.TotalAmount - alreadyPaid;
             if (remaining <= 0)
@@ -52,12 +67,12 @@ internal sealed class RegisterPartialPaymentCommandHandler(
             if (partial.IsFailure)
                 return Result.Failure<long>(partial.Error);
 
-            await partialPaymentRepository.AddAsync(partial.Value, cancellationToken);
-            await unitOfWork.CommitAsync(cancellationToken);
+            await _partialPaymentRepository.AddAsync(partial.Value, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
 
             try
             {
-                await printingService.PrintPartialReceiptAsync(partial.Value.Id, cancellationToken);
+                await _printingService.PrintPartialReceiptAsync(partial.Value.Id, cancellationToken);
             }
             catch
             {

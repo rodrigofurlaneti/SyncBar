@@ -6,20 +6,33 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Stock.RegisterMovement;
 
-internal sealed class RegisterStockMovementCommandHandler(
-    IStockItemRepository stockItemRepository,
-    IStockMovementRepository stockMovementRepository,
-    IProductRepository productRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<RegisterStockMovementCommand, long>(logRepository, unitOfWork)
+internal sealed class RegisterStockMovementCommandHandler : BaseCommandHandler<RegisterStockMovementCommand, long>
 {
+    private readonly IStockItemRepository _stockItemRepository;
+    private readonly IStockMovementRepository _stockMovementRepository;
+    private readonly IProductRepository _productRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
     private static readonly HashSet<long> InflowTypes =
     [
         StockMovementTypeIds.EntradaCompra,
         StockMovementTypeIds.AjusteEntrada,
         StockMovementTypeIds.TransferenciaEntrada
     ];
+
+    public RegisterStockMovementCommandHandler(
+        IStockItemRepository stockItemRepository,
+        IStockMovementRepository stockMovementRepository,
+        IProductRepository productRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _stockItemRepository = stockItemRepository;
+        _stockMovementRepository = stockMovementRepository;
+        _productRepository = productRepository;
+        _unitOfWork = unitOfWork;
+    }
 
     public override async Task<Result<long>> Handle(RegisterStockMovementCommand request, CancellationToken cancellationToken)
     {
@@ -32,12 +45,12 @@ internal sealed class RegisterStockMovementCommandHandler(
                 // Associa a ação no log de auditoria ao funcionário que está registrando a movimentação
                 userIdBox.Value = request.EmployeeId;
 
-                var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
+                var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
                 if (product is null || !product.IsActive)
                     return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
 
                 // Saldo por filial x produto — cria o StockItem na primeira movimentacao.
-                var stockItem = await stockItemRepository.GetByBranchAndProductForUpdateAsync(
+                var stockItem = await _stockItemRepository.GetByBranchAndProductForUpdateAsync(
                     request.BranchId, request.ProductId, cancellationToken);
                 if (stockItem is null)
                 {
@@ -46,8 +59,8 @@ internal sealed class RegisterStockMovementCommandHandler(
                         return Result.Failure<long>(created.Error);
 
                     stockItem = created.Value;
-                    await stockItemRepository.AddAsync(stockItem, cancellationToken);
-                    await unitOfWork.CommitAsync(cancellationToken);
+                    await _stockItemRepository.AddAsync(stockItem, cancellationToken);
+                    await _unitOfWork.CommitAsync(cancellationToken);
                 }
 
                 // Todo ajuste de saldo passa pelo livro-razao — nunca UPDATE direto.
@@ -69,8 +82,8 @@ internal sealed class RegisterStockMovementCommandHandler(
                 if (movement.IsFailure)
                     return Result.Failure<long>(movement.Error);
 
-                await stockMovementRepository.AddAsync(movement.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _stockMovementRepository.AddAsync(movement.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(movement.Value.Id);
             });

@@ -4,12 +4,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Finance.DeactivateCost;
 
-internal sealed class DeactivateOperatingCostCommandHandler(
-    IOperatingCostRepository costRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<DeactivateOperatingCostCommand>(logRepository, unitOfWork)
+internal sealed class DeactivateOperatingCostCommandHandler : BaseCommandHandler<DeactivateOperatingCostCommand>
 {
+    private readonly IOperatingCostRepository _costRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public DeactivateOperatingCostCommandHandler(
+        IOperatingCostRepository costRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _costRepository = costRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(DeactivateOperatingCostCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -21,12 +30,12 @@ internal sealed class DeactivateOperatingCostCommandHandler(
                 // Se o seu request possuir o Id do usuário que está executando a ação, preencha:
                 // userIdBox.Value = request.UserId;
 
-                var cost = await costRepository.GetByIdForUpdateAsync(request.OperatingCostId, cancellationToken);
+                var cost = await _costRepository.GetByIdForUpdateAsync(request.OperatingCostId, cancellationToken);
                 if (cost is null || !cost.IsActive)
                     return Result.Failure(new Error("OperatingCost.NotFound", "Cost entry not found."));
 
                 cost.Deactivate();
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }

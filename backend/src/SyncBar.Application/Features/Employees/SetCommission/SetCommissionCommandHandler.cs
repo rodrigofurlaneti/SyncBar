@@ -4,12 +4,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Employees.SetCommission;
 
-internal sealed class SetCommissionCommandHandler(
-    IEmployeeRepository employeeRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<SetCommissionCommand>(logRepository, unitOfWork)
+internal sealed class SetCommissionCommandHandler : BaseCommandHandler<SetCommissionCommand>
 {
+    private readonly IEmployeeRepository _employeeRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public SetCommissionCommandHandler(
+        IEmployeeRepository employeeRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _employeeRepository = employeeRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(SetCommissionCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -21,7 +30,7 @@ internal sealed class SetCommissionCommandHandler(
                 // Se o seu request possuir o Id do usuário responsável pela alteração, preencha:
                 // userIdBox.Value = request.UserId;
 
-                var employee = await employeeRepository.GetByIdForUpdateAsync(request.EmployeeId, cancellationToken);
+                var employee = await _employeeRepository.GetByIdForUpdateAsync(request.EmployeeId, cancellationToken);
                 if (employee is null || !employee.IsActive)
                     return Result.Failure(new Error("Employee.NotFound", "Employee not found."));
 
@@ -29,7 +38,7 @@ internal sealed class SetCommissionCommandHandler(
                 if (result.IsFailure)
                     return result;
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }

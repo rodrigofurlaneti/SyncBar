@@ -4,12 +4,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Customers.AddLoyaltyPoints;
 
-internal sealed class AddLoyaltyPointsCommandHandler(
-    ICustomerRepository customerRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<AddLoyaltyPointsCommand>(logRepository, unitOfWork)
+internal sealed class AddLoyaltyPointsCommandHandler : BaseCommandHandler<AddLoyaltyPointsCommand>
 {
+    private readonly ICustomerRepository _customerRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public AddLoyaltyPointsCommandHandler(
+        ICustomerRepository customerRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _customerRepository = customerRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(AddLoyaltyPointsCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -21,7 +30,7 @@ internal sealed class AddLoyaltyPointsCommandHandler(
                 // Se o seu request possuir o Id do usuário que está executando a ação, preencha:
                 // userIdBox.Value = request.UserId;
 
-                var customer = await customerRepository.GetByIdForUpdateAsync(request.CustomerId, cancellationToken);
+                var customer = await _customerRepository.GetByIdForUpdateAsync(request.CustomerId, cancellationToken);
                 if (customer is null || !customer.IsActive)
                     return Result.Failure(new Error("Customer.NotFound", "Customer not found."));
 
@@ -29,7 +38,7 @@ internal sealed class AddLoyaltyPointsCommandHandler(
                 if (result.IsFailure)
                     return result;
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }

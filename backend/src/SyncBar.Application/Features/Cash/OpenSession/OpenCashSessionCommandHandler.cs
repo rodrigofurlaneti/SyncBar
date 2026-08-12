@@ -5,12 +5,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Cash.OpenSession;
 
-internal sealed class OpenCashSessionCommandHandler(
-    ICashSessionRepository cashSessionRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<OpenCashSessionCommand, long>(logRepository, unitOfWork)
+internal sealed class OpenCashSessionCommandHandler : BaseCommandHandler<OpenCashSessionCommand, long>
 {
+    private readonly ICashSessionRepository _cashSessionRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public OpenCashSessionCommandHandler(
+        ICashSessionRepository cashSessionRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _cashSessionRepository = cashSessionRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override Task<Result<long>> Handle(OpenCashSessionCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(
             nameof(OpenCashSessionCommandHandler),
@@ -22,7 +31,7 @@ internal sealed class OpenCashSessionCommandHandler(
                 userIdBox.Value = request.OpenedByEmployeeId;
 
                 // Uma unica sessao aberta por caixa.
-                var open = await cashSessionRepository.GetOpenByCashRegisterAsync(request.CashRegisterId, cancellationToken);
+                var open = await _cashSessionRepository.GetOpenByCashRegisterAsync(request.CashRegisterId, cancellationToken);
                 if (open is not null)
                     return Result.Failure<long>(new Error("CashSession.AlreadyOpen", "This cash register already has an open session."));
 
@@ -30,8 +39,8 @@ internal sealed class OpenCashSessionCommandHandler(
                 if (session.IsFailure)
                     return Result.Failure<long>(session.Error);
 
-                await cashSessionRepository.AddAsync(session.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _cashSessionRepository.AddAsync(session.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(session.Value.Id);
             });

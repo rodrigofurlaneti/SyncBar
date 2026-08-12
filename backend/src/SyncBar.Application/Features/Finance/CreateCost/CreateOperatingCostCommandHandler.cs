@@ -5,12 +5,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Finance.CreateCost;
 
-internal sealed class CreateOperatingCostCommandHandler(
-    IOperatingCostRepository costRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CreateOperatingCostCommand, long>(logRepository, unitOfWork)
+internal sealed class CreateOperatingCostCommandHandler : BaseCommandHandler<CreateOperatingCostCommand, long>
 {
+    private readonly IOperatingCostRepository _costRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateOperatingCostCommandHandler(
+        IOperatingCostRepository costRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _costRepository = costRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result<long>> Handle(CreateOperatingCostCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -28,8 +37,8 @@ internal sealed class CreateOperatingCostCommandHandler(
                 if (cost.IsFailure)
                     return Result.Failure<long>(cost.Error);
 
-                await costRepository.AddAsync(cost.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _costRepository.AddAsync(cost.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(cost.Value.Id);
             });

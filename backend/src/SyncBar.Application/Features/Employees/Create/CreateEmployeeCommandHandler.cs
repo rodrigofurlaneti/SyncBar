@@ -5,13 +5,24 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Employees.Create;
 
-internal sealed class CreateEmployeeCommandHandler(
-    IEmployeeRepository employeeRepository,
-    IJobTitleRepository jobTitleRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CreateEmployeeCommand, long>(logRepository, unitOfWork)
+internal sealed class CreateEmployeeCommandHandler : BaseCommandHandler<CreateEmployeeCommand, long>
 {
+    private readonly IEmployeeRepository _employeeRepository;
+    private readonly IJobTitleRepository _jobTitleRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateEmployeeCommandHandler(
+        IEmployeeRepository employeeRepository,
+        IJobTitleRepository jobTitleRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _employeeRepository = employeeRepository;
+        _jobTitleRepository = jobTitleRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result<long>> Handle(CreateEmployeeCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -24,10 +35,10 @@ internal sealed class CreateEmployeeCommandHandler(
                 // userIdBox.Value = request.UserId;
 
                 // CPF unico entre ativos (espelha UQ_Employee_Cpf filtrado).
-                if (await employeeRepository.ExistsByCpfAsync(request.Cpf, cancellationToken))
+                if (await _employeeRepository.ExistsByCpfAsync(request.Cpf, cancellationToken))
                     return Result.Failure<long>(new Error("Employee.CpfAlreadyExists", "An active employee with this CPF already exists."));
 
-                var jobTitle = await jobTitleRepository.GetByIdAsync(request.JobTitleId, cancellationToken);
+                var jobTitle = await _jobTitleRepository.GetByIdAsync(request.JobTitleId, cancellationToken);
                 if (jobTitle is null || !jobTitle.IsActive)
                     return Result.Failure<long>(new Error("JobTitle.NotFound", "Job title not found."));
 
@@ -37,8 +48,8 @@ internal sealed class CreateEmployeeCommandHandler(
                 if (employee.IsFailure)
                     return Result.Failure<long>(employee.Error);
 
-                await employeeRepository.AddAsync(employee.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _employeeRepository.AddAsync(employee.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(employee.Value.Id);
             });

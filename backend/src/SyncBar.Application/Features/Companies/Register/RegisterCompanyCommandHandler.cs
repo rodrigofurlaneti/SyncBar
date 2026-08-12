@@ -6,17 +6,36 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Companies.Register;
 
-internal sealed class RegisterCompanyCommandHandler(
-    ICompanyRepository companyRepository,
-    IBranchRepository branchRepository,
-    IRoleRepository roleRepository,
-    IAppUserRepository userRepository,
-    IUserRoleRepository userRoleRepository,
-    IPasswordHasher passwordHasher,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<RegisterCompanyCommand, RegisterCompanyResponse>(logRepository, unitOfWork)
+internal sealed class RegisterCompanyCommandHandler : BaseCommandHandler<RegisterCompanyCommand, RegisterCompanyResponse>
 {
+    private readonly ICompanyRepository _companyRepository;
+    private readonly IBranchRepository _branchRepository;
+    private readonly IRoleRepository _roleRepository;
+    private readonly IAppUserRepository _userRepository;
+    private readonly IUserRoleRepository _userRoleRepository;
+    private readonly IPasswordHasher _passwordHasher;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public RegisterCompanyCommandHandler(
+        ICompanyRepository companyRepository,
+        IBranchRepository branchRepository,
+        IRoleRepository roleRepository,
+        IAppUserRepository userRepository,
+        IUserRoleRepository userRoleRepository,
+        IPasswordHasher passwordHasher,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _companyRepository = companyRepository;
+        _branchRepository = branchRepository;
+        _roleRepository = roleRepository;
+        _userRepository = userRepository;
+        _userRoleRepository = userRoleRepository;
+        _passwordHasher = passwordHasher;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result<RegisterCompanyResponse>> Handle(RegisterCompanyCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -25,11 +44,11 @@ internal sealed class RegisterCompanyCommandHandler(
             null, // Se houver a captura de IP no request, substitua o null aqui
             async (userIdBox) =>
             {
-                if (await companyRepository.ExistsByCnpjAsync(request.Cnpj, cancellationToken))
+                if (await _companyRepository.ExistsByCnpjAsync(request.Cnpj, cancellationToken))
                     return Result.Failure<RegisterCompanyResponse>(
                         new Error("Company.AlreadyExists", "A company with this CNPJ is already registered."));
 
-                if (await userRepository.ExistsAsync(request.AdminUserName, request.AdminEmail, cancellationToken))
+                if (await _userRepository.ExistsAsync(request.AdminUserName, request.AdminEmail, cancellationToken))
                     return Result.Failure<RegisterCompanyResponse>(
                         new Error("AppUser.AlreadyExists", "User name or e-mail already in use."));
 
@@ -39,8 +58,8 @@ internal sealed class RegisterCompanyCommandHandler(
                     return Result.Failure<RegisterCompanyResponse>(companyResult.Error);
 
                 var company = companyResult.Value;
-                await companyRepository.AddAsync(company, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken); // precisa do Company.Id para a filial
+                await _companyRepository.AddAsync(company, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken); // precisa do Company.Id para a filial
 
                 var branchResult = Branch.Create(
                     company.Id, request.BranchName, request.BranchCnpj, request.CompanyPhone,
@@ -50,7 +69,7 @@ internal sealed class RegisterCompanyCommandHandler(
                     return Result.Failure<RegisterCompanyResponse>(branchResult.Error);
 
                 var branch = branchResult.Value;
-                await branchRepository.AddAsync(branch, cancellationToken);
+                await _branchRepository.AddAsync(branch, cancellationToken);
 
                 // Role "Administrador" — o nome precisa bater com o que o JWT usa para o bypass
                 // de manager (GetMyFeaturesQueryHandler / IsManager), senão o admin recém-criado
@@ -60,23 +79,23 @@ internal sealed class RegisterCompanyCommandHandler(
                     return Result.Failure<RegisterCompanyResponse>(roleResult.Error);
 
                 var role = roleResult.Value;
-                await roleRepository.AddAsync(role, cancellationToken);
+                await _roleRepository.AddAsync(role, cancellationToken);
 
-                var passwordHash = passwordHasher.Hash(request.AdminPassword);
+                var passwordHash = _passwordHasher.Hash(request.AdminPassword);
                 var userResult = AppUser.Create(company.Id, null, request.AdminUserName, request.AdminEmail, passwordHash);
                 if (userResult.IsFailure)
                     return Result.Failure<RegisterCompanyResponse>(userResult.Error);
 
                 var user = userResult.Value;
-                await userRepository.AddAsync(user, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken); // precisa dos Ids de Role/AppUser para o vínculo
+                await _userRepository.AddAsync(user, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken); // precisa dos Ids de Role/AppUser para o vínculo
 
                 var linkResult = UserRole.Create(user.Id, role.Id);
                 if (linkResult.IsFailure)
                     return Result.Failure<RegisterCompanyResponse>(linkResult.Error);
 
-                await userRoleRepository.AddAsync(linkResult.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _userRoleRepository.AddAsync(linkResult.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Adiciona o Id do usuário recém-criado ao log de auditoria
                 userIdBox.Value = user.Id;
