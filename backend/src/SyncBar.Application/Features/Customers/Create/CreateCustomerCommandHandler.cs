@@ -5,29 +5,35 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Customers.Create;
 
-internal sealed class CreateCustomerCommandHandler(
-    ICustomerRepository customerRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CreateCustomerCommand, long>(logRepository, unitOfWork)
+internal sealed class CreateCustomerCommandHandler : BaseCommandHandler<CreateCustomerCommand, long>
 {
+    private readonly ICustomerRepository _customerRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateCustomerCommandHandler(
+        ICustomerRepository customerRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _customerRepository = customerRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result<long>> Handle(CreateCustomerCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
             nameof(CreateCustomerCommandHandler),
             nameof(Handle),
-            null, // Substitua pelo IP presente no request, caso aplicável
+            null,
             async (userIdBox) =>
             {
-                // Se o seu request possuir o Id do usuário que está executando a ação:
-                // userIdBox.Value = request.UserId;
-
                 var customer = Customer.Create(request.CompanyId, request.Name, request.Phone, request.Cpf, request.Email);
                 if (customer.IsFailure)
                     return Result.Failure<long>(customer.Error);
 
-                await customerRepository.AddAsync(customer.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _customerRepository.AddAsync(customer.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(customer.Value.Id);
             });
