@@ -4,12 +4,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Cash.ReviewSession;
 
-internal sealed class ReviewCashSessionCommandHandler(
-    ICashSessionRepository cashSessionRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<ReviewCashSessionCommand>(logRepository, unitOfWork)
+internal sealed class ReviewCashSessionCommandHandler : BaseCommandHandler<ReviewCashSessionCommand>
 {
+    private readonly ICashSessionRepository _cashSessionRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public ReviewCashSessionCommandHandler(
+        ICashSessionRepository cashSessionRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _cashSessionRepository = cashSessionRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override Task<Result> Handle(ReviewCashSessionCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(
             nameof(ReviewCashSessionCommandHandler),
@@ -21,7 +30,7 @@ internal sealed class ReviewCashSessionCommandHandler(
                 // descomente e use a linha abaixo para registrar no log:
                 // userIdBox.Value = request.ReviewedByEmployeeId;
 
-                var session = await cashSessionRepository.GetByIdForUpdateAsync(request.CashSessionId, cancellationToken);
+                var session = await _cashSessionRepository.GetByIdForUpdateAsync(request.CashSessionId, cancellationToken);
                 if (session is null || !session.IsActive)
                     return Result.Failure(new Error("CashSession.NotFound", "Cash session not found."));
 
@@ -29,7 +38,7 @@ internal sealed class ReviewCashSessionCommandHandler(
                 if (result.IsFailure)
                     return result;
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
 }

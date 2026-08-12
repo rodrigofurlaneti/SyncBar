@@ -7,42 +7,71 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Billing.RegisterSale;
 
-internal sealed class RegisterSaleCommandHandler(
-    ICustomerOrderRepository orderRepository,
-    ISaleRepository saleRepository,
-    ICashSessionRepository cashSessionRepository,
-    IDiningTableRepository diningTableRepository,
-    IComandaRepository comandaRepository,
-    IProductRepository productRepository,
-    IStockItemRepository stockItemRepository,
-    IStockMovementRepository stockMovementRepository,
-    IOrderPartialPaymentRepository partialPaymentRepository,
-    IPrintingService printingService,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
-    : BaseCommandHandler<RegisterSaleCommand, long>(logRepository, unitOfWork)
+internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSaleCommand, long>
 {
+    private readonly ICustomerOrderRepository _orderRepository;
+    private readonly ISaleRepository _saleRepository;
+    private readonly ICashSessionRepository _cashSessionRepository;
+    private readonly IDiningTableRepository _diningTableRepository;
+    private readonly IComandaRepository _comandaRepository;
+    private readonly IProductRepository _productRepository;
+    private readonly IStockItemRepository _stockItemRepository;
+    private readonly IStockMovementRepository _stockMovementRepository;
+    private readonly IOrderPartialPaymentRepository _partialPaymentRepository;
+    private readonly IPrintingService _printingService;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly TimeProvider _timeProvider;
+
+    public RegisterSaleCommandHandler(
+        ICustomerOrderRepository orderRepository,
+        ISaleRepository saleRepository,
+        ICashSessionRepository cashSessionRepository,
+        IDiningTableRepository diningTableRepository,
+        IComandaRepository comandaRepository,
+        IProductRepository productRepository,
+        IStockItemRepository stockItemRepository,
+        IStockMovementRepository stockMovementRepository,
+        IOrderPartialPaymentRepository partialPaymentRepository,
+        IPrintingService printingService,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork,
+        TimeProvider timeProvider)
+        : base(logRepository, unitOfWork)
+    {
+        _orderRepository = orderRepository;
+        _saleRepository = saleRepository;
+        _cashSessionRepository = cashSessionRepository;
+        _diningTableRepository = diningTableRepository;
+        _comandaRepository = comandaRepository;
+        _productRepository = productRepository;
+        _stockItemRepository = stockItemRepository;
+        _stockMovementRepository = stockMovementRepository;
+        _partialPaymentRepository = partialPaymentRepository;
+        _printingService = printingService;
+        _unitOfWork = unitOfWork;
+        _timeProvider = timeProvider;
+    }
+
     public override Task<Result<long>> Handle(RegisterSaleCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(nameof(RegisterSaleCommandHandler), nameof(Handle), null, async (userIdBox) =>
         {
             userIdBox.Value = request.EmployeeId;
 
-            var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
+            var order = await _orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
             if (order is null || !order.IsActive)
                 return Result.Failure<long>(new Error("CustomerOrder.NotFound", "Order not found."));
             if (order.OrderStatusId != OrderStatusIds.AguardandoPagamento)
                 return Result.Failure<long>(new Error("Sale.OrderNotAwaitingPayment",
                     "Close the order before registering the payment."));
 
-            var session = await cashSessionRepository.GetByIdAsync(request.CashSessionId, cancellationToken);
+            var session = await _cashSessionRepository.GetByIdAsync(request.CashSessionId, cancellationToken);
             if (session is null || !session.IsActive || !session.IsOpen())
                 return Result.Failure<long>(new Error("CashSession.NotOpen", "Cash session is not open."));
 
-            if (await saleRepository.ExistsActiveByOrderAsync(order.Id, cancellationToken))
+            if (await _saleRepository.ExistsActiveByOrderAsync(order.Id, cancellationToken))
                 return Result.Failure<long>(new Error("Sale.Duplicate", "Order already has an active sale."));
 
-            var saleNumber = await saleRepository.GetNextSaleNumberAsync(order.BranchId, cancellationToken);
+            var saleNumber = await _saleRepository.GetNextSaleNumberAsync(order.BranchId, cancellationToken);
             var saleResult = Sale.Create(
                 order.BranchId, order.Id, session.Id, request.EmployeeId, saleNumber,
                 order.SubtotalAmount, order.DiscountAmount, order.ServiceFeeAmount);
@@ -61,14 +90,14 @@ internal sealed class RegisterSaleCommandHandler(
                     return Result.Failure<long>(added.Error);
             }
 
-            var partials = await partialPaymentRepository.GetByOrderAsync(order.Id, cancellationToken);
+            var partials = await _partialPaymentRepository.GetByOrderAsync(order.Id, cancellationToken);
             var partiallyPaid = partials.Sum(p => p.Amount);
 
             var fullyPaid = sale.EnsureFullyPaid(partiallyPaid);
             if (fullyPaid.IsFailure)
                 return Result.Failure<long>(fullyPaid.Error);
 
-            var currentTime = timeProvider.GetLocalNow().DateTime;
+            var currentTime = _timeProvider.GetLocalNow().DateTime;
 
             var paid = order.MarkAsPaid(currentTime);
             if (paid.IsFailure)
@@ -76,24 +105,24 @@ internal sealed class RegisterSaleCommandHandler(
 
             if (order.DiningTableId.HasValue)
             {
-                var table = await diningTableRepository.GetByIdForUpdateAsync(order.DiningTableId.Value, cancellationToken);
+                var table = await _diningTableRepository.GetByIdForUpdateAsync(order.DiningTableId.Value, cancellationToken);
                 table?.ChangeStatus(TableStatusIds.Livre);
             }
 
             if (order.ComandaId.HasValue)
             {
-                var comanda = await comandaRepository.GetByIdForUpdateAsync(order.ComandaId.Value, cancellationToken);
+                var comanda = await _comandaRepository.GetByIdForUpdateAsync(order.ComandaId.Value, cancellationToken);
                 comanda?.ChangeStatus(ComandaStatusIds.Disponivel);
             }
 
             // Baixa de estoque com livro-razao (apenas produtos controlados).
             foreach (var item in order.Items.Where(i => i.IsActive && i.OrderItemStatusId != OrderItemStatusIds.Cancelado))
             {
-                var product = await productRepository.GetByIdAsync(item.ProductId, cancellationToken);
+                var product = await _productRepository.GetByIdAsync(item.ProductId, cancellationToken);
                 if (product is null || !product.IsStockControlled)
                     continue;
 
-                var stockItem = await stockItemRepository.GetByBranchAndProductForUpdateAsync(
+                var stockItem = await _stockItemRepository.GetByBranchAndProductForUpdateAsync(
                     order.BranchId, item.ProductId, cancellationToken);
                 if (stockItem is null)
                     continue;
@@ -113,15 +142,15 @@ internal sealed class RegisterSaleCommandHandler(
                     product.CostPrice is null ? null : Math.Round(product.CostPrice.Value * item.Quantity, 2),
                     null, currentTime, null);
                 if (movement.IsSuccess)
-                    await stockMovementRepository.AddAsync(movement.Value, cancellationToken);
+                    await _stockMovementRepository.AddAsync(movement.Value, cancellationToken);
             }
 
-            await saleRepository.AddAsync(sale, cancellationToken);
-            await unitOfWork.CommitAsync(cancellationToken);
+            await _saleRepository.AddAsync(sale, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
 
             try
             {
-                await printingService.PrintPaymentReceiptAsync(sale.Id, cancellationToken);
+                await _printingService.PrintPaymentReceiptAsync(sale.Id, cancellationToken);
             }
             catch
             {

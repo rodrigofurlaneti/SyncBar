@@ -5,17 +5,26 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Branches.Create;
 
-internal sealed class CreateBranchCommandHandler(
-    IBranchRepository branchRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CreateBranchCommand, long>(logRepository, unitOfWork)
+internal sealed class CreateBranchCommandHandler : BaseCommandHandler<CreateBranchCommand, long>
 {
+    private readonly IBranchRepository _branchRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateBranchCommandHandler(
+        IBranchRepository branchRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _branchRepository = branchRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override Task<Result<long>> Handle(CreateBranchCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(
             nameof(CreateBranchCommandHandler),
             nameof(Handle),
-            null, 
+            null,
             async (userIdBox) =>
             {
                 // Dica: Se você tiver o ID do usuário logado via request ou interface (UserContext), 
@@ -29,8 +38,8 @@ internal sealed class CreateBranchCommandHandler(
                 if (branch.IsFailure)
                     return Result.Failure<long>(branch.Error);
 
-                await branchRepository.AddAsync(branch.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _branchRepository.AddAsync(branch.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(branch.Value.Id);
             });

@@ -4,15 +4,30 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Cash.CloseSession;
 
-internal sealed class CloseCashSessionCommandHandler(
-    ICashSessionRepository cashSessionRepository,
-    ISaleRepository saleRepository,
-    ICashMovementRepository cashMovementRepository,
-    IOrderPartialPaymentRepository partialPaymentRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CloseCashSessionCommand, CloseCashSessionResponse>(logRepository, unitOfWork)
+internal sealed class CloseCashSessionCommandHandler : BaseCommandHandler<CloseCashSessionCommand, CloseCashSessionResponse>
 {
+    private readonly ICashSessionRepository _cashSessionRepository;
+    private readonly ISaleRepository _saleRepository;
+    private readonly ICashMovementRepository _cashMovementRepository;
+    private readonly IOrderPartialPaymentRepository _partialPaymentRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CloseCashSessionCommandHandler(
+        ICashSessionRepository cashSessionRepository,
+        ISaleRepository saleRepository,
+        ICashMovementRepository cashMovementRepository,
+        IOrderPartialPaymentRepository partialPaymentRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _cashSessionRepository = cashSessionRepository;
+        _saleRepository = saleRepository;
+        _cashMovementRepository = cashMovementRepository;
+        _partialPaymentRepository = partialPaymentRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override Task<Result<CloseCashSessionResponse>> Handle(CloseCashSessionCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(
             nameof(CloseCashSessionCommandHandler),
@@ -23,13 +38,13 @@ internal sealed class CloseCashSessionCommandHandler(
                 // Registra o ID do funcionário no log para sabermos quem fechou o caixa
                 userIdBox.Value = request.ClosedByEmployeeId;
 
-                var session = await cashSessionRepository.GetByIdForUpdateAsync(request.CashSessionId, cancellationToken);
+                var session = await _cashSessionRepository.GetByIdForUpdateAsync(request.CashSessionId, cancellationToken);
                 if (session is null || !session.IsActive)
                     return Result.Failure<CloseCashSessionResponse>(new Error("CashSession.NotFound", "Cash session not found."));
 
-                var sales = await saleRepository.GetByCashSessionAsync(session.Id, cancellationToken);
-                var movements = await cashMovementRepository.GetBySessionAsync(session.Id, cancellationToken);
-                var partials = await partialPaymentRepository.GetByCashSessionAsync(session.Id, cancellationToken);
+                var sales = await _saleRepository.GetByCashSessionAsync(session.Id, cancellationToken);
+                var movements = await _cashMovementRepository.GetBySessionAsync(session.Id, cancellationToken);
+                var partials = await _partialPaymentRepository.GetByCashSessionAsync(session.Id, cancellationToken);
 
                 // Supondo que CashMath seja uma classe estática do seu domínio/aplicação
                 var expected = CashMath.ExpectedCash(session.OpeningAmount, sales, movements, partials);
@@ -38,7 +53,7 @@ internal sealed class CloseCashSessionCommandHandler(
                 if (result.IsFailure)
                     return Result.Failure<CloseCashSessionResponse>(result.Error);
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(new CloseCashSessionResponse(
                     session.Id, expected, request.ClosingAmount, session.DifferenceAmount ?? 0));
