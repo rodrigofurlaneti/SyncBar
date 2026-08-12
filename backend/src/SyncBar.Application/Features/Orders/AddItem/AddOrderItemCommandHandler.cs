@@ -8,17 +8,36 @@ using SyncBar.Domain.Constants;
 
 namespace SyncBar.Application.Features.Orders.AddItem;
 
-internal sealed class AddOrderItemCommandHandler(
-    ICustomerOrderRepository orderRepository,
-    IProductRepository productRepository,
-    IPromotionRepository promotionRepository,
-    IProductStockRepository stockRepository,
-    IPrintingService printingService,
-    TimeProvider timeProvider,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<AddOrderItemCommand>(logRepository, unitOfWork)
+internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderItemCommand>
 {
+    private readonly ICustomerOrderRepository _orderRepository;
+    private readonly IProductRepository _productRepository;
+    private readonly IPromotionRepository _promotionRepository;
+    private readonly IProductStockRepository _stockRepository;
+    private readonly IPrintingService _printingService;
+    private readonly TimeProvider _timeProvider;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public AddOrderItemCommandHandler(
+        ICustomerOrderRepository orderRepository,
+        IProductRepository productRepository,
+        IPromotionRepository promotionRepository,
+        IProductStockRepository stockRepository,
+        IPrintingService printingService,
+        TimeProvider timeProvider,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _orderRepository = orderRepository;
+        _productRepository = productRepository;
+        _promotionRepository = promotionRepository;
+        _stockRepository = stockRepository;
+        _printingService = printingService;
+        _timeProvider = timeProvider;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(AddOrderItemCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -31,23 +50,23 @@ internal sealed class AddOrderItemCommandHandler(
                 userIdBox.Value = request.EmployeeId;
 
                 // 1. Busca o pedido sequencialmente
-                var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
+                var order = await _orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
                 if (order is null || !order.IsActive)
                     return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
                 // 2. Busca o produto sequencialmente
-                var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
+                var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
                 if (product is null || !product.IsActive)
                     return Result.Failure(new Error("Product.NotFound", "Product not found."));
 
                 // 3. Busca as promoções sequencialmente
-                var promotions = await promotionRepository.GetByBranchAsync(order.BranchId, cancellationToken);
+                var promotions = await _promotionRepository.GetByBranchAsync(order.BranchId, cancellationToken);
 
                 // 4. Busca o estoque sequencialmente
-                var stockSnapshot = await stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
+                var stockSnapshot = await _stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
 
                 var itemCountBefore = order.Items.Count;
-                var currentTime = timeProvider.GetLocalNow().DateTime;
+                var currentTime = _timeProvider.GetLocalNow().DateTime;
 
                 var activePromotion = promotions.FirstOrDefault(promo =>
                     promo.ProductId == product.Id && promo.IsActiveAt(currentTime));
@@ -81,12 +100,12 @@ internal sealed class AddOrderItemCommandHandler(
 
                     if (movementResult.IsFailure) return Result.Failure(movementResult.Error);
 
-                    stockRepository.AddMovement(movementResult.Value);
+                    _stockRepository.AddMovement(movementResult.Value);
                 }
 
                 try
                 {
-                    await unitOfWork.CommitAsync(cancellationToken);
+                    await _unitOfWork.CommitAsync(cancellationToken);
                 }
                 catch (ConcurrencyException)
                 {
@@ -97,7 +116,7 @@ internal sealed class AddOrderItemCommandHandler(
                 var newItemIds = order.Items.Skip(itemCountBefore).Select(i => i.Id).ToList();
                 if (newItemIds.Any())
                 {
-                    _ = printingService.PrintOrderItemsAsync(order.Id, newItemIds, CancellationToken.None);
+                    _ = _printingService.PrintOrderItemsAsync(order.Id, newItemIds, CancellationToken.None);
                 }
 
                 return Result.Success();

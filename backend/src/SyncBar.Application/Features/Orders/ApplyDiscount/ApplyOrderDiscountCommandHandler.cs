@@ -4,13 +4,24 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Orders.ApplyDiscount;
 
-internal sealed class ApplyOrderDiscountCommandHandler(
-    ICustomerOrderRepository orderRepository,
-    TimeProvider timeProvider,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<ApplyOrderDiscountCommand>(logRepository, unitOfWork)
+internal sealed class ApplyOrderDiscountCommandHandler : BaseCommandHandler<ApplyOrderDiscountCommand>
 {
+    private readonly ICustomerOrderRepository _orderRepository;
+    private readonly TimeProvider _timeProvider;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public ApplyOrderDiscountCommandHandler(
+        ICustomerOrderRepository orderRepository,
+        TimeProvider timeProvider,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _orderRepository = orderRepository;
+        _timeProvider = timeProvider;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(ApplyOrderDiscountCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -22,17 +33,17 @@ internal sealed class ApplyOrderDiscountCommandHandler(
                 // Se o seu request possuir o Id do usuário/funcionário responsável pela ação, preencha:
                 // userIdBox.Value = request.EmployeeId; // ou request.UserId
 
-                var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
+                var order = await _orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
                 if (order is null || !order.IsActive)
                     return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-                var currentTime = timeProvider.GetLocalNow().DateTime;
+                var currentTime = _timeProvider.GetLocalNow().DateTime;
 
                 var result = order.ApplyDiscount(request.DiscountAmount, currentTime);
                 if (result.IsFailure)
                     return result;
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }
