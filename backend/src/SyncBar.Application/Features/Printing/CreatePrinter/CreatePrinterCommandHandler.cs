@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -7,21 +7,33 @@ namespace SyncBar.Application.Features.Printing.CreatePrinter;
 
 internal sealed class CreatePrinterCommandHandler(
     IPrinterRepository printerRepository,
+    ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : ICommandHandler<CreatePrinterCommand, long>
+    : BaseCommandHandler<CreatePrinterCommand, long>(logRepository, unitOfWork)
 {
-    public async Task<Result<long>> Handle(CreatePrinterCommand request, CancellationToken cancellationToken)
+    public override async Task<Result<long>> Handle(CreatePrinterCommand request, CancellationToken cancellationToken)
     {
-        var printer = Printer.Create(
-            request.BranchId, request.Name.Trim(), request.ConnectionType,
-            request.PrinterName?.Trim(), request.IpAddress?.Trim(), request.Port,
-            request.PrintsOrders, request.PrintsBills);
-        if (printer.IsFailure)
-            return Result.Failure<long>(printer.Error);
+        return await ExecuteWithLogAsync(
+            nameof(CreatePrinterCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do usuário que está cadastrando a impressora, preencha:
+                // userIdBox.Value = request.UserId;
 
-        await printerRepository.AddAsync(printer.Value, cancellationToken);
-        await unitOfWork.CommitAsync(cancellationToken);
+                var printer = Printer.Create(
+                    request.BranchId, request.Name.Trim(), request.ConnectionType,
+                    request.PrinterName?.Trim(), request.IpAddress?.Trim(), request.Port,
+                    request.PrintsOrders, request.PrintsBills);
 
-        return Result.Success(printer.Value.Id);
+                if (printer.IsFailure)
+                    return Result.Failure<long>(printer.Error);
+
+                await printerRepository.AddAsync(printer.Value, cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
+
+                return Result.Success(printer.Value.Id);
+            });
     }
 }

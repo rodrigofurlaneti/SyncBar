@@ -9,33 +9,44 @@ internal sealed class CloseOrderCommandHandler(
     ICustomerOrderRepository orderRepository,
     IDiningTableRepository diningTableRepository,
     IServiceFeeSettingRepository serviceFeeSettingRepository,
-    IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
-    : ICommandHandler<CloseOrderCommand>
+    TimeProvider timeProvider,
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork)
+    : BaseCommandHandler<CloseOrderCommand>(logRepository, unitOfWork)
 {
-    public async Task<Result> Handle(CloseOrderCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(CloseOrderCommand request, CancellationToken cancellationToken)
     {
-        var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
-        if (order is null || !order.IsActive)
-            return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
+        return await ExecuteWithLogAsync(
+            nameof(CloseOrderCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do usuário/funcionário responsável pela ação, preencha:
+                // userIdBox.Value = request.EmployeeId; // ou request.UserId
 
-        var feeSetting = await serviceFeeSettingRepository.GetByBranchAsync(order.BranchId, cancellationToken);
-        var serviceFeeEnabled = feeSetting?.Enabled ?? true;
-        var effectiveServiceFeeRate = serviceFeeEnabled ? request.ServiceFeeRate : 0m;
+                var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
+                if (order is null || !order.IsActive)
+                    return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-        var currentTime = timeProvider.GetLocalNow().DateTime;
+                var feeSetting = await serviceFeeSettingRepository.GetByBranchAsync(order.BranchId, cancellationToken);
+                var serviceFeeEnabled = feeSetting?.Enabled ?? true;
+                var effectiveServiceFeeRate = serviceFeeEnabled ? request.ServiceFeeRate : 0m;
 
-        var result = order.Close(effectiveServiceFeeRate, currentTime);
-        if (result.IsFailure)
-            return result;
+                var currentTime = timeProvider.GetLocalNow().DateTime;
 
-        if (order.DiningTableId.HasValue)
-        {
-            var table = await diningTableRepository.GetByIdForUpdateAsync(order.DiningTableId.Value, cancellationToken);
-            table?.ChangeStatus(TableStatusIds.EmFechamento);
-        }
+                var result = order.Close(effectiveServiceFeeRate, currentTime);
+                if (result.IsFailure)
+                    return result;
 
-        await unitOfWork.CommitAsync(cancellationToken);
-        return Result.Success();
+                if (order.DiningTableId.HasValue)
+                {
+                    var table = await diningTableRepository.GetByIdForUpdateAsync(order.DiningTableId.Value, cancellationToken);
+                    table?.ChangeStatus(TableStatusIds.EmFechamento);
+                }
+
+                await unitOfWork.CommitAsync(cancellationToken);
+                return Result.Success();
+            });
     }
 }

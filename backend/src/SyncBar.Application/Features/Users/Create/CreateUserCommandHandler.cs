@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Authentication;
+﻿using SyncBar.Application.Abstractions.Authentication;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -11,40 +11,52 @@ internal sealed class CreateUserCommandHandler(
     IRoleRepository roleRepository,
     IUserRoleRepository userRoleRepository,
     IPasswordHasher passwordHasher,
+    ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : ICommandHandler<CreateUserCommand, long>
+    : BaseCommandHandler<CreateUserCommand, long>(logRepository, unitOfWork)
 {
-    public async Task<Result<long>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
+    public override async Task<Result<long>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
-        if (await userRepository.ExistsAsync(request.UserName, request.Email, cancellationToken))
-            return Result.Failure<long>(new Error("AppUser.AlreadyExists", "User name or e-mail already in use."));
+        return await ExecuteWithLogAsync(
+            nameof(CreateUserCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do administrador que está criando o usuário, preencha:
+                // userIdBox.Value = request.CreatedByUserId;
 
-        // Perfis precisam existir e pertencer a mesma empresa.
-        foreach (var roleId in request.RoleIds.Distinct())
-        {
-            var role = await roleRepository.GetByIdAsync(roleId, cancellationToken);
-            if (role is null || !role.IsActive || role.CompanyId != request.CompanyId)
-                return Result.Failure<long>(new Error("Role.NotFound", $"Role {roleId} not found for this company."));
-        }
+                if (await userRepository.ExistsAsync(request.UserName, request.Email, cancellationToken))
+                    return Result.Failure<long>(new Error("AppUser.AlreadyExists", "User name or e-mail already in use."));
 
-        // Senha NUNCA em texto puro — hash BCrypt (workFactor 12).
-        var passwordHash = passwordHasher.Hash(request.Password);
+                // Perfis precisam existir e pertencer a mesma empresa.
+                foreach (var roleId in request.RoleIds.Distinct())
+                {
+                    var role = await roleRepository.GetByIdAsync(roleId, cancellationToken);
+                    if (role is null || !role.IsActive || role.CompanyId != request.CompanyId)
+                        return Result.Failure<long>(new Error("Role.NotFound", $"Role {roleId} not found for this company."));
+                }
 
-        var user = AppUser.Create(request.CompanyId, request.EmployeeId, request.UserName, request.Email, passwordHash);
-        if (user.IsFailure)
-            return Result.Failure<long>(user.Error);
+                // Senha NUNCA em texto puro — hash BCrypt (workFactor 12).
+                var passwordHash = passwordHasher.Hash(request.Password);
 
-        await userRepository.AddAsync(user.Value, cancellationToken);
-        await unitOfWork.CommitAsync(cancellationToken);
+                var user = AppUser.Create(request.CompanyId, request.EmployeeId, request.UserName, request.Email, passwordHash);
+                if (user.IsFailure)
+                    return Result.Failure<long>(user.Error);
 
-        foreach (var roleId in request.RoleIds.Distinct())
-        {
-            var link = UserRole.Create(user.Value.Id, roleId);
-            if (link.IsSuccess)
-                await userRoleRepository.AddAsync(link.Value, cancellationToken);
-        }
+                await userRepository.AddAsync(user.Value, cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
 
-        await unitOfWork.CommitAsync(cancellationToken);
-        return Result.Success(user.Value.Id);
+                foreach (var roleId in request.RoleIds.Distinct())
+                {
+                    var link = UserRole.Create(user.Value.Id, roleId);
+                    if (link.IsSuccess)
+                        await userRoleRepository.AddAsync(link.Value, cancellationToken);
+                }
+
+                await unitOfWork.CommitAsync(cancellationToken);
+
+                return Result.Success(user.Value.Id);
+            });
     }
 }

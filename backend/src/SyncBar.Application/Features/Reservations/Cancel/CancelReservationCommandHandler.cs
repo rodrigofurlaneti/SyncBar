@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -8,29 +8,40 @@ namespace SyncBar.Application.Features.Reservations.Cancel;
 internal sealed class CancelReservationCommandHandler(
     ITableReservationRepository reservationRepository,
     IDiningTableRepository diningTableRepository,
+    ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : ICommandHandler<CancelReservationCommand>
+    : BaseCommandHandler<CancelReservationCommand>(logRepository, unitOfWork)
 {
-    public async Task<Result> Handle(CancelReservationCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(CancelReservationCommand request, CancellationToken cancellationToken)
     {
-        var reservation = await reservationRepository.GetByIdForUpdateAsync(request.ReservationId, cancellationToken);
-        if (reservation is null || !reservation.IsActive)
-            return Result.Failure(new Error("TableReservation.NotFound", "Reservation not found."));
+        return await ExecuteWithLogAsync(
+            nameof(CancelReservationCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do usuário ou cliente cancelando a reserva, preencha:
+                // userIdBox.Value = request.UserId;
 
-        var wasConfirmedTableId = reservation.DiningTableId;
+                var reservation = await reservationRepository.GetByIdForUpdateAsync(request.ReservationId, cancellationToken);
+                if (reservation is null || !reservation.IsActive)
+                    return Result.Failure(new Error("TableReservation.NotFound", "Reservation not found."));
 
-        var cancelled = reservation.Cancel();
-        if (cancelled.IsFailure)
-            return cancelled;
+                var wasConfirmedTableId = reservation.DiningTableId;
 
-        // Libera a mesa que estava comprometida para essa reserva.
-        if (wasConfirmedTableId.HasValue)
-        {
-            var table = await diningTableRepository.GetByIdForUpdateAsync(wasConfirmedTableId.Value, cancellationToken);
-            table?.ChangeStatus(TableStatusIds.Livre);
-        }
+                var cancelled = reservation.Cancel();
+                if (cancelled.IsFailure)
+                    return cancelled;
 
-        await unitOfWork.CommitAsync(cancellationToken);
-        return Result.Success();
+                // Libera a mesa que estava comprometida para essa reserva.
+                if (wasConfirmedTableId.HasValue)
+                {
+                    var table = await diningTableRepository.GetByIdForUpdateAsync(wasConfirmedTableId.Value, cancellationToken);
+                    table?.ChangeStatus(TableStatusIds.Livre);
+                }
+
+                await unitOfWork.CommitAsync(cancellationToken);
+                return Result.Success();
+            });
     }
 }

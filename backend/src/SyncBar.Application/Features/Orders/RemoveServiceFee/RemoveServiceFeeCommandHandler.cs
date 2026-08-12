@@ -6,23 +6,34 @@ namespace SyncBar.Application.Features.Orders.RemoveServiceFee;
 
 internal sealed class RemoveServiceFeeCommandHandler(
     ICustomerOrderRepository orderRepository,
-    IUnitOfWork unitOfWork,
-    TimeProvider timeProvider) 
-    : ICommandHandler<RemoveServiceFeeCommand>
+    TimeProvider timeProvider,
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork)
+    : BaseCommandHandler<RemoveServiceFeeCommand>(logRepository, unitOfWork)
 {
-    public async Task<Result> Handle(RemoveServiceFeeCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(RemoveServiceFeeCommand request, CancellationToken cancellationToken)
     {
-        var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
-        if (order is null || !order.IsActive)
-            return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
+        return await ExecuteWithLogAsync(
+            nameof(RemoveServiceFeeCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do usuário/gerente responsável por remover a taxa, preencha:
+                // userIdBox.Value = request.UserId; 
 
-        var currentTime = timeProvider.GetLocalNow().DateTime;
+                var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
+                if (order is null || !order.IsActive)
+                    return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-        var result = order.RemoveServiceFee(currentTime);
-        if (result.IsFailure)
-            return result;
+                var currentTime = timeProvider.GetLocalNow().DateTime;
 
-        await unitOfWork.CommitAsync(cancellationToken);
-        return Result.Success();
+                var result = order.RemoveServiceFee(currentTime);
+                if (result.IsFailure)
+                    return result;
+
+                await unitOfWork.CommitAsync(cancellationToken);
+                return Result.Success();
+            });
     }
 }

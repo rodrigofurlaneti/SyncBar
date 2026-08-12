@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -9,38 +9,49 @@ internal sealed class UpdateUserRolesCommandHandler(
     IAppUserRepository userRepository,
     IRoleRepository roleRepository,
     IUserRoleRepository userRoleRepository,
+    ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : ICommandHandler<UpdateUserRolesCommand>
+    : BaseCommandHandler<UpdateUserRolesCommand>(logRepository, unitOfWork)
 {
-    public async Task<Result> Handle(UpdateUserRolesCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(UpdateUserRolesCommand request, CancellationToken cancellationToken)
     {
-        var user = await userRepository.GetByIdAsync(request.AppUserId, cancellationToken);
-        if (user is null || !user.IsActive)
-            return Result.Failure(new Error("AppUser.NotFound", "User not found."));
+        return await ExecuteWithLogAsync(
+            nameof(UpdateUserRolesCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do administrador que está alterando as roles, preencha:
+                // userIdBox.Value = request.AdminUserId;
 
-        var desired = request.RoleIds.Distinct().ToHashSet();
-        foreach (var roleId in desired)
-        {
-            var role = await roleRepository.GetByIdAsync(roleId, cancellationToken);
-            if (role is null || !role.IsActive || role.CompanyId != user.CompanyId)
-                return Result.Failure(new Error("Role.NotFound", $"Role {roleId} not found for this company."));
-        }
+                var user = await userRepository.GetByIdAsync(request.AppUserId, cancellationToken);
+                if (user is null || !user.IsActive)
+                    return Result.Failure(new Error("AppUser.NotFound", "User not found."));
 
-        // Soft delete: vinculos removidos sao desativados, nunca apagados.
-        var currentLinks = await userRoleRepository.GetByUserForUpdateAsync(user.Id, cancellationToken);
+                var desired = request.RoleIds.Distinct().ToHashSet();
+                foreach (var roleId in desired)
+                {
+                    var role = await roleRepository.GetByIdAsync(roleId, cancellationToken);
+                    if (role is null || !role.IsActive || role.CompanyId != user.CompanyId)
+                        return Result.Failure(new Error("Role.NotFound", $"Role {roleId} not found for this company."));
+                }
 
-        foreach (var link in currentLinks.Where(l => l.IsActive && !desired.Contains(l.RoleId)))
-            link.Deactivate();
+                // Soft delete: vinculos removidos são desativados, nunca apagados.
+                var currentLinks = await userRoleRepository.GetByUserForUpdateAsync(user.Id, cancellationToken);
 
-        var activeRoleIds = currentLinks.Where(l => l.IsActive).Select(l => l.RoleId).ToHashSet();
-        foreach (var roleId in desired.Except(activeRoleIds))
-        {
-            var link = UserRole.Create(user.Id, roleId);
-            if (link.IsSuccess)
-                await userRoleRepository.AddAsync(link.Value, cancellationToken);
-        }
+                foreach (var link in currentLinks.Where(l => l.IsActive && !desired.Contains(l.RoleId)))
+                    link.Deactivate();
 
-        await unitOfWork.CommitAsync(cancellationToken);
-        return Result.Success();
+                var activeRoleIds = currentLinks.Where(l => l.IsActive).Select(l => l.RoleId).ToHashSet();
+                foreach (var roleId in desired.Except(activeRoleIds))
+                {
+                    var link = UserRole.Create(user.Id, roleId);
+                    if (link.IsSuccess)
+                        await userRoleRepository.AddAsync(link.Value, cancellationToken);
+                }
+
+                await unitOfWork.CommitAsync(cancellationToken);
+                return Result.Success();
+            });
     }
 }

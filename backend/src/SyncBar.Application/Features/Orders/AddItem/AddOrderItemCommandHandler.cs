@@ -14,82 +14,93 @@ internal sealed class AddOrderItemCommandHandler(
     IPromotionRepository promotionRepository,
     IProductStockRepository stockRepository,
     IPrintingService printingService,
-    IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
-    : ICommandHandler<AddOrderItemCommand>
+    TimeProvider timeProvider,
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork)
+    : BaseCommandHandler<AddOrderItemCommand>(logRepository, unitOfWork)
 {
-    public async Task<Result> Handle(AddOrderItemCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(AddOrderItemCommand request, CancellationToken cancellationToken)
     {
-        // 1. Busca o pedido sequencialmente
-        var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
-        if (order is null || !order.IsActive)
-            return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
+        return await ExecuteWithLogAsync(
+            nameof(AddOrderItemCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Mapeia o ID do funcionário (usuário) responsável pela ação para o log de auditoria
+                userIdBox.Value = request.EmployeeId;
 
-        // 2. Busca o produto sequencialmente
-        var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
-        if (product is null || !product.IsActive)
-            return Result.Failure(new Error("Product.NotFound", "Product not found."));
+                // 1. Busca o pedido sequencialmente
+                var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
+                if (order is null || !order.IsActive)
+                    return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-        // 3. Busca as promoções sequencialmente
-        var promotions = await promotionRepository.GetByBranchAsync(order.BranchId, cancellationToken);
+                // 2. Busca o produto sequencialmente
+                var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
+                if (product is null || !product.IsActive)
+                    return Result.Failure(new Error("Product.NotFound", "Product not found."));
 
-        // 4. Busca o estoque sequencialmente
-        var stockSnapshot = await stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
+                // 3. Busca as promoções sequencialmente
+                var promotions = await promotionRepository.GetByBranchAsync(order.BranchId, cancellationToken);
 
-        var itemCountBefore = order.Items.Count;
-        var currentTime = timeProvider.GetLocalNow().DateTime;
+                // 4. Busca o estoque sequencialmente
+                var stockSnapshot = await stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
 
-        var activePromotion = promotions.FirstOrDefault(promo =>
-            promo.ProductId == product.Id && promo.IsActiveAt(currentTime));
+                var itemCountBefore = order.Items.Count;
+                var currentTime = timeProvider.GetLocalNow().DateTime;
 
-        var result = order.AddItemWithPromotion(product, request.Quantity, request.Notes, activePromotion, request.EmployeeId ?? 0, currentTime);
-        if (result.IsFailure)
-            return result;
+                var activePromotion = promotions.FirstOrDefault(promo =>
+                    promo.ProductId == product.Id && promo.IsActiveAt(currentTime));
 
-        if (stockSnapshot is not null)
-        {
-            var totalQuantityAdded = order.Items.Skip(itemCountBefore).Sum(i => i.Quantity);
+                var result = order.AddItemWithPromotion(product, request.Quantity, request.Notes, activePromotion, request.EmployeeId ?? 0, currentTime);
+                if (result.IsFailure)
+                    return result;
 
-            var stockResult = stockSnapshot.Deduct(totalQuantityAdded);
-            if (stockResult.IsFailure) return Result.Failure(stockResult.Error);
+                if (stockSnapshot is not null)
+                {
+                    var totalQuantityAdded = order.Items.Skip(itemCountBefore).Sum(i => i.Quantity);
 
-            long? movementEmployeeId = request.EmployeeId != 0 ? request.EmployeeId : null;
+                    var stockResult = stockSnapshot.Deduct(totalQuantityAdded);
+                    if (stockResult.IsFailure) return Result.Failure(stockResult.Error);
 
-            var movementResult = StockMovement.Create(
-                stockItemId: stockSnapshot.ProductId,
-                stockMovementTypeId: 2,
-                purchaseItemId: null,
-                orderItemId: order.Items.Last().Id,
-                employeeId: movementEmployeeId,
-                quantity: -totalQuantityAdded,
-                unitCost: null,
-                totalCost: null,
-                documentNumber: null,
-                movedAt: currentTime,
-                notes: $"Baixa automática do pedido {order.Id}"
-            );
+                    long? movementEmployeeId = request.EmployeeId != 0 ? request.EmployeeId : null;
 
-            if (movementResult.IsFailure) return Result.Failure(movementResult.Error);
+                    var movementResult = StockMovement.Create(
+                        stockItemId: stockSnapshot.ProductId,
+                        stockMovementTypeId: 2, // Tipo: Venda/Saída
+                        purchaseItemId: null,
+                        orderItemId: order.Items.Last().Id,
+                        employeeId: movementEmployeeId,
+                        quantity: -totalQuantityAdded,
+                        unitCost: null,
+                        totalCost: null,
+                        documentNumber: null,
+                        movedAt: currentTime,
+                        notes: $"Baixa automática do pedido {order.Id}"
+                    );
 
-            stockRepository.AddMovement(movementResult.Value);
-        }
+                    if (movementResult.IsFailure) return Result.Failure(movementResult.Error);
 
-        try
-        {
-            await unitOfWork.CommitAsync(cancellationToken);
-        }
-        catch (ConcurrencyException)
-        {
-            return Result.Failure(new Error("Stock.Concurrency",
-                "O estoque deste produto foi alterado por outro pedido neste momento. Por favor, tente novamente."));
-        }
+                    stockRepository.AddMovement(movementResult.Value);
+                }
 
-        var newItemIds = order.Items.Skip(itemCountBefore).Select(i => i.Id).ToList();
-        if (newItemIds.Any())
-        {
-            _ = printingService.PrintOrderItemsAsync(order.Id, newItemIds, CancellationToken.None);
-        }
+                try
+                {
+                    await unitOfWork.CommitAsync(cancellationToken);
+                }
+                catch (ConcurrencyException)
+                {
+                    return Result.Failure(new Error("Stock.Concurrency",
+                        "O estoque deste produto foi alterado por outro pedido neste momento. Por favor, tente novamente."));
+                }
 
-        return Result.Success();
+                var newItemIds = order.Items.Skip(itemCountBefore).Select(i => i.Id).ToList();
+                if (newItemIds.Any())
+                {
+                    _ = printingService.PrintOrderItemsAsync(order.Id, newItemIds, CancellationToken.None);
+                }
+
+                return Result.Success();
+            });
     }
 }

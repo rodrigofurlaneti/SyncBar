@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Features.Catalog;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -8,28 +8,41 @@ namespace SyncBar.Application.Features.PublicOrdering.GetPublicMenu;
 internal sealed class GetPublicMenuQueryHandler(
     IDiningTableRepository diningTableRepository,
     IBranchRepository branchRepository,
-    IProductRepository productRepository)
-    : IQueryHandler<GetPublicMenuQuery, PublicMenuResponse>
+    IProductRepository productRepository,
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork)
+    : BaseQueryHandler<GetPublicMenuQuery, PublicMenuResponse>(logRepository, unitOfWork)
 {
-    public async Task<Result<PublicMenuResponse>> Handle(GetPublicMenuQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<PublicMenuResponse>> Handle(GetPublicMenuQuery request, CancellationToken cancellationToken)
     {
-        var table = await diningTableRepository.GetByQrTokenAsync(request.Token, cancellationToken);
-        if (table is null)
-            return Result.Failure<PublicMenuResponse>(new Error("DiningTable.InvalidToken", "Invalid or expired QR code."));
+        return await ExecuteWithLogAsync(
+            nameof(GetPublicMenuQueryHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP do cliente lido no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Como este é um endpoint de acesso público via QR Code, não temos um 
+                // usuário autenticado fazendo a consulta.
+                // userIdBox.Value = null;
 
-        var branch = await branchRepository.GetByIdAsync(table.BranchId, cancellationToken);
-        if (branch is null || !branch.IsActive)
-            return Result.Failure<PublicMenuResponse>(new Error("Branch.NotFound", "Branch not found."));
+                var table = await diningTableRepository.GetByQrTokenAsync(request.Token, cancellationToken);
+                if (table is null)
+                    return Result.Failure<PublicMenuResponse>(new Error("DiningTable.InvalidToken", "Invalid or expired QR code."));
 
-        var products = await productRepository.GetByCompanyAsync(branch.CompanyId, cancellationToken);
+                var branch = await branchRepository.GetByIdAsync(table.BranchId, cancellationToken);
+                if (branch is null || !branch.IsActive)
+                    return Result.Failure<PublicMenuResponse>(new Error("Branch.NotFound", "Branch not found."));
 
-        var items = products
-            .OrderBy(p => p.CategoryId).ThenBy(p => p.Name)
-            .Select(p => new MenuItemResponse(
-                p.Id, p.CategoryId, p.UnitOfMeasureId, p.Name, p.Description, p.Barcode,
-                p.SalePrice, p.CostPrice, p.IsStockControlled, p.PreparationTimeMinutes, p.ImageUrl))
-            .ToList();
+                var products = await productRepository.GetByCompanyAsync(branch.CompanyId, cancellationToken);
 
-        return Result.Success(new PublicMenuResponse(branch.Name, table.Number, items));
+                var items = products
+                    .OrderBy(p => p.CategoryId).ThenBy(p => p.Name)
+                    .Select(p => new MenuItemResponse(
+                        p.Id, p.CategoryId, p.UnitOfMeasureId, p.Name, p.Description, p.Barcode,
+                        p.SalePrice, p.CostPrice, p.IsStockControlled, p.PreparationTimeMinutes, p.ImageUrl))
+                    .ToList();
+
+                return Result.Success(new PublicMenuResponse(branch.Name, table.Number, items));
+            });
     }
 }

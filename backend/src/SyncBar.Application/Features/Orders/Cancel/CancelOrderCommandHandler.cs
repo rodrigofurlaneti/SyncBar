@@ -9,36 +9,47 @@ internal sealed class CancelOrderCommandHandler(
     ICustomerOrderRepository orderRepository,
     IDiningTableRepository diningTableRepository,
     IComandaRepository comandaRepository,
-    IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
-    : ICommandHandler<CancelOrderCommand>
+    TimeProvider timeProvider,
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork)
+    : BaseCommandHandler<CancelOrderCommand>(logRepository, unitOfWork)
 {
-    public async Task<Result> Handle(CancelOrderCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(CancelOrderCommand request, CancellationToken cancellationToken)
     {
-        var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
-        if (order is null || !order.IsActive)
-            return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
+        return await ExecuteWithLogAsync(
+            nameof(CancelOrderCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do usuário ou funcionário responsável pela ação, preencha:
+                // userIdBox.Value = request.EmployeeId; // ou request.UserId
 
-        var currentTime = timeProvider.GetLocalNow().DateTime;
+                var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
+                if (order is null || !order.IsActive)
+                    return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-        var result = order.Cancel(currentTime);
-        if (result.IsFailure)
-            return result;
+                var currentTime = timeProvider.GetLocalNow().DateTime;
 
-        // Libera mesa e comanda.
-        if (order.DiningTableId.HasValue)
-        {
-            var table = await diningTableRepository.GetByIdForUpdateAsync(order.DiningTableId.Value, cancellationToken);
-            table?.ChangeStatus(TableStatusIds.Livre);
-        }
+                var result = order.Cancel(currentTime);
+                if (result.IsFailure)
+                    return result;
 
-        if (order.ComandaId.HasValue)
-        {
-            var comanda = await comandaRepository.GetByIdForUpdateAsync(order.ComandaId.Value, cancellationToken);
-            comanda?.ChangeStatus(ComandaStatusIds.Disponivel);
-        }
+                // Libera mesa e comanda.
+                if (order.DiningTableId.HasValue)
+                {
+                    var table = await diningTableRepository.GetByIdForUpdateAsync(order.DiningTableId.Value, cancellationToken);
+                    table?.ChangeStatus(TableStatusIds.Livre);
+                }
 
-        await unitOfWork.CommitAsync(cancellationToken);
-        return Result.Success();
+                if (order.ComandaId.HasValue)
+                {
+                    var comanda = await comandaRepository.GetByIdForUpdateAsync(order.ComandaId.Value, cancellationToken);
+                    comanda?.ChangeStatus(ComandaStatusIds.Disponivel);
+                }
+
+                await unitOfWork.CommitAsync(cancellationToken);
+                return Result.Success();
+            });
     }
 }

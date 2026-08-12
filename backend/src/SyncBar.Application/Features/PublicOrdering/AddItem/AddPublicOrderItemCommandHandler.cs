@@ -13,68 +13,79 @@ internal sealed class AddPublicOrderItemCommandHandler(
     IProductRepository productRepository,
     ICustomerOrderRepository orderRepository,
     IPrintingService printingService,
-    IUnitOfWork unitOfWork,
-    TimeProvider timeProvider) // Injecao do TimeProvider adicionada
-    : ICommandHandler<AddPublicOrderItemCommand, long>
+    TimeProvider timeProvider,
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork)
+    : BaseCommandHandler<AddPublicOrderItemCommand, long>(logRepository, unitOfWork)
 {
-    public async Task<Result<long>> Handle(AddPublicOrderItemCommand request, CancellationToken cancellationToken)
+    public override async Task<Result<long>> Handle(AddPublicOrderItemCommand request, CancellationToken cancellationToken)
     {
-        var table = await diningTableRepository.GetByQrTokenAsync(request.Token, cancellationToken);
-        if (table is null || !table.IsActive)
-            return Result.Failure<long>(new Error("DiningTable.InvalidToken", "Invalid or expired QR code."));
+        return await ExecuteWithLogAsync(
+            nameof(AddPublicOrderItemCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP do cliente lido no request, caso aplicável
+            async (userIdBox) =>
+            {
+                var table = await diningTableRepository.GetByQrTokenAsync(request.Token, cancellationToken);
+                if (table is null || !table.IsActive)
+                    return Result.Failure<long>(new Error("DiningTable.InvalidToken", "Invalid or expired QR code."));
 
-        var branch = await branchRepository.GetByIdAsync(table.BranchId, cancellationToken);
-        if (branch is null || !branch.IsActive)
-            return Result.Failure<long>(new Error("Branch.NotFound", "Branch not found."));
-        if (!branch.SelfServiceEmployeeId.HasValue)
-            return Result.Failure<long>(new Error("Branch.SelfServiceDisabled",
-                "Self-service ordering is not enabled for this branch. Ask the manager to configure it."));
+                var branch = await branchRepository.GetByIdAsync(table.BranchId, cancellationToken);
+                if (branch is null || !branch.IsActive)
+                    return Result.Failure<long>(new Error("Branch.NotFound", "Branch not found."));
+                if (!branch.SelfServiceEmployeeId.HasValue)
+                    return Result.Failure<long>(new Error("Branch.SelfServiceDisabled",
+                        "Self-service ordering is not enabled for this branch. Ask the manager to configure it."));
 
-        var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
-        if (product is null || !product.IsActive || product.CompanyId != branch.CompanyId)
-            return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
+                // Associa a ação no log ao funcionário "virtual" de autoatendimento configurado na filial
+                userIdBox.Value = branch.SelfServiceEmployeeId.Value;
 
-        var currentTime = timeProvider.GetLocalNow().DateTime;
+                var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
+                if (product is null || !product.IsActive || product.CompanyId != branch.CompanyId)
+                    return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
 
-        var order = await orderRepository.GetOpenByTableForUpdateAsync(table.Id, cancellationToken);
-        var isNewOrder = order is null;
-        if (order is null)
-        {
-            // Passando o currentTime para o Create
-            var created = CustomerOrder.Create(
-                table.BranchId, table.Id, null, branch.SelfServiceEmployeeId.Value,
-                null, "Pedido via QR Code", currentTime, null, OrderTypeIds.Mesa);
+                var currentTime = timeProvider.GetLocalNow().DateTime;
 
-            if (created.IsFailure)
-                return Result.Failure<long>(created.Error);
+                var order = await orderRepository.GetOpenByTableForUpdateAsync(table.Id, cancellationToken);
+                var isNewOrder = order is null;
+                if (order is null)
+                {
+                    // Passando o currentTime para o Create
+                    var created = CustomerOrder.Create(
+                        table.BranchId, table.Id, null, branch.SelfServiceEmployeeId.Value,
+                        null, "Pedido via QR Code", currentTime, null, OrderTypeIds.Mesa);
 
-            order = created.Value;
-            await orderRepository.AddAsync(order, cancellationToken);
-            await unitOfWork.CommitAsync(cancellationToken);
-        }
+                    if (created.IsFailure)
+                        return Result.Failure<long>(created.Error);
 
-        if (isNewOrder)
-            table.ChangeStatus(TableStatusIds.Ocupada);
+                    order = created.Value;
+                    await orderRepository.AddAsync(order, cancellationToken);
+                    await unitOfWork.CommitAsync(cancellationToken);
+                }
 
-        var itemCountBefore = order.Items.Count;
+                if (isNewOrder)
+                    table.ChangeStatus(TableStatusIds.Ocupada);
 
-        // Passando o currentTime para o AddItem
-        var added = order.AddItem(product.Id, product.SalePrice, request.Quantity, request.Notes, null, currentTime);
-        if (added.IsFailure)
-            return Result.Failure<long>(added.Error);
+                var itemCountBefore = order.Items.Count;
 
-        await unitOfWork.CommitAsync(cancellationToken);
+                // Passando o currentTime para o AddItem
+                var added = order.AddItem(product.Id, product.SalePrice, request.Quantity, request.Notes, null, currentTime);
+                if (added.IsFailure)
+                    return Result.Failure<long>(added.Error);
 
-        var newItemIds = order.Items.Skip(itemCountBefore).Select(i => i.Id).ToList();
-        try
-        {
-            await printingService.PrintOrderItemsAsync(order.Id, newItemIds, cancellationToken);
-        }
-        catch
-        {
-            // silencioso
-        }
+                await unitOfWork.CommitAsync(cancellationToken);
 
-        return Result.Success(order.Id);
+                var newItemIds = order.Items.Skip(itemCountBefore).Select(i => i.Id).ToList();
+                try
+                {
+                    await printingService.PrintOrderItemsAsync(order.Id, newItemIds, cancellationToken);
+                }
+                catch
+                {
+                    // silencioso
+                }
+
+                return Result.Success(order.Id);
+            });
     }
 }

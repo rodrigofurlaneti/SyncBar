@@ -11,56 +11,67 @@ internal sealed class OpenOrderCommandHandler(
     IDiningTableRepository diningTableRepository,
     IComandaRepository comandaRepository,
     IComandaSettingRepository comandaSettingRepository,
-    IUnitOfWork unitOfWork,
-    TimeProvider timeProvider) // Injecao adicionada
-    : ICommandHandler<OpenOrderCommand, long>
+    TimeProvider timeProvider,
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork)
+    : BaseCommandHandler<OpenOrderCommand, long>(logRepository, unitOfWork)
 {
-    public async Task<Result<long>> Handle(OpenOrderCommand request, CancellationToken cancellationToken)
+    public override async Task<Result<long>> Handle(OpenOrderCommand request, CancellationToken cancellationToken)
     {
-        if (request.DiningTableId.HasValue)
-        {
-            var table = await diningTableRepository.GetByIdForUpdateAsync(request.DiningTableId.Value, cancellationToken);
-            if (table is null || !table.IsActive)
-                return Result.Failure<long>(new Error("DiningTable.NotFound", "Dining table not found."));
+        return await ExecuteWithLogAsync(
+            nameof(OpenOrderCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Associa o ID do funcionário/usuário que está abrindo o pedido ao log de auditoria
+                userIdBox.Value = request.EmployeeId;
 
-            if (await orderRepository.HasOpenOrderForTableAsync(request.DiningTableId.Value, cancellationToken))
-                return Result.Failure<long>(new Error("CustomerOrder.TableBusy", "Dining table already has an open order."));
+                if (request.DiningTableId.HasValue)
+                {
+                    var table = await diningTableRepository.GetByIdForUpdateAsync(request.DiningTableId.Value, cancellationToken);
+                    if (table is null || !table.IsActive)
+                        return Result.Failure<long>(new Error("DiningTable.NotFound", "Dining table not found."));
 
-            table.ChangeStatus(TableStatusIds.Ocupada);
-        }
+                    if (await orderRepository.HasOpenOrderForTableAsync(request.DiningTableId.Value, cancellationToken))
+                        return Result.Failure<long>(new Error("CustomerOrder.TableBusy", "Dining table already has an open order."));
 
-        if (request.ComandaId.HasValue)
-        {
-            var comanda = await comandaRepository.GetByIdForUpdateAsync(request.ComandaId.Value, cancellationToken);
-            if (comanda is null || !comanda.IsActive)
-                return Result.Failure<long>(new Error("Comanda.NotFound", "Comanda not found."));
+                    table.ChangeStatus(TableStatusIds.Ocupada);
+                }
 
-            if (await orderRepository.HasOpenOrderForComandaAsync(request.ComandaId.Value, cancellationToken))
-                return Result.Failure<long>(new Error("CustomerOrder.ComandaBusy", "Comanda already has an open order."));
+                if (request.ComandaId.HasValue)
+                {
+                    var comanda = await comandaRepository.GetByIdForUpdateAsync(request.ComandaId.Value, cancellationToken);
+                    if (comanda is null || !comanda.IsActive)
+                        return Result.Failure<long>(new Error("Comanda.NotFound", "Comanda not found."));
 
-            comanda.ChangeStatus(ComandaStatusIds.EmUso);
-        }
+                    if (await orderRepository.HasOpenOrderForComandaAsync(request.ComandaId.Value, cancellationToken))
+                        return Result.Failure<long>(new Error("CustomerOrder.ComandaBusy", "Comanda already has an open order."));
 
-        decimal? creditLimit = null;
-        if (request.ComandaId.HasValue)
-        {
-            var setting = await comandaSettingRepository.GetByBranchAsync(request.BranchId, cancellationToken);
-            creditLimit = setting?.DefaultLimitAmount;
-        }
+                    comanda.ChangeStatus(ComandaStatusIds.EmUso);
+                }
 
-        var currentTime = timeProvider.GetLocalNow().DateTime;
+                decimal? creditLimit = null;
+                if (request.ComandaId.HasValue)
+                {
+                    var setting = await comandaSettingRepository.GetByBranchAsync(request.BranchId, cancellationToken);
+                    creditLimit = setting?.DefaultLimitAmount;
+                }
 
-        var order = CustomerOrder.Create(
-            request.BranchId, request.DiningTableId, request.ComandaId,
-            request.EmployeeId, request.GuestCount, request.Notes, currentTime, creditLimit,
-            request.OrderTypeId, request.CustomerName, request.CustomerPhone, request.DeliveryAddress);
+                var currentTime = timeProvider.GetLocalNow().DateTime;
 
-        if (order.IsFailure)
-            return Result.Failure<long>(order.Error);
+                var order = CustomerOrder.Create(
+                    request.BranchId, request.DiningTableId, request.ComandaId,
+                    request.EmployeeId, request.GuestCount, request.Notes, currentTime, creditLimit,
+                    request.OrderTypeId, request.CustomerName, request.CustomerPhone, request.DeliveryAddress);
 
-        await orderRepository.AddAsync(order.Value, cancellationToken);
-        await unitOfWork.CommitAsync(cancellationToken);
+                if (order.IsFailure)
+                    return Result.Failure<long>(order.Error);
 
-        return Result.Success(order.Value.Id);
+                await orderRepository.AddAsync(order.Value, cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
+
+                return Result.Success(order.Value.Id);
+            });
     }
 }

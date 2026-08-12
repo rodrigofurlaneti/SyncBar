@@ -1,24 +1,37 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Comandas.GetByBranch;
 
-internal sealed class GetComandasByBranchQueryHandler(IComandaRepository comandaRepository)
-    : IQueryHandler<GetComandasByBranchQuery, IReadOnlyCollection<ComandaResponse>>
+internal sealed class GetComandasByBranchQueryHandler(
+    IComandaRepository comandaRepository,
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork)
+    : BaseQueryHandler<GetComandasByBranchQuery, IReadOnlyCollection<ComandaResponse>>(logRepository, unitOfWork)
 {
-    public async Task<Result<IReadOnlyCollection<ComandaResponse>>> Handle(
+    public override async Task<Result<IReadOnlyCollection<ComandaResponse>>> Handle(
         GetComandasByBranchQuery request, CancellationToken cancellationToken)
     {
-        var comandas = await comandaRepository.GetByBranchAsync(request.BranchId, cancellationToken);
+        return await ExecuteWithLogAsync(
+            nameof(GetComandasByBranchQueryHandler),
+            nameof(Handle),
+            null, // Substitua por request.IpAddress se você tiver essa propriedade na sua query
+            async (userIdBox) =>
+            {
+                // Se houver um UserId no request, você pode associá-lo aqui:
+                // userIdBox.Value = request.UserId;
 
-        // Ordenacao em C# — codigos numericos primeiro, em ordem.
-        IReadOnlyCollection<ComandaResponse> response = comandas
-            .OrderBy(c => c.Code.Length)
-            .ThenBy(c => c.Code)
-            .Select(c => new ComandaResponse(c.Id, c.BranchId, c.ComandaStatusId, c.Code))
-            .ToList();
+                var comandas = await comandaRepository.GetByBranchAsync(request.BranchId, cancellationToken);
 
-        return Result.Success(response);
+                // Ordenacao em C# — codigos numericos primeiro, em ordem.
+                IReadOnlyCollection<ComandaResponse> response = comandas
+                    .OrderBy(c => c.Code.Length)
+                    .ThenBy(c => c.Code)
+                    .Select(c => new ComandaResponse(c.Id, c.BranchId, c.ComandaStatusId, c.Code))
+                    .ToList();
+
+                return Result.Success(response);
+            });
     }
 }

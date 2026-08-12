@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -7,28 +7,40 @@ namespace SyncBar.Application.Features.Comandas.Settings;
 
 internal sealed class SetComandaDefaultLimitCommandHandler(
     IComandaSettingRepository settingRepository,
+    ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : ICommandHandler<SetComandaDefaultLimitCommand>
+    : BaseCommandHandler<SetComandaDefaultLimitCommand>(logRepository, unitOfWork)
 {
-    public async Task<Result> Handle(SetComandaDefaultLimitCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(SetComandaDefaultLimitCommand request, CancellationToken cancellationToken)
     {
-        // Upsert por filial (espelha UQ_ComandaSetting_BranchId filtrado).
-        var setting = await settingRepository.GetByBranchForUpdateAsync(request.BranchId, cancellationToken);
-        if (setting is null)
-        {
-            var created = ComandaSetting.Create(request.BranchId, request.DefaultLimitAmount);
-            if (created.IsFailure)
-                return Result.Failure(created.Error);
-            await settingRepository.AddAsync(created.Value, cancellationToken);
-        }
-        else
-        {
-            var updated = setting.Update(request.DefaultLimitAmount);
-            if (updated.IsFailure)
-                return updated;
-        }
+        return await ExecuteWithLogAsync(
+            nameof(SetComandaDefaultLimitCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP do request, se houver
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do usuário responsável pela ação:
+                // userIdBox.Value = request.UserId;
 
-        await unitOfWork.CommitAsync(cancellationToken);
-        return Result.Success();
+                // Upsert por filial (espelha UQ_ComandaSetting_BranchId filtrado).
+                var setting = await settingRepository.GetByBranchForUpdateAsync(request.BranchId, cancellationToken);
+                if (setting is null)
+                {
+                    var created = ComandaSetting.Create(request.BranchId, request.DefaultLimitAmount);
+                    if (created.IsFailure)
+                        return Result.Failure(created.Error);
+
+                    await settingRepository.AddAsync(created.Value, cancellationToken);
+                }
+                else
+                {
+                    var updated = setting.Update(request.DefaultLimitAmount);
+                    if (updated.IsFailure)
+                        return updated;
+                }
+
+                await unitOfWork.CommitAsync(cancellationToken);
+                return Result.Success();
+            });
     }
 }

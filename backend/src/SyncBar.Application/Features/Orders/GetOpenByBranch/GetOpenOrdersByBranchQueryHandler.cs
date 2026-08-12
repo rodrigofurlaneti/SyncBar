@@ -1,23 +1,36 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Orders.GetOpenByBranch;
 
-internal sealed class GetOpenOrdersByBranchQueryHandler(ICustomerOrderRepository orderRepository)
-    : IQueryHandler<GetOpenOrdersByBranchQuery, IReadOnlyCollection<OrderResponse>>
+internal sealed class GetOpenOrdersByBranchQueryHandler(
+    ICustomerOrderRepository orderRepository,
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork)
+    : BaseQueryHandler<GetOpenOrdersByBranchQuery, IReadOnlyCollection<OrderResponse>>(logRepository, unitOfWork)
 {
-    public async Task<Result<IReadOnlyCollection<OrderResponse>>> Handle(
+    public override async Task<Result<IReadOnlyCollection<OrderResponse>>> Handle(
         GetOpenOrdersByBranchQuery request, CancellationToken cancellationToken)
     {
-        var orders = await orderRepository.GetOpenByBranchAsync(request.BranchId, cancellationToken);
+        return await ExecuteWithLogAsync(
+            nameof(GetOpenOrdersByBranchQueryHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso possua
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do usuário que está executando a ação, preencha:
+                // userIdBox.Value = request.UserId;
 
-        // Ordenacao em C# — nunca ORDER BY em SqlQuery.
-        IReadOnlyCollection<OrderResponse> response = orders
-            .OrderBy(o => o.OpenedAt)
-            .Select(o => o.ToResponse())
-            .ToList();
+                var orders = await orderRepository.GetOpenByBranchAsync(request.BranchId, cancellationToken);
 
-        return Result.Success(response);
+                // Ordenacao em C# — nunca ORDER BY em SqlQuery.
+                IReadOnlyCollection<OrderResponse> response = orders
+                    .OrderBy(o => o.OpenedAt)
+                    .Select(o => o.ToResponse())
+                    .ToList();
+
+                return Result.Success(response);
+            });
     }
 }

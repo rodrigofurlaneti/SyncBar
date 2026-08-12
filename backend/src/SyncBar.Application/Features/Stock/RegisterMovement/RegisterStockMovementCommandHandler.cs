@@ -10,8 +10,9 @@ internal sealed class RegisterStockMovementCommandHandler(
     IStockItemRepository stockItemRepository,
     IStockMovementRepository stockMovementRepository,
     IProductRepository productRepository,
+    ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : ICommandHandler<RegisterStockMovementCommand, long>
+    : BaseCommandHandler<RegisterStockMovementCommand, long>(logRepository, unitOfWork)
 {
     private static readonly HashSet<long> InflowTypes =
     [
@@ -20,46 +21,58 @@ internal sealed class RegisterStockMovementCommandHandler(
         StockMovementTypeIds.TransferenciaEntrada
     ];
 
-    public async Task<Result<long>> Handle(RegisterStockMovementCommand request, CancellationToken cancellationToken)
+    public override async Task<Result<long>> Handle(RegisterStockMovementCommand request, CancellationToken cancellationToken)
     {
-        var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
-        if (product is null || !product.IsActive)
-            return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
+        return await ExecuteWithLogAsync(
+            nameof(RegisterStockMovementCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Associa a ação no log de auditoria ao funcionário que está registrando a movimentação
+                userIdBox.Value = request.EmployeeId;
 
-        // Saldo por filial x produto — cria o StockItem na primeira movimentacao.
-        var stockItem = await stockItemRepository.GetByBranchAndProductForUpdateAsync(
-            request.BranchId, request.ProductId, cancellationToken);
-        if (stockItem is null)
-        {
-            var created = StockItem.Create(request.BranchId, request.ProductId, 0, null);
-            if (created.IsFailure)
-                return Result.Failure<long>(created.Error);
-            stockItem = created.Value;
-            await stockItemRepository.AddAsync(stockItem, cancellationToken);
-            await unitOfWork.CommitAsync(cancellationToken);
-        }
+                var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
+                if (product is null || !product.IsActive)
+                    return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
 
-        // Todo ajuste de saldo passa pelo livro-razao — nunca UPDATE direto.
-        var isInflow = InflowTypes.Contains(request.StockMovementTypeId);
-        var balance = isInflow ? stockItem.Increase(request.Quantity) : stockItem.Decrease(request.Quantity);
-        if (balance.IsFailure)
-            return Result.Failure<long>(balance.Error);
+                // Saldo por filial x produto — cria o StockItem na primeira movimentacao.
+                var stockItem = await stockItemRepository.GetByBranchAndProductForUpdateAsync(
+                    request.BranchId, request.ProductId, cancellationToken);
+                if (stockItem is null)
+                {
+                    var created = StockItem.Create(request.BranchId, request.ProductId, 0, null);
+                    if (created.IsFailure)
+                        return Result.Failure<long>(created.Error);
 
-        var movement = StockMovement.Create(
-            stockItem.Id, 
-            request.StockMovementTypeId, 
-            null, 
-            null, 
-            request.EmployeeId,
-            request.Quantity, request.UnitCost,
-            request.UnitCost is null ? null : Math.Round(request.UnitCost.Value * request.Quantity, 2),
-            request.DocumentNumber, DateTime.Now, request.Notes);
-        if (movement.IsFailure)
-            return Result.Failure<long>(movement.Error);
+                    stockItem = created.Value;
+                    await stockItemRepository.AddAsync(stockItem, cancellationToken);
+                    await unitOfWork.CommitAsync(cancellationToken);
+                }
 
-        await stockMovementRepository.AddAsync(movement.Value, cancellationToken);
-        await unitOfWork.CommitAsync(cancellationToken);
+                // Todo ajuste de saldo passa pelo livro-razao — nunca UPDATE direto.
+                var isInflow = InflowTypes.Contains(request.StockMovementTypeId);
+                var balance = isInflow ? stockItem.Increase(request.Quantity) : stockItem.Decrease(request.Quantity);
+                if (balance.IsFailure)
+                    return Result.Failure<long>(balance.Error);
 
-        return Result.Success(movement.Value.Id);
+                var movement = StockMovement.Create(
+                    stockItem.Id,
+                    request.StockMovementTypeId,
+                    null,
+                    null,
+                    request.EmployeeId,
+                    request.Quantity, request.UnitCost,
+                    request.UnitCost is null ? null : Math.Round(request.UnitCost.Value * request.Quantity, 2),
+                    request.DocumentNumber, DateTime.Now, request.Notes);
+
+                if (movement.IsFailure)
+                    return Result.Failure<long>(movement.Error);
+
+                await stockMovementRepository.AddAsync(movement.Value, cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
+
+                return Result.Success(movement.Value.Id);
+            });
     }
 }

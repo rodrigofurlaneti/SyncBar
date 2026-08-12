@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -7,20 +7,31 @@ namespace SyncBar.Application.Features.Finance.CreateCost;
 
 internal sealed class CreateOperatingCostCommandHandler(
     IOperatingCostRepository costRepository,
+    ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : ICommandHandler<CreateOperatingCostCommand, long>
+    : BaseCommandHandler<CreateOperatingCostCommand, long>(logRepository, unitOfWork)
 {
-    public async Task<Result<long>> Handle(CreateOperatingCostCommand request, CancellationToken cancellationToken)
+    public override async Task<Result<long>> Handle(CreateOperatingCostCommand request, CancellationToken cancellationToken)
     {
-        var cost = OperatingCost.Create(
-            request.BranchId, request.CostTypeId, request.Description.Trim(),
-            request.Amount, request.ReferenceYear, request.ReferenceMonth);
-        if (cost.IsFailure)
-            return Result.Failure<long>(cost.Error);
+        return await ExecuteWithLogAsync(
+            nameof(CreateOperatingCostCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do usuário responsável pela ação, preencha:
+                // userIdBox.Value = request.UserId;
 
-        await costRepository.AddAsync(cost.Value, cancellationToken);
-        await unitOfWork.CommitAsync(cancellationToken);
+                var cost = OperatingCost.Create(
+                    request.BranchId, request.CostTypeId, request.Description.Trim(),
+                    request.Amount, request.ReferenceYear, request.ReferenceMonth);
+                if (cost.IsFailure)
+                    return Result.Failure<long>(cost.Error);
 
-        return Result.Success(cost.Value.Id);
+                await costRepository.AddAsync(cost.Value, cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
+
+                return Result.Success(cost.Value.Id);
+            });
     }
 }

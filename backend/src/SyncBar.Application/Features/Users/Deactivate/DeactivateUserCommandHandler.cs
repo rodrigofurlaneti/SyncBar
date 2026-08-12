@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
@@ -6,17 +6,28 @@ namespace SyncBar.Application.Features.Users.Deactivate;
 
 internal sealed class DeactivateUserCommandHandler(
     IAppUserRepository userRepository,
+    ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : ICommandHandler<DeactivateUserCommand>
+    : BaseCommandHandler<DeactivateUserCommand>(logRepository, unitOfWork)
 {
-    public async Task<Result> Handle(DeactivateUserCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(DeactivateUserCommand request, CancellationToken cancellationToken)
     {
-        var user = await userRepository.GetByIdForUpdateAsync(request.AppUserId, cancellationToken);
-        if (user is null || !user.IsActive)
-            return Result.Failure(new Error("AppUser.NotFound", "User not found."));
+        return await ExecuteWithLogAsync(
+            nameof(DeactivateUserCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do administrador que está desativando o usuário, preencha:
+                // userIdBox.Value = request.AdminUserId;
 
-        user.Deactivate();
-        await unitOfWork.CommitAsync(cancellationToken);
-        return Result.Success();
+                var user = await userRepository.GetByIdForUpdateAsync(request.AppUserId, cancellationToken);
+                if (user is null || !user.IsActive)
+                    return Result.Failure(new Error("AppUser.NotFound", "User not found."));
+
+                user.Deactivate();
+                await unitOfWork.CommitAsync(cancellationToken);
+                return Result.Success();
+            });
     }
 }

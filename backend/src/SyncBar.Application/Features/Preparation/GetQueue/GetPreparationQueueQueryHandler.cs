@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -10,8 +10,10 @@ internal sealed class GetPreparationQueueQueryHandler(
     IProductRepository productRepository,
     IDiningTableRepository diningTableRepository,
     IComandaRepository comandaRepository,
-    IEmployeeRepository employeeRepository)
-    : IQueryHandler<GetPreparationQueueQuery, IReadOnlyCollection<PreparationTicketResponse>>
+    IEmployeeRepository employeeRepository,
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork)
+    : BaseQueryHandler<GetPreparationQueueQuery, IReadOnlyCollection<PreparationTicketResponse>>(logRepository, unitOfWork)
 {
     // Itens de bar (sem tempo de preparo cadastrado): tolerancia media para
     // pegar, montar o balde, gelo e deixar no balcao.
@@ -25,68 +27,78 @@ internal sealed class GetPreparationQueueQueryHandler(
         OrderItemStatusIds.Pronto,
     ];
 
-    public async Task<Result<IReadOnlyCollection<PreparationTicketResponse>>> Handle(
+    public override async Task<Result<IReadOnlyCollection<PreparationTicketResponse>>> Handle(
         GetPreparationQueueQuery request, CancellationToken cancellationToken)
     {
-        var orders = await orderRepository.GetOpenByBranchAsync(request.BranchId, cancellationToken);
-        var tables = await diningTableRepository.GetByBranchAsync(request.BranchId, cancellationToken);
-        var employees = await employeeRepository.GetByBranchAsync(request.BranchId, cancellationToken);
-
-        var productIds = orders
-            .SelectMany(o => o.Items)
-            .Where(i => i.IsActive)
-            .Select(i => i.ProductId)
-            .Distinct()
-            .ToList();
-        var products = await productRepository.GetByIdsAsync(productIds, cancellationToken);
-
-        var tickets = new List<PreparationTicketResponse>();
-        foreach (var order in orders.OrderBy(o => o.OpenedAt))
-        {
-            var pendingItems = order.Items
-                .Where(i => i.IsActive && PendingStatuses.Contains(i.OrderItemStatusId))
-                .OrderBy(i => i.CreatedAt)
-                .Select(i =>
-                {
-                    var product = products.FirstOrDefault(p => p.Id == i.ProductId);
-                    var isBarItem = product?.PreparationTimeMinutes is null;
-                    // Quem lancou o item; sem responsavel no item, cai no garcom do pedido.
-                    var requesterId = i.EmployeeId ?? order.EmployeeId;
-                    var requestedBy = employees.FirstOrDefault(e => e.Id == requesterId)?.Name;
-                    return new PreparationItemResponse(
-                        i.Id,
-                        i.ProductId,
-                        product?.Name ?? $"Produto {i.ProductId}",
-                        i.Quantity,
-                        i.OrderItemStatusId,
-                        i.Notes,
-                        i.SentToKitchenAt ?? i.CreatedAt,
-                        product?.PreparationTimeMinutes ?? BarToleranceMinutes,
-                        isBarItem,
-                        requestedBy);
-                })
-                .ToList();
-
-            if (pendingItems.Count == 0)
-                continue;
-
-            string? comandaCode = null;
-            if (order.ComandaId.HasValue)
+        return await ExecuteWithLogAsync(
+            nameof(GetPreparationQueueQueryHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
             {
-                var comanda = await comandaRepository.GetByIdAsync(order.ComandaId.Value, cancellationToken);
-                comandaCode = comanda?.Code;
-            }
+                // Se o seu request possuir o Id do usuário/painel (KDS) consultando a fila, preencha:
+                // userIdBox.Value = request.UserId;
 
-            tickets.Add(new PreparationTicketResponse(
-                order.Id,
-                order.DiningTableId.HasValue
-                    ? tables.FirstOrDefault(t => t.Id == order.DiningTableId.Value)?.Number
-                    : null,
-                comandaCode,
-                order.OpenedAt,
-                pendingItems));
-        }
+                var orders = await orderRepository.GetOpenByBranchAsync(request.BranchId, cancellationToken);
+                var tables = await diningTableRepository.GetByBranchAsync(request.BranchId, cancellationToken);
+                var employees = await employeeRepository.GetByBranchAsync(request.BranchId, cancellationToken);
 
-        return Result.Success<IReadOnlyCollection<PreparationTicketResponse>>(tickets);
+                var productIds = orders
+                    .SelectMany(o => o.Items)
+                    .Where(i => i.IsActive)
+                    .Select(i => i.ProductId)
+                    .Distinct()
+                    .ToList();
+                var products = await productRepository.GetByIdsAsync(productIds, cancellationToken);
+
+                var tickets = new List<PreparationTicketResponse>();
+                foreach (var order in orders.OrderBy(o => o.OpenedAt))
+                {
+                    var pendingItems = order.Items
+                        .Where(i => i.IsActive && PendingStatuses.Contains(i.OrderItemStatusId))
+                        .OrderBy(i => i.CreatedAt)
+                        .Select(i =>
+                        {
+                            var product = products.FirstOrDefault(p => p.Id == i.ProductId);
+                            var isBarItem = product?.PreparationTimeMinutes is null;
+                            // Quem lancou o item; sem responsavel no item, cai no garcom do pedido.
+                            var requesterId = i.EmployeeId ?? order.EmployeeId;
+                            var requestedBy = employees.FirstOrDefault(e => e.Id == requesterId)?.Name;
+                            return new PreparationItemResponse(
+                                i.Id,
+                                i.ProductId,
+                                product?.Name ?? $"Produto {i.ProductId}",
+                                i.Quantity,
+                                i.OrderItemStatusId,
+                                i.Notes,
+                                i.SentToKitchenAt ?? i.CreatedAt,
+                                product?.PreparationTimeMinutes ?? BarToleranceMinutes,
+                                isBarItem,
+                                requestedBy);
+                        })
+                        .ToList();
+
+                    if (pendingItems.Count == 0)
+                        continue;
+
+                    string? comandaCode = null;
+                    if (order.ComandaId.HasValue)
+                    {
+                        var comanda = await comandaRepository.GetByIdAsync(order.ComandaId.Value, cancellationToken);
+                        comandaCode = comanda?.Code;
+                    }
+
+                    tickets.Add(new PreparationTicketResponse(
+                        order.Id,
+                        order.DiningTableId.HasValue
+                            ? tables.FirstOrDefault(t => t.Id == order.DiningTableId.Value)?.Number
+                            : null,
+                        comandaCode,
+                        order.OpenedAt,
+                        pendingItems));
+                }
+
+                return Result.Success<IReadOnlyCollection<PreparationTicketResponse>>(tickets);
+            });
     }
 }

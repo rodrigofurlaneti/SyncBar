@@ -47,30 +47,35 @@ public abstract class BaseCommandHandler<TRequest, TResponse>(
         finally
         {
             stopwatch.Stop();
-            var log = new LogTracker(0)
-            {
-                AppUserId = userIdBox.Value,
-                DirectoryName = "Application/Features",
-                ClassName = className,
-                MethodName = methodName,
-                IsSuccess = isSuccess,
-                ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
-                ErrorMessage = errorMessage,
-                StackTrace = stackTrace,
-                IpAddress = ipAddress,
-                CreatedAt = DateTime.Now,
-                IsActive = true
-            };
 
-            try
+            // Executa o log de forma isolada para não afetar o fluxo principal e evitar locks
+            _ = Task.Run(async () =>
             {
-                await logRepository.AddAsync(log);
-                await unitOfWork.CommitAsync();
-            }
-            catch
-            {
-                // Evita que falhas de log quebrem a execução principal
-            }
+                try
+                {
+                    var log = new LogTracker(0)
+                    {
+                        AppUserId = userIdBox.Value,
+                        DirectoryName = "Application/Features",
+                        ClassName = className,
+                        MethodName = methodName,
+                        IsSuccess = isSuccess,
+                        ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
+                        ErrorMessage = errorMessage,
+                        StackTrace = stackTrace,
+                        IpAddress = ipAddress,
+                        CreatedAt = DateTime.Now,
+                        IsActive = true
+                    };
+
+                    await logRepository.AddAsync(log);
+                    await unitOfWork.CommitAsync();
+                }
+                catch
+                {
+                    // Falhas de log nunca devem propagar exceções para background tasks
+                }
+            });
         }
     }
 
@@ -122,30 +127,34 @@ public abstract class BaseCommandHandler<TRequest>(
         finally
         {
             stopwatch.Stop();
-            var log = new LogTracker(0)
-            {
-                AppUserId = userIdBox.Value,
-                DirectoryName = "Application/Features",
-                ClassName = className,
-                MethodName = methodName,
-                IsSuccess = isSuccess,
-                ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
-                ErrorMessage = errorMessage,
-                StackTrace = stackTrace,
-                IpAddress = ipAddress,
-                CreatedAt = DateTime.Now,
-                IsActive = true
-            };
 
-            try
+            _ = Task.Run(async () =>
             {
-                await logRepository.AddAsync(log);
-                await unitOfWork.CommitAsync();
-            }
-            catch
-            {
-                // Evita que falhas de log quebrem a execução principal
-            }
+                try
+                {
+                    var log = new LogTracker(0)
+                    {
+                        AppUserId = userIdBox.Value,
+                        DirectoryName = "Application/Features",
+                        ClassName = className,
+                        MethodName = methodName,
+                        IsSuccess = isSuccess,
+                        ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
+                        ErrorMessage = errorMessage,
+                        StackTrace = stackTrace,
+                        IpAddress = ipAddress,
+                        CreatedAt = DateTime.Now,
+                        IsActive = true
+                    };
+
+                    await logRepository.AddAsync(log);
+                    await unitOfWork.CommitAsync();
+                }
+                catch
+                {
+                    // Evita falhas de log
+                }
+            });
         }
     }
 

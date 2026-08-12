@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -8,25 +8,37 @@ namespace SyncBar.Application.Features.Promotions.Create;
 internal sealed class CreatePromotionCommandHandler(
     IPromotionRepository promotionRepository,
     IProductRepository productRepository,
+    ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : ICommandHandler<CreatePromotionCommand, long>
+    : BaseCommandHandler<CreatePromotionCommand, long>(logRepository, unitOfWork)
 {
-    public async Task<Result<long>> Handle(CreatePromotionCommand request, CancellationToken cancellationToken)
+    public override async Task<Result<long>> Handle(CreatePromotionCommand request, CancellationToken cancellationToken)
     {
-        var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
-        if (product is null || !product.IsActive)
-            return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
+        return await ExecuteWithLogAsync(
+            nameof(CreatePromotionCommandHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do usuário/gerente que está criando a promoção, preencha:
+                // userIdBox.Value = request.UserId;
 
-        var promotion = Promotion.Create(
-            request.BranchId, request.ProductId, request.Name.Trim(),
-            request.DayOfWeek, request.StartMinuteOfDay, request.EndMinuteOfDay,
-            request.PromotionTypeId, request.DiscountRate);
-        if (promotion.IsFailure)
-            return Result.Failure<long>(promotion.Error);
+                var product = await productRepository.GetByIdAsync(request.ProductId, cancellationToken);
+                if (product is null || !product.IsActive)
+                    return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
 
-        await promotionRepository.AddAsync(promotion.Value, cancellationToken);
-        await unitOfWork.CommitAsync(cancellationToken);
+                var promotion = Promotion.Create(
+                    request.BranchId, request.ProductId, request.Name.Trim(),
+                    request.DayOfWeek, request.StartMinuteOfDay, request.EndMinuteOfDay,
+                    request.PromotionTypeId, request.DiscountRate);
 
-        return Result.Success(promotion.Value.Id);
+                if (promotion.IsFailure)
+                    return Result.Failure<long>(promotion.Error);
+
+                await promotionRepository.AddAsync(promotion.Value, cancellationToken);
+                await unitOfWork.CommitAsync(cancellationToken);
+
+                return Result.Success(promotion.Value.Id);
+            });
     }
 }

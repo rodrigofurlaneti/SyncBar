@@ -1,25 +1,38 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.Promotions.GetActive;
 
-internal sealed class GetActivePromotionsQueryHandler(IPromotionRepository promotionRepository)
-    : IQueryHandler<GetActivePromotionsQuery, IReadOnlyCollection<ActivePromotionResponse>>
+internal sealed class GetActivePromotionsQueryHandler(
+    IPromotionRepository promotionRepository,
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork)
+    : BaseQueryHandler<GetActivePromotionsQuery, IReadOnlyCollection<ActivePromotionResponse>>(logRepository, unitOfWork)
 {
-    public async Task<Result<IReadOnlyCollection<ActivePromotionResponse>>> Handle(
+    public override async Task<Result<IReadOnlyCollection<ActivePromotionResponse>>> Handle(
         GetActivePromotionsQuery request, CancellationToken cancellationToken)
     {
-        var promotions = await promotionRepository.GetByBranchAsync(request.BranchId, cancellationToken);
+        return await ExecuteWithLogAsync(
+            nameof(GetActivePromotionsQueryHandler),
+            nameof(Handle),
+            null, // Substitua pelo IP presente no request, caso aplicável
+            async (userIdBox) =>
+            {
+                // Se o seu request possuir o Id do usuário/sistema consultando, preencha:
+                // userIdBox.Value = request.UserId;
 
-        // Horario LOCAL do bar (a API roda na maquina do estabelecimento).
-        var localNow = DateTime.Now;
+                var promotions = await promotionRepository.GetByBranchAsync(request.BranchId, cancellationToken);
 
-        IReadOnlyCollection<ActivePromotionResponse> response = promotions
-            .Where(p => p.IsActiveAt(localNow))
-            .Select(p => new ActivePromotionResponse(p.ProductId, p.Name, p.EndMinuteOfDay, p.PromotionTypeId, p.DiscountRate))
-            .ToList();
+                // Horario LOCAL do bar (a API roda na maquina do estabelecimento).
+                var localNow = DateTime.Now;
 
-        return Result.Success(response);
+                IReadOnlyCollection<ActivePromotionResponse> response = promotions
+                    .Where(p => p.IsActiveAt(localNow))
+                    .Select(p => new ActivePromotionResponse(p.ProductId, p.Name, p.EndMinuteOfDay, p.PromotionTypeId, p.DiscountRate))
+                    .ToList();
+
+                return Result.Success(response);
+            });
     }
 }
