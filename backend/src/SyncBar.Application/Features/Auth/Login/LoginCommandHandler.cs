@@ -22,7 +22,6 @@ internal sealed class LoginCommandHandler(
     public override Task<Result<LoginResponse>> Handle(LoginCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(nameof(LoginCommandHandler), nameof(Handle), request.IpAddress, async (userIdBox) =>
         {
-            // Tracked — o login atualiza contadores de acesso.
             var user = await userRepository.GetByUserNameForUpdateAsync(request.UserName, cancellationToken);
             if (user is null || !user.IsActive)
             {
@@ -39,12 +38,13 @@ internal sealed class LoginCommandHandler(
                     new Error("Auth.LockedOut", "Account is temporarily locked. Try again later."));
             }
 
-            // Senha NUNCA verificada em SQL — BCrypt em C#.
             if (!passwordHasher.Verify(request.Password, user.PasswordHash))
             {
                 user.RegisterLoginFailure();
                 await LogAsync(user.Id, request, "LoginFailed", cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+
+                await _unitOfWork.CommitAsync(cancellationToken);
+
                 return Result.Failure<LoginResponse>(InvalidCredentials);
             }
 
@@ -62,7 +62,8 @@ internal sealed class LoginCommandHandler(
                 return Result.Failure<LoginResponse>(refreshToken.Error);
 
             await refreshTokenRepository.AddAsync(refreshToken.Value, cancellationToken);
-            await unitOfWork.CommitAsync(cancellationToken);
+
+            await _unitOfWork.CommitAsync(cancellationToken);
 
             return Result.Success(new LoginResponse(
                 accessToken.Token, accessToken.ExpiresAt,
@@ -70,7 +71,6 @@ internal sealed class LoginCommandHandler(
                 user.UserName, user.CompanyId, user.EmployeeId));
         });
 
-    // Trilha de auditoria de acesso (tabela AccessLog).
     private async Task LogAsync(long? userId, LoginCommand request, string eventType, CancellationToken ct)
     {
         var log = Domain.Entities.AccessLog.Create(
