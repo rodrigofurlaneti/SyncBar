@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
+import { useThemeStore } from "../stores/themeStore";
 import { CashDrawer } from "../features/cash/CashDrawer";
 import { useMyFeatures } from "../features/access/hooks";
 
@@ -21,6 +22,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { userName, branchId, clear } = useAuthStore();
+  const { theme, toggleTheme } = useThemeStore();
   const [cashOpen, setCashOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const featuresQuery = useMyFeatures();
@@ -101,6 +103,15 @@ export function AppShell() {
             Caixa
           </button>
         )}
+        <button
+          type="button"
+          className="btn-ghost btn-icon"
+          aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+          title={theme === "dark" ? "Tema claro" : "Tema escuro"}
+          onClick={toggleTheme}
+        >
+          {theme === "dark" ? "☀" : "🌙"}
+        </button>
         <span className="topbar-username" style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
           {userName}
         </span>

@@ -23,9 +23,17 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentTenantService, CurrentTenantService>();
 
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
-                sql => sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)));
+            options.UseMySql(
+                connectionString,
+                new MySqlServerVersion(new Version(8, 4, 9)),
+                mysql =>
+                {
+                    mysql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
+                    mysql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null);
+                }));
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
 
@@ -66,7 +74,8 @@ public static class DependencyInjection
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<IProductStockRepository, ProductStockRepository>();
         services.AddScoped<ILogTrackerRepository, LogTrackerRepository>();
-
+        services.AddScoped<IJobTitleRepository, JobTitleRepository>();
+        services.AddSingleton<TimeProvider, SyncBar.Infrastructure.Time.TimeProviderCustom>();
         services.AddSingleton<SyncBar.Application.Abstractions.Storage.IImageStorage, LocalImageStorage>();
         services.AddSingleton<IRawPrinterTransport, WindowsRawPrinterTransport>();
         services.AddSingleton<IRawPrinterTransport, NetworkRawPrinterTransport>();

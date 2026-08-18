@@ -1,4 +1,4 @@
-using FluentValidation;
+﻿using FluentValidation;
 
 namespace SyncBar.Application.Features.Companies.Register;
 
@@ -11,6 +11,9 @@ public sealed class RegisterCompanyCommandValidator : AbstractValidator<Register
         RuleFor(x => x.Cnpj).NotEmpty().Length(14);
         RuleFor(x => x.CompanyEmail).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.CompanyEmail));
         RuleFor(x => x.BranchName).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.AdminName).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.AdminCpf).NotEmpty().Length(11)
+            .Matches("^[0-9]{11}$").WithMessage("Cpf must contain exactly 11 digits.");
         RuleFor(x => x.AdminUserName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.AdminEmail).NotEmpty().EmailAddress().MaximumLength(150);
         RuleFor(x => x.AdminPassword).NotEmpty().MinimumLength(8)

@@ -10,13 +10,13 @@ internal sealed class StockItemConfiguration : IEntityTypeConfiguration<StockIte
     {
         builder.ToTable("StockItem");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
         builder.Property(x => x.CurrentQuantity).HasColumnType("decimal(18,3)").IsRequired();
         builder.Property(x => x.MinimumQuantity).HasColumnType("decimal(18,3)").IsRequired();
         builder.Property(x => x.MaximumQuantity).HasColumnType("decimal(18,3)");
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
         
         builder.HasIndex(x => x.ProductId).HasDatabaseName("IX_StockItem_ProductId");
         builder.HasIndex(x => new { x.BranchId, x.ProductId }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UQ_StockItem_BranchId_ProductId");

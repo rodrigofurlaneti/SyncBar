@@ -15,7 +15,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
     private readonly IPromotionRepository _promotionRepository;
     private readonly IProductStockRepository _stockRepository;
     private readonly IPrintingService _printingService;
-    private readonly TimeProvider _timeProvider;
+    private readonly TimeProvider _TimeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
     public AddOrderItemCommandHandler(
@@ -24,7 +24,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         IPromotionRepository promotionRepository,
         IProductStockRepository stockRepository,
         IPrintingService printingService,
-        TimeProvider timeProvider,
+        TimeProvider TimeProviderCustom,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
@@ -34,7 +34,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         _promotionRepository = promotionRepository;
         _stockRepository = stockRepository;
         _printingService = printingService;
-        _timeProvider = timeProvider;
+        _TimeProviderCustom = TimeProviderCustom;
         _unitOfWork = unitOfWork;
     }
 
@@ -66,7 +66,10 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
                 var stockSnapshot = await _stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
 
                 var itemCountBefore = order.Items.Count;
-                var currentTime = _timeProvider.GetLocalNow().DateTime;
+                // O domínio usa DateTime puro (DATETIME2 no banco), não DateTimeOffset —
+                // e o padrão do projeto é hora LOCAL (ver OpenOrderCommandHandler), não UTC,
+                // já que o front-end interpreta as datas recebidas como hora local sem conversão.
+                var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
 
                 var activePromotion = promotions.FirstOrDefault(promo =>
                     promo.ProductId == product.Id && promo.IsActiveAt(currentTime));

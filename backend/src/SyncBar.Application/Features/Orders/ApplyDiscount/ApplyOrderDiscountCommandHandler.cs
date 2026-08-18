@@ -7,18 +7,18 @@ namespace SyncBar.Application.Features.Orders.ApplyDiscount;
 internal sealed class ApplyOrderDiscountCommandHandler : BaseCommandHandler<ApplyOrderDiscountCommand>
 {
     private readonly ICustomerOrderRepository _orderRepository;
-    private readonly TimeProvider _timeProvider;
+    private readonly TimeProvider _TimeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
     public ApplyOrderDiscountCommandHandler(
         ICustomerOrderRepository orderRepository,
-        TimeProvider timeProvider,
+        TimeProvider TimeProviderCustom,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
     {
         _orderRepository = orderRepository;
-        _timeProvider = timeProvider;
+        _TimeProviderCustom = TimeProviderCustom;
         _unitOfWork = unitOfWork;
     }
 
@@ -37,7 +37,7 @@ internal sealed class ApplyOrderDiscountCommandHandler : BaseCommandHandler<Appl
                 if (order is null || !order.IsActive)
                     return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-                var currentTime = _timeProvider.GetLocalNow().DateTime;
+                var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
 
                 var result = order.ApplyDiscount(request.DiscountAmount, currentTime);
                 if (result.IsFailure)

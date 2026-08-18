@@ -59,7 +59,7 @@ internal sealed class UpdateUserRolesCommandHandler : BaseCommandHandler<UpdateU
                 var activeRoleIds = currentLinks.Where(l => l.IsActive).Select(l => l.RoleId).ToHashSet();
                 foreach (var roleId in desired.Except(activeRoleIds))
                 {
-                    var link = UserRole.Create(user.Id, roleId);
+                    var link = UserRole.Create(user.CompanyId, user.Id, roleId);
                     if (link.IsSuccess)
                         await _userRoleRepository.AddAsync(link.Value, cancellationToken);
                 }

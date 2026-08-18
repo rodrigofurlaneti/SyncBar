@@ -12,6 +12,12 @@ import {
 import type { StockItemResponse } from "../../lib/types";
 import { InventoryOverlay } from "./InventoryOverlay";
 import { QueryError } from "../../components/QueryError";
+import { Modal } from "../../ui/Modal";
+import { Button } from "../../ui/Button";
+import { TextField, SelectField } from "../../ui/Field";
+import { useToast } from "../../ui/Toast";
+import { EmptyState } from "../../ui/EmptyState";
+import { SkeletonList } from "../../ui/Skeleton";
 
 const parseNum = (raw: string): number | null => {
     if (raw.trim() === "") return null;
@@ -21,6 +27,7 @@ const parseNum = (raw: string): number | null => {
 
 export function StockPage() {
     const queryClient = useQueryClient();
+    const toast = useToast();
     const { branchId, companyId, employeeId } = useAuthStore();
     const [movementOpen, setMovementOpen] = useState(false);
     const [inventoryOpen, setInventoryOpen] = useState(false);
@@ -80,6 +87,7 @@ export function StockPage() {
             setMovementOpen(false);
             setQuantity(""); setUnitCost(""); setDocumentNumber(""); setNotes("");
             refresh();
+            toast.success("Movimento registrado.");
         },
         onError: onApiError,
     });
@@ -90,6 +98,7 @@ export function StockPage() {
             setError(null);
             setLimitsItem(null);
             refresh();
+            toast.success("Limites atualizados.");
         },
         onError: onApiError,
     });
@@ -114,52 +123,64 @@ export function StockPage() {
             {stockQuery.isError && <QueryError error={stockQuery.error} what="o estoque" />}
             {menuQuery.isError && <QueryError error={menuQuery.error} what="os produtos" />}
 
-            <div className="ticket rise rise-1">
-                {(stockQuery.data ?? []).map((item) => (
-                    <div className="ticket-row" key={item.id}>
-                        <div style={{ display: "grid", gap: 2 }}>
-                            <span style={{ color: item.isBelowMinimum ? "var(--danger)" : "var(--ink)" }}>
-                                {productName.get(item.productId) ?? `Produto ${item.productId}`}
-                            </span>
-                            <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
-                                mínimo {item.minimumQuantity}{item.maximumQuantity !== null ? ` · máximo ${item.maximumQuantity}` : ""}
-                            </span>
+            {stockQuery.isLoading && <SkeletonList rows={6} rowHeight={58} />}
+
+            {!stockQuery.isLoading && stockQuery.data?.length === 0 && (
+                <EmptyState
+                    icon="📦"
+                    title="Nenhum item de estoque"
+                    description="Lance uma entrada (compra, ajuste ou inventário) para começar a controlar o saldo."
+                    action={
+                        <button className="btn-primary" onClick={() => { setError(null); setMovementOpen(true); }}>
+                            + Lançar movimento
+                        </button>
+                    }
+                />
+            )}
+
+            {!stockQuery.isLoading && (stockQuery.data?.length ?? 0) > 0 && (
+                <div className="ticket rise rise-1">
+                    {(stockQuery.data ?? []).map((item) => (
+                        <div className="ticket-row" key={item.id}>
+                            <div style={{ display: "grid", gap: 2 }}>
+                                <span style={{ color: item.isBelowMinimum ? "var(--danger)" : "var(--ink)" }}>
+                                    {productName.get(item.productId) ?? `Produto ${item.productId}`}
+                                </span>
+                                <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
+                                    mínimo {item.minimumQuantity}{item.maximumQuantity !== null ? ` · máximo ${item.maximumQuantity}` : ""}
+                                </span>
+                            </div>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                <span
+                                    className="mono-num display"
+                                    style={{ fontSize: "1.5rem", color: item.isBelowMinimum ? "var(--danger)" : "var(--amber)" }}
+                                >
+                                    {item.currentQuantity}
+                                </span>
+                                <button
+                                    className="btn-ghost"
+                                    style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                                    onClick={() => setLedgerItem(item)}
+                                >
+                                    Extrato
+                                </button>
+                                <button
+                                    className="btn-ghost"
+                                    style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                                    onClick={() => {
+                                        setError(null);
+                                        setLimitsItem(item);
+                                        setMinQ(String(item.minimumQuantity));
+                                        setMaxQ(item.maximumQuantity === null ? "" : String(item.maximumQuantity));
+                                    }}
+                                >
+                                    Limites
+                                </button>
+                            </div>
                         </div>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <span
-                                className="mono-num display"
-                                style={{ fontSize: "1.5rem", color: item.isBelowMinimum ? "var(--danger)" : "var(--amber)" }}
-                            >
-                                {item.currentQuantity}
-                            </span>
-                            <button
-                                className="btn-ghost"
-                                style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
-                                onClick={() => setLedgerItem(item)}
-                            >
-                                Extrato
-                            </button>
-                            <button
-                                className="btn-ghost"
-                                style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
-                                onClick={() => {
-                                    setError(null);
-                                    setLimitsItem(item);
-                                    setMinQ(String(item.minimumQuantity));
-                                    setMaxQ(item.maximumQuantity === null ? "" : String(item.maximumQuantity));
-                                }}
-                            >
-                                Limites
-                            </button>
-                        </div>
-                    </div>
-                ))}
-                {stockQuery.data?.length === 0 && (
-                    <div className="ticket-row" style={{ color: "var(--ink-faint)" }}>
-                        Nenhum item de estoque — lance uma entrada para começar.
-                    </div>
-                )}
-            </div>
+                    ))}
+                </div>
+            )}
 
             {inventoryOpen && (
                 <InventoryOverlay
@@ -171,102 +192,80 @@ export function StockPage() {
             )}
 
             {movementOpen && (
-                <div style={{
-                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-                    background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
-                }}>
-                    <div style={{ background: "#18181b", padding: 24, borderRadius: 8, width: 480, maxWidth: "90%", display: "grid", gap: 16, border: "1px solid #27272a" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h3 style={{ margin: 0, color: "#fff" }}>Lançar movimento</h3>
-                            <button onClick={() => setMovementOpen(false)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>✕</button>
-                        </div>
+                <Modal title="Lançar movimento" onClose={() => setMovementOpen(false)} variant="center" wide>
+                    <SelectField label="Produto" value={productId} onChange={(e) => setProductId(e.target.value)} autoFocus>
+                        <option value="">Selecione…</option>
+                        {(menuQuery.data ?? []).map((p) => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </SelectField>
 
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Produto</span>
-                            <select value={productId} onChange={(e) => setProductId(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}>
-                                <option value="">Selecione…</option>
-                                {(menuQuery.data ?? []).map((p) => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <div className="ui-row ui-row-wrap">
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                            <SelectField label="Tipo" value={typeId} onChange={(e) => setTypeId(Number(e.target.value))}>
+                                {manualStockMovementTypes.map((id) => (
+                                    <option key={id} value={id}>
+                                        {stockMovementTypeLabel[id]} {stockMovementIsInflow[id] ? "(+)" : "(−)"}
+                                    </option>
                                 ))}
-                            </select>
-                        </label>
-
-                        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Tipo</span>
-                                <select value={typeId} onChange={(e) => setTypeId(Number(e.target.value))} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}>
-                                    {manualStockMovementTypes.map((id) => (
-                                        <option key={id} value={id}>
-                                            {stockMovementTypeLabel[id]} {stockMovementIsInflow[id] ? "(+)" : "(−)"}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Quantidade</span>
-                                <input
-                                    inputMode="decimal"
-                                    value={quantity}
-                                    onChange={(e) => setQuantity(e.target.value)}
-                                    autoFocus
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                />
-                            </label>
+                            </SelectField>
                         </div>
-
-                        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Custo unit. (R$)</span>
-                                <input
-                                    inputMode="decimal"
-                                    value={unitCost}
-                                    onChange={(e) => setUnitCost(e.target.value)}
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                />
-                            </label>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Documento (NF)</span>
-                                <input
-                                    value={documentNumber}
-                                    onChange={(e) => setDocumentNumber(e.target.value)}
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                />
-                            </label>
+                        <div style={{ flex: 1, minWidth: 140 }}>
+                            <TextField
+                                label="Quantidade"
+                                inputMode="decimal"
+                                value={quantity}
+                                onChange={(e) => setQuantity(e.target.value)}
+                            />
                         </div>
-
-                        <input
-                            placeholder="Observações"
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                        />
-
-                        {error && <p className="error-text">{error}</p>}
-
-                        <button
-                            className="btn-primary"
-                            disabled={productId === "" || (parseNum(quantity) ?? 0) <= 0 || movementMutation.isPending}
-                            onClick={() => movementMutation.mutate()}
-                        >
-                            Registrar
-                        </button>
                     </div>
-                </div>
+
+                    <div className="ui-row ui-row-wrap">
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                            <TextField
+                                label="Custo unit. (R$)"
+                                inputMode="decimal"
+                                value={unitCost}
+                                onChange={(e) => setUnitCost(e.target.value)}
+                            />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                            <TextField
+                                label="Documento (NF)"
+                                value={documentNumber}
+                                onChange={(e) => setDocumentNumber(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <TextField label="Observações" value={notes} onChange={(e) => setNotes(e.target.value)} />
+
+                    {error && <p className="error-text">{error}</p>}
+
+                    <Button
+                        variant="primary"
+                        block
+                        loading={movementMutation.isPending}
+                        disabled={productId === "" || (parseNum(quantity) ?? 0) <= 0}
+                        onClick={() => movementMutation.mutate()}
+                    >
+                        Registrar
+                    </Button>
+                </Modal>
             )}
 
             {ledgerItem !== null && (
-                <div style={{
-                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-                    background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
-                }}>
-                    <div style={{ background: "#18181b", padding: 24, borderRadius: 8, width: 600, maxWidth: "90%", display: "grid", gap: 16, border: "1px solid #27272a", maxHeight: "85vh", overflowY: "auto" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h3 style={{ margin: 0, color: "#fff" }}>
-                                Extrato — {productName.get(ledgerItem.productId) ?? `produto ${ledgerItem.productId}`}
-                            </h3>
-                            <button onClick={() => setLedgerItem(null)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>✕</button>
-                        </div>
-
+                <Modal
+                    title={`Extrato — ${productName.get(ledgerItem.productId) ?? `produto ${ledgerItem.productId}`}`}
+                    onClose={() => setLedgerItem(null)}
+                    variant="center"
+                    wide
+                >
+                    {ledgerQuery.isLoading && <SkeletonList rows={4} rowHeight={48} />}
+                    {!ledgerQuery.isLoading && (ledgerQuery.data?.length ?? 0) === 0 && (
+                        <EmptyState icon="🧾" title="Sem movimentos" description="Este produto ainda não teve entradas ou saídas registradas." />
+                    )}
+                    {!ledgerQuery.isLoading && (ledgerQuery.data?.length ?? 0) > 0 && (
                         <div className="ticket" style={{ display: "grid", gap: 8 }}>
                             {(ledgerQuery.data ?? []).map((movement) => {
                                 const inflow = stockMovementIsInflow[movement.stockMovementTypeId];
@@ -286,52 +285,33 @@ export function StockPage() {
                                     </div>
                                 );
                             })}
-                            {ledgerQuery.data?.length === 0 && (
-                                <div className="ticket-row" style={{ color: "var(--ink-faint)" }}>Sem movimentos.</div>
-                            )}
                         </div>
-                    </div>
-                </div>
+                    )}
+                </Modal>
             )}
 
             {limitsItem !== null && (
-                <div style={{
-                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-                    background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
-                }}>
-                    <div style={{ background: "#18181b", padding: 24, borderRadius: 8, width: 400, maxWidth: "90%", display: "grid", gap: 16, border: "1px solid #27272a" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h3 style={{ margin: 0, color: "#fff" }}>Limites de estoque</h3>
-                            <button onClick={() => setLimitsItem(null)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>✕</button>
-                        </div>
+                <Modal title="Limites de estoque" onClose={() => setLimitsItem(null)} variant="center">
+                    <TextField
+                        label="Quantidade mínima"
+                        inputMode="decimal"
+                        value={minQ}
+                        onChange={(e) => setMinQ(e.target.value)}
+                        autoFocus
+                    />
+                    <TextField
+                        label="Quantidade máxima (opcional)"
+                        inputMode="decimal"
+                        value={maxQ}
+                        onChange={(e) => setMaxQ(e.target.value)}
+                    />
 
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Quantidade mínima</span>
-                            <input
-                                inputMode="decimal"
-                                value={minQ}
-                                onChange={(e) => setMinQ(e.target.value)}
-                                autoFocus
-                                style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                            />
-                        </label>
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Quantidade máxima (opcional)</span>
-                            <input
-                                inputMode="decimal"
-                                value={maxQ}
-                                onChange={(e) => setMaxQ(e.target.value)}
-                                style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                            />
-                        </label>
+                    {error && <p className="error-text">{error}</p>}
 
-                        {error && <p className="error-text">{error}</p>}
-
-                        <button className="btn-primary" disabled={limitsMutation.isPending} onClick={() => limitsMutation.mutate()}>
-                            Salvar
-                        </button>
-                    </div>
-                </div>
+                    <Button variant="primary" block loading={limitsMutation.isPending} onClick={() => limitsMutation.mutate()}>
+                        Salvar
+                    </Button>
+                </Modal>
             )}
         </main>
     );

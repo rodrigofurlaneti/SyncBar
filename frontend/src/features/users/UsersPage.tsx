@@ -8,6 +8,8 @@ import { ApiError } from "../../lib/apiClient";
 import type { UserResponse } from "../../lib/types";
 import { Overlay } from "../orders/Overlay";
 import { QueryError } from "../../components/QueryError";
+import { EmptyState } from "../../ui/EmptyState";
+import { SkeletonList } from "../../ui/Skeleton";
 
 export function UsersPage() {
   const queryClient = useQueryClient();
@@ -129,6 +131,29 @@ export function UsersPage() {
       {usersQuery.isError && <QueryError error={usersQuery.error} what="os usuários" />}
       {rolesQuery.isError && <QueryError error={rolesQuery.error} what="os perfis" />}
 
+      {usersQuery.isLoading && <SkeletonList rows={5} rowHeight={58} />}
+
+      {!usersQuery.isLoading && usersQuery.data?.length === 0 && (
+        <EmptyState
+          icon="👤"
+          title="Nenhum usuário cadastrado"
+          description="Crie o primeiro usuário para dar acesso ao sistema à equipe."
+          action={
+            <button
+              className="btn-primary"
+              onClick={() => {
+                setError(null);
+                setSelectedRoles([]);
+                setCreating(true);
+              }}
+            >
+              + Novo usuário
+            </button>
+          }
+        />
+      )}
+
+      {!usersQuery.isLoading && (usersQuery.data?.length ?? 0) > 0 && (
       <div className="ticket rise rise-1">
         {(usersQuery.data ?? []).map((user) => (
           <div className="ticket-row" key={user.id} style={{ opacity: user.isActive ? 1 : 0.45 }}>
@@ -180,6 +205,7 @@ export function UsersPage() {
           </div>
         ))}
       </div>
+      )}
 
       {creating && (
         <Overlay title="Novo usuário" onClose={() => setCreating(false)}>

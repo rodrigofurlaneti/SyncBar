@@ -10,13 +10,13 @@ internal sealed class OrderPartialPaymentConfiguration : IEntityTypeConfiguratio
     {
         builder.ToTable("OrderPartialPayment");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
         builder.Property(x => x.Amount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.AuthorizationCode).HasColumnType("varchar(100)");
         builder.Property(x => x.PayerName).HasColumnType("nvarchar(100)");
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
 
         builder.HasIndex(x => x.CustomerOrderId).HasDatabaseName("IX_OrderPartialPayment_CustomerOrderId");
         builder.HasIndex(x => x.CashSessionId).HasDatabaseName("IX_OrderPartialPayment_CashSessionId");

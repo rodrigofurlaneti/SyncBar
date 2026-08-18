@@ -34,6 +34,37 @@
 
   --radius: 10px;
   --touch: 48px;
+
+  /* escala de transição — antes espalhada como números mágicos pelo CSS */
+  --ease-standard: ease;
+  --ease-in-out: ease-in-out;
+  --duration-instant: 60ms;
+  --duration-fast: 120ms;
+  --duration-medium: 140ms;
+  --duration-base: 200ms;
+  --duration-entrance: 240ms;
+  --duration-slow: 1.2s;
+  --duration-slower: 1.6s;
+}
+
+/* ============================================================
+   Tema claro — mesma identidade (âmbar de chope), fundo em tom
+   de papel de comanda em vez de carvão. Ativado via
+   [data-theme="light"] no <html> (ver src/stores/themeStore.ts).
+   ============================================================ */
+:root[data-theme="light"] {
+  --bg: #f7f4ec;
+  --bg-raise: #ffffff;
+  --bg-press: #efe9db;
+  --line: #ddd4bf;
+  --line-soft: #e8e1d0;
+
+  --ink: #241f18;
+  --ink-dim: #55503f;
+  --ink-faint: #746c59;
+
+  --danger: #c1291b;
+  --ok: #1f8a5f;
 }
 
 * { box-sizing: border-box; }
@@ -52,6 +83,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+[data-theme="light"] body {
+  background:
+    radial-gradient(1100px 500px at 85% -10%, rgba(245, 165, 36, 0.10), transparent 60%),
+    radial-gradient(800px 600px at -10% 110%, rgba(91, 156, 245, 0.07), transparent 55%),
+    var(--bg);
+}
+
 ::selection { background: var(--amber); color: var(--amber-ink); }
 
 h1, h2, h3 { margin: 0; font-weight: 400; }
@@ -63,7 +101,10 @@ button {
   border-radius: var(--radius);
   min-height: var(--touch);
   font-size: 1rem;
-  transition: transform 60ms ease, filter 120ms ease, background 120ms ease;
+  transition:
+    transform var(--duration-instant) var(--ease-standard),
+    filter var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard);
 }
 button:active { transform: scale(0.97); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -141,6 +182,10 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+[data-theme="light"] .topbar {
+  background: rgba(247, 244, 236, 0.88);
 }
 
 /* hamburger — só aparece em telas estreitas (tablet retrato/celular) */
@@ -236,6 +281,7 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
   justify-content: space-between;
   text-align: left;
   overflow: hidden;
+  transition: border-color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
 }
 .table-tile::after {
   content: "";
@@ -244,7 +290,7 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
   width: 4px;
   background: var(--status, var(--ink-faint));
 }
-.table-tile:hover { border-color: var(--ink-faint); }
+.table-tile:hover { border-color: var(--ink-faint); transform: translateY(-1px); }
 .table-tile .num {
   font-family: var(--font-display);
   font-size: 3rem;
@@ -273,6 +319,11 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
   gap: 10px;
   padding: 10px 18px;
   border-bottom: 1px solid var(--line-soft);
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+/* leve destaque de hover — sinaliza "isso é uma linha" em telas usadas com mouse/trackpad (back-office) */
+.ticket-row:hover {
+  background: var(--bg-press);
 }
 .ticket-total {
   padding: 14px 18px;
@@ -287,7 +338,7 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
 
 /* animacao de entrada */
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.rise { animation: rise 240ms ease both; }
+.rise { animation: rise var(--duration-entrance) var(--ease-standard) both; }
 .rise-1 { animation-delay: 40ms; } .rise-2 { animation-delay: 90ms; } .rise-3 { animation-delay: 140ms; }
 
 .error-text { color: var(--danger); font-size: 0.9rem; }
@@ -297,7 +348,7 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
   0%, 100% { background: transparent; }
   50% { background: rgba(239, 75, 61, 0.12); }
 }
-.kds-overdue { animation: kds-pulse 1.6s ease-in-out infinite; }
+.kds-overdue { animation: kds-pulse var(--duration-slower) var(--ease-in-out) infinite; }
 
 /* ============================================================
    Biblioteca de UI (src/ui) — classes consumindo os tokens.
@@ -360,6 +411,9 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
   display: grid;
   z-index: 50;
 }
+[data-theme="light"] .modal-backdrop {
+  background: rgba(36, 31, 24, 0.42);
+}
 .modal-backdrop.is-center { place-items: center; padding: 16px; }
 .modal-backdrop.is-drawer { place-items: stretch end; }
 
@@ -403,7 +457,7 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
   color: var(--ink);
   font-size: 0.92rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  animation: rise 200ms ease both;
+  animation: rise var(--duration-base) var(--ease-standard) both;
 }
 .toast--success { border-left-color: var(--ok); }
 .toast--error { border-left-color: var(--danger); }
@@ -415,13 +469,30 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
 .skeleton {
   background: linear-gradient(90deg, var(--bg-press) 25%, var(--line) 37%, var(--bg-press) 63%);
   background-size: 400% 100%;
-  animation: ui-shimmer 1.2s ease-in-out infinite;
+  animation: ui-shimmer var(--duration-slow) var(--ease-in-out) infinite;
   border-radius: 8px;
 }
 @keyframes ui-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
 
 @media (prefers-reduced-motion: reduce) {
   .rise, .toast, .skeleton, .btn-loading::after { animation: none !important; }
+}
+
+/* --- Drawer action bar (rodapé fixo com a ação primária) ------ */
+.drawer-actionbar {
+  position: sticky;
+  bottom: -22px;
+  margin: 6px -22px -22px;
+  padding: 14px 22px 22px;
+  display: flex;
+  gap: 10px;
+  background: var(--bg-raise);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.25);
+  z-index: 2;
+}
+[data-theme="light"] .drawer-actionbar {
+  box-shadow: 0 -8px 20px rgba(36, 31, 24, 0.12);
 }
 
 /* --- Switch (interruptor) ------------------------------------ */
@@ -432,13 +503,13 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
   background: var(--bg-press);
   border: 1px solid var(--line);
   padding: 0;
-  transition: background 140ms ease, border-color 140ms ease;
+  transition: background var(--duration-medium) var(--ease-standard), border-color var(--duration-medium) var(--ease-standard);
 }
 .switch .switch-knob {
   position: absolute; top: 3px; left: 3px;
   width: 24px; height: 24px; border-radius: 50%;
   background: var(--ink-faint);
-  transition: transform 140ms ease, background 140ms ease;
+  transition: transform var(--duration-medium) var(--ease-standard), background var(--duration-medium) var(--ease-standard);
 }
 .switch.is-on { background: var(--amber); border-color: var(--amber-deep); }
 .switch.is-on .switch-knob { transform: translateX(26px); background: var(--amber-ink); }

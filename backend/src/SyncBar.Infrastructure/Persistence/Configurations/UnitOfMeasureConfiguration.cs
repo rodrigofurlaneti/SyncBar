@@ -10,12 +10,12 @@ internal sealed class UnitOfMeasureConfiguration : IEntityTypeConfiguration<Unit
     {
         builder.ToTable("UnitOfMeasure");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
         builder.Property(x => x.Name).HasColumnType("nvarchar(50)").IsRequired();
         builder.Property(x => x.Abbreviation).HasColumnType("varchar(10)").IsRequired();
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
         
     }
 }

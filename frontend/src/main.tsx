@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { ToastProvider } from "./ui/Toast";
 import { DialogProvider } from "./ui/Dialog";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./styles/global.css";
 
 const queryClient = new QueryClient({
@@ -15,14 +16,16 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <DialogProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        </DialogProvider>
-      </ToastProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <DialogProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </DialogProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 );

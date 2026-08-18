@@ -1,14 +1,18 @@
-﻿using System.Text;
-using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using SharpGrip.FluentValidation.AutoValidation.Mvc.Extensions;
 using SyncBar.API.Middleware;
+using SyncBar.API.Services;
 using SyncBar.Application;
+using SyncBar.Application.Abstractions.Security;
+using SyncBar.Domain.Entities;
+using SyncBar.Domain.Repositories;
 using SyncBar.Infrastructure;
+using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -126,6 +130,8 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -170,6 +176,40 @@ if (string.IsNullOrWhiteSpace(jwtSecret) ||
     throw new InvalidOperationException(
         "Jwt:Secret inválido. Defina Jwt__Secret com um segredo real " +
         "(mínimo 32 caracteres, recomendado 64) antes de iniciar a aplicação.");
+}
+
+// --- Seed idempotente: garante que a filial padrão (Id=1) tenha ao menos uma Caixa
+// Registradora (CashRegister). O frontend usa DEFAULT_CASH_REGISTER_ID = 1 fixo, e sem
+// esse registro abrir uma sessão de caixa falha com violação de FK (CashRegisterId
+// inexistente). Roda em toda subida da API, mas só cria algo se realmente faltar —
+// não sobrescreve nem duplica se já existir. Falha aqui não deve impedir a API de subir.
+try
+{
+    using var seedScope = app.Services.CreateScope();
+    var branchRepository = seedScope.ServiceProvider.GetRequiredService<IBranchRepository>();
+    var cashRegisterRepository = seedScope.ServiceProvider.GetRequiredService<ICashRegisterRepository>();
+    var seedUnitOfWork = seedScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+    const long defaultBranchId = 1;
+    var defaultBranch = await branchRepository.GetByIdAsync(defaultBranchId);
+    if (defaultBranch is not null)
+    {
+        var existingRegisters = await cashRegisterRepository.GetByBranchAsync(defaultBranchId);
+        if (existingRegisters.Count == 0)
+        {
+            var createResult = CashRegister.Create(defaultBranchId, "Caixa 1");
+            if (createResult.IsSuccess)
+            {
+                await cashRegisterRepository.AddAsync(createResult.Value);
+                await seedUnitOfWork.CommitAsync();
+                Log.Information("Seed: CashRegister padrão criado para a filial {BranchId}.", defaultBranchId);
+            }
+        }
+    }
+}
+catch (Exception seedEx)
+{
+    Log.Warning(seedEx, "Seed de CashRegister padrão falhou — a API vai continuar subindo normalmente.");
 }
 
 app.UseSerilogRequestLogging();

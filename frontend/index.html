@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SyncBar — PDV</title>
+    <script>
+      // Aplica o tema salvo (claro/escuro) antes da primeira pintura,
+      // evitando o "flash" do tema errado ao recarregar a página.
+      (function () {
+        try {
+          var raw = localStorage.getItem("syncbar-theme");
+          var theme = raw ? JSON.parse(raw).state.theme : "dark";
+          document.documentElement.setAttribute("data-theme", theme === "light" ? "light" : "dark");
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

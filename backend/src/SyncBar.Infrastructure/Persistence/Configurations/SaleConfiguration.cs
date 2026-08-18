@@ -10,15 +10,15 @@ internal sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
     {
         builder.ToTable("Sale");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
         builder.Property(x => x.SubtotalAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.DiscountAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.ServiceFeeAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)").IsRequired();
-        builder.Property(x => x.SoldAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.SoldAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
         
         builder.HasIndex(x => x.BranchId).HasDatabaseName("IX_Sale_BranchId");
         builder.HasIndex(x => x.CashSessionId).HasDatabaseName("IX_Sale_CashSessionId");

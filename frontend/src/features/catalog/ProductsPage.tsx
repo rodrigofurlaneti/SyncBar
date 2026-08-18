@@ -16,6 +16,13 @@ import { ApiError } from "../../lib/apiClient";
 import { formatBRL, unitOfMeasureLabel } from "../../lib/types";
 import type { MenuItemResponse } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
+import { Modal } from "../../ui/Modal";
+import { Button } from "../../ui/Button";
+import { Field, TextField, SelectField } from "../../ui/Field";
+import { Switch } from "../../ui/Switch";
+import { useToast } from "../../ui/Toast";
+import { EmptyState } from "../../ui/EmptyState";
+import { SkeletonList } from "../../ui/Skeleton";
 
 const emptyForm = {
     categoryId: "",
@@ -40,10 +47,13 @@ const parseNum = (raw: string): number | null => {
 export function ProductsPage() {
     const queryClient = useQueryClient();
     const dialog = useDialog();
+    const toast = useToast();
     const { companyId } = useAuthStore();
     const [editing, setEditing] = useState<MenuItemResponse | "new" | null>(null);
     const [form, setForm] = useState<FormState>(emptyForm);
     const [newCategory, setNewCategory] = useState("");
+    const [creatingCategory, setCreatingCategory] = useState(false);
+    const [modalNewCategory, setModalNewCategory] = useState("");
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -71,6 +81,8 @@ export function ProductsPage() {
     const openEditor = (product: MenuItemResponse | "new") => {
         setError(null);
         setImageFile(null);
+        setCreatingCategory(false);
+        setModalNewCategory("");
         setEditing(product);
         if (product === "new") setForm({ ...emptyForm, categoryId: String(categoriesQuery.data?.[0]?.id ?? "") });
         else
@@ -112,6 +124,7 @@ export function ProductsPage() {
             if (imageFile !== null) await uploadProductImage(productId, imageFile);
         },
         onSuccess: () => {
+            toast.success(editing === "new" ? "Produto criado." : "Produto atualizado.");
             setEditing(null);
             refresh();
         },
@@ -120,7 +133,10 @@ export function ProductsPage() {
 
     const deactivateMutation = useMutation({
         mutationFn: (id: number) => deactivateProduct(id),
-        onSuccess: refresh,
+        onSuccess: () => {
+            toast.success("Produto desativado.");
+            refresh();
+        },
         onError: onApiError,
     });
 
@@ -130,6 +146,22 @@ export function ProductsPage() {
         onSuccess: () => {
             setNewCategory("");
             refresh();
+        },
+        onError: onApiError,
+    });
+
+    // Criar categoria sem sair do formulário de produto — a nova categoria
+    // já entra selecionada assim que criada.
+    const modalCategoryMutation = useMutation({
+        mutationFn: () =>
+            createCategory(companyId ?? 1, modalNewCategory.trim(), (categoriesQuery.data?.length ?? 0) + 1),
+        onSuccess: (newCategoryId) => {
+            toast.success("Categoria criada.");
+            setForm((f) => ({ ...f, categoryId: String(newCategoryId) }));
+            setModalNewCategory("");
+            setCreatingCategory(false);
+            setError(null);
+            void queryClient.invalidateQueries({ queryKey: ["categories"] });
         },
         onError: onApiError,
     });
@@ -161,6 +193,22 @@ export function ProductsPage() {
             {menuQuery.isError && <QueryError error={menuQuery.error} what="o cardápio" />}
             {categoriesQuery.isError && <QueryError error={categoriesQuery.error} what="as categorias" />}
 
+            {menuQuery.isLoading && <SkeletonList rows={5} rowHeight={62} />}
+
+            {!menuQuery.isLoading && menuQuery.data?.length === 0 && (
+                <EmptyState
+                    icon="🍽"
+                    title="Nenhum produto cadastrado"
+                    description="Adicione o primeiro item do cardápio para começar a montar pedidos."
+                    action={
+                        <button className="btn-primary" onClick={() => openEditor("new")}>
+                            + Novo produto
+                        </button>
+                    }
+                />
+            )}
+
+            {!menuQuery.isLoading && (menuQuery.data?.length ?? 0) > 0 && (
             <div className="ticket rise rise-2">
                 {(menuQuery.data ?? []).map((product) => (
                     <div className="ticket-row" key={product.id}>
@@ -216,144 +264,186 @@ export function ProductsPage() {
                         </div>
                     </div>
                 ))}
-                {menuQuery.data?.length === 0 && (
-                    <div className="ticket-row" style={{ color: "var(--ink-faint)" }}>Nenhum produto cadastrado.</div>
-                )}
             </div>
+            )}
 
             {editing !== null && (
-                <div style={{
-                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-                    background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, overflowY: "auto", padding: "20px 0"
-                }}>
-                    <div style={{ background: "#18181b", padding: 24, borderRadius: 8, width: 500, maxWidth: "90%", display: "grid", gap: 16, border: "1px solid #27272a", maxHeight: "90vh", overflowY: "auto" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h3 style={{ margin: 0, color: "#fff" }}>{editing === "new" ? "Novo produto" : "Editar produto"}</h3>
-                            <button onClick={() => setEditing(null)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>✕</button>
+                <Modal
+                    title={editing === "new" ? "Novo produto" : "Editar produto"}
+                    onClose={() => setEditing(null)}
+                    variant="center"
+                    wide
+                >
+                    <TextField
+                        label="Nome"
+                        type="text"
+                        value={form.name}
+                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        autoFocus
+                    />
+
+                    <div className="ui-row ui-row-wrap" style={{ alignItems: "start" }}>
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                            <Field
+                                label={
+                                    <span className="ui-row" style={{ justifyContent: "space-between", width: "100%" }}>
+                                        Categoria
+                                        {!creatingCategory && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setCreatingCategory(true)}
+                                                style={{ background: "transparent", border: "none", color: "var(--amber)", cursor: "pointer", fontSize: "0.8rem", padding: 0 }}
+                                            >
+                                                + nova categoria
+                                            </button>
+                                        )}
+                                    </span>
+                                }
+                            >
+                                {(a11y) =>
+                                    creatingCategory ? (
+                                        <div className="ui-row" style={{ gap: 6 }}>
+                                            <input
+                                                {...a11y}
+                                                type="text"
+                                                autoFocus
+                                                placeholder="Nome da categoria"
+                                                value={modalNewCategory}
+                                                onChange={(e) => setModalNewCategory(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                        e.preventDefault();
+                                                        if (modalNewCategory.trim() !== "") modalCategoryMutation.mutate();
+                                                    } else if (e.key === "Escape") {
+                                                        setCreatingCategory(false);
+                                                        setModalNewCategory("");
+                                                    }
+                                                }}
+                                                style={{ flex: 1, minWidth: 0 }}
+                                            />
+                                            <Button
+                                                size="sm"
+                                                loading={modalCategoryMutation.isPending}
+                                                disabled={modalNewCategory.trim() === ""}
+                                                onClick={() => modalCategoryMutation.mutate()}
+                                            >
+                                                Criar
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                iconOnly
+                                                aria-label="Cancelar criação de categoria"
+                                                onClick={() => { setCreatingCategory(false); setModalNewCategory(""); }}
+                                            >
+                                                ✕
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <select
+                                            {...a11y}
+                                            value={form.categoryId}
+                                            onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                                        >
+                                            <option value="">Selecione a categoria…</option>
+                                            {(categoriesQuery.data ?? []).map((c) => (
+                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                    )
+                                }
+                            </Field>
                         </div>
-
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Nome</span>
-                            <input
-                                type="text"
-                                value={form.name}
-                                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                autoFocus
-                                style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                            />
-                        </label>
-
-                        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Categoria</span>
-                                <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}>
-                                    <option value="">Selecione a categoria…</option>
-                                    {(categoriesQuery.data ?? []).map((c) => (
-                                        <option key={c.id} value={c.id}>{c.name}</option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Unidade</span>
-                                <select
-                                    value={form.unitOfMeasureId}
-                                    onChange={(e) => setForm({ ...form, unitOfMeasureId: e.target.value })}
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                >
-                                    {Object.entries(unitOfMeasureLabel).map(([id, label]) => (
-                                        <option key={id} value={id}>{label}</option>
-                                    ))}
-                                </select>
-                            </label>
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                            <SelectField
+                                label="Unidade"
+                                value={form.unitOfMeasureId}
+                                onChange={(e) => setForm({ ...form, unitOfMeasureId: e.target.value })}
+                            >
+                                {Object.entries(unitOfMeasureLabel).map(([id, label]) => (
+                                    <option key={id} value={id}>{label}</option>
+                                ))}
+                            </SelectField>
                         </div>
-
-                        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Preço de venda (R$)</span>
-                                <input
-                                    inputMode="decimal"
-                                    value={form.salePrice}
-                                    onChange={(e) => setForm({ ...form, salePrice: e.target.value })}
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                />
-                            </label>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Custo (R$, opcional)</span>
-                                <input
-                                    inputMode="decimal"
-                                    value={form.costPrice}
-                                    onChange={(e) => setForm({ ...form, costPrice: e.target.value })}
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                />
-                            </label>
-                        </div>
-
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Descrição</span>
-                            <input
-                                type="text"
-                                value={form.description}
-                                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                            />
-                        </label>
-
-                        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Preparo (min, opcional)</span>
-                                <input
-                                    inputMode="numeric"
-                                    value={form.preparationTimeMinutes}
-                                    onChange={(e) => setForm({ ...form, preparationTimeMinutes: e.target.value })}
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                />
-                            </label>
-                            <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 20 }}>
-                                <input
-                                    type="checkbox"
-                                    style={{ width: 20, minHeight: 20 }}
-                                    checked={form.isStockControlled}
-                                    onChange={(e) => setForm({ ...form, isStockControlled: e.target.checked })}
-                                />
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>Controla estoque</span>
-                            </label>
-                        </div>
-
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>
-                                Foto do produto (JPG/PNG/WebP, até 2 MB)
-                            </span>
-                            <input
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp"
-                                onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-                                style={{ padding: 10, color: "#fff" }}
-                            />
-                            {(imageFile !== null || (editing !== "new" && editing !== null && editing.imageUrl)) && (
-                                <img
-                                    src={imageFile !== null ? URL.createObjectURL(imageFile) : (editing as MenuItemResponse).imageUrl!}
-                                    alt="Prévia"
-                                    style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "1px solid var(--line)" }}
-                                />
-                            )}
-                        </label>
-
-                        {error && <p className="error-text">{error}</p>}
-                        {form.categoryId === "" && (
-                            <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem", margin: 0 }}>
-                                Selecione uma categoria para habilitar o salvar.
-                            </p>
-                        )}
-
-                        <button
-                            className="btn-primary"
-                            disabled={form.name.trim() === "" || form.categoryId === "" || saveMutation.isPending}
-                            onClick={() => saveMutation.mutate()}
-                        >
-                            {saveMutation.isPending ? "Salvando…" : "Salvar"}
-                        </button>
                     </div>
-                </div>
+
+                    <div className="ui-row ui-row-wrap">
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                            <TextField
+                                label="Preço de venda (R$)"
+                                inputMode="decimal"
+                                value={form.salePrice}
+                                onChange={(e) => setForm({ ...form, salePrice: e.target.value })}
+                            />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                            <TextField
+                                label="Custo (R$, opcional)"
+                                inputMode="decimal"
+                                value={form.costPrice}
+                                onChange={(e) => setForm({ ...form, costPrice: e.target.value })}
+                            />
+                        </div>
+                    </div>
+
+                    <TextField
+                        label="Descrição"
+                        type="text"
+                        value={form.description}
+                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    />
+
+                    <div className="ui-row ui-row-wrap" style={{ alignItems: "end" }}>
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                            <TextField
+                                label="Preparo (min, opcional)"
+                                inputMode="numeric"
+                                value={form.preparationTimeMinutes}
+                                onChange={(e) => setForm({ ...form, preparationTimeMinutes: e.target.value })}
+                            />
+                        </div>
+                        <div className="ui-row" style={{ gap: 10, paddingBottom: 12 }}>
+                            <Switch
+                                checked={form.isStockControlled}
+                                onChange={(next) => setForm({ ...form, isStockControlled: next })}
+                                label="Controla estoque"
+                            />
+                            <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>Controla estoque</span>
+                        </div>
+                    </div>
+
+                    <div className="field">
+                        <span className="field-label">Foto do produto (JPG/PNG/WebP, até 2 MB)</span>
+                        <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                        />
+                        {(imageFile !== null || (editing !== "new" && editing !== null && editing.imageUrl)) && (
+                            <img
+                                src={imageFile !== null ? URL.createObjectURL(imageFile) : (editing as MenuItemResponse).imageUrl!}
+                                alt="Prévia"
+                                style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "1px solid var(--line)" }}
+                            />
+                        )}
+                    </div>
+
+                    {error && <p className="error-text">{error}</p>}
+                    {form.categoryId === "" && (
+                        <p className="field-hint" style={{ margin: 0 }}>
+                            Selecione uma categoria para habilitar o salvar.
+                        </p>
+                    )}
+
+                    <Button
+                        variant="primary"
+                        block
+                        loading={saveMutation.isPending}
+                        disabled={form.name.trim() === "" || form.categoryId === ""}
+                        onClick={() => saveMutation.mutate()}
+                    >
+                        Salvar
+                    </Button>
+                </Modal>
             )}
         </main>
     );

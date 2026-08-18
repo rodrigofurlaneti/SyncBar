@@ -10,10 +10,10 @@ internal sealed class CustomerOrderConfiguration : IEntityTypeConfiguration<Cust
     {
         builder.ToTable("CustomerOrder");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
-        builder.Property(x => x.OpenedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.ClosedAt).HasColumnType("datetime2");
+        builder.Property(x => x.OpenedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.ClosedAt).HasColumnType("datetime(6)");
         builder.Property(x => x.SubtotalAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.DiscountAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.ServiceFeeAmount).HasColumnType("decimal(18,2)").IsRequired();
@@ -25,8 +25,8 @@ internal sealed class CustomerOrderConfiguration : IEntityTypeConfiguration<Cust
         builder.Property(x => x.DeliveryAddress).HasColumnType("nvarchar(300)");
         builder.HasOne<Customer>().WithMany().HasForeignKey(x => x.CustomerId).HasConstraintName("FK_CustomerOrder_Customer").OnDelete(DeleteBehavior.Restrict);
         builder.Property(x => x.Notes).HasColumnType("nvarchar(500)");
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
         
         builder.HasIndex(x => x.BranchId).HasDatabaseName("IX_CustomerOrder_BranchId");
         builder.HasIndex(x => x.DiningTableId).HasDatabaseName("IX_CustomerOrder_DiningTableId");

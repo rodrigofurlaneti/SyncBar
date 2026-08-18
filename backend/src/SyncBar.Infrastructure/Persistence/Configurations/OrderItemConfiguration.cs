@@ -10,17 +10,17 @@ internal sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderIte
     {
         builder.ToTable("OrderItem");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
         builder.Property(x => x.Quantity).HasColumnType("decimal(18,3)").IsRequired();
         builder.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.DiscountAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.Notes).HasColumnType("nvarchar(300)");
-        builder.Property(x => x.SentToKitchenAt).HasColumnType("datetime2");
-        builder.Property(x => x.DeliveredAt).HasColumnType("datetime2");
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.SentToKitchenAt).HasColumnType("datetime(6)");
+        builder.Property(x => x.DeliveredAt).HasColumnType("datetime(6)");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
         
         builder.HasIndex(x => x.CustomerOrderId).HasDatabaseName("IX_OrderItem_CustomerOrderId");
         builder.HasIndex(x => x.ProductId).HasDatabaseName("IX_OrderItem_ProductId");

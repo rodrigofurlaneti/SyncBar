@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
 namespace SyncBar.Application.Features.Companies.Register;
 
@@ -18,6 +18,8 @@ public sealed record RegisterCompanyCommand(
     string? AddressCity,
     string? AddressState,
     string? AddressZipCode,
+    string AdminName,
+    string AdminCpf,
     string AdminUserName,
     string AdminEmail,
     string AdminPassword) : ICommand<RegisterCompanyResponse>;

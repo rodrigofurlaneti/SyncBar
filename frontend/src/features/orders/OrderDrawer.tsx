@@ -355,60 +355,70 @@ export function OrderDrawer({ orderId, onClose }: Props) {
 
           {actionError && <p className="error-text">{actionError}</p>}
 
-          {isOpen && order.diningTableId !== null && canUseCash &&
-            order.totalAmount - order.partialPaidAmount > 0 && (
-            <button className="btn-ghost" onClick={() => setPartialOpen(true)}>
-              💸 Pagamento parcial (cliente saindo)
-            </button>
-          )}
+          {/* Ações secundárias agrupadas — evita a pilha vertical de botões
+              e deixa a ação primária (Fechar conta) livre de concorrência visual. */}
+          {(
+            (isOpen && order.diningTableId !== null && canUseCash &&
+              order.totalAmount - order.partialPaidAmount > 0) ||
+            awaitingPayment
+          ) && (
+            <div className="ui-row ui-row-wrap" style={{ gap: 8 }}>
+              {isOpen && order.diningTableId !== null && canUseCash &&
+                order.totalAmount - order.partialPaidAmount > 0 && (
+                <button className="btn-ghost" onClick={() => setPartialOpen(true)}>
+                  💸 Pagamento parcial (cliente saindo)
+                </button>
+              )}
 
-          {awaitingPayment && (
-            <button
-              className="btn-ghost"
-              disabled={reopenMutation.isPending}
-              onClick={async () => {
-                if (
-                  await dialog.confirm({
-                    title: "Reabrir consumo",
-                    message:
-                      "Reabrir a conta para consumo? A taxa de serviço será recalculada no próximo fechamento.",
-                    confirmLabel: "Reabrir",
-                  })
-                )
-                  reopenMutation.mutate();
-              }}
-            >
-              ↩ Reabrir consumo (fechou por engano)
-            </button>
-          )}
+              {awaitingPayment && (
+                <button
+                  className="btn-ghost"
+                  disabled={reopenMutation.isPending}
+                  onClick={async () => {
+                    if (
+                      await dialog.confirm({
+                        title: "Reabrir consumo",
+                        message:
+                          "Reabrir a conta para consumo? A taxa de serviço será recalculada no próximo fechamento.",
+                        confirmLabel: "Reabrir",
+                      })
+                    )
+                      reopenMutation.mutate();
+                  }}
+                >
+                  ↩ Reabrir consumo (fechou por engano)
+                </button>
+              )}
 
-          {awaitingPayment && order.serviceFeeAmount > 0 && featuresQuery.data?.canManageAccess && (
-            <button
-              className="btn-ghost"
-              disabled={removeFeeMutation.isPending}
-              onClick={async () => {
-                if (
-                  await dialog.confirm({
-                    title: "Retirar taxa de serviço",
-                    message: "Retirar a taxa de serviço (10%) desta conta?",
-                    confirmLabel: "Retirar 10%",
-                  })
-                )
-                  removeFeeMutation.mutate();
-              }}
-            >
-              {removeFeeMutation.isPending ? "Retirando…" : "Retirar 10% (gerente)"}
-            </button>
-          )}
+              {awaitingPayment && order.serviceFeeAmount > 0 && featuresQuery.data?.canManageAccess && (
+                <button
+                  className="btn-ghost"
+                  disabled={removeFeeMutation.isPending}
+                  onClick={async () => {
+                    if (
+                      await dialog.confirm({
+                        title: "Retirar taxa de serviço",
+                        message: "Retirar a taxa de serviço (10%) desta conta?",
+                        confirmLabel: "Retirar 10%",
+                      })
+                    )
+                      removeFeeMutation.mutate();
+                  }}
+                >
+                  {removeFeeMutation.isPending ? "Retirando…" : "Retirar 10% (gerente)"}
+                </button>
+              )}
 
-          {awaitingPayment && printSettingsQuery.data?.printBillsEnabled && (
-            <button
-              className="btn-ghost"
-              disabled={printBillMutation.isPending}
-              onClick={() => printBillMutation.mutate()}
-            >
-              {printBillMutation.isPending ? "Imprimindo…" : "🖨 Imprimir conta"}
-            </button>
+              {awaitingPayment && printSettingsQuery.data?.printBillsEnabled && (
+                <button
+                  className="btn-ghost"
+                  disabled={printBillMutation.isPending}
+                  onClick={() => printBillMutation.mutate()}
+                >
+                  {printBillMutation.isPending ? "Imprimindo…" : "🖨 Imprimir conta"}
+                </button>
+              )}
+            </div>
           )}
 
           {awaitingPayment && (
@@ -500,7 +510,9 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                 </button>
               </div>
 
-              <div style={{ display: "flex", gap: 10 }}>
+              {/* Rodapé fixo — a ação primária (Fechar conta) fica sempre visível,
+                  mesmo com a lista de itens/cardápio rolando acima. */}
+              <div className="drawer-actionbar">
                 <button
                   className="btn-danger"
                   style={{ flex: 1 }}

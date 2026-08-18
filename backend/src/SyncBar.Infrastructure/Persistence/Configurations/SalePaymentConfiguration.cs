@@ -10,13 +10,13 @@ internal sealed class SalePaymentConfiguration : IEntityTypeConfiguration<SalePa
     {
         builder.ToTable("SalePayment");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
         builder.Property(x => x.Amount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.ChangeAmount).HasColumnType("decimal(18,2)");
         builder.Property(x => x.AuthorizationCode).HasColumnType("varchar(100)");
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
         
         builder.HasIndex(x => x.SaleId).HasDatabaseName("IX_SalePayment_SaleId");
         builder.HasIndex(x => x.PaymentMethodId).HasDatabaseName("IX_SalePayment_PaymentMethodId");

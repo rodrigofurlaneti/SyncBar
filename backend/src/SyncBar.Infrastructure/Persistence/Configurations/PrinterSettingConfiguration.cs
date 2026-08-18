@@ -10,10 +10,10 @@ internal sealed class PrinterSettingConfiguration : IEntityTypeConfiguration<Pri
     {
         builder.ToTable("PrinterSetting");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
 
         builder.HasIndex(x => x.BranchId).IsUnique().HasFilter("[IsActive] = 1")
             .HasDatabaseName("UQ_PrinterSetting_BranchId");

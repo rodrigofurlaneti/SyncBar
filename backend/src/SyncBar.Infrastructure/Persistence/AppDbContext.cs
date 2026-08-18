@@ -123,13 +123,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<CashRegister>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-
-        // TODO (próximo fast-follow): entidades "netas" da filial — filhas de uma entidade já
-        // filtrada por BranchId, mas sem BranchId próprio (StockMovement via StockItemId,
-        // CashSession/CashMovement via CashRegisterId ou CashSessionId, SalePayment via SaleId,
-        // OrderItem via CustomerOrderId, PurchaseItem via PurchaseId). Essas só ficam 100% isoladas
-        // quando sempre acessadas através do pai já filtrado (Include) — repositórios que
-        // consultam esses DbSets diretamente por Id ainda não têm o filtro em cascata.
     }
 
     public async Task<int> CommitAsync(CancellationToken cancellationToken = default)

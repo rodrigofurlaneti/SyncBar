@@ -14,7 +14,7 @@ internal sealed class RefundSaleCommandHandler(
     IDiningTableRepository diningTableRepository,
     IComandaRepository comandaRepository,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider) // 1. TimeProvider injetado aqui
+    TimeProvider TimeProviderCustom) 
     : ICommandHandler<RefundSaleCommand>
 {
     public async Task<Result> Handle(RefundSaleCommand request, CancellationToken cancellationToken)
@@ -35,7 +35,7 @@ internal sealed class RefundSaleCommandHandler(
         var order = await orderRepository.GetByIdForUpdateAsync(sale.CustomerOrderId, cancellationToken);
         if (order is not null)
         {
-            var currentTime = timeProvider.GetLocalNow().DateTime;
+            var currentTime = TimeProviderCustom.GetLocalNow().DateTime;
             var reopened = order.ReopenForPayment(currentTime);
             if (reopened.IsFailure)
                 return reopened;

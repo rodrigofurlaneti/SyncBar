@@ -12,7 +12,7 @@ internal sealed class OpenOrderCommandHandler : BaseCommandHandler<OpenOrderComm
     private readonly IDiningTableRepository _diningTableRepository;
     private readonly IComandaRepository _comandaRepository;
     private readonly IComandaSettingRepository _comandaSettingRepository;
-    private readonly TimeProvider _timeProvider;
+    private readonly TimeProvider _TimeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
     public OpenOrderCommandHandler(
@@ -20,7 +20,7 @@ internal sealed class OpenOrderCommandHandler : BaseCommandHandler<OpenOrderComm
         IDiningTableRepository diningTableRepository,
         IComandaRepository comandaRepository,
         IComandaSettingRepository comandaSettingRepository,
-        TimeProvider timeProvider,
+        TimeProvider TimeProviderCustom,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
@@ -29,7 +29,7 @@ internal sealed class OpenOrderCommandHandler : BaseCommandHandler<OpenOrderComm
         _diningTableRepository = diningTableRepository;
         _comandaRepository = comandaRepository;
         _comandaSettingRepository = comandaSettingRepository;
-        _timeProvider = timeProvider;
+        _TimeProviderCustom = TimeProviderCustom;
         _unitOfWork = unitOfWork;
     }
 
@@ -75,7 +75,7 @@ internal sealed class OpenOrderCommandHandler : BaseCommandHandler<OpenOrderComm
                     creditLimit = setting?.DefaultLimitAmount;
                 }
 
-                var currentTime = _timeProvider.GetLocalNow().DateTime;
+                var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
 
                 var order = CustomerOrder.Create(
                     request.BranchId, request.DiningTableId, request.ComandaId,

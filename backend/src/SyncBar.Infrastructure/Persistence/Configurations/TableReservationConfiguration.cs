@@ -10,15 +10,15 @@ internal sealed class TableReservationConfiguration : IEntityTypeConfiguration<T
     {
         builder.ToTable("TableReservation");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
         builder.Property(x => x.CustomerName).HasColumnType("nvarchar(150)").IsRequired();
         builder.Property(x => x.CustomerPhone).HasColumnType("varchar(20)");
-        builder.Property(x => x.ReservedFor).HasColumnType("datetime2").IsRequired();
+        builder.Property(x => x.ReservedFor).HasColumnType("datetime(6)").IsRequired();
         builder.Property(x => x.ReservationStatusId).HasColumnType("tinyint").IsRequired();
         builder.Property(x => x.Notes).HasColumnType("nvarchar(500)");
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
 
         builder.HasIndex(x => new { x.BranchId, x.ReservedFor }).HasDatabaseName("IX_TableReservation_BranchId_ReservedFor");
         builder.HasIndex(x => x.DiningTableId).HasDatabaseName("IX_TableReservation_DiningTableId");

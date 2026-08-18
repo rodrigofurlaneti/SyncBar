@@ -1,4 +1,4 @@
-ï»¿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SyncBar.Domain.Entities;
 
@@ -8,12 +8,12 @@ namespace SyncBar.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<LogTracker> builder)
         {
-            // Nome da tabela e Chave PrimÃ¡ria
+            // Nome da tabela e Chave Primária
             builder.ToTable("LogTracker");
             builder.HasKey(x => x.Id);
-            builder.Property(x => x.Id).UseIdentityColumn();
+            builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
-            // Relacionamento com AppUser (IdÃªntico ao padrÃ£o do AccessLog)
+            // Relacionamento com AppUser (Idêntico ao padrão do AccessLog)
             builder.HasIndex(x => x.AppUserId).HasDatabaseName("IX_LogTracker_AppUserId");
             builder.HasOne<AppUser>()
                    .WithMany()
@@ -37,8 +37,8 @@ namespace SyncBar.Infrastructure.Persistence.Configurations
 
             // Mapeamento de Rede e Auditoria
             builder.Property(x => x.IpAddress).HasColumnType("varchar(45)");
-            builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-            builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+            builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+            builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
             builder.Property(x => x.IsActive).HasColumnType("bit").IsRequired();
         }
     }

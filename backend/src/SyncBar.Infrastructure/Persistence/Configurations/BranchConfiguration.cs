@@ -10,7 +10,7 @@ internal sealed class BranchConfiguration : IEntityTypeConfiguration<Branch>
     {
         builder.ToTable("Branch");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
         builder.Property(x => x.Name).HasColumnType("nvarchar(150)").IsRequired();
         builder.Property(x => x.Cnpj).HasColumnType("char(14)");
@@ -21,8 +21,8 @@ internal sealed class BranchConfiguration : IEntityTypeConfiguration<Branch>
         builder.Property(x => x.AddressCity).HasColumnType("nvarchar(100)");
         builder.Property(x => x.AddressState).HasColumnType("char(2)");
         builder.Property(x => x.AddressZipCode).HasColumnType("char(8)");
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
         
         builder.HasIndex(x => x.CompanyId).HasDatabaseName("IX_Branch_CompanyId");
 

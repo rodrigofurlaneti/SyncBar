@@ -10,15 +10,15 @@ internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
     {
         builder.ToTable("Customer");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
         builder.Property(x => x.Name).HasColumnType("nvarchar(150)").IsRequired();
         builder.Property(x => x.Phone).HasColumnType("varchar(20)");
         builder.Property(x => x.Cpf).HasColumnType("char(11)");
         builder.Property(x => x.Email).HasColumnType("varchar(150)");
         builder.Property(x => x.LoyaltyPoints).IsRequired();
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
 
         builder.HasIndex(x => x.CompanyId).HasDatabaseName("IX_Customer_CompanyId");
         builder.HasIndex(x => new { x.CompanyId, x.Cpf })

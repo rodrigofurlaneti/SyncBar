@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { registerCompany } from "./signupApi";
@@ -13,8 +13,11 @@ export function SignupPage() {
   const [form, setForm] = useState({
     legalName: "",
     tradeName: "",
+    cpf: "",
     cnpj: "",
     branchName: "",
+    adminName: "",     // <-- Adicionado
+    adminCpf: "",      // <-- Adicionado
     adminUserName: "",
     adminEmail: "",
     adminPassword: "",
@@ -81,8 +84,18 @@ export function SignupPage() {
         </label>
 
         <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>CNPJ (só números)</span>
-          <input value={form.cnpj} onChange={set("cnpj")} maxLength={14} required />
+            <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>CNPJ (só números)</span>
+            <input value={form.cnpj} onChange={set("cnpj")} maxLength={14} required />
+        </label>
+
+        <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>Nome completo do administrador</span>
+            <input value={form.adminName} onChange={set("adminName")} required />
+        </label>
+
+        <label style={{ display: "grid", gap: 6 }}>
+            <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>CPF do administrador</span>
+                  <input value={form.adminCpf} onChange={set("adminCpf")} maxLength={11} required />
         </label>
 
         <label style={{ display: "grid", gap: 6 }}>

@@ -14,6 +14,8 @@ import { formatBRL } from "../../lib/types";
 import type { EmployeeResponse } from "../../lib/types";
 import { Overlay } from "../orders/Overlay";
 import { QueryError } from "../../components/QueryError";
+import { EmptyState } from "../../ui/EmptyState";
+import { SkeletonList } from "../../ui/Skeleton";
 
 const emptyForm = { jobTitleId: "", name: "", cpf: "", email: "", phone: "", salary: "" };
 type FormState = typeof emptyForm;
@@ -117,49 +119,63 @@ export function EmployeesPage() {
         </p>
       )}
 
-      <div className="ticket rise rise-1">
-        {(employeesQuery.data ?? []).map((employee) => (
-          <div className="ticket-row" key={employee.id}>
-            <div style={{ display: "grid", gap: 2 }}>
-              <span>{employee.name}</span>
-              <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
-                {jobTitleName.get(employee.jobTitleId) ?? `Cargo ${employee.jobTitleId}`}
-                {" · CPF "}{employee.cpf}
-                {employee.salary !== null ? ` · ${formatBRL(employee.salary)}` : ""}
-              </span>
+      {employeesQuery.isLoading && <SkeletonList rows={5} rowHeight={58} />}
+
+      {!employeesQuery.isLoading && employeesQuery.data?.length === 0 && (
+        <EmptyState
+          icon="🧑‍🍳"
+          title="Nenhum funcionário ativo"
+          description="Cadastre a equipe para poder abrir usuários e vincular vendas a um responsável."
+          action={
+            <button className="btn-primary" onClick={() => openEditor("new")}>
+              + Novo funcionário
+            </button>
+          }
+        />
+      )}
+
+      {!employeesQuery.isLoading && (employeesQuery.data?.length ?? 0) > 0 && (
+        <div className="ticket rise rise-1">
+          {(employeesQuery.data ?? []).map((employee) => (
+            <div className="ticket-row" key={employee.id}>
+              <div style={{ display: "grid", gap: 2 }}>
+                <span>{employee.name}</span>
+                <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
+                  {jobTitleName.get(employee.jobTitleId) ?? `Cargo ${employee.jobTitleId}`}
+                  {" · CPF "}{employee.cpf}
+                  {employee.salary !== null ? ` · ${formatBRL(employee.salary)}` : ""}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  className="btn-ghost"
+                  style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                  onClick={() => openEditor(employee)}
+                >
+                  Editar
+                </button>
+                <button
+                  className="btn-danger"
+                  style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                  onClick={async () => {
+                    if (
+                      await dialog.confirm({
+                        title: "Demitir",
+                        message: `Demitir "${employee.name}"? O acesso e o CPF serão liberados.`,
+                        confirmLabel: "Demitir",
+                        danger: true,
+                      })
+                    )
+                      dismissMutation.mutate(employee.id);
+                  }}
+                >
+                  Demitir
+                </button>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                className="btn-ghost"
-                style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
-                onClick={() => openEditor(employee)}
-              >
-                Editar
-              </button>
-              <button
-                className="btn-danger"
-                style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
-                onClick={async () => {
-                  if (
-                    await dialog.confirm({
-                      title: "Demitir",
-                      message: `Demitir "${employee.name}"? O acesso e o CPF serão liberados.`,
-                      confirmLabel: "Demitir",
-                      danger: true,
-                    })
-                  )
-                    dismissMutation.mutate(employee.id);
-                }}
-              >
-                Demitir
-              </button>
-            </div>
-          </div>
-        ))}
-        {employeesQuery.data?.length === 0 && (
-          <div className="ticket-row" style={{ color: "var(--ink-faint)" }}>Nenhum funcionário ativo.</div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
       {editing !== null && (
         <Overlay title={editing === "new" ? "Novo funcionário" : "Editar funcionário"} onClose={() => setEditing(null)}>
