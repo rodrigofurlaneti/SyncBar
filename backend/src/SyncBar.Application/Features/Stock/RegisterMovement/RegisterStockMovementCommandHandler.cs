@@ -1,4 +1,5 @@
 ﻿using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Application.Abstractions.Security; // ajuste o namespace conforme onde ICurrentUserService estiver
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -11,6 +12,8 @@ internal sealed class RegisterStockMovementCommandHandler : BaseCommandHandler<R
     private readonly IStockItemRepository _stockItemRepository;
     private readonly IStockMovementRepository _stockMovementRepository;
     private readonly IProductRepository _productRepository;
+    private readonly IEmployeeRepository _employeeRepository;
+    private readonly ICurrentUserService _currentUser;
     private readonly IUnitOfWork _unitOfWork;
 
     private static readonly HashSet<long> InflowTypes =
@@ -24,6 +27,8 @@ internal sealed class RegisterStockMovementCommandHandler : BaseCommandHandler<R
         IStockItemRepository stockItemRepository,
         IStockMovementRepository stockMovementRepository,
         IProductRepository productRepository,
+        IEmployeeRepository employeeRepository,
+        ICurrentUserService currentUser,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
@@ -31,6 +36,8 @@ internal sealed class RegisterStockMovementCommandHandler : BaseCommandHandler<R
         _stockItemRepository = stockItemRepository;
         _stockMovementRepository = stockMovementRepository;
         _productRepository = productRepository;
+        _employeeRepository = employeeRepository;
+        _currentUser = currentUser;
         _unitOfWork = unitOfWork;
     }
 
@@ -39,17 +46,26 @@ internal sealed class RegisterStockMovementCommandHandler : BaseCommandHandler<R
         return await ExecuteWithLogAsync(
             nameof(RegisterStockMovementCommandHandler),
             nameof(Handle),
-            null, // Substitua pelo IP presente no request, caso aplicável
+            null, 
             async (userIdBox) =>
             {
-                // Associa a ação no log de auditoria ao funcionário que está registrando a movimentação
-                userIdBox.Value = request.EmployeeId;
+                if (_currentUser.EmployeeId is not { } employeeId)
+                    return Result.Failure<long>(new Error(
+                        "Employee.NotFound",
+                        "O usuário logado não possui um funcionário vinculado."));
+
+                var employee = await _employeeRepository.GetByIdAsync(employeeId, cancellationToken);
+                if (employee is null || !employee.IsActive)
+                    return Result.Failure<long>(new Error(
+                        "Employee.NotFound",
+                        "Funcionário vinculado ao usuário logado não está ativo."));
+
+                userIdBox.Value = employee.Id;
 
                 var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
                 if (product is null || !product.IsActive)
                     return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
 
-                // Saldo por filial x produto — cria o StockItem na primeira movimentacao.
                 var stockItem = await _stockItemRepository.GetByBranchAndProductForUpdateAsync(
                     request.BranchId, request.ProductId, cancellationToken);
                 if (stockItem is null)
@@ -63,7 +79,6 @@ internal sealed class RegisterStockMovementCommandHandler : BaseCommandHandler<R
                     await _unitOfWork.CommitAsync(cancellationToken);
                 }
 
-                // Todo ajuste de saldo passa pelo livro-razao — nunca UPDATE direto.
                 var isInflow = InflowTypes.Contains(request.StockMovementTypeId);
                 var balance = isInflow ? stockItem.Increase(request.Quantity) : stockItem.Decrease(request.Quantity);
                 if (balance.IsFailure)
@@ -74,7 +89,7 @@ internal sealed class RegisterStockMovementCommandHandler : BaseCommandHandler<R
                     request.StockMovementTypeId,
                     null,
                     null,
-                    request.EmployeeId,
+                    employee.Id,
                     request.Quantity, request.UnitCost,
                     request.UnitCost is null ? null : Math.Round(request.UnitCost.Value * request.Quantity, 2),
                     request.DocumentNumber, DateTime.Now, request.Notes);

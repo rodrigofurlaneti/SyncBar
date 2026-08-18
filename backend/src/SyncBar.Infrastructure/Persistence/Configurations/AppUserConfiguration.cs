@@ -10,16 +10,16 @@ internal sealed class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
     {
         builder.ToTable("AppUser");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
         builder.Property(x => x.UserName).HasColumnType("varchar(100)").IsRequired();
         builder.Property(x => x.Email).HasColumnType("varchar(150)").IsRequired();
         builder.Property(x => x.PasswordHash).HasColumnType("varchar(500)").IsRequired();
         builder.Property(x => x.PasswordSalt).HasColumnType("varchar(200)");
-        builder.Property(x => x.LockoutEndAt).HasColumnType("datetime2");
-        builder.Property(x => x.LastLoginAt).HasColumnType("datetime2");
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.LockoutEndAt).HasColumnType("datetime(6)");
+        builder.Property(x => x.LastLoginAt).HasColumnType("datetime(6)");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
         
         builder.HasIndex(x => x.CompanyId).HasDatabaseName("IX_AppUser_CompanyId");
         builder.HasIndex(x => x.EmployeeId).HasDatabaseName("IX_AppUser_EmployeeId");

@@ -10,14 +10,14 @@ internal sealed class AccessLogConfiguration : IEntityTypeConfiguration<AccessLo
     {
         builder.ToTable("AccessLog");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
         builder.Property(x => x.UserName).HasColumnType("varchar(100)").IsRequired();
         builder.Property(x => x.EventType).HasColumnType("varchar(30)").IsRequired();
         builder.Property(x => x.IpAddress).HasColumnType("varchar(45)");
         builder.Property(x => x.UserAgent).HasColumnType("nvarchar(300)");
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
         
         builder.HasIndex(x => x.AppUserId).HasDatabaseName("IX_AccessLog_AppUserId");
         

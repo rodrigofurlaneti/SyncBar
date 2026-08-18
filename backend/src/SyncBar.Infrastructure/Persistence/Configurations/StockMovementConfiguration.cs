@@ -10,16 +10,16 @@ internal sealed class StockMovementConfiguration : IEntityTypeConfiguration<Stoc
     {
         builder.ToTable("StockMovement");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
         builder.Property(x => x.Quantity).HasColumnType("decimal(18,3)").IsRequired();
         builder.Property(x => x.UnitCost).HasColumnType("decimal(18,2)");
         builder.Property(x => x.TotalCost).HasColumnType("decimal(18,2)");
         builder.Property(x => x.DocumentNumber).HasColumnType("varchar(50)");
-        builder.Property(x => x.MovedAt).HasColumnType("datetime2").IsRequired();
+        builder.Property(x => x.MovedAt).HasColumnType("datetime(6)").IsRequired();
         builder.Property(x => x.Notes).HasColumnType("nvarchar(300)");
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
         
         builder.HasIndex(x => x.StockItemId).HasDatabaseName("IX_StockMovement_StockItemId");
         builder.HasIndex(x => x.StockMovementTypeId).HasDatabaseName("IX_StockMovement_StockMovementTypeId");

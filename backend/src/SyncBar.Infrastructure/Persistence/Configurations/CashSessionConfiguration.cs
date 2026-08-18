@@ -10,16 +10,16 @@ internal sealed class CashSessionConfiguration : IEntityTypeConfiguration<CashSe
     {
         builder.ToTable("CashSession");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
         builder.Property(x => x.OpeningAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.ClosingAmount).HasColumnType("decimal(18,2)");
         builder.Property(x => x.ExpectedAmount).HasColumnType("decimal(18,2)");
         builder.Property(x => x.DifferenceAmount).HasColumnType("decimal(18,2)");
-        builder.Property(x => x.OpenedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.ClosedAt).HasColumnType("datetime2");
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.OpenedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.ClosedAt).HasColumnType("datetime(6)");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
         
         builder.HasIndex(x => x.CashRegisterId).HasDatabaseName("IX_CashSession_CashRegisterId");
         builder.HasIndex(x => x.CashSessionStatusId).HasDatabaseName("IX_CashSession_CashSessionStatusId");

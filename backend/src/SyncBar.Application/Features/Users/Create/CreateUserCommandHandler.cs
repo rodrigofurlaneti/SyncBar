@@ -64,7 +64,7 @@ internal sealed class CreateUserCommandHandler : BaseCommandHandler<CreateUserCo
 
                 foreach (var roleId in request.RoleIds.Distinct())
                 {
-                    var link = UserRole.Create(user.Value.Id, roleId);
+                    var link = UserRole.Create(user.Value.CompanyId, user.Value.Id, roleId);
                     if (link.IsSuccess)
                         await _userRoleRepository.AddAsync(link.Value, cancellationToken);
                 }

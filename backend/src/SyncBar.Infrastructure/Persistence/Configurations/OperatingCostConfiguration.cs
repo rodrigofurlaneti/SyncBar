@@ -10,12 +10,12 @@ internal sealed class OperatingCostConfiguration : IEntityTypeConfiguration<Oper
     {
         builder.ToTable("OperatingCost");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
         builder.Property(x => x.Description).HasColumnType("nvarchar(200)").IsRequired();
         builder.Property(x => x.Amount).HasColumnType("decimal(18,2)").IsRequired();
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
 
         builder.HasIndex(x => new { x.BranchId, x.ReferenceYear, x.ReferenceMonth })
             .HasDatabaseName("IX_OperatingCost_BranchId_ReferenceYear_ReferenceMonth");

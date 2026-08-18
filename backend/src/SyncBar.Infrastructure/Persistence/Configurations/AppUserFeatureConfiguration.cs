@@ -10,10 +10,10 @@ internal sealed class AppUserFeatureConfiguration : IEntityTypeConfiguration<App
     {
         builder.ToTable("AppUserFeature");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
 
         builder.HasIndex(x => new { x.AppUserId, x.AppFeatureId })
             .IsUnique().HasFilter("[IsActive] = 1")

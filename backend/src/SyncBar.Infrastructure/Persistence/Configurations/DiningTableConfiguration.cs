@@ -10,11 +10,11 @@ internal sealed class DiningTableConfiguration : IEntityTypeConfiguration<Dining
     {
         builder.ToTable("DiningTable");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityColumn();
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
         builder.Property(x => x.QrToken);
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnType("datetime2");
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
+        builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
 
         builder.HasIndex(x => x.TableStatusId).HasDatabaseName("IX_DiningTable_TableStatusId");
         builder.HasIndex(x => new { x.BranchId, x.Number }).IsUnique().HasFilter("[IsActive] = 1").HasDatabaseName("UQ_DiningTable_BranchId_Number");

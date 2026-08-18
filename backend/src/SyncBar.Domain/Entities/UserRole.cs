@@ -1,9 +1,8 @@
 ﻿using SyncBar.Domain.Primitives;
 
-namespace SyncBar.Domain.Entities;
-
 public sealed class UserRole : Entity
 {
+    public long CompanyId { get; private set; }
     public long AppUserId { get; private set; }
     public long RoleId { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -12,22 +11,21 @@ public sealed class UserRole : Entity
 
     private UserRole() : base(0) { }
 
-    private UserRole(long appUserId, long roleId) : base(0)
+    private UserRole(long companyId, long appUserId, long roleId) : base(0)
     {
+        CompanyId = companyId;
         AppUserId = appUserId;
         RoleId = roleId;
         IsActive = true;
         CreatedAt = DateTime.Now;
     }
 
-    public static Result<UserRole> Create(long appUserId, long roleId)
+    public static Result<UserRole> Create(long companyId, long appUserId, long roleId)
     {
-        // No required-string invariants for this entity.
-        return Result.Success(new UserRole(appUserId, roleId));
+        return Result.Success(new UserRole(companyId, appUserId, roleId));
     }
 
     public void Touch() => UpdatedAt = DateTime.Now;
-
     public void Deactivate()
     {
         IsActive = false;
