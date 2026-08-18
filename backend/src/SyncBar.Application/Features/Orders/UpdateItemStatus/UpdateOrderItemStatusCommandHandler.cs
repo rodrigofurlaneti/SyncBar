@@ -7,18 +7,18 @@ namespace SyncBar.Application.Features.Orders.UpdateItemStatus;
 internal sealed class UpdateOrderItemStatusCommandHandler : BaseCommandHandler<UpdateOrderItemStatusCommand>
 {
     private readonly ICustomerOrderRepository _orderRepository;
-    private readonly TimeProvider _timeProvider;
+    private readonly TimeProvider _TimeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
     public UpdateOrderItemStatusCommandHandler(
         ICustomerOrderRepository orderRepository,
-        TimeProvider timeProvider,
+        TimeProvider TimeProviderCustom,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
     {
         _orderRepository = orderRepository;
-        _timeProvider = timeProvider;
+        _TimeProviderCustom = TimeProviderCustom;
         _unitOfWork = unitOfWork;
     }
 
@@ -46,8 +46,8 @@ internal sealed class UpdateOrderItemStatusCommandHandler : BaseCommandHandler<U
                             "Item já enviado à cozinha — somente o gerente pode cancelar."));
                 }
 
-                // 2. CAPTURA A HORA ATUAL DO TIMEPROVIDER
-                var currentTime = _timeProvider.GetLocalNow().DateTime;
+                // 2. CAPTURA A HORA ATUAL DO TimeProviderCustom
+                var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
 
                 // 3. PASSA NA ORDEM CORRETA: ID do Item, Status, Data/Hora, e por fim o Funcionário
                 var result = order.UpdateItemStatus(request.OrderItemId, request.OrderItemStatusId, currentTime, request.ActorEmployeeId);

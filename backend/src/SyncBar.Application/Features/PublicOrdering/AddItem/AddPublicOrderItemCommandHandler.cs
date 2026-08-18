@@ -14,7 +14,7 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
     private readonly IProductRepository _productRepository;
     private readonly ICustomerOrderRepository _orderRepository;
     private readonly IPrintingService _printingService;
-    private readonly TimeProvider _timeProvider;
+    private readonly TimeProvider _TimeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
     public AddPublicOrderItemCommandHandler(
@@ -23,7 +23,7 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
         IProductRepository productRepository,
         ICustomerOrderRepository orderRepository,
         IPrintingService printingService,
-        TimeProvider timeProvider,
+        TimeProvider TimeProviderCustom,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
@@ -33,7 +33,7 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
         _productRepository = productRepository;
         _orderRepository = orderRepository;
         _printingService = printingService;
-        _timeProvider = timeProvider;
+        _TimeProviderCustom = TimeProviderCustom;
         _unitOfWork = unitOfWork;
     }
 
@@ -63,7 +63,7 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
                 if (product is null || !product.IsActive || product.CompanyId != branch.CompanyId)
                     return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
 
-                var currentTime = _timeProvider.GetLocalNow().DateTime;
+                var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
 
                 var order = await _orderRepository.GetOpenByTableForUpdateAsync(table.Id, cancellationToken);
                 var isNewOrder = order is null;

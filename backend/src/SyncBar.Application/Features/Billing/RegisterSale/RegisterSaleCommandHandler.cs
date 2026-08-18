@@ -20,7 +20,7 @@ internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSa
     private readonly IOrderPartialPaymentRepository _partialPaymentRepository;
     private readonly IPrintingService _printingService;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly TimeProvider _timeProvider;
+    private readonly TimeProvider _TimeProviderCustom;
 
     public RegisterSaleCommandHandler(
         ICustomerOrderRepository orderRepository,
@@ -35,7 +35,7 @@ internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSa
         IPrintingService printingService,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork,
-        TimeProvider timeProvider)
+        TimeProvider TimeProviderCustom)
         : base(logRepository, unitOfWork)
     {
         _orderRepository = orderRepository;
@@ -49,7 +49,7 @@ internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSa
         _partialPaymentRepository = partialPaymentRepository;
         _printingService = printingService;
         _unitOfWork = unitOfWork;
-        _timeProvider = timeProvider;
+        _TimeProviderCustom = TimeProviderCustom;
     }
 
     public override Task<Result<long>> Handle(RegisterSaleCommand request, CancellationToken cancellationToken) =>
@@ -97,7 +97,7 @@ internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSa
             if (fullyPaid.IsFailure)
                 return Result.Failure<long>(fullyPaid.Error);
 
-            var currentTime = _timeProvider.GetLocalNow().DateTime;
+            var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
 
             var paid = order.MarkAsPaid(currentTime);
             if (paid.IsFailure)

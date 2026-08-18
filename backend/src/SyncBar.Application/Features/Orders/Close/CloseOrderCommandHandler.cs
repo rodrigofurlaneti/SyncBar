@@ -10,14 +10,14 @@ internal sealed class CloseOrderCommandHandler : BaseCommandHandler<CloseOrderCo
     private readonly ICustomerOrderRepository _orderRepository;
     private readonly IDiningTableRepository _diningTableRepository;
     private readonly IServiceFeeSettingRepository _serviceFeeSettingRepository;
-    private readonly TimeProvider _timeProvider;
+    private readonly TimeProvider _TimeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
     public CloseOrderCommandHandler(
         ICustomerOrderRepository orderRepository,
         IDiningTableRepository diningTableRepository,
         IServiceFeeSettingRepository serviceFeeSettingRepository,
-        TimeProvider timeProvider,
+        TimeProvider TimeProviderCustom,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
@@ -25,7 +25,7 @@ internal sealed class CloseOrderCommandHandler : BaseCommandHandler<CloseOrderCo
         _orderRepository = orderRepository;
         _diningTableRepository = diningTableRepository;
         _serviceFeeSettingRepository = serviceFeeSettingRepository;
-        _timeProvider = timeProvider;
+        _TimeProviderCustom = TimeProviderCustom;
         _unitOfWork = unitOfWork;
     }
 
@@ -48,7 +48,7 @@ internal sealed class CloseOrderCommandHandler : BaseCommandHandler<CloseOrderCo
                 var serviceFeeEnabled = feeSetting?.Enabled ?? true;
                 var effectiveServiceFeeRate = serviceFeeEnabled ? request.ServiceFeeRate : 0m;
 
-                var currentTime = _timeProvider.GetLocalNow().DateTime;
+                var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
 
                 var result = order.Close(effectiveServiceFeeRate, currentTime);
                 if (result.IsFailure)

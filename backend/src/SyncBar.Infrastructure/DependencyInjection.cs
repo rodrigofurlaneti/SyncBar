@@ -75,7 +75,7 @@ public static class DependencyInjection
         services.AddScoped<IProductStockRepository, ProductStockRepository>();
         services.AddScoped<ILogTrackerRepository, LogTrackerRepository>();
         services.AddScoped<IJobTitleRepository, JobTitleRepository>();
-
+        services.AddSingleton<TimeProvider, SyncBar.Infrastructure.Time.TimeProviderCustom>();
         services.AddSingleton<SyncBar.Application.Abstractions.Storage.IImageStorage, LocalImageStorage>();
         services.AddSingleton<IRawPrinterTransport, WindowsRawPrinterTransport>();
         services.AddSingleton<IRawPrinterTransport, NetworkRawPrinterTransport>();

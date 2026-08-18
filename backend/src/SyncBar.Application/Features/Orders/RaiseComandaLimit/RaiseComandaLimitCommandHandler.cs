@@ -7,18 +7,18 @@ namespace SyncBar.Application.Features.Orders.RaiseComandaLimit;
 internal sealed class RaiseComandaLimitCommandHandler : BaseCommandHandler<RaiseComandaLimitCommand>
 {
     private readonly ICustomerOrderRepository _orderRepository;
-    private readonly TimeProvider _timeProvider;
+    private readonly TimeProvider _TimeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
     public RaiseComandaLimitCommandHandler(
         ICustomerOrderRepository orderRepository,
-        TimeProvider timeProvider,
+        TimeProvider TimeProviderCustom,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
     {
         _orderRepository = orderRepository;
-        _timeProvider = timeProvider;
+        _TimeProviderCustom = TimeProviderCustom;
         _unitOfWork = unitOfWork;
     }
 
@@ -37,7 +37,7 @@ internal sealed class RaiseComandaLimitCommandHandler : BaseCommandHandler<Raise
                 if (order is null || !order.IsActive)
                     return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
 
-                var currentTime = _timeProvider.GetLocalNow().DateTime;
+                var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
 
                 var result = order.RaiseCreditLimit(request.NewLimitAmount, currentTime);
                 if (result.IsFailure)
