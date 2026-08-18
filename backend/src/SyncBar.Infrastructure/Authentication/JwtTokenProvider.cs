@@ -23,6 +23,12 @@ internal sealed class JwtTokenProvider(IOptions<JwtOptions> options) : IJwtToken
             new("companyId", user.CompanyId.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+        // Sem essa claim, ICurrentUserService.EmployeeId nunca resolve, e qualquer
+        // fluxo que exige um funcionário responsável (ex.: lançar movimento de
+        // estoque) falha com "usuário logado não possui um funcionário vinculado",
+        // mesmo quando AppUser.EmployeeId está corretamente preenchido no banco.
+        if (user.EmployeeId is { } employeeId)
+            claims.Add(new Claim("employeeId", employeeId.ToString()));
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
         claims.AddRange(permissions.Select(p => new Claim("permission", p)));
 

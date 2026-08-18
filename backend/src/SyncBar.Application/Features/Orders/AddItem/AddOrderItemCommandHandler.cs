@@ -66,7 +66,10 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
                 var stockSnapshot = await _stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
 
                 var itemCountBefore = order.Items.Count;
-                var currentTime = _TimeProviderCustom.GetUtcNow();
+                // O domínio usa DateTime puro (DATETIME2 no banco), não DateTimeOffset —
+                // e o padrão do projeto é hora LOCAL (ver OpenOrderCommandHandler), não UTC,
+                // já que o front-end interpreta as datas recebidas como hora local sem conversão.
+                var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
 
                 var activePromotion = promotions.FirstOrDefault(promo =>
                     promo.ProductId == product.Id && promo.IsActiveAt(currentTime));

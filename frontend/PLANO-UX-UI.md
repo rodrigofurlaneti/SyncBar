@@ -105,3 +105,62 @@ Foco em `OrdersPage` → `OrderDrawer` → `PaymentPanel` (o coração do PDV).
 ## 8. Observação
 
 Vi que "Retirar 10% (gerente)" e o limite de comanda **já existem no front** (`OrderDrawer` usa `removeServiceFee`/`raiseCreditLimit`). Ou seja, a feature de isenção da taxa que preparei no backend provavelmente **já tem contraparte de UI** — vale alinhar os contratos antes de duplicar. O `raiseCreditLimit` hoje usa `window.prompt`, que é justamente um dos casos a migrar para `PromptDialog` na Fase 0.
+
+## 11. Auditoria complementar — 2026-08-18
+
+*Segunda passada, feita sob um prompt de "Frontend Architect / Senior UI-UX Designer" genérico (React + Tailwind). Adaptado à stack real do projeto — ver nota abaixo — e cruzado com números medidos no código, não estimativas.*
+
+### 11.0 Nota sobre a adaptação do prompt
+
+O prompt-base pedia Tailwind CSS. O SyncBar **não usa Tailwind** — usa CSS puro com design tokens (`:root` em `global.css`) e uma biblioteca de componentes própria em `src/ui/` (`Button`, `Field`, `Modal`, `Toast`, `Dialog`, `Switch`, `StatusBadge`). Essa base é sólida e já **consistente** (tema escuro + claro, tokens de cor/tipografia/raio/toque). Introduzir Tailwind por cima seria trocar um sistema coerente por dois sistemas concorrentes — o problema aqui não é falta de design system, é **adoção parcial** do que já existe. Por isso as recomendações abaixo estendem os componentes existentes, não substituem por outra stack.
+
+### 11.1 Saúde do projeto — números medidos em 2026-08-18
+
+| Métrica | Valor medido | Onde |
+|---|---|---|
+| `style={{…}}` inline | **708** ocorrências em 31 arquivos | grep em `src/` |
+| `window.confirm/alert/prompt` | **0** | migrado 100% para `useDialog()` (era 13) |
+| Regras `@media` no CSS global | **3** — todas dentro do bloco do `.topbar` | `global.css` |
+| Uso de `aria-`/`role=` | **32** ocorrências em 14 arquivos, mas **24 delas concentradas nos 7 arquivos de `src/ui/`** — as ~24 telas de feature fora de `src/ui/` têm pouquíssima cobertura | grep em `src/` |
+| Classe `.skeleton` definida vs. usada | Definida em `global.css`; **usada em 0 lugares** antes desta auditoria | grep `<Skeleton` / `className="skeleton"` |
+| Texto "Carregando…" (único indicador de loading do app) | Presente em **4 de ~30 telas** (`OrdersPage`, `OrderDrawer`, `CashDrawer`, `PublicOrderPage`) — as outras ~26 não mostram nada durante o `isLoading` | grep em `src/` |
+| Estados vazios ("Nenhum X…") | **16** ocorrências em 13 arquivos, todos texto simples sem CTA | grep em `src/` |
+| `ErrorBoundary` | **Nenhum** — um erro de render em qualquer tela derruba a árvore inteira do React | grep em `src/` |
+| Biblioteca de animação (Framer Motion etc.) | Não instalada — só CSS keyframes manuais (`rise`, `ui-shimmer`, `kds-pulse`, `ui-spin`) | `package.json` |
+| Telas administrativas densas sem nenhuma responsividade | `PurchasingPage`, `StockPage`, `FinancePage`, `ReservationsPage`, `EmployeesPage`, `UsersPage` — zero `@media`/`overflow-x`/grid responsivo | grep + leitura |
+
+O que já estava bom continua bom (ver seção 2 do documento original) e evoluiu: a acessibilidade dos componentes-base (`Modal`, `Dialog`, `Switch`, `Button`) está genuinely madura agora — foco preso, `Esc`, `role="dialog"`, `aria-checked`, `iconOnly` forçando `aria-label` no tipo do TypeScript. O que não evoluiu foi a **adoção** disso nas telas de feature.
+
+### 11.2 Componentes novos implementados nesta rodada
+
+Três peças de infraestrutura que faltavam, todas usando os tokens existentes (nenhuma cor nova, nenhuma dependência nova):
+
+- **`src/ui/EmptyState.tsx`** — ícone + título + descrição + CTA opcional. Substitui a linha de texto cinza solta.
+- **`src/ui/Skeleton.tsx`** (`SkeletonRow`, `SkeletonList`) — finalmente consome a classe `.skeleton` que já existia sem uso.
+- **`src/components/ErrorBoundary.tsx`** — tela de fallback com botão "Recarregar"; já plugado em `main.tsx` envolvendo toda a árvore.
+
+Aplicados como demonstração em **`ProductsPage.tsx`** (a tela que acabamos de modernizar): `menuQuery.isLoading` agora mostra `SkeletonList` em vez de nada, e a lista vazia virou `EmptyState` com botão "+ Novo produto" embutido — antes era só a frase "Nenhum produto cadastrado."
+
+### 11.3 Checklist priorizado (novos itens, complementam a seção 3 do documento original)
+
+**P0 — risco real de tela quebrada/em branco**
+- ~~`ErrorBoundary` ausente~~ → feito (`main.tsx`).
+- ~~Responsividade zero em `PurchasingPage`, `StockPage`, `FinancePage`, `ReservationsPage`, `EmployeesPage`, `UsersPage`~~ → feito nesta rodada. `StockPage`, `PurchasingPage` e `ReservationsPage` tinham modais artesanais com largura fixa em pixel (`width: 480/600/650/450/400`) — migrados para o `Modal` acessível do design system (`min(420-560px, 92-94vw)`, já responsivo). `FinancePage` já não tinha modais e usava grid `auto-fit`; `EmployeesPage`/`UsersPage` já usavam `Overlay`→`Modal`. O item de compra (produto/qtd/custo) que era um grid fixo de 4 colunas virou `ui-row ui-row-wrap` (empilha em telas estreitas).
+
+**P1 — custa percepção de qualidade todo dia**
+- ~~Levar `SkeletonList`/`EmptyState` para `StockPage` → `PurchasingPage` → `FinancePage` → `ReservationsPage` → `EmployeesPage`/`UsersPage`~~ → feito nesta rodada para essas 6 telas (fornecedores e compras tratados como duas listas independentes em `PurchasingPage`). Ainda restam ~20 outras telas de feature sem o mesmo tratamento — CustomersPage é a próxima da fila sugerida.
+- Continuar a migração dos 708 `style={{…}}` restantes — não como um rewrite único (a build já demanda restart manual toda vez, então mudanças grandes de uma vez custam caro pra testar), e sim numa cota por sprint. As 6 telas desta rodada tiveram os campos de formulário dos modais migrados para `TextField`/`SelectField` (reduz uma fatia real do total, mas as listas/linhas ainda têm `style` inline pontual).
+
+**P2 — polish**
+- Auditoria de `aria-label` nas ~24 telas de feature fora de `src/ui/` — ícones sozinhos ali provavelmente ainda não têm rótulo. Nas 6 telas desta rodada os botões só-ícone dos modais antigos (✕ de fechar) foram substituídos pelo close nativo e acessível do `Modal`; o único novo ícone-só (remover item da compra) já leva `aria-label`.
+- ~~Escala de transição~~ → feito. Tokens `--ease-standard`, `--ease-in-out`, `--duration-instant/fast/medium/base/entrance/slow/slower` adicionados ao `:root` em `global.css`, substituindo os números mágicos (`60ms`, `120ms`, `140ms`, `200ms`, `240ms`, `1.2s`, `1.6s`) nos pontos onde apareciam.
+
+### 11.4 Micro-interações — observações
+
+- ~~`.table-tile`/`.ticket` sem hover~~ → feito. `.table-tile` ganhou `transform: translateY(-1px)` além da borda; `.ticket-row` (linha de lista — usada em praticamente toda tela administrativa: estoque, funcionários, usuários, fornecedores, reservas, pedidos) ganhou destaque de fundo (`background: var(--bg-press)`) no hover, sinalizando "isso é uma linha" em telas usadas com mouse/trackpad.
+- As classes `.rise`/`.rise-1`/`.rise-2`/`.rise-3` (entrada com fade+slide, stagger de 40-140ms) já existem e são usadas de forma inconsistente — algumas telas aplicam em todos os blocos, outras não aplicam em nenhum. Padronizar isso reforça a sensação de "sistema", não custa nada em bundle (é CSS puro) e já respeita `prefers-reduced-motion`.
+- Sem Framer Motion instalado e com o projeto deliberadamente enxuto em dependências (Vite + poucos pacotes), a recomendação é continuar com CSS puro em vez de trazer uma lib de animação — o app não tem hoje nenhuma orquestração complexa (drag, layout animation entre rotas) que justifique o peso extra.
+
+---
+
+*Auditoria conduzida via leitura direta do código (não amostragem) para as métricas da seção 11.1; achados de "0 ocorrências" foram conferidos por grep, não inferidos.*

@@ -7,6 +7,12 @@ import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import { ReservationStatus, TableStatus, reservationStatusLabel } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
+import { Modal } from "../../ui/Modal";
+import { Button } from "../../ui/Button";
+import { TextField, SelectField } from "../../ui/Field";
+import { useToast } from "../../ui/Toast";
+import { EmptyState } from "../../ui/EmptyState";
+import { SkeletonList } from "../../ui/Skeleton";
 
 // Janela padrão: hoje até 14 dias à frente — cobre a agenda de curto prazo sem paginação.
 function defaultRange() {
@@ -20,6 +26,7 @@ function defaultRange() {
 export function ReservationsPage() {
     const queryClient = useQueryClient();
     const dialog = useDialog();
+    const toast = useToast();
     const { branchId } = useAuthStore();
     const [creating, setCreating] = useState(false);
     const [confirmingId, setConfirmingId] = useState<number | null>(null);
@@ -63,6 +70,7 @@ export function ReservationsPage() {
             setCreating(false);
             setForm({ customerName: "", customerPhone: "", partySize: 2, reservedFor: "", notes: "" });
             refresh();
+            toast.success("Reserva criada.");
         },
         onError: onApiError,
     });
@@ -75,6 +83,7 @@ export function ReservationsPage() {
             setTableForConfirm("");
             refresh();
             void queryClient.invalidateQueries({ queryKey: ["tables"] });
+            toast.success("Reserva confirmada.");
         },
         onError: onApiError,
     });
@@ -84,6 +93,7 @@ export function ReservationsPage() {
         onSuccess: () => {
             refresh();
             void queryClient.invalidateQueries({ queryKey: ["tables"] });
+            toast.success("Reserva cancelada.");
         },
         onError: onApiError,
     });
@@ -108,6 +118,22 @@ export function ReservationsPage() {
             {reservationsQuery.isError && <QueryError error={reservationsQuery.error} what="as reservas" />}
             {error && !creating && confirmingId === null && <p className="error-text">{error}</p>}
 
+            {reservationsQuery.isLoading && <SkeletonList rows={4} rowHeight={80} />}
+
+            {!reservationsQuery.isLoading && sorted.length === 0 && (
+                <EmptyState
+                    icon="📅"
+                    title="Nenhuma reserva nos próximos 14 dias"
+                    description="Crie uma reserva para reservar uma mesa com antecedência."
+                    action={
+                        <button className="btn-primary" onClick={() => { setError(null); setCreating(true); }}>
+                            + Nova reserva
+                        </button>
+                    }
+                />
+            )}
+
+            {!reservationsQuery.isLoading && sorted.length > 0 && (
             <div className="rise rise-1" style={{ display: "grid", gap: 10, marginTop: 12 }}>
                 {sorted.map((r) => (
                     <div key={r.id} className="ticket">
@@ -162,121 +188,89 @@ export function ReservationsPage() {
                         </div>
                     </div>
                 ))}
-                {sorted.length === 0 && !reservationsQuery.isLoading && (
-                    <p style={{ color: "var(--ink-faint)" }}>Nenhuma reserva nos próximos 14 dias.</p>
-                )}
             </div>
+            )}
 
             {creating && (
-                <div style={{
-                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-                    background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
-                }}>
-                    <div style={{ background: "#18181b", padding: 24, borderRadius: 8, width: 450, maxWidth: "90%", display: "grid", gap: 16, border: "1px solid #27272a" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h3 style={{ margin: 0, color: "#fff" }}>Nova reserva</h3>
-                            <button onClick={() => setCreating(false)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>✕</button>
-                        </div>
+                <Modal title="Nova reserva" onClose={() => setCreating(false)} variant="center">
+                    <TextField
+                        label="Nome do cliente"
+                        type="text"
+                        value={form.customerName}
+                        onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
+                        autoFocus
+                    />
 
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Nome do cliente</span>
-                            <input
+                    <div className="ui-row ui-row-wrap">
+                        <div style={{ flex: 1, minWidth: 140 }}>
+                            <TextField
+                                label="Telefone"
                                 type="text"
-                                value={form.customerName}
-                                onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
-                                autoFocus
-                                style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
+                                value={form.customerPhone}
+                                onChange={(e) => setForm((f) => ({ ...f, customerPhone: e.target.value }))}
                             />
-                        </label>
-
-                        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Telefone</span>
-                                <input
-                                    type="text"
-                                    value={form.customerPhone}
-                                    onChange={(e) => setForm((f) => ({ ...f, customerPhone: e.target.value }))}
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                />
-                            </label>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Pessoas</span>
-                                <input
-                                    type="number"
-                                    min={1}
-                                    value={form.partySize}
-                                    onChange={(e) => setForm((f) => ({ ...f, partySize: Number(e.target.value) }))}
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                />
-                            </label>
                         </div>
-
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Data e hora</span>
-                            <input
-                                type="datetime-local"
-                                value={form.reservedFor}
-                                onChange={(e) => setForm((f) => ({ ...f, reservedFor: e.target.value }))}
-                                style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
+                        <div style={{ flex: 1, minWidth: 100 }}>
+                            <TextField
+                                label="Pessoas"
+                                type="number"
+                                min={1}
+                                value={form.partySize}
+                                onChange={(e) => setForm((f) => ({ ...f, partySize: Number(e.target.value) }))}
                             />
-                        </label>
-
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Observações</span>
-                            <input
-                                type="text"
-                                value={form.notes}
-                                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                                style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                            />
-                        </label>
-
-                        {error && <p className="error-text">{error}</p>}
-
-                        <button
-                            className="btn-primary"
-                            disabled={form.customerName.trim() === "" || form.reservedFor === "" || createMutation.isPending}
-                            onClick={() => createMutation.mutate()}
-                        >
-                            {createMutation.isPending ? "Criando…" : "Criar reserva"}
-                        </button>
+                        </div>
                     </div>
-                </div>
+
+                    <TextField
+                        label="Data e hora"
+                        type="datetime-local"
+                        value={form.reservedFor}
+                        onChange={(e) => setForm((f) => ({ ...f, reservedFor: e.target.value }))}
+                    />
+
+                    <TextField
+                        label="Observações"
+                        type="text"
+                        value={form.notes}
+                        onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                    />
+
+                    {error && <p className="error-text">{error}</p>}
+
+                    <Button
+                        variant="primary"
+                        block
+                        loading={createMutation.isPending}
+                        disabled={form.customerName.trim() === "" || form.reservedFor === ""}
+                        onClick={() => createMutation.mutate()}
+                    >
+                        Criar reserva
+                    </Button>
+                </Modal>
             )}
 
             {confirmingId !== null && (
-                <div style={{
-                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-                    background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
-                }}>
-                    <div style={{ background: "#18181b", padding: 24, borderRadius: 8, width: 400, maxWidth: "90%", display: "grid", gap: 16, border: "1px solid #27272a" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h3 style={{ margin: 0, color: "#fff" }}>Confirmar reserva — escolher mesa</h3>
-                            <button onClick={() => setConfirmingId(null)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>✕</button>
-                        </div>
-
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Mesa livre</span>
-                            <select value={tableForConfirm} onChange={(e) => setTableForConfirm(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}>
-                                <option value="">Selecione…</option>
-                                {freeTables.map((t) => (
-                                    <option key={t.id} value={t.id}>Mesa {t.number}</option>
-                                ))}
-                            </select>
-                        </label>
-                        {freeTables.length === 0 && (
-                            <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem" }}>Nenhuma mesa livre no momento.</p>
-                        )}
-                        {error && <p className="error-text">{error}</p>}
-                        <button
-                            className="btn-primary"
-                            disabled={tableForConfirm === "" || confirmMutation.isPending}
-                            onClick={() => confirmMutation.mutate(confirmingId)}
-                        >
-                            {confirmMutation.isPending ? "Confirmando…" : "Confirmar e reservar mesa"}
-                        </button>
-                    </div>
-                </div>
+                <Modal title="Confirmar reserva — escolher mesa" onClose={() => setConfirmingId(null)} variant="center">
+                    <SelectField label="Mesa livre" value={tableForConfirm} onChange={(e) => setTableForConfirm(e.target.value)} autoFocus>
+                        <option value="">Selecione…</option>
+                        {freeTables.map((t) => (
+                            <option key={t.id} value={t.id}>Mesa {t.number}</option>
+                        ))}
+                    </SelectField>
+                    {freeTables.length === 0 && (
+                        <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem" }}>Nenhuma mesa livre no momento.</p>
+                    )}
+                    {error && <p className="error-text">{error}</p>}
+                    <Button
+                        variant="primary"
+                        block
+                        loading={confirmMutation.isPending}
+                        disabled={tableForConfirm === ""}
+                        onClick={() => confirmMutation.mutate(confirmingId)}
+                    >
+                        Confirmar e reservar mesa
+                    </Button>
+                </Modal>
             )}
         </main>
     );

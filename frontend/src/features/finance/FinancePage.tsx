@@ -11,6 +11,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import { CostType, costTypeLabel, formatBRL } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
+import { SkeletonList } from "../../ui/Skeleton";
 
 const parseNum = (raw: string): number | null => {
   if (raw.trim() === "") return null;
@@ -136,6 +137,8 @@ export function FinancePage() {
 
       {summaryQuery.isError && <QueryError error={summaryQuery.error} what="o resumo do mês" />}
       {error && <p className="error-text">{error}</p>}
+
+      {summaryQuery.isLoading && <SkeletonList rows={5} rowHeight={70} />}
 
       {summary && (
         <>

@@ -14,6 +14,12 @@ import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import { formatBRL } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
+import { Modal } from "../../ui/Modal";
+import { Button } from "../../ui/Button";
+import { TextField, SelectField } from "../../ui/Field";
+import { useToast } from "../../ui/Toast";
+import { EmptyState } from "../../ui/EmptyState";
+import { SkeletonList } from "../../ui/Skeleton";
 
 interface PurchaseItemState {
     productId: number;
@@ -30,6 +36,7 @@ const parseNum = (raw: string): number => {
 export function PurchasingPage() {
     const queryClient = useQueryClient();
     const dialog = useDialog();
+    const toast = useToast();
     const { branchId, companyId, employeeId } = useAuthStore();
     const [creatingSupplier, setCreatingSupplier] = useState(false);
     const [registeringPurchase, setRegisteringPurchase] = useState(false);
@@ -94,13 +101,17 @@ export function PurchasingPage() {
             setCreatingSupplier(false);
             setSupplierForm({ legalName: "", tradeName: "", cnpj: "", email: "", phone: "" });
             refreshSuppliers();
+            toast.success("Fornecedor criado.");
         },
         onError: onApiError,
     });
 
     const deactivateSupplierMutation = useMutation({
         mutationFn: (id: number) => deactivateSupplier(id),
-        onSuccess: refreshSuppliers,
+        onSuccess: () => {
+            refreshSuppliers();
+            toast.success("Fornecedor desativado.");
+        },
         onError: onApiError,
     });
 
@@ -132,6 +143,7 @@ export function PurchasingPage() {
             setDocumentNumber("");
             setItems([{ productId: 0, quantity: "1", unitCost: "0" }]);
             refreshPurchases();
+            toast.success("Compra registrada e estoque atualizado.");
         },
         onError: onApiError,
     });
@@ -158,226 +170,216 @@ export function PurchasingPage() {
 
             <section className="rise rise-1" style={{ marginTop: 18 }}>
                 <h3 className="display" style={{ fontSize: "1.15rem", marginBottom: 8 }}>Fornecedores</h3>
-                <div style={{ display: "grid", gap: 8 }}>
-                    {(suppliersQuery.data ?? []).map((s) => (
-                        <div key={s.id} className="ticket-row">
-                            <div style={{ display: "grid", gap: 2 }}>
-                                <span>{s.tradeName ?? s.legalName}</span>
-                                <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
-                                    {s.cnpj ?? "sem CNPJ"} {s.phone ? `· ${s.phone}` : ""}
-                                </span>
+                {suppliersQuery.isLoading && <SkeletonList rows={3} rowHeight={48} />}
+                {!suppliersQuery.isLoading && (suppliersQuery.data ?? []).length === 0 && (
+                    <EmptyState
+                        icon="🚚"
+                        title="Nenhum fornecedor cadastrado"
+                        description="Cadastre um fornecedor para poder registrar compras."
+                        action={
+                            <button className="btn-primary" onClick={() => { setError(null); setCreatingSupplier(true); }}>
+                                + Fornecedor
+                            </button>
+                        }
+                    />
+                )}
+                {!suppliersQuery.isLoading && (suppliersQuery.data ?? []).length > 0 && (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        {(suppliersQuery.data ?? []).map((s) => (
+                            <div key={s.id} className="ticket-row">
+                                <div style={{ display: "grid", gap: 2 }}>
+                                    <span>{s.tradeName ?? s.legalName}</span>
+                                    <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
+                                        {s.cnpj ?? "sem CNPJ"} {s.phone ? `· ${s.phone}` : ""}
+                                    </span>
+                                </div>
+                                {s.isActive && (
+                                    <button
+                                        className="btn-danger"
+                                        style={{ minHeight: 36, padding: "0 10px", fontSize: "0.85rem" }}
+                                        onClick={async () => {
+                                            if (await dialog.confirm({ title: "Desativar fornecedor", message: `Desativar "${s.legalName}"?`, confirmLabel: "Desativar", danger: true }))
+                                                deactivateSupplierMutation.mutate(s.id);
+                                        }}
+                                    >
+                                        Desativar
+                                    </button>
+                                )}
                             </div>
-                            {s.isActive && (
-                                <button
-                                    className="btn-danger"
-                                    style={{ minHeight: 36, padding: "0 10px", fontSize: "0.85rem" }}
-                                    onClick={async () => {
-                                        if (await dialog.confirm({ title: "Desativar fornecedor", message: `Desativar "${s.legalName}"?`, confirmLabel: "Desativar", danger: true }))
-                                            deactivateSupplierMutation.mutate(s.id);
-                                    }}
-                                >
-                                    Desativar
-                                </button>
-                            )}
-                        </div>
-                    ))}
-                    {(suppliersQuery.data ?? []).length === 0 && !suppliersQuery.isLoading && (
-                        <p style={{ color: "var(--ink-faint)" }}>Nenhum fornecedor cadastrado.</p>
-                    )}
-                </div>
+                        ))}
+                    </div>
+                )}
             </section>
 
             <section className="rise rise-2" style={{ marginTop: 26 }}>
                 <h3 className="display" style={{ fontSize: "1.15rem", marginBottom: 8 }}>Compras registradas</h3>
-                <div style={{ display: "grid", gap: 8 }}>
-                    {(purchasesQuery.data ?? []).map((p) => (
-                        <div key={p.id} className="ticket">
-                            <div className="ticket-head">
-                                <span>{supplierName.get(p.supplierId) ?? `Fornecedor ${p.supplierId}`}</span>
-                                <span className="mono-num">{formatBRL(p.totalAmount)}</span>
+                {purchasesQuery.isLoading && <SkeletonList rows={3} rowHeight={72} />}
+                {!purchasesQuery.isLoading && (purchasesQuery.data ?? []).length === 0 && (
+                    <EmptyState
+                        icon="🧾"
+                        title="Nenhuma compra registrada"
+                        description="Registre uma compra para dar entrada no estoque."
+                        action={
+                            <button className="btn-primary" onClick={() => { setError(null); setRegisteringPurchase(true); }}>
+                                + Registrar compra
+                            </button>
+                        }
+                    />
+                )}
+                {!purchasesQuery.isLoading && (purchasesQuery.data ?? []).length > 0 && (
+                    <div style={{ display: "grid", gap: 8 }}>
+                        {(purchasesQuery.data ?? []).map((p) => (
+                            <div key={p.id} className="ticket">
+                                <div className="ticket-head">
+                                    <span>{supplierName.get(p.supplierId) ?? `Fornecedor ${p.supplierId}`}</span>
+                                    <span className="mono-num">{formatBRL(p.totalAmount)}</span>
+                                </div>
+                                <div style={{ padding: "6px 14px", color: "var(--ink-faint)", fontSize: "0.85rem" }}>
+                                    {new Date(p.purchasedAt).toLocaleDateString("pt-BR")} {p.documentNumber ? `· NF ${p.documentNumber}` : ""}
+                                    {" · "}
+                                    {p.items.map((it) => `${productName.get(it.productId) ?? it.productId} (${it.quantity})`).join(", ")}
+                                </div>
                             </div>
-                            <div style={{ padding: "6px 14px", color: "var(--ink-faint)", fontSize: "0.85rem" }}>
-                                {new Date(p.purchasedAt).toLocaleDateString("pt-BR")} {p.documentNumber ? `· NF ${p.documentNumber}` : ""}
-                                {" · "}
-                                {p.items.map((it) => `${productName.get(it.productId) ?? it.productId} (${it.quantity})`).join(", ")}
-                            </div>
-                        </div>
-                    ))}
-                    {(purchasesQuery.data ?? []).length === 0 && !purchasesQuery.isLoading && (
-                        <p style={{ color: "var(--ink-faint)" }}>Nenhuma compra registrada.</p>
-                    )}
-                </div>
+                        ))}
+                    </div>
+                )}
             </section>
 
             {creatingSupplier && (
-                <div style={{
-                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-                    background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
-                }}>
-                    <div style={{ background: "#18181b", padding: 24, borderRadius: 8, width: 480, maxWidth: "90%", display: "grid", gap: 16, border: "1px solid #27272a" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h3 style={{ margin: 0, color: "#fff" }}>Novo fornecedor</h3>
-                            <button onClick={() => setCreatingSupplier(false)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>✕</button>
+                <Modal title="Novo fornecedor" onClose={() => setCreatingSupplier(false)} variant="center" wide>
+                    <TextField
+                        label="Razão social"
+                        value={supplierForm.legalName}
+                        onChange={(e) => setSupplierForm((f) => ({ ...f, legalName: e.target.value }))}
+                        autoFocus
+                    />
+                    <TextField
+                        label="Nome fantasia"
+                        value={supplierForm.tradeName}
+                        onChange={(e) => setSupplierForm((f) => ({ ...f, tradeName: e.target.value }))}
+                    />
+                    <div className="ui-row ui-row-wrap">
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                            <TextField
+                                label="CNPJ"
+                                value={supplierForm.cnpj}
+                                onChange={(e) => setSupplierForm((f) => ({ ...f, cnpj: e.target.value }))}
+                                maxLength={14}
+                            />
                         </div>
-
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Razão social</span>
-                            <input
-                                value={supplierForm.legalName}
-                                onChange={(e) => setSupplierForm((f) => ({ ...f, legalName: e.target.value }))}
-                                autoFocus
-                                style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                            <TextField
+                                label="Telefone"
+                                value={supplierForm.phone}
+                                onChange={(e) => setSupplierForm((f) => ({ ...f, phone: e.target.value }))}
                             />
-                        </label>
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Nome fantasia</span>
-                            <input
-                                value={supplierForm.tradeName}
-                                onChange={(e) => setSupplierForm((f) => ({ ...f, tradeName: e.target.value }))}
-                                style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                            />
-                        </label>
-                        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>CNPJ</span>
-                                <input
-                                    value={supplierForm.cnpj}
-                                    onChange={(e) => setSupplierForm((f) => ({ ...f, cnpj: e.target.value }))}
-                                    maxLength={14}
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                />
-                            </label>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Telefone</span>
-                                <input
-                                    value={supplierForm.phone}
-                                    onChange={(e) => setSupplierForm((f) => ({ ...f, phone: e.target.value }))}
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                />
-                            </label>
                         </div>
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>E-mail</span>
-                            <input
-                                value={supplierForm.email}
-                                onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))}
-                                style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                            />
-                        </label>
-                        {error && <p className="error-text">{error}</p>}
-                        <button
-                            className="btn-primary"
-                            disabled={supplierForm.legalName.trim() === "" || createSupplierMutation.isPending}
-                            onClick={() => createSupplierMutation.mutate()}
-                        >
-                            {createSupplierMutation.isPending ? "Criando…" : "Criar fornecedor"}
-                        </button>
                     </div>
-                </div>
+                    <TextField
+                        label="E-mail"
+                        value={supplierForm.email}
+                        onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))}
+                    />
+                    {error && <p className="error-text">{error}</p>}
+                    <Button
+                        variant="primary"
+                        block
+                        loading={createSupplierMutation.isPending}
+                        disabled={supplierForm.legalName.trim() === ""}
+                        onClick={() => createSupplierMutation.mutate()}
+                    >
+                        Criar fornecedor
+                    </Button>
+                </Modal>
             )}
 
             {registeringPurchase && (
-                <div style={{
-                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-                    background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
-                }}>
-                    <div style={{ background: "#18181b", padding: 24, borderRadius: 8, width: 650, maxWidth: "90%", display: "grid", gap: 16, border: "1px solid #27272a", maxHeight: "90vh", overflowY: "auto" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h3 style={{ margin: 0, color: "#fff" }}>Registrar compra</h3>
-                            <button onClick={() => setRegisteringPurchase(false)} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>✕</button>
+                <Modal title="Registrar compra" onClose={() => setRegisteringPurchase(false)} variant="center" wide>
+                    <SelectField label="Fornecedor" value={supplierId} onChange={(e) => setSupplierId(e.target.value)} autoFocus>
+                        <option value="">Selecione…</option>
+                        {(suppliersQuery.data ?? []).filter((s) => s.isActive).map((s) => (
+                            <option key={s.id} value={s.id}>{s.tradeName ?? s.legalName}</option>
+                        ))}
+                    </SelectField>
+                    <div className="ui-row ui-row-wrap">
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                            <TextField label="Nº da nota" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} />
                         </div>
-
-                        <label style={{ display: "grid", gap: 4 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Fornecedor</span>
-                            <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}>
-                                <option value="">Selecione…</option>
-                                {(suppliersQuery.data ?? []).filter((s) => s.isActive).map((s) => (
-                                    <option key={s.id} value={s.id}>{s.tradeName ?? s.legalName}</option>
-                                ))}
-                            </select>
-                        </label>
-                        <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Nº da nota</span>
-                                <input
-                                    value={documentNumber}
-                                    onChange={(e) => setDocumentNumber(e.target.value)}
-                                    autoFocus
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                />
-                            </label>
-                            <label style={{ display: "grid", gap: 4 }}>
-                                <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Data</span>
-                                <input
-                                    type="date"
-                                    value={purchasedAt}
-                                    onChange={(e) => setPurchasedAt(e.target.value)}
-                                    style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
-                                />
-                            </label>
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                            <TextField
+                                label="Data"
+                                type="date"
+                                value={purchasedAt}
+                                onChange={(e) => setPurchasedAt(e.target.value)}
+                            />
                         </div>
+                    </div>
 
-                        <div style={{ display: "grid", gap: 8 }}>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Itens</span>
-                            {items.map((item, index) => (
-                                <div key={index} style={{ display: "grid", gap: 8, gridTemplateColumns: "1.6fr 0.7fr 0.8fr auto" }}>
-                                    <select
+                    <div className="ui-stack">
+                        <span className="field-label">Itens</span>
+                        {items.map((item, index) => (
+                            <div key={index} className="ui-row ui-row-wrap" style={{ alignItems: "end" }}>
+                                <div style={{ flex: 2, minWidth: 180 }}>
+                                    <SelectField
+                                        label="Produto"
                                         value={item.productId}
                                         onChange={(e) => setItem(index, { productId: Number(e.target.value) })}
-                                        style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
                                     >
                                         <option value={0}>Produto…</option>
                                         {(menuQuery.data ?? []).map((p) => (
                                             <option key={p.id} value={p.id}>{p.name}</option>
                                         ))}
-                                    </select>
-                                    <input
-                                        placeholder="Qtd"
+                                    </SelectField>
+                                </div>
+                                <div style={{ flex: 1, minWidth: 90 }}>
+                                    <TextField
+                                        label="Qtd"
                                         inputMode="decimal"
                                         value={item.quantity}
                                         onChange={(e) => setItem(index, { quantity: e.target.value })}
-                                        style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
                                     />
-                                    <input
-                                        placeholder="Custo unit."
+                                </div>
+                                <div style={{ flex: 1, minWidth: 110 }}>
+                                    <TextField
+                                        label="Custo unit."
                                         inputMode="decimal"
                                         value={item.unitCost}
                                         onChange={(e) => setItem(index, { unitCost: e.target.value })}
-                                        style={{ padding: "8px", borderRadius: "4px", border: "1px solid #3f3f46", background: "#27272a", color: "#fff" }}
                                     />
-                                    <button
-                                        className="btn-ghost"
-                                        aria-label="Remover item"
-                                        disabled={items.length === 1}
-                                        onClick={() => setItems((current) => current.filter((_, i) => i !== index))}
-                                    >
-                                        ✕
-                                    </button>
                                 </div>
-                            ))}
-                            <button
-                                className="btn-ghost"
-                                onClick={() => setItems((current) => [...current, { productId: 0, quantity: "1", unitCost: "0" }])}
-                            >
-                                + Adicionar item
-                            </button>
-                        </div>
-
-                        <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-dim)" }}>
-                            <span>Total</span>
-                            <span className="mono-num">{formatBRL(purchaseTotal)}</span>
-                        </div>
-
-                        {error && <p className="error-text">{error}</p>}
-                        <button
-                            className="btn-primary"
-                            disabled={supplierId === "" || validItems.length === 0 || registerPurchaseMutation.isPending}
-                            onClick={() => registerPurchaseMutation.mutate()}
+                                <Button
+                                    iconOnly
+                                    aria-label="Remover item"
+                                    disabled={items.length === 1}
+                                    onClick={() => setItems((current) => current.filter((_, i) => i !== index))}
+                                >
+                                    ✕
+                                </Button>
+                            </div>
+                        ))}
+                        <Button
+                            onClick={() => setItems((current) => [...current, { productId: 0, quantity: "1", unitCost: "0" }])}
                         >
-                            {registerPurchaseMutation.isPending ? "Registrando…" : "Registrar compra e dar entrada no estoque"}
-                        </button>
+                            + Adicionar item
+                        </Button>
                     </div>
-                </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-dim)" }}>
+                        <span>Total</span>
+                        <span className="mono-num">{formatBRL(purchaseTotal)}</span>
+                    </div>
+
+                    {error && <p className="error-text">{error}</p>}
+                    <Button
+                        variant="primary"
+                        block
+                        loading={registerPurchaseMutation.isPending}
+                        disabled={supplierId === "" || validItems.length === 0}
+                        onClick={() => registerPurchaseMutation.mutate()}
+                    >
+                        Registrar compra e dar entrada no estoque
+                    </Button>
+                </Modal>
             )}
         </main>
     );
