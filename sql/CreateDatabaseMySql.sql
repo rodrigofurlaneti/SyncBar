@@ -55,6 +55,23 @@ CREATE TABLE `JobTitle` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------
+-- Table `JobTitleFeature`
+-- -----------------------------------------------------
+CREATE TABLE `JobTitleFeature` (
+  `Id` BIGINT NOT NULL AUTO_INCREMENT,
+  `JobTitleId` BIGINT NOT NULL,
+  `AppFeatureId` BIGINT NOT NULL,
+  `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `UpdatedAt` DATETIME(6) NULL ON UPDATE CURRENT_TIMESTAMP(6),
+  `IsActive` TINYINT(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`Id`),
+  INDEX `FK_JobTitleFeature_JobTitle` (`JobTitleId`),
+  INDEX `FK_JobTitleFeature_AppFeature` (`AppFeatureId`),
+  CONSTRAINT `FK_JobTitleFeature_JobTitle` FOREIGN KEY (`JobTitleId`) REFERENCES `JobTitle` (`Id`),
+  CONSTRAINT `FK_JobTitleFeature_AppFeature` FOREIGN KEY (`AppFeatureId`) REFERENCES `AppFeature` (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
 -- Table `Branch`
 -- -----------------------------------------------------
 CREATE TABLE `Branch` (
@@ -566,6 +583,33 @@ CREATE TABLE `PaymentMethod` (
   `UpdatedAt` DATETIME(6) NULL ON UPDATE CURRENT_TIMESTAMP(6),
   `IsActive` TINYINT(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------
+-- Table `OrderPartialPayment`
+-- -----------------------------------------------------
+CREATE TABLE `OrderPartialPayment` (
+  `Id` BIGINT NOT NULL AUTO_INCREMENT,
+  `CustomerOrderId` BIGINT NOT NULL,
+  `CashSessionId` BIGINT NOT NULL,
+  `PaymentMethodId` BIGINT NOT NULL,
+  `EmployeeId` BIGINT NOT NULL,
+  `Amount` DECIMAL(18, 2) NOT NULL,
+  `AuthorizationCode` VARCHAR(100) NULL,
+  `PayerName` VARCHAR(100) NULL,
+  `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `UpdatedAt` DATETIME(6) NULL ON UPDATE CURRENT_TIMESTAMP(6),
+  `IsActive` TINYINT(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`Id`),
+  INDEX `FK_OrderPartialPayment_CustomerOrder` (`CustomerOrderId`),
+  INDEX `FK_OrderPartialPayment_CashSession` (`CashSessionId`),
+  INDEX `FK_OrderPartialPayment_PaymentMethod` (`PaymentMethodId`),
+  INDEX `FK_OrderPartialPayment_Employee` (`EmployeeId`),
+  CONSTRAINT `FK_OrderPartialPayment_CustomerOrder` FOREIGN KEY (`CustomerOrderId`) REFERENCES `CustomerOrder` (`Id`),
+  CONSTRAINT `FK_OrderPartialPayment_CashSession` FOREIGN KEY (`CashSessionId`) REFERENCES `CashSession` (`Id`),
+  CONSTRAINT `FK_OrderPartialPayment_PaymentMethod` FOREIGN KEY (`PaymentMethodId`) REFERENCES `PaymentMethod` (`Id`),
+  CONSTRAINT `FK_OrderPartialPayment_Employee` FOREIGN KEY (`EmployeeId`) REFERENCES `Employee` (`Id`),
+  CONSTRAINT `CK_OrderPartialPayment_Amount` CHECK (`Amount` > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------
