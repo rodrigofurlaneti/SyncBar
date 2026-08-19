@@ -115,14 +115,14 @@ export function OrdersPage() {
     <>
       <main style={{ padding: "22px", maxWidth: 1240, margin: "0 auto" }}>
         <section className="rise">
-          <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 14 }}>
+          <div className="ui-row ui-row-wrap" style={{ alignItems: "baseline", gap: 14, marginBottom: 14 }}>
             <h2 className="display" style={{ fontSize: "1.7rem" }}>
               Mesas
             </h2>
             <span style={{ color: "var(--ink-faint)", fontSize: "0.9rem" }}>
               toque numa mesa livre para abrir um pedido
             </span>
-            <span style={{ flex: 1 }} />
+            <span className="ui-spacer" />
             <button className="btn-ghost" onClick={() => setOpeningDelivery(true)}>
               + Retirada / Delivery
             </button>

@@ -6,10 +6,12 @@ using SyncBar.Application.Abstractions.Tenancy;
 using SyncBar.Domain.Repositories;
 using SyncBar.Infrastructure.Authentication;
 using SyncBar.Infrastructure.Fiscal;
+using SyncBar.Infrastructure.Integrations.IFood;
 using SyncBar.Infrastructure.Payments;
 using SyncBar.Infrastructure.Persistence;
 using SyncBar.Infrastructure.Persistence.Repositories;
 using SyncBar.Infrastructure.Printing;
+using SyncBar.Infrastructure.Security;
 using SyncBar.Infrastructure.Storage;
 using SyncBar.Infrastructure.Tenancy;
 
@@ -65,6 +67,9 @@ public static class DependencyInjection
         services.AddScoped<IOrderPartialPaymentRepository, OrderPartialPaymentRepository>();
         services.AddScoped<IComandaSettingRepository, ComandaSettingRepository>();
         services.AddScoped<IServiceFeeSettingRepository, ServiceFeeSettingRepository>();
+        services.AddScoped<IIFoodIntegrationSettingRepository, IFoodIntegrationSettingRepository>();
+        services.AddScoped<IIFoodMerchantMappingRepository, IFoodMerchantMappingRepository>();
+        services.AddScoped<IIFoodOrderRepository, IFoodOrderRepository>();
         services.AddScoped<IAccessLogRepository, AccessLogRepository>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
         services.AddScoped<IPurchaseRepository, PurchaseRepository>();
@@ -89,6 +94,30 @@ public static class DependencyInjection
         // trocar por um provider real (ex.: MercadoPago, Focus NFe) quando houver credenciais.
         services.AddScoped<SyncBar.Application.Abstractions.Payments.IPaymentGatewayService, FakePaymentGatewayService>();
         services.AddScoped<SyncBar.Application.Abstractions.Fiscal.IFiscalDocumentService, FakeFiscalDocumentService>();
+
+        // Integração iFood: cliente HTTP real (autenticação OAuth2), endpoint/payload confirmados
+        // contra a doc oficial em 2026-08-19 — ver comentário em IFoodAuthClient. O segredo é
+        // criptografado com Data Protection;
+        // por padrão as chaves ficam no disco local (%LOCALAPPDATA%\ASP.NET\DataProtection-Keys
+        // no Windows) — isso é OK para uma instância única, mas se a API rodar em mais de uma
+        // máquina/instância no futuro, configure um key ring persistente e compartilhado
+        // (ex.: PersistKeysToDbContext ou um blob storage) — senão cada instância descriptografa
+        // só os segredos que ela mesma cifrou.
+        services.AddDataProtection();
+        services.AddSingleton<SyncBar.Application.Abstractions.Security.ISecretProtector, DataProtectionSecretProtector>();
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodAuthClient, IFoodAuthClient>(
+            client => client.Timeout = TimeSpan.FromSeconds(15));
+
+        // Sincronização de pedidos (fase 2, "fluxo essencial"): cliente HTTP do módulo Order,
+        // cache de access token em memória (necessário agora — o polling roda a cada 30s e pedir
+        // token novo toda vez não escala) e o loop de polling em si (BackgroundService,
+        // singleton — cria seu próprio scope de DI a cada ciclo). Endpoints/formatos confirmados
+        // contra a doc oficial em 2026-08-19 — ver comentário em IFoodOrderClient.
+        services.AddMemoryCache();
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodTokenProvider, IFoodTokenProvider>();
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodOrderClient, IFoodOrderClient>(
+            client => client.Timeout = TimeSpan.FromSeconds(15));
+        services.AddHostedService<IFoodOrderPollingBackgroundService>();
 
         return services;
     }

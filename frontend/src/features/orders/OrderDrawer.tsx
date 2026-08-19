@@ -235,7 +235,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
               {featuresQuery.data?.canManageAccess && (
                 <button
                   className="btn-ghost"
-                  style={{ minHeight: 36, padding: "0 12px", fontSize: "0.85rem" }}
+                  style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                   disabled={raiseLimitMutation.isPending}
                   onClick={async () => {
                     const answer = await dialog.prompt({
@@ -295,7 +295,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                     <div style={{ display: "flex", gap: 6 }}>
                       <button
                         className="btn-ghost"
-                        style={{ minHeight: 38, padding: "0 10px", fontSize: "0.85rem" }}
+                        style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                         onClick={() => advanceItem.mutate({ itemId: item.id, statusId: next })}
                       >
                         → {orderItemStatusLabel[next]}
@@ -304,7 +304,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                         className="btn-danger"
                         aria-label={`Cancelar item ${productNameById.get(item.productId) ?? ""}`.trim()}
                         title="Cancelar item"
-                        style={{ minHeight: 38, padding: "0 10px", fontSize: "0.85rem" }}
+                        style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                         onClick={() =>
                           advanceItem.mutate({ itemId: item.id, statusId: OrderItemStatus.Cancelado })
                         }

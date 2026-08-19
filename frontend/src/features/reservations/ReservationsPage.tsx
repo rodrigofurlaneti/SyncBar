@@ -156,14 +156,14 @@ export function ReservationsPage() {
                                 <div style={{ display: "flex", gap: 8 }}>
                                     <button
                                         className="btn-ghost"
-                                        style={{ minHeight: 36, padding: "0 10px", fontSize: "0.85rem" }}
+                                        style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                                         onClick={() => { setError(null); setConfirmingId(r.id); }}
                                     >
                                         Confirmar
                                     </button>
                                     <button
                                         className="btn-danger"
-                                        style={{ minHeight: 36, padding: "0 10px", fontSize: "0.85rem" }}
+                                        style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                                         onClick={async () => {
                                             if (await dialog.confirm({ title: "Cancelar reserva", message: `Cancelar a reserva de ${r.customerName}?`, confirmLabel: "Cancelar reserva", danger: true }))
                                                 cancelMutation.mutate(r.id);
@@ -176,7 +176,7 @@ export function ReservationsPage() {
                             {r.reservationStatusId === ReservationStatus.Confirmed && (
                                 <button
                                     className="btn-danger"
-                                    style={{ minHeight: 36, padding: "0 10px", fontSize: "0.85rem" }}
+                                    style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                                     onClick={async () => {
                                         if (await dialog.confirm({ title: "Cancelar reserva", message: `Cancelar a reserva de ${r.customerName}?`, confirmLabel: "Cancelar reserva", danger: true }))
                                             cancelMutation.mutate(r.id);

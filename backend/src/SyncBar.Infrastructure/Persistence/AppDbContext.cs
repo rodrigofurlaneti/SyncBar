@@ -61,6 +61,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<OrderPartialPayment> OrderPartialPayments => Set<OrderPartialPayment>();
     public DbSet<ComandaSetting> ComandaSettings => Set<ComandaSetting>();
     public DbSet<ServiceFeeSetting> ServiceFeeSettings => Set<ServiceFeeSetting>();
+    public DbSet<IFoodIntegrationSetting> IFoodIntegrationSettings => Set<IFoodIntegrationSetting>();
+    public DbSet<IFoodMerchantMapping> IFoodMerchantMappings => Set<IFoodMerchantMapping>();
+    public DbSet<IFoodOrder> IFoodOrders => Set<IFoodOrder>();
     public DbSet<JobTitleFeature> JobTitleFeatures => Set<JobTitleFeature>();
     public DbSet<AppUserFeature> AppUserFeatures => Set<AppUserFeature>();
     public DbSet<LogTracker> LogTrackers { get; set; }
@@ -87,6 +90,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
         modelBuilder.Entity<Supplier>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
+        modelBuilder.Entity<IFoodIntegrationSetting>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
 
         // Entidades escopadas por BranchId (não por CompanyId diretamente): filtra via
         // subquery em Branchs (que já tem seu próprio filtro por CompanyId — EF compõe os dois
@@ -102,6 +107,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
         modelBuilder.Entity<Purchase>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<ServiceFeeSetting>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<IFoodMerchantMapping>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        modelBuilder.Entity<IFoodOrder>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<ComandaSetting>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));

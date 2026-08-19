@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDialog } from "../../ui/Dialog";
 import {
   createEmployee,
+  createJobTitle,
   dismissEmployee,
   getEmployeesByBranch,
   getJobTitles,
@@ -12,10 +13,13 @@ import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import { formatBRL } from "../../lib/types";
 import type { EmployeeResponse } from "../../lib/types";
-import { Overlay } from "../orders/Overlay";
 import { QueryError } from "../../components/QueryError";
 import { EmptyState } from "../../ui/EmptyState";
 import { SkeletonList } from "../../ui/Skeleton";
+import { Modal } from "../../ui/Modal";
+import { Button } from "../../ui/Button";
+import { Field, TextField } from "../../ui/Field";
+import { useToast } from "../../ui/Toast";
 
 const emptyForm = { jobTitleId: "", name: "", cpf: "", email: "", phone: "", salary: "" };
 type FormState = typeof emptyForm;
@@ -29,10 +33,13 @@ const parseNum = (raw: string): number | null => {
 export function EmployeesPage() {
   const queryClient = useQueryClient();
   const dialog = useDialog();
+  const toast = useToast();
   const { branchId, companyId } = useAuthStore();
   const [editing, setEditing] = useState<EmployeeResponse | "new" | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const [creatingJobTitle, setCreatingJobTitle] = useState(false);
+  const [newJobTitle, setNewJobTitle] = useState("");
 
   const employeesQuery = useQuery({
     queryKey: ["employees", branchId],
@@ -57,6 +64,8 @@ export function EmployeesPage() {
 
   const openEditor = (employee: EmployeeResponse | "new") => {
     setError(null);
+    setCreatingJobTitle(false);
+    setNewJobTitle("");
     setEditing(employee);
     if (employee === "new")
       setForm({ ...emptyForm, jobTitleId: String(jobTitlesQuery.data?.[0]?.id ?? "") });
@@ -90,6 +99,7 @@ export function EmployeesPage() {
         : updateEmployee((editing as EmployeeResponse).id, shared);
     },
     onSuccess: () => {
+      toast.success(editing === "new" ? "Funcionário cadastrado." : "Funcionário atualizado.");
       setEditing(null);
       refresh();
     },
@@ -98,7 +108,26 @@ export function EmployeesPage() {
 
   const dismissMutation = useMutation({
     mutationFn: (id: number) => dismissEmployee(id),
-    onSuccess: refresh,
+    onSuccess: () => {
+      toast.success("Funcionário demitido.");
+      refresh();
+    },
+    onError: onApiError,
+  });
+
+  // Criar cargo sem sair do formulário de novo funcionário — o cargo novo já
+  // entra selecionado assim que criado (mesmo padrão do "+ nova categoria" no
+  // cadastro de produto).
+  const jobTitleMutation = useMutation({
+    mutationFn: () => createJobTitle(companyId ?? 1, newJobTitle.trim()),
+    onSuccess: (newJobTitleId) => {
+      toast.success("Cargo criado.");
+      setForm((f) => ({ ...f, jobTitleId: String(newJobTitleId) }));
+      setNewJobTitle("");
+      setCreatingJobTitle(false);
+      setError(null);
+      void queryClient.invalidateQueries({ queryKey: ["jobtitles"] });
+    },
     onError: onApiError,
   });
 
@@ -107,17 +136,12 @@ export function EmployeesPage() {
       <div className="rise" style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 16 }}>
         <h2 className="display" style={{ fontSize: "1.7rem" }}>Equipe</h2>
         <span style={{ flex: 1 }} />
-        <button className="btn-primary" onClick={() => openEditor("new")}>+ Novo funcionário</button>
+        <Button variant="primary" onClick={() => openEditor("new")}>+ Novo funcionário</Button>
       </div>
 
       {error && editing === null && <p className="error-text">{error}</p>}
       {employeesQuery.isError && <QueryError error={employeesQuery.error} what="funcionários" />}
       {jobTitlesQuery.isError && <QueryError error={jobTitlesQuery.error} what="cargos" />}
-      {jobTitlesQuery.isSuccess && jobTitlesQuery.data.length === 0 && (
-        <p className="error-text">
-          Nenhum cargo cadastrado — execute BarRestaurante_JobTitles.sql para criar os cargos padrão.
-        </p>
-      )}
 
       {employeesQuery.isLoading && <SkeletonList rows={5} rowHeight={58} />}
 
@@ -127,9 +151,9 @@ export function EmployeesPage() {
           title="Nenhum funcionário ativo"
           description="Cadastre a equipe para poder abrir usuários e vincular vendas a um responsável."
           action={
-            <button className="btn-primary" onClick={() => openEditor("new")}>
+            <Button variant="primary" onClick={() => openEditor("new")}>
               + Novo funcionário
-            </button>
+            </Button>
           }
         />
       )}
@@ -146,17 +170,13 @@ export function EmployeesPage() {
                   {employee.salary !== null ? ` · ${formatBRL(employee.salary)}` : ""}
                 </span>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  className="btn-ghost"
-                  style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
-                  onClick={() => openEditor(employee)}
-                >
+              <div className="ui-row" style={{ gap: 8 }}>
+                <Button variant="ghost" size="sm" onClick={() => openEditor(employee)}>
                   Editar
-                </button>
-                <button
-                  className="btn-danger"
-                  style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
                   onClick={async () => {
                     if (
                       await dialog.confirm({
@@ -170,7 +190,7 @@ export function EmployeesPage() {
                   }}
                 >
                   Demitir
-                </button>
+                </Button>
               </div>
             </div>
           ))}
@@ -178,70 +198,150 @@ export function EmployeesPage() {
       )}
 
       {editing !== null && (
-        <Overlay title={editing === "new" ? "Novo funcionário" : "Editar funcionário"} onClose={() => setEditing(null)}>
-          <label style={{ display: "grid", gap: 4 }}>
-            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Nome</span>
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          </label>
-          <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>CPF (11 dígitos)</span>
-              <input
+        <Modal title={editing === "new" ? "Novo funcionário" : "Editar funcionário"} onClose={() => setEditing(null)}>
+          <TextField
+            label="Nome"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            autoFocus
+          />
+
+          {/* alignItems: "end" — o label "Cargo" pode quebrar em 2 linhas por causa do
+              link "+ novo cargo" embutido nele; alinhando pelo rodapé da linha, os dois
+              campos ficam sempre na mesma altura (mesmo ajuste feito no cadastro de produto). */}
+          <div className="ui-row ui-row-wrap" style={{ alignItems: "end" }}>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <TextField
+                label="CPF (11 dígitos)"
                 inputMode="numeric"
                 maxLength={11}
                 disabled={editing !== "new"}
                 value={form.cpf}
                 onChange={(e) => setForm({ ...form, cpf: e.target.value.replace(/\D/g, "") })}
               />
-            </label>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Cargo</span>
-              <select value={form.jobTitleId} onChange={(e) => setForm({ ...form, jobTitleId: e.target.value })}>
-                <option value="">Selecione o cargo…</option>
-                {(jobTitlesQuery.data ?? []).map((j) => (
-                  <option key={j.id} value={j.id}>{j.name}</option>
-                ))}
-              </select>
-            </label>
+            </div>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <Field
+                label={
+                  <span className="ui-row" style={{ justifyContent: "space-between", width: "100%" }}>
+                    Cargo
+                    {!creatingJobTitle && (
+                      <button
+                        type="button"
+                        onClick={() => setCreatingJobTitle(true)}
+                        style={{ background: "transparent", border: "none", color: "var(--amber)", cursor: "pointer", fontSize: "0.8rem", padding: 0 }}
+                      >
+                        + novo cargo
+                      </button>
+                    )}
+                  </span>
+                }
+              >
+                {(a11y) =>
+                  creatingJobTitle ? (
+                    <div className="ui-row" style={{ gap: 6 }}>
+                      <input
+                        {...a11y}
+                        type="text"
+                        autoFocus
+                        placeholder="Nome do cargo"
+                        value={newJobTitle}
+                        onChange={(e) => setNewJobTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (newJobTitle.trim() !== "") jobTitleMutation.mutate();
+                          } else if (e.key === "Escape") {
+                            setCreatingJobTitle(false);
+                            setNewJobTitle("");
+                          }
+                        }}
+                        style={{ flex: 1, minWidth: 0 }}
+                      />
+                      <Button
+                        size="sm"
+                        loading={jobTitleMutation.isPending}
+                        disabled={newJobTitle.trim() === ""}
+                        onClick={() => jobTitleMutation.mutate()}
+                      >
+                        Criar
+                      </Button>
+                      <Button
+                        size="sm"
+                        iconOnly
+                        aria-label="Cancelar criação de cargo"
+                        onClick={() => { setCreatingJobTitle(false); setNewJobTitle(""); }}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ) : (
+                    <select
+                      {...a11y}
+                      value={form.jobTitleId}
+                      onChange={(e) => setForm({ ...form, jobTitleId: e.target.value })}
+                    >
+                      <option value="">Selecione o cargo…</option>
+                      {(jobTitlesQuery.data ?? []).map((j) => (
+                        <option key={j.id} value={j.id}>{j.name}</option>
+                      ))}
+                    </select>
+                  )
+                }
+              </Field>
+            </div>
           </div>
-          <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>E-mail</span>
-              <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            </label>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Telefone</span>
-              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            </label>
+
+          <div className="ui-row ui-row-wrap">
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <TextField
+                label="E-mail"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <TextField
+                label="Telefone"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+            </div>
           </div>
-          <label style={{ display: "grid", gap: 4 }}>
-            <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Salário (R$, opcional)</span>
-            <input inputMode="decimal" value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} />
-          </label>
+
+          <TextField
+            label="Salário (R$, opcional)"
+            inputMode="decimal"
+            value={form.salary}
+            onChange={(e) => setForm({ ...form, salary: e.target.value })}
+          />
+
           {error && <p className="error-text">{error}</p>}
           {form.jobTitleId === "" && (
-            <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem", margin: 0 }}>
+            <p className="field-hint" style={{ margin: 0 }}>
               Selecione um cargo para habilitar o salvar.
             </p>
           )}
           {editing === "new" && form.cpf.length !== 11 && form.cpf.length > 0 && (
-            <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem", margin: 0 }}>
+            <p className="field-hint" style={{ margin: 0 }}>
               CPF precisa de 11 dígitos ({form.cpf.length}/11).
             </p>
           )}
-          <button
-            className="btn-primary"
+
+          <Button
+            variant="primary"
+            block
+            loading={saveMutation.isPending}
             disabled={
               form.name.trim() === "" ||
               form.jobTitleId === "" ||
-              (editing === "new" && form.cpf.length !== 11) ||
-              saveMutation.isPending
+              (editing === "new" && form.cpf.length !== 11)
             }
             onClick={() => saveMutation.mutate()}
           >
-            {saveMutation.isPending ? "Salvando…" : "Salvar"}
-          </button>
-        </Overlay>
+            Salvar
+          </Button>
+        </Modal>
       )}
     </main>
   );

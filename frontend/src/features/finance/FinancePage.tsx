@@ -253,7 +253,7 @@ export function FinancePage() {
                     className="btn-danger"
                     aria-label={`Remover custo ${cost.description}`}
                     title="Remover custo"
-                    style={{ minHeight: 36, padding: "0 10px", fontSize: "0.85rem" }}
+                    style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                     disabled={removeCostMutation.isPending}
                     onClick={async () => {
                       if (

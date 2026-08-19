@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Employees.Create;
+using SyncBar.Application.Features.Employees.CreateJobTitle;
 using SyncBar.Application.Features.Employees.Dismiss;
 using SyncBar.Application.Features.Employees.GetByBranch;
 using SyncBar.Application.Features.Employees.GetJobTitles;
@@ -31,6 +32,19 @@ public sealed class EmployeesController(
         {
             var result = await Mediator.Send(new GetJobTitlesQuery(companyId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    // Criar cargo sem sair do formulário de novo funcionário — mesmo padrão de
+    // "+ nova categoria" no cadastro de produto (CatalogController/CreateCategory).
+    [Authorize(Policy = "Feature:Equipe")]
+    [HttpPost("jobtitles")]
+    public Task<IActionResult> CreateJobTitle([FromBody] CreateJobTitleCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(CreateJobTitle), async () =>
+        {
+            var result = await Mediator.Send(command, ct);
+            return result.IsFailure
+                ? HandleFailure(result)
+                : CreatedAtAction(nameof(GetJobTitles), new { companyId = command.CompanyId }, result.Value);
         });
 
     [Authorize(Policy = "Feature:Equipe")]

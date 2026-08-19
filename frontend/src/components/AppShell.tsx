@@ -95,7 +95,10 @@ export function AppShell() {
           )}
         </nav>
         <span style={{ flex: 1 }} />
-        <span className="chip" style={{ "--dot": "var(--free)" } as React.CSSProperties}>
+        <span
+          className="chip topbar-branch-chip"
+          style={{ "--dot": "var(--free)" } as React.CSSProperties}
+        >
           Filial {branchId}
         </span>
         {canSee("Caixa") && (

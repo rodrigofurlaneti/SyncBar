@@ -23,6 +23,7 @@ const cards = [
   { to: "/compras", label: "Compras", desc: "Fornecedores e entrada de estoque" },
   { to: "/reservas", label: "Reservas", desc: "Agenda de reservas de mesa" },
   { to: "/clientes", label: "Clientes", desc: "Cadastro e fidelidade" },
+  { to: "/integracoes/ifood", label: "Integração iFood", desc: "Credenciais e conexão com o iFood" },
 ];
 
 export function SettingsPage() {

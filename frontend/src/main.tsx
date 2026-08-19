@@ -6,6 +6,7 @@ import App from "./App";
 import { ToastProvider } from "./ui/Toast";
 import { DialogProvider } from "./ui/Dialog";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import "sweetalert2/dist/sweetalert2.min.css";
 import "./styles/global.css";
 
 const queryClient = new QueryClient({

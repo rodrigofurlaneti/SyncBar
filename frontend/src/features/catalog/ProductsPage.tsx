@@ -239,14 +239,14 @@ export function ProductsPage() {
                             </span>
                             <button
                                 className="btn-ghost"
-                                style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                                style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                                 onClick={() => openEditor(product)}
                             >
                                 Editar
                             </button>
                             <button
                                 className="btn-danger"
-                                style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                                style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                                 onClick={async () => {
                                     if (
                                         await dialog.confirm({
@@ -282,8 +282,12 @@ export function ProductsPage() {
                         autoFocus
                     />
 
-                    <div className="ui-row ui-row-wrap" style={{ alignItems: "start" }}>
-                        <div style={{ flex: 1, minWidth: 200 }}>
+                    {/* alignItems: "end" — o label "Categoria" pode quebrar em 2 linhas por causa
+                        do link "+ nova categoria" embutido nele; alinhando pelo rodapé da linha,
+                        os dois campos (selects) ficam sempre na mesma altura, mesmo quando um
+                        label é mais alto que o outro. */}
+                    <div className="ui-row ui-row-wrap" style={{ alignItems: "end" }}>
+                        <div style={{ flex: 1, minWidth: 240 }}>
                             <Field
                                 label={
                                     <span className="ui-row" style={{ justifyContent: "space-between", width: "100%" }}>

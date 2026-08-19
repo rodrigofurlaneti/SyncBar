@@ -86,7 +86,7 @@ export function PublicOrderPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <button
                       className="btn-ghost"
-                      style={{ minHeight: 32, minWidth: 32, padding: 0 }}
+                      style={{ minHeight: 44, minWidth: 44, padding: 0 }}
                       onClick={() => setQty(item.id, (quantities[item.id] ?? 1) - 1)}
                     >
                       −
@@ -96,7 +96,7 @@ export function PublicOrderPage() {
                     </span>
                     <button
                       className="btn-ghost"
-                      style={{ minHeight: 32, minWidth: 32, padding: 0 }}
+                      style={{ minHeight: 44, minWidth: 44, padding: 0 }}
                       onClick={() => setQty(item.id, (quantities[item.id] ?? 1) + 1)}
                     >
                       +
@@ -104,7 +104,7 @@ export function PublicOrderPage() {
                   </div>
                   <button
                     className="btn-primary"
-                    style={{ minHeight: 34, padding: "0 14px", fontSize: "0.85rem" }}
+                    style={{ minHeight: 44, padding: "0 14px", fontSize: "0.85rem" }}
                     disabled={addMutation.isPending}
                     onClick={() => addMutation.mutate(item.id)}
                   >

@@ -22,6 +22,8 @@ import { PurchasingPage } from "./features/purchasing/PurchasingPage";
 import { ReservationsPage } from "./features/reservations/ReservationsPage";
 import { CustomersPage } from "./features/customers/CustomersPage";
 import { PublicOrderPage } from "./features/publicOrdering/PublicOrderPage";
+import { IFoodIntegrationPage } from "./features/integrations/IFoodIntegrationPage";
+import { IFoodOrdersPage } from "./features/integrations/IFoodOrdersPage";
 import { FeatureGate, NoAccessPage } from "./features/access/FeatureGate";
 import { useMyFeatures } from "./features/access/hooks";
 
@@ -68,6 +70,8 @@ export default function App() {
         <Route path="/clientes" element={<FeatureGate code="Salao"><CustomersPage /></FeatureGate>} />
         <Route path="/acessos" element={<ManagerGate><AccessPage /></ManagerGate>} />
         <Route path="/configuracoes" element={<ManagerGate><SettingsPage /></ManagerGate>} />
+        <Route path="/integracoes/ifood" element={<ManagerGate><IFoodIntegrationPage /></ManagerGate>} />
+        <Route path="/integracoes/ifood/pedidos" element={<ManagerGate><IFoodOrdersPage /></ManagerGate>} />
         <Route path="/sem-acesso" element={<NoAccessPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

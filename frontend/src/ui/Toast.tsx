@@ -1,13 +1,7 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { swalToast } from "../lib/swal";
 
 type ToastTone = "success" | "error" | "info";
-
-interface Toast {
-  id: number;
-  tone: ToastTone;
-  message: string;
-}
 
 interface ToastApi {
   success: (message: string) => void;
@@ -15,61 +9,38 @@ interface ToastApi {
   info: (message: string) => void;
 }
 
-const ToastContext = createContext<ToastApi | null>(null);
+const iconByTone: Record<ToastTone, "success" | "error" | "info"> = {
+  success: "success",
+  error: "error",
+  info: "info",
+};
 
-export function ToastProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const nextId = useRef(1);
-
-  const remove = useCallback((id: number) => {
-    setToasts((current) => current.filter((t) => t.id !== id));
-  }, []);
-
-  const push = useCallback(
-    (tone: ToastTone, message: string) => {
-      const id = nextId.current++;
-      setToasts((current) => [...current, { id, tone, message }]);
-      window.setTimeout(() => remove(id), tone === "error" ? 6000 : 3500);
+function push(tone: ToastTone, message: string) {
+  void swalToast.fire({
+    icon: iconByTone[tone],
+    title: message,
+    timer: tone === "error" ? 6000 : 3500,
+    customClass: {
+      popup: `sb-swal-toast sb-swal-toast--${tone}`,
     },
-    [remove],
-  );
+  });
+}
 
-  const api = useMemo<ToastApi>(
-    () => ({
-      success: (m) => push("success", m),
-      error: (m) => push("error", m),
-      info: (m) => push("info", m),
-    }),
-    [push],
-  );
+const toastApi: ToastApi = {
+  success: (m) => push("success", m),
+  error: (m) => push("error", m),
+  info: (m) => push("info", m),
+};
 
-  return (
-    <ToastContext.Provider value={api}>
-      {children}
-      <div className="toast-stack" role="region" aria-label="Notificações">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`toast toast--${t.tone}`}
-            role={t.tone === "error" ? "alert" : "status"}
-          >
-            <span style={{ flex: 1 }}>{t.message}</span>
-            <button
-              className="toast-close"
-              aria-label="Dispensar"
-              onClick={() => remove(t.id)}
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-      </div>
-    </ToastContext.Provider>
-  );
+/**
+ * Os toasts do SweetAlert2 se empilham e se removem sozinhos fora da árvore
+ * do React — não precisa mais de estado/Provider. Mantido como passthrough só
+ * para não quebrar quem ainda monta <ToastProvider> em main.tsx.
+ */
+export function ToastProvider({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }
 
 export function useToast(): ToastApi {
-  const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error("useToast precisa estar dentro de <ToastProvider>.");
-  return ctx;
+  return toastApi;
 }
