@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using SyncBar.Application.Abstractions.Integrations.IFood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
@@ -17,9 +18,19 @@ namespace SyncBar.Application.Features.Integrations.IFood.Orders;
 /// Eventos fora desse escopo (ASSIGN_DRIVER, ORDER_PATCHED, HANDSHAKE_*, rastreamento de
 /// entrega, etc.) são reconhecidos (acknowledgment) mas não processados — ver
 /// ifood-integration-status no projeto claude.ai para o que ainda falta.
+///
+/// Fase 2.1 (reforço do polling de eventos): a doc completa do módulo Events avisa que a API
+/// pode entregar eventos fora de ordem e reentregues — passa a ordenar por CreatedAt antes de
+/// processar, e a deduplicar por Id do evento (IMemoryCache, mesmo padrão do
+/// IFoodTokenProvider — dedup não precisa de tabela própria, só de uma janela de tempo maior
+/// que a retenção de 8h da API). ACK é sempre enviado pra todo evento recebido, mesmo
+/// duplicado ou fora de escopo — evita acumular "strikes" no throttling por falta de ACK.
 /// </summary>
 internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFoodOrdersCommand>
 {
+    // Retenção da API é 8h — usa uma margem generosa pra não reprocessar reentregas tardias.
+    private static readonly TimeSpan EventDedupTtl = TimeSpan.FromHours(24);
+
     private readonly IIFoodIntegrationSettingRepository _settingRepository;
     private readonly IIFoodTokenProvider _tokenProvider;
     private readonly IIFoodOrderClient _orderClient;
@@ -29,6 +40,7 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
     private readonly IProductRepository _productRepository;
     private readonly IBranchRepository _branchRepository;
     private readonly TimeProvider _timeProviderCustom;
+    private readonly IMemoryCache _cache;
     private readonly IUnitOfWork _unitOfWork;
 
     public SyncIFoodOrdersCommandHandler(
@@ -41,6 +53,7 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
         IProductRepository productRepository,
         IBranchRepository branchRepository,
         TimeProvider timeProviderCustom,
+        IMemoryCache cache,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
@@ -54,6 +67,7 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
         _productRepository = productRepository;
         _branchRepository = branchRepository;
         _timeProviderCustom = timeProviderCustom;
+        _cache = cache;
         _unitOfWork = unitOfWork;
     }
 
@@ -73,26 +87,50 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
                 if (token is null)
                     return Result.Success(); // sem token válido — tenta de novo no próximo ciclo
 
-                var events = await _orderClient.PollEventsAsync(token, cancellationToken);
+                // Mappings primeiro: precisa dos MerchantIds ativos da empresa pra montar o
+                // header x-polling-merchants exigido pelo módulo Events (fase 2.1).
+                var mappings = await _merchantMappingRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
+                var merchantIds = mappings.Values
+                    .Where(m => m.IsActive && !string.IsNullOrWhiteSpace(m.MerchantId))
+                    .Select(m => m.MerchantId!)
+                    .Distinct()
+                    .ToList();
+
+                if (merchantIds.Count == 0)
+                    return Result.Success(); // nenhuma loja mapeada ainda — nada pra fazer polling
+
+                var events = await _orderClient.PollEventsAsync(token, merchantIds, cancellationToken);
                 if (events.Count == 0)
                     return Result.Success();
 
-                var mappings = await _merchantMappingRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
                 var now = _timeProviderCustom.GetLocalNow().DateTime;
                 var acknowledgeIds = new List<string>();
 
-                foreach (var evt in events)
+                // Ordena por CreatedAt (a API pode entregar fora de ordem) antes de processar.
+                foreach (var evt in events.OrderBy(e => e.CreatedAt))
                 {
                     bool shouldAcknowledge;
-                    try
+
+                    if (IsDuplicateEvent(evt.Id))
                     {
-                        shouldAcknowledge = await ProcessEventAsync(evt, request.CompanyId, token, mappings, now, cancellationToken);
+                        // Reentrega de um evento já processado num ciclo anterior — confirma de
+                        // novo (ACK sempre enviado) sem repetir a ação.
+                        shouldAcknowledge = true;
                     }
-                    catch
+                    else
                     {
-                        // Qualquer falha inesperada num evento não derruba o ciclo inteiro — os
-                        // outros eventos deste lote continuam sendo processados normalmente.
-                        shouldAcknowledge = false;
+                        try
+                        {
+                            shouldAcknowledge = await ProcessEventAsync(evt, request.CompanyId, token, mappings, now, cancellationToken);
+                            if (shouldAcknowledge)
+                                MarkEventProcessed(evt.Id);
+                        }
+                        catch
+                        {
+                            // Qualquer falha inesperada num evento não derruba o ciclo inteiro — os
+                            // outros eventos deste lote continuam sendo processados normalmente.
+                            shouldAcknowledge = false;
+                        }
                     }
 
                     if (shouldAcknowledge)
@@ -105,6 +143,14 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
                 return Result.Success();
             });
     }
+
+    // Dedup por Id do evento — mesmo padrão de cache do IFoodTokenProvider (chave
+    // "ifood:{purpose}:{id}"), sem precisar de tabela/coluna nova só pra isso.
+    private static string EventCacheKey(string eventId) => $"ifood:event:{eventId}";
+
+    private bool IsDuplicateEvent(string eventId) => _cache.TryGetValue(EventCacheKey(eventId), out _);
+
+    private void MarkEventProcessed(string eventId) => _cache.Set(EventCacheKey(eventId), true, EventDedupTtl);
 
     // Retorna true se o evento deve ser confirmado (acknowledgment) — false faz ele voltar no
     // próximo ciclo de polling (usado quando os detalhes ainda não estão disponíveis, ou quando

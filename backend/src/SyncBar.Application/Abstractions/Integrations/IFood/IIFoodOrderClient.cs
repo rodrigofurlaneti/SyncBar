@@ -30,10 +30,16 @@ public sealed record IFoodOrderActionResult(bool Success, string? ErrorMessage);
 /// cancelar) — endpoints e formatos confirmados em 2026-08-19 contra a documentação oficial
 /// (Fundamentos, Guia de implementação, Detalhes de pedido, Eventos de pedido) colada pelo
 /// usuário. Implementação real: Infrastructure.Integrations.IFood.IFoodOrderClient.
+///
+/// Fase 2.1 (reforço do polling de eventos): path corrigido pro módulo Events
+/// (events/v1.0/events:polling), que exige o conjunto de merchants habilitados na chamada
+/// (header x-polling-merchants) — ver doc completa do módulo Events.
 /// </summary>
 public interface IIFoodOrderClient
 {
-    Task<IReadOnlyCollection<IFoodPollingEvent>> PollEventsAsync(string accessToken, CancellationToken cancellationToken = default);
+    // merchantIds: filiais habilitadas da empresa (x-polling-merchants) — o client agrupa em
+    // lotes de até 100 por chamada internamente. Lista vazia retorna sem chamar a API.
+    Task<IReadOnlyCollection<IFoodPollingEvent>> PollEventsAsync(string accessToken, IReadOnlyCollection<string> merchantIds, CancellationToken cancellationToken = default);
     Task AcknowledgeEventsAsync(string accessToken, IReadOnlyCollection<string> eventIds, CancellationToken cancellationToken = default);
     // Retorna null em 404 (detalhes ainda não disponíveis) — quem chama decide se tenta de novo depois.
     Task<IFoodOrderDetailsDto?> GetOrderDetailsAsync(string accessToken, string orderId, CancellationToken cancellationToken = default);

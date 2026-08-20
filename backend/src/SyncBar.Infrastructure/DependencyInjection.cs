@@ -70,6 +70,16 @@ public static class DependencyInjection
         services.AddScoped<IIFoodIntegrationSettingRepository, IFoodIntegrationSettingRepository>();
         services.AddScoped<IIFoodMerchantMappingRepository, IFoodMerchantMappingRepository>();
         services.AddScoped<IIFoodOrderRepository, IFoodOrderRepository>();
+        services.AddScoped<IIFoodCategoryMappingRepository, IFoodCategoryMappingRepository>();
+        services.AddScoped<IIFoodProductMappingRepository, IFoodProductMappingRepository>();
+        services.AddScoped<IIFoodFinancialEventRepository, IFoodFinancialEventRepository>();
+        services.AddScoped<IIFoodSettlementRepository, IFoodSettlementRepository>();
+        services.AddScoped<IIFoodOpeningHoursRepository, IFoodOpeningHoursRepository>();
+        services.AddScoped<IComplementItemRepository, ComplementItemRepository>();
+        services.AddScoped<IComplementGroupRepository, ComplementGroupRepository>();
+        services.AddScoped<IProductComplementGroupRepository, ProductComplementGroupRepository>();
+        services.AddScoped<IIFoodComplementGroupMappingRepository, IFoodComplementGroupMappingRepository>();
+        services.AddScoped<IIFoodComplementMappingRepository, IFoodComplementMappingRepository>();
         services.AddScoped<IAccessLogRepository, AccessLogRepository>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
         services.AddScoped<IPurchaseRepository, PurchaseRepository>();
@@ -118,6 +128,31 @@ public static class DependencyInjection
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodOrderClient, IFoodOrderClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddHostedService<IFoodOrderPollingBackgroundService>();
+
+        // Sincronização de cardápio (fase 3, "fluxo essencial"): cliente HTTP do módulo Catalog e
+        // o disparador fire-and-forget usado pelos handlers de Produto/Categoria (cria seu
+        // próprio escopo de DI por chamada — ver comentário em IIFoodCatalogSyncTrigger).
+        // Endpoints/formatos confirmados contra a doc oficial em 2026-08-19 — ver comentário em
+        // IFoodCatalogClient.
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodCatalogSyncTrigger, IFoodCatalogSyncTrigger>();
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodCatalogClient, IFoodCatalogClient>(
+            client => client.Timeout = TimeSpan.FromSeconds(15));
+
+        // Sincronização financeira (fase 4): cliente HTTP do módulo Financial (Financial Events +
+        // Settlement, único escopo desta rodada) e o loop 1x/dia (BackgroundService, mesmo padrão
+        // do polling de pedidos, só com intervalo bem maior — dados financeiros do iFood não
+        // atualizam mais rápido que isso). Nomes de campo do client são melhor-esforço — ver
+        // comentário em IIFoodFinancialClient sobre a necessidade de confirmar contra o sandbox.
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodFinancialClient, IFoodFinancialClient>(
+            client => client.Timeout = TimeSpan.FromSeconds(30));
+        services.AddHostedService<IFoodFinancialSyncBackgroundService>();
+
+        // Operação da loja (fase 5): cliente HTTP do módulo Merchant — sob demanda (sem
+        // background service, os botões da tela chamam direto: status, interrupções, horários,
+        // tempo de preparo). Endpoints confirmados contra a doc oficial em 2026-08-19; formato
+        // exato de corpo/resposta é melhor-esforço — ver comentário em IIFoodMerchantClient.
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodMerchantClient, IFoodMerchantClient>(
+            client => client.Timeout = TimeSpan.FromSeconds(15));
 
         return services;
     }

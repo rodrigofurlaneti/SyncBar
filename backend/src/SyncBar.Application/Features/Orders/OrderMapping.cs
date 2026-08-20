@@ -20,6 +20,10 @@ internal static class OrderMapping
                 .Where(i => i.IsActive)
                 .Select(i => new OrderItemResponse(
                     i.Id, i.ProductId, i.OrderItemStatusId, i.Quantity, i.UnitPrice,
-                    i.DiscountAmount, i.TotalAmount, i.Notes))
+                    i.DiscountAmount, i.TotalAmount, i.Notes,
+                    i.Complements
+                        .Where(c => c.IsActive)
+                        .Select(c => new OrderItemComplementResponse(c.Id, c.ComplementId, c.UnitPriceCharged))
+                        .ToList()))
                 .ToList());
 }

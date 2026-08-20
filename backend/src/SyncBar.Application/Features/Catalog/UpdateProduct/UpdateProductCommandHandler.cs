@@ -1,4 +1,5 @@
-﻿using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Integrations.IFood;
+using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
@@ -8,17 +9,20 @@ internal sealed class UpdateProductCommandHandler : BaseCommandHandler<UpdatePro
 {
     private readonly IProductRepository _productRepository;
     private readonly ICategoryRepository _categoryRepository;
+    private readonly IIFoodCatalogSyncTrigger _catalogSyncTrigger;
     private readonly IUnitOfWork _unitOfWork;
 
     public UpdateProductCommandHandler(
         IProductRepository productRepository,
         ICategoryRepository categoryRepository,
+        IIFoodCatalogSyncTrigger catalogSyncTrigger,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
     {
         _productRepository = productRepository;
         _categoryRepository = categoryRepository;
+        _catalogSyncTrigger = catalogSyncTrigger;
         _unitOfWork = unitOfWork;
     }
 
@@ -47,6 +51,9 @@ internal sealed class UpdateProductCommandHandler : BaseCommandHandler<UpdatePro
                     return result;
 
                 await _unitOfWork.CommitAsync(cancellationToken);
+
+                _catalogSyncTrigger.TriggerCompanySync(product.CompanyId);
+
                 return Result.Success();
             });
 }

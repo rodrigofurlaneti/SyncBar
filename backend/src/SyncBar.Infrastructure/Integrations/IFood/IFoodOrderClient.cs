@@ -6,43 +6,71 @@ using SyncBar.Application.Abstractions.Integrations.IFood;
 namespace SyncBar.Infrastructure.Integrations.IFood;
 
 /// <summary>
-/// Cliente HTTP real do módulo Order do iFood — endpoints e formatos confirmados em 2026-08-19
-/// contra a documentação oficial colada pelo usuário (Fundamentos, Guia de implementação,
-/// Detalhes de pedido, Eventos de pedido). Cobre o "fluxo essencial": polling de eventos,
-/// acknowledgment, detalhes do pedido, confirmar, iniciar preparo, pronto/despachar, cancelar.
+/// Cliente HTTP real dos módulos Order + Events do iFood — endpoints e formatos confirmados em
+/// 2026-08-19 contra a documentação oficial colada pelo usuário (Fundamentos, Guia de
+/// implementação, Detalhes de pedido, Eventos de pedido, e — Fase 2.1 — a doc completa do
+/// módulo Events: Introdução, Eventos de pedido, Polling, Webhook, Presença). Cobre o "fluxo
+/// essencial": polling de eventos, acknowledgment, detalhes do pedido, confirmar, iniciar
+/// preparo, pronto/despachar, cancelar.
+///
+/// Fase 2.1: polling/acknowledgment migraram do path documentado na Fase 2
+/// (order/v1.0/orders:polling — impreciso) pro path correto e genérico do módulo Events
+/// (events/v1.0/events:polling), com filtro de categoria (FOOD/FOOD_SELF_SERVICE — únicas
+/// vendidas pelo SyncBar) e o header x-polling-merchants (app centralizado, 1 client_id pra
+/// vários merchants — agrupa em lotes de até 100 por chamada em vez de 1 chamada por
+/// merchant). As demais ações (detalhes, confirmar, avançar status) continuam no módulo Order
+/// (order/v1.0), que não muda nesta fase.
 ///
 /// NÃO implementado nesta fase (fora do escopo "essencial", ver ifood-integration-status no
 /// projeto claude.ai): rastreamento de entregador, disputas (Handshake), cálculo de
-/// preparationStartDateTime pra pedidos agendados, código de retirada/entrega.
+/// preparationStartDateTime pra pedidos agendados, código de retirada/entrega, Webhook.
 /// </summary>
 internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClient
 {
-    private const string BaseUrl = "https://merchant-api.ifood.com.br/order/v1.0";
+    private const string OrderBaseUrl = "https://merchant-api.ifood.com.br/order/v1.0";
+    private const string EventsBaseUrl = "https://merchant-api.ifood.com.br/events/v1.0";
 
-    public async Task<IReadOnlyCollection<IFoodPollingEvent>> PollEventsAsync(string accessToken, CancellationToken cancellationToken = default)
+    // SyncBar só vende comida — categorias do módulo Grocery (varejo) ficam de fora.
+    private const string Categories = "FOOD,FOOD_SELF_SERVICE";
+
+    // x-polling-merchants aceita um conjunto limitado de merchants por chamada; 100 é uma
+    // margem segura documentada pra apps centralizados com muitas lojas.
+    private const int MerchantBatchSize = 100;
+
+    public async Task<IReadOnlyCollection<IFoodPollingEvent>> PollEventsAsync(
+        string accessToken, IReadOnlyCollection<string> merchantIds, CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/orders:polling");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-        using var response = await httpClient.SendAsync(request, cancellationToken);
-        // 204 No Content é resposta válida (sem eventos novos nesse ciclo).
-        if (!response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NoContent)
+        if (merchantIds.Count == 0)
             return [];
 
-        var payload = await response.Content.ReadFromJsonAsync<PollingResponseDto>(cancellationToken: cancellationToken);
-        if (payload?.Events is null)
-            return [];
+        var allEvents = new List<IFoodPollingEvent>();
 
-        return payload.Events
-            .Select(e => new IFoodPollingEvent(e.Id, e.Code, e.FullCode, e.OrderId, e.CreatedAt))
-            .ToList();
+        foreach (var batch in merchantIds.Chunk(MerchantBatchSize))
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{EventsBaseUrl}/events:polling?categories={Categories}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            request.Headers.Add("x-polling-merchants", string.Join(",", batch));
+
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            // 204 No Content é resposta válida (sem eventos novos nesse ciclo pra esse lote).
+            if (!response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NoContent)
+                continue;
+
+            var payload = await response.Content.ReadFromJsonAsync<PollingResponseDto>(cancellationToken: cancellationToken);
+            if (payload?.Events is null)
+                continue;
+
+            allEvents.AddRange(payload.Events.Select(e => new IFoodPollingEvent(e.Id, e.Code, e.FullCode, e.OrderId, e.CreatedAt)));
+        }
+
+        return allEvents;
     }
 
     public async Task AcknowledgeEventsAsync(string accessToken, IReadOnlyCollection<string> eventIds, CancellationToken cancellationToken = default)
     {
         if (eventIds.Count == 0) return;
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/orders:acknowledgment")
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{EventsBaseUrl}/events/acknowledgment")
         {
             Content = JsonContent.Create(new { acknowledgedEventIds = eventIds }),
         };
@@ -54,7 +82,7 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
 
     public async Task<IFoodOrderDetailsDto?> GetOrderDetailsAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/orders/{orderId}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{OrderBaseUrl}/orders/{orderId}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
@@ -85,20 +113,20 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
     }
 
     public Task<IFoodOrderActionResult> ConfirmOrderAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
-        => PostActionAsync($"{BaseUrl}/orders/{orderId}/confirm", accessToken, cancellationToken);
+        => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/confirm", accessToken, cancellationToken);
 
     public Task<IFoodOrderActionResult> StartPreparationAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
-        => PostActionAsync($"{BaseUrl}/orders/{orderId}/startPreparation", accessToken, cancellationToken);
+        => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/startPreparation", accessToken, cancellationToken);
 
     public Task<IFoodOrderActionResult> ReadyToPickupAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
-        => PostActionAsync($"{BaseUrl}/orders/{orderId}/readyToPickup", accessToken, cancellationToken);
+        => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/readyToPickup", accessToken, cancellationToken);
 
     public Task<IFoodOrderActionResult> DispatchAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
-        => PostActionAsync($"{BaseUrl}/orders/{orderId}/dispatch", accessToken, cancellationToken);
+        => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/dispatch", accessToken, cancellationToken);
 
     public async Task<IReadOnlyCollection<IFoodCancellationReasonDto>> GetCancellationReasonsAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/orders/{orderId}/cancellationReasons");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{OrderBaseUrl}/orders/{orderId}/cancellationReasons");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
@@ -113,7 +141,7 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
 
     public async Task<IFoodOrderActionResult> RequestCancellationAsync(string accessToken, string orderId, string reasonCode, CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/orders/{orderId}/requestCancellation")
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{OrderBaseUrl}/orders/{orderId}/requestCancellation")
         {
             Content = JsonContent.Create(new { reason = reasonCode }),
         };

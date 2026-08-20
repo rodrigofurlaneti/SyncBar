@@ -14,6 +14,7 @@ internal sealed class IFoodMerchantMappingConfiguration : IEntityTypeConfigurati
 
         builder.Property(x => x.MerchantId).HasMaxLength(100);
         builder.Property(x => x.MerchantUuid).HasMaxLength(100);
+        builder.Property(x => x.PreparationTimeMinutes);
         builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
 

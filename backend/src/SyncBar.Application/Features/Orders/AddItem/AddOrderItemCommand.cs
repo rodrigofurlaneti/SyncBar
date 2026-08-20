@@ -7,4 +7,5 @@ public sealed record AddOrderItemCommand(
     long ProductId,
     decimal Quantity,
     string? Notes,
-    long? EmployeeId) : ICommand;
+    long? EmployeeId,
+    IReadOnlyCollection<OrderItemComplementSelection>? Complements = null) : ICommand;

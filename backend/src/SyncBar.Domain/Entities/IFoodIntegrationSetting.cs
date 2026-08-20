@@ -20,6 +20,12 @@ public sealed class IFoodIntegrationSetting : AggregateRoot
     public string? ClientId { get; private set; }
     public string? ClientSecretEncrypted { get; private set; }
     public bool Enabled { get; private set; }
+    // ID de cliente/usuário do desenvolvedor no iFood — exigido só pelos endpoints de tempo de
+    // preparo do módulo Merchant (header X-iFood-Customer-ID, ver Fase 5 no doc de status). Não
+    // é segredo (não é criptografado), fica salvo em texto puro junto do ClientId. Opcional: sem
+    // ele, os botões de tempo de preparo ficam desabilitados na tela, o resto da integração
+    // funciona normalmente.
+    public string? IFoodCustomerId { get; private set; }
     public DateTime? LastConnectionTestAt { get; private set; }
     public bool? LastConnectionTestSucceeded { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -41,12 +47,13 @@ public sealed class IFoodIntegrationSetting : AggregateRoot
 
     // clientSecretEncrypted em branco/nulo = "manter o segredo já salvo" — o frontend nunca
     // reexibe o valor salvo, então reenviar em branco não pode apagar o que já está lá.
-    public Result SaveCredentials(string? clientId, string? clientSecretEncrypted, bool enabled)
+    public Result SaveCredentials(string? clientId, string? clientSecretEncrypted, bool enabled, string? ifoodCustomerId)
     {
         ClientId = clientId;
         if (!string.IsNullOrWhiteSpace(clientSecretEncrypted))
             ClientSecretEncrypted = clientSecretEncrypted;
         Enabled = enabled;
+        IFoodCustomerId = ifoodCustomerId;
         UpdatedAt = DateTime.Now;
         return Result.Success();
     }

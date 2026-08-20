@@ -1,8 +1,9 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Orders.AddItem;
+using SyncBar.Application.Features.Orders.AddItemComplement;
 using SyncBar.Application.Features.Orders.ApplyDiscount;
 using SyncBar.Application.Features.Orders.Cancel;
 using SyncBar.Application.Features.Orders.Close;
@@ -10,6 +11,7 @@ using SyncBar.Application.Features.Orders.GetById;
 using SyncBar.Application.Features.Orders.GetOpenByBranch;
 using SyncBar.Application.Features.Orders.Open;
 using SyncBar.Application.Features.Orders.RaiseComandaLimit;
+using SyncBar.Application.Features.Orders.RemoveItemComplement;
 using SyncBar.Application.Features.Orders.Reopen;
 using SyncBar.Application.Features.Orders.RemoveServiceFee;
 using SyncBar.Application.Features.Orders.ServiceFeeSetting;
@@ -56,7 +58,25 @@ public sealed class OrdersController(
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(AddItem), async () =>
         {
             var result = await Mediator.Send(
-                new AddOrderItemCommand(id, request.ProductId, request.Quantity, request.Notes, request.EmployeeId), ct);
+                new AddOrderItemCommand(id, request.ProductId, request.Quantity, request.Notes, request.EmployeeId, request.Complements), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    // Adiciona um complemento a um item JÁ lançado (ex.: "esqueci de pedir bacon extra").
+    [HttpPost("{id:long}/items/{itemId:long}/complements")]
+    public Task<IActionResult> AddItemComplement(long id, long itemId, [FromBody] AddOrderItemComplementRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(AddItemComplement), async () =>
+        {
+            var result = await Mediator.Send(new AddOrderItemComplementCommand(
+                id, itemId, request.ComplementGroupId, request.ComplementId, request.EmployeeId), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpDelete("{id:long}/items/{itemId:long}/complements/{orderItemComplementId:long}")]
+    public Task<IActionResult> RemoveItemComplement(long id, long itemId, long orderItemComplementId, [FromQuery] long? employeeId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(RemoveItemComplement), async () =>
+        {
+            var result = await Mediator.Send(new RemoveOrderItemComplementCommand(id, itemId, orderItemComplementId, employeeId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
@@ -154,7 +174,13 @@ public sealed class OrdersController(
 }
 
 // Requests separados dos commands quando ha parametro de rota.
-public sealed record AddOrderItemRequest(long ProductId, decimal Quantity, string? Notes, long? EmployeeId);
+public sealed record AddOrderItemRequest(
+    long ProductId,
+    decimal Quantity,
+    string? Notes,
+    long? EmployeeId,
+    IReadOnlyCollection<OrderItemComplementSelection>? Complements = null);
+public sealed record AddOrderItemComplementRequest(long ComplementGroupId, long ComplementId, long? EmployeeId);
 public sealed record RaiseCreditLimitRequest(decimal NewLimitAmount);
 public sealed record UpdateOrderItemStatusRequest(long OrderItemStatusId, long? ActorEmployeeId = null);
 public sealed record ApplyOrderDiscountRequest(decimal DiscountAmount);

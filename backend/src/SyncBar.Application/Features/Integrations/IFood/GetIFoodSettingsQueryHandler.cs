@@ -21,7 +21,7 @@ internal sealed class GetIFoodSettingsQueryHandler(
             {
                 var setting = await settingRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
                 if (setting is null)
-                    return Result.Success(new IFoodSettingsResponse(false, null, false, null, null));
+                    return Result.Success(new IFoodSettingsResponse(false, null, false, null, null, null));
 
                 var hasCredentials = !string.IsNullOrEmpty(setting.ClientId) && !string.IsNullOrEmpty(setting.ClientSecretEncrypted);
 
@@ -30,7 +30,8 @@ internal sealed class GetIFoodSettingsQueryHandler(
                     ClientId: setting.ClientId,
                     Enabled: setting.Enabled,
                     LastConnectionTestAt: setting.LastConnectionTestAt,
-                    LastConnectionTestSucceeded: setting.LastConnectionTestSucceeded));
+                    LastConnectionTestSucceeded: setting.LastConnectionTestSucceeded,
+                    IFoodCustomerId: setting.IFoodCustomerId));
             });
     }
 }

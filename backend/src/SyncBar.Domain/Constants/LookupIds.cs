@@ -100,6 +100,17 @@ public static class PromotionTypeIds
     public const long Desconto = 2;
 }
 
+// Não é lookup seedado (sem tabela própria) — mesmo padrão de OrderTypeIds/ReservationStatusIds.
+// Espelha optionGroupType do módulo Catalog do iFood 1:1 (fase 6a) — ver
+// ComplementGroupConfiguration (CHECK 1-4 em sql/BarRestaurante_Complementos.sql).
+public static class ComplementGroupTypeIds
+{
+    public const long SelecaoAdicional = 1; // OFFER_UNIT
+    public const long Especificacao = 2;    // SPECIFICATION
+    public const long Ingredientes = 3;     // INGREDIENTS
+    public const long Utensilios = 4;       // CUTLERY
+}
+
 public static class PaymentMethodIds
 {
     public const long Dinheiro = 1;

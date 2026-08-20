@@ -14,6 +14,7 @@ internal sealed class IFoodIntegrationSettingConfiguration : IEntityTypeConfigur
 
         builder.Property(x => x.ClientId).HasMaxLength(200);
         builder.Property(x => x.ClientSecretEncrypted).HasColumnType("varchar(1000)");
+        builder.Property(x => x.IFoodCustomerId).HasMaxLength(100);
         builder.Property(x => x.Enabled).HasColumnType("bit").IsRequired();
         builder.Property(x => x.LastConnectionTestSucceeded).HasColumnType("bit");
         builder.Property(x => x.LastConnectionTestAt).HasColumnType("datetime(6)");

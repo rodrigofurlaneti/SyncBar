@@ -7,4 +7,5 @@ public sealed record IFoodSettingsResponse(
     string? ClientId,
     bool Enabled,
     DateTime? LastConnectionTestAt,
-    bool? LastConnectionTestSucceeded);
+    bool? LastConnectionTestSucceeded,
+    string? IFoodCustomerId);

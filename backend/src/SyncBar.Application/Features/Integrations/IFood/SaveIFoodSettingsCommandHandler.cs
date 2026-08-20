@@ -38,6 +38,7 @@ internal sealed class SaveIFoodSettingsCommandHandler : BaseCommandHandler<SaveI
                 var encryptedSecret = string.IsNullOrWhiteSpace(request.ClientSecret)
                     ? null
                     : _secretProtector.Protect(ProtectorPurpose, request.ClientSecret);
+                var ifoodCustomerId = string.IsNullOrWhiteSpace(request.IFoodCustomerId) ? null : request.IFoodCustomerId.Trim();
 
                 // Upsert por empresa — mesmo padrão do ServiceFeeSetting/ComandaSetting, só que
                 // por CompanyId em vez de BranchId (o app do iFood é centralizado por empresa).
@@ -48,7 +49,7 @@ internal sealed class SaveIFoodSettingsCommandHandler : BaseCommandHandler<SaveI
                     if (created.IsFailure)
                         return Result.Failure(created.Error);
 
-                    var saved = created.Value.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled);
+                    var saved = created.Value.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled, ifoodCustomerId);
                     if (saved.IsFailure)
                         return saved;
 
@@ -56,7 +57,7 @@ internal sealed class SaveIFoodSettingsCommandHandler : BaseCommandHandler<SaveI
                 }
                 else
                 {
-                    var saved = setting.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled);
+                    var saved = setting.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled, ifoodCustomerId);
                     if (saved.IsFailure)
                         return saved;
                 }

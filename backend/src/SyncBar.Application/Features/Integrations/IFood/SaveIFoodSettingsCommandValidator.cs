@@ -14,5 +14,7 @@ public sealed class SaveIFoodSettingsCommandValidator : AbstractValidator<SaveIF
             .NotEmpty()
             .When(x => x.Enabled)
             .WithMessage("Informe o Client ID antes de ativar a integração.");
+
+        RuleFor(x => x.IFoodCustomerId).MaximumLength(100);
     }
 }
