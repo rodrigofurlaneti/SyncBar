@@ -66,6 +66,10 @@ export interface IFoodOrderResponse {
   ifoodOrderId: string;
   displayId: string | null;
   ifoodOrderType: string;
+  // Bruto do iFood — "IFOOD" = logística do próprio iFood; qualquer outro valor (ex.:
+  // "MERCHANT") = self-delivery/frota própria, elegível pro fluxo de Logística (fase 7). Nulo
+  // pra TAKEOUT/DINE_IN ou quando o iFood não informou o campo.
+  deliveredBy: string | null;
   status: string;
   confirmDeadlineAt: string;
   confirmedAt: string | null;
@@ -225,3 +229,345 @@ export const setIFoodPreparationTime = (branchId: number, minutes: number | null
     method: "PUT",
     body: JSON.stringify({ branchId, minutes }),
   });
+
+// Logística por frota própria (fase 7, módulo Logistics) — só se aplica a pedidos DELIVERY com
+// deliveredBy diferente de "IFOOD" (ver IFoodOrderResponse.deliveredBy). Tudo sob demanda: cada
+// passo é acionado manualmente pela equipe conforme o entregador avança.
+export interface IFoodLogisticsDeliveryResponse {
+  id: number;
+  ifoodOrderId: number;
+  ifoodOrderDisplayId: string | null;
+  driverName: string;
+  driverPhone: string;
+  driverVehicleType: string;
+  status: string;
+  customerName: string | null;
+  deliveryAddress: string | null;
+  assignedAt: string;
+  goingToOriginAt: string | null;
+  arrivedAtOriginAt: string | null;
+  dispatchedAt: string | null;
+  arrivedAtDestinationAt: string | null;
+  deliveryCodeVerifiedAt: string | null;
+}
+
+export const getIFoodLogisticsDeliveries = (branchId: number): Promise<IFoodLogisticsDeliveryResponse[]> =>
+  api<IFoodLogisticsDeliveryResponse[]>(`/api/integrations/ifood/logistics/branch/${branchId}`);
+
+export interface AssignIFoodDriverPayload {
+  driverName: string;
+  driverPhone: string;
+  driverVehicleType: string;
+}
+
+export const assignIFoodDriver = (ifoodOrderId: number, payload: AssignIFoodDriverPayload): Promise<void> =>
+  api<void>(`/api/integrations/ifood/logistics/order/${ifoodOrderId}/assign-driver`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const markIFoodGoingToOrigin = (ifoodOrderId: number): Promise<void> =>
+  api<void>(`/api/integrations/ifood/logistics/order/${ifoodOrderId}/going-to-origin`, { method: "POST" });
+
+export const markIFoodArrivedAtOrigin = (ifoodOrderId: number): Promise<void> =>
+  api<void>(`/api/integrations/ifood/logistics/order/${ifoodOrderId}/arrived-at-origin`, { method: "POST" });
+
+export const dispatchIFoodLogistics = (ifoodOrderId: number): Promise<void> =>
+  api<void>(`/api/integrations/ifood/logistics/order/${ifoodOrderId}/dispatch`, { method: "POST" });
+
+export const markIFoodArrivedAtDestination = (ifoodOrderId: number): Promise<void> =>
+  api<void>(`/api/integrations/ifood/logistics/order/${ifoodOrderId}/arrived-at-destination`, { method: "POST" });
+
+export const verifyIFoodDeliveryCode = (
+  ifoodOrderId: number,
+  code: string,
+): Promise<{ codeMatched: boolean }> =>
+  api<{ codeMatched: boolean }>(`/api/integrations/ifood/logistics/order/${ifoodOrderId}/verify-delivery-code`, {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+
+// Shipping (fase 8, módulo Shipping) — entrega, via malha de entregadores do iFood, de pedidos
+// que NÃO vieram do iFood (telefone, WhatsApp, balcão). Cotação → pedir motorista → acompanhar →
+// cancelar, tudo sob demanda. O iFood não devolve um "status" de entrega neste módulo — Status
+// aqui só reflete ações que o SyncBar tomou (DRIVER_REQUESTED/CANCELLED).
+export interface IFoodShippingDeliveryResponse {
+  id: number;
+  orderReference: string | null;
+  customerName: string;
+  deliveryAddress: string;
+  merchantFee: number;
+  status: string;
+  trackingUrl: string | null;
+  requestedAt: string;
+  cancelledAt: string | null;
+}
+
+export const getIFoodShippingDeliveries = (branchId: number): Promise<IFoodShippingDeliveryResponse[]> =>
+  api<IFoodShippingDeliveryResponse[]>(`/api/integrations/ifood/shipping/branch/${branchId}`);
+
+export interface IFoodShippingQuoteResponse {
+  quoteId: string;
+  grossValue: number;
+  discount: number;
+  netValue: number;
+  deliveryTimeMinMinutes: number;
+  deliveryTimeMaxMinutes: number;
+  distanceMeters: number;
+  expirationAt: string | null;
+}
+
+export const getIFoodShippingQuote = (branchId: number, latitude: number, longitude: number): Promise<IFoodShippingQuoteResponse> =>
+  api<IFoodShippingQuoteResponse>(
+    `/api/integrations/ifood/shipping/branch/${branchId}/quote?latitude=${latitude}&longitude=${longitude}`,
+  );
+
+export interface IFoodShippingItemInput {
+  name: string;
+  externalCode?: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface RequestIFoodShippingDriverPayload {
+  branchId: number;
+  orderReference?: string;
+  customerName: string;
+  customerPhoneAreaCode: string;
+  customerPhoneNumber: string;
+  merchantFee: number;
+  quoteId: string;
+  postalCode: string;
+  streetNumber: string;
+  streetName: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  country?: string;
+  reference?: string;
+  latitude?: number;
+  longitude?: number;
+  items: IFoodShippingItemInput[];
+}
+
+export const requestIFoodShippingDriver = (payload: RequestIFoodShippingDriverPayload): Promise<{ id: number }> =>
+  api<{ id: number }>("/api/integrations/ifood/shipping", { method: "POST", body: JSON.stringify(payload) });
+
+export interface IFoodShippingTrackingResponse {
+  latitude: number | null;
+  longitude: number | null;
+  expectedDelivery: string | null;
+  deliveryEtaEndMinutes: number | null;
+  pickupEtaStartMinutes: number | null;
+}
+
+export const getIFoodShippingTracking = (id: number): Promise<IFoodShippingTrackingResponse> =>
+  api<IFoodShippingTrackingResponse>(`/api/integrations/ifood/shipping/${id}/tracking`);
+
+export interface IFoodShippingCancellationReasonResponse {
+  cancelCodeId: string;
+  description: string;
+}
+
+export const getIFoodShippingCancellationReasons = (id: number): Promise<IFoodShippingCancellationReasonResponse[]> =>
+  api<IFoodShippingCancellationReasonResponse[]>(`/api/integrations/ifood/shipping/${id}/cancellation-reasons`);
+
+export const cancelIFoodShippingDelivery = (id: number, reason: string, cancellationCode: number): Promise<void> =>
+  api<void>(`/api/integrations/ifood/shipping/${id}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason, cancellationCode }),
+  });
+
+export interface IFoodSafeDeliveryScoreResponse {
+  score: string | null;
+}
+
+export const getIFoodSafeDeliveryScore = (id: number): Promise<IFoodSafeDeliveryScoreResponse> =>
+  api<IFoodSafeDeliveryScoreResponse>(`/api/integrations/ifood/shipping/${id}/safe-delivery-score`);
+
+// Fase 9 — cobertura dos 13 relatórios financeiros restantes (financial/v2.0 ×12 +
+// financial/v2.1 ×1) + anticipations/sales (financial/v3.0) via um catálogo genérico. A doc
+// oficial não documenta o schema de resposta campo-a-campo pra estes relatórios, então "items"
+// é o JSON bruto de cada registro (ver comentário em IIFoodFinancialClient no backend).
+export const IFOOD_FINANCIAL_REPORT_TYPES = [
+  "SalesAdjustments",
+  "Payments",
+  "PaymentDetails",
+  "Occurrences",
+  "MaintenanceFees",
+  "IncomeTaxes",
+  "Periods",
+  "ChargeCancellations",
+  "Cancellations",
+  "ReceivableRecords",
+  "SalesBenefits",
+  "AdjustmentsBenefits",
+  "SalesV21",
+  "AnticipationsV3",
+  "SalesV3",
+] as const;
+
+export type IFoodFinancialReportType = (typeof IFOOD_FINANCIAL_REPORT_TYPES)[number];
+
+export interface IFoodFinancialReportResponse {
+  reportType: string;
+  count: number;
+  items: string[];
+}
+
+export const getIFoodFinancialReport = (
+  branchId: number,
+  reportType: IFoodFinancialReportType,
+  options?: { periodId?: string; rangeStart?: string; rangeEnd?: string },
+): Promise<IFoodFinancialReportResponse> => {
+  const params = new URLSearchParams();
+  if (options?.periodId) params.set("periodId", options.periodId);
+  if (options?.rangeStart) params.set("rangeStart", options.rangeStart);
+  if (options?.rangeEnd) params.set("rangeEnd", options.rangeEnd);
+  const query = params.toString();
+  return api<IFoodFinancialReportResponse>(
+    `/api/integrations/ifood/financial/branch/${branchId}/reports/${reportType}${query ? `?${query}` : ""}`,
+  );
+};
+
+export interface IFoodReconciliationOnDemandResponse {
+  requestId: string;
+  rawPayload: string;
+}
+
+// Competence no formato "yyyy-MM".
+export const requestIFoodReconciliationOnDemand = (
+  branchId: number,
+  competence: string,
+): Promise<IFoodReconciliationOnDemandResponse> =>
+  api<IFoodReconciliationOnDemandResponse>(`/api/integrations/ifood/financial/branch/${branchId}/reconciliation-on-demand`, {
+    method: "POST",
+    body: JSON.stringify({ competence }),
+  });
+
+export interface IFoodReconciliationOnDemandStatusResponse {
+  found: boolean;
+  rawPayload: string | null;
+}
+
+export const getIFoodReconciliationOnDemandStatus = (
+  branchId: number,
+  requestId: string,
+): Promise<IFoodReconciliationOnDemandStatusResponse> =>
+  api<IFoodReconciliationOnDemandStatusResponse>(
+    `/api/integrations/ifood/financial/branch/${branchId}/reconciliation-on-demand/${encodeURIComponent(requestId)}`,
+  );
+
+// Avaliações (fase 9, módulo Review v1.0) — sem persistência local, sempre lido/escrito direto
+// no iFood.
+export interface IFoodReviewOrderItem {
+  createdAt: string | null;
+  id: string | null;
+  shortId: string | null;
+}
+
+export interface IFoodReviewListItem {
+  id: string;
+  createdAt: string | null;
+  discarded: boolean;
+  published: boolean;
+  comment: string | null;
+  moderated: boolean;
+  moderationStatus: string | null;
+  reply: string | null;
+  score: number | null;
+  order: IFoodReviewOrderItem | null;
+}
+
+export interface IFoodReviewListResponse {
+  page: number;
+  size: number;
+  total: number;
+  pageCount: number;
+  reviews: IFoodReviewListItem[];
+}
+
+export const getIFoodReviews = (
+  branchId: number,
+  options?: { page?: number; pageSize?: number; dateFrom?: string; dateTo?: string; sort?: string; sortBy?: string },
+): Promise<IFoodReviewListResponse> => {
+  const params = new URLSearchParams();
+  params.set("page", String(options?.page ?? 1));
+  params.set("pageSize", String(options?.pageSize ?? 10));
+  if (options?.dateFrom) params.set("dateFrom", options.dateFrom);
+  if (options?.dateTo) params.set("dateTo", options.dateTo);
+  if (options?.sort) params.set("sort", options.sort);
+  if (options?.sortBy) params.set("sortBy", options.sortBy);
+  return api<IFoodReviewListResponse>(`/api/integrations/ifood/reviews/branch/${branchId}?${params.toString()}`);
+};
+
+export interface IFoodReviewAnswerOption {
+  id: string;
+  title: string | null;
+}
+
+export interface IFoodReviewQuestion {
+  id: string;
+  type: string | null;
+  title: string | null;
+  answers: IFoodReviewAnswerOption[];
+}
+
+export interface IFoodReviewDetailResponse {
+  id: string;
+  createdAt: string | null;
+  discarded: boolean;
+  published: boolean;
+  comment: string | null;
+  customerName: string | null;
+  moderated: boolean;
+  moderationStatus: string | null;
+  reply: string | null;
+  score: number | null;
+  order: IFoodReviewOrderItem | null;
+  questions: IFoodReviewQuestion[];
+}
+
+export const getIFoodReviewById = (branchId: number, reviewId: string): Promise<IFoodReviewDetailResponse> =>
+  api<IFoodReviewDetailResponse>(`/api/integrations/ifood/reviews/branch/${branchId}/${encodeURIComponent(reviewId)}`);
+
+export interface IFoodReviewReplyResponse {
+  createdAt: string | null;
+  text: string;
+  reviewId: string;
+}
+
+export const replyIFoodReview = (branchId: number, reviewId: string, text: string): Promise<IFoodReviewReplyResponse> =>
+  api<IFoodReviewReplyResponse>(`/api/integrations/ifood/reviews/branch/${branchId}/${encodeURIComponent(reviewId)}/reply`, {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  });
+
+export interface IFoodReviewSummaryResponse {
+  score: number | null;
+  totalReviewsCount: number;
+  validReviewsCount: number;
+}
+
+export const getIFoodReviewsSummary = (branchId: number): Promise<IFoodReviewSummaryResponse> =>
+  api<IFoodReviewSummaryResponse>(`/api/integrations/ifood/reviews/branch/${branchId}/summary`);
+
+// Indicadores (fase 9, módulo Analytics v1.0) — 1 endpoint (KPIs de pedidos). "buckets" é o JSON
+// bruto de cada grupo agregado (ex.: 1 bucket por canal de venda) — ver ressalva no backend
+// (IIFoodAnalyticsClient) sobre o payload padrão usado.
+export interface IFoodOrderKpisResponse {
+  currentPage: number;
+  buckets: string[];
+}
+
+export const getIFoodOrderKpis = (
+  branchId: number,
+  options?: { periodStart?: string; periodEnd?: string; page?: number },
+): Promise<IFoodOrderKpisResponse> => {
+  const params = new URLSearchParams();
+  if (options?.periodStart) params.set("periodStart", options.periodStart);
+  if (options?.periodEnd) params.set("periodEnd", options.periodEnd);
+  params.set("page", String(options?.page ?? 1));
+  return api<IFoodOrderKpisResponse>(`/api/integrations/ifood/analytics/branch/${branchId}/order-kpis?${params.toString()}`);
+};

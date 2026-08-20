@@ -12,6 +12,7 @@ import {
   updateItemStatus,
 } from "./api";
 import { getMenu } from "../catalog/api";
+import { getComplementGroups } from "../catalog/complementsApi";
 import { getActivePromotions } from "../promotions/api";
 import { getPrintSettings, printBill } from "../printing/api";
 import { useAuthStore } from "../../stores/authStore";
@@ -23,9 +24,11 @@ import {
   orderItemStatusLabel,
   promotionBadge,
 } from "../../lib/types";
+import type { MenuItemResponse, OrderItemComplementSelection } from "../../lib/types";
 import { Overlay } from "./Overlay";
 import { PaymentPanel } from "./PaymentPanel";
 import { PartialPaymentDialog } from "./PartialPaymentDialog";
+import { ComplementSelectorModal } from "./ComplementSelectorModal";
 import { useMyFeatures } from "../access/hooks";
 import { useDialog } from "../../ui/Dialog";
 import { getServiceFeeSetting } from "../settings/api";
@@ -51,6 +54,9 @@ export function OrderDrawer({ orderId, onClose }: Props) {
   const [search, setSearch] = useState("");
   const [discount, setDiscount] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  // Fase 6a: item do cardápio com grupos de complementos vinculados, aguardando a escolha no
+  // ComplementSelectorModal antes de lançar (produtos sem grupos vão direto pro addItem.mutate).
+  const [selectingItem, setSelectingItem] = useState<MenuItemResponse | null>(null);
 
   const orderQuery = useQuery({
     queryKey: ["order", orderId],
@@ -85,6 +91,21 @@ export function OrderDrawer({ orderId, onClose }: Props) {
     return map;
   }, [menuQuery.data]);
 
+  // Fase 6a: catálogo completo de complementos da empresa — usado só para resolver o nome de
+  // OrderItemComplementResponse.complementId (o backend não devolve o nome, ver OrderResponse.cs).
+  const complementGroupsQuery = useQuery({
+    queryKey: ["complement-groups", companyId],
+    queryFn: () => getComplementGroups(companyId ?? 1),
+    staleTime: 5 * 60_000,
+  });
+
+  const complementNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const group of complementGroupsQuery.data ?? [])
+      for (const c of group.complements) map.set(c.id, c.complementItemName);
+    return map;
+  }, [complementGroupsQuery.data]);
+
   const order = orderQuery.data;
 
   const refetchOrder = () => void queryClient.invalidateQueries({ queryKey: ["order", orderId] });
@@ -95,9 +116,26 @@ export function OrderDrawer({ orderId, onClose }: Props) {
   const run = { onSuccess: () => { setActionError(null); refetchOrder(); }, onError };
 
   const addItem = useMutation({
-    mutationFn: (productId: number) => addOrderItem(orderId, productId, 1, null, employeeId),
-    ...run,
+    mutationFn: ({
+      productId,
+      complements,
+    }: {
+      productId: number;
+      complements?: OrderItemComplementSelection[];
+    }) => addOrderItem(orderId, productId, 1, null, employeeId, complements),
+    onSuccess: () => {
+      setActionError(null);
+      setSelectingItem(null);
+      refetchOrder();
+    },
+    onError,
   });
+
+  // Produtos sem grupos de complementos lançam direto; com grupos, abre o seletor primeiro.
+  const handlePickItem = (item: MenuItemResponse) => {
+    if (item.complementGroups.length > 0) setSelectingItem(item);
+    else addItem.mutate({ productId: item.id });
+  };
 
   const advanceItem = useMutation({
     mutationFn: ({ itemId, statusId }: { itemId: number; statusId: number }) =>
@@ -200,6 +238,18 @@ export function OrderDrawer({ orderId, onClose }: Props) {
         />
       )}
 
+      {selectingItem && (
+        <ComplementSelectorModal
+          productName={selectingItem.name}
+          groups={selectingItem.complementGroups}
+          onCancel={() => setSelectingItem(null)}
+          submitting={addItem.isPending}
+          onConfirm={(complements) =>
+            addItem.mutate({ productId: selectingItem.id, complements })
+          }
+        />
+      )}
+
       {order && (
         <>
           {order.comandaId !== null && order.creditLimitAmount !== null && (
@@ -290,6 +340,13 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                       {orderItemStatusLabel[item.orderItemStatusId]}
                       {item.notes ? ` · ${item.notes}` : ""}
                     </span>
+                    {item.complements.length > 0 && (
+                      <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
+                        + {item.complements
+                          .map((c) => complementNameById.get(c.complementId) ?? `complemento #${c.complementId}`)
+                          .join(", ")}
+                      </span>
+                    )}
                   </div>
                   {isOpen && next !== undefined && !cancelled && (
                     <div style={{ display: "flex", gap: 6 }}>
@@ -455,7 +512,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                         className="btn-ghost"
                         style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 14px", minHeight: 56 }}
                         disabled={addItem.isPending}
-                        onClick={() => addItem.mutate(item.id)}
+                        onClick={() => handlePickItem(item)}
                       >
                         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           {item.imageUrl && (

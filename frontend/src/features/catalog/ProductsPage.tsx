@@ -16,6 +16,7 @@ import { ApiError } from "../../lib/apiClient";
 import { formatBRL, unitOfMeasureLabel } from "../../lib/types";
 import type { MenuItemResponse } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
+import { ProductComplementLinkPanel } from "./ProductComplementLinkPanel";
 import { Modal } from "../../ui/Modal";
 import { Button } from "../../ui/Button";
 import { Field, TextField, SelectField } from "../../ui/Field";
@@ -430,6 +431,10 @@ export function ProductsPage() {
                             />
                         )}
                     </div>
+
+                    {editing !== "new" && editing !== null && (
+                        <ProductComplementLinkPanel productId={editing.id} />
+                    )}
 
                     {error && <p className="error-text">{error}</p>}
                     {form.categoryId === "" && (

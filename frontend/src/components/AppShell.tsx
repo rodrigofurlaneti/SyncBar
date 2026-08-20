@@ -13,6 +13,7 @@ const links = [
   { to: "/reservas", label: "Reservas", feature: "Salao" },
   { to: "/clientes", label: "Clientes", feature: "Salao" },
   { to: "/produtos", label: "Cardápio", feature: "Cardapio" },
+  { to: "/complementos", label: "Complementos", feature: "Cardapio" },
   { to: "/estoque", label: "Estoque", feature: "Estoque" },
   { to: "/compras", label: "Compras", feature: "Estoque" },
   { to: "/preparo", label: "Preparo", feature: "Preparo" },

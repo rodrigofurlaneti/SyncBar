@@ -6,6 +6,7 @@ import { LoginPage } from "./features/auth/LoginPage";
 import { SignupPage } from "./features/auth/SignupPage";
 import { OrdersPage } from "./features/orders/OrdersPage";
 import { ProductsPage } from "./features/catalog/ProductsPage";
+import { ComplementsPage } from "./features/catalog/ComplementsPage";
 import { StockPage } from "./features/stock/StockPage";
 import { EmployeesPage } from "./features/employees/EmployeesPage";
 import { UsersPage } from "./features/users/UsersPage";
@@ -24,6 +25,10 @@ import { CustomersPage } from "./features/customers/CustomersPage";
 import { PublicOrderPage } from "./features/publicOrdering/PublicOrderPage";
 import { IFoodIntegrationPage } from "./features/integrations/IFoodIntegrationPage";
 import { IFoodOrdersPage } from "./features/integrations/IFoodOrdersPage";
+import { IFoodShippingPage } from "./features/integrations/IFoodShippingPage";
+import { IFoodReviewsPage } from "./features/integrations/IFoodReviewsPage";
+import { IFoodAnalyticsPage } from "./features/integrations/IFoodAnalyticsPage";
+import { IFoodFinancialReportsPage } from "./features/integrations/IFoodFinancialReportsPage";
 import { FeatureGate, NoAccessPage } from "./features/access/FeatureGate";
 import { useMyFeatures } from "./features/access/hooks";
 
@@ -55,6 +60,7 @@ export default function App() {
       >
         <Route path="/" element={<FeatureGate code="Salao"><OrdersPage /></FeatureGate>} />
         <Route path="/produtos" element={<FeatureGate code="Cardapio"><ProductsPage /></FeatureGate>} />
+        <Route path="/complementos" element={<FeatureGate code="Cardapio"><ComplementsPage /></FeatureGate>} />
         <Route path="/estoque" element={<FeatureGate code="Estoque"><StockPage /></FeatureGate>} />
         <Route path="/equipe" element={<ManagerGate><EmployeesPage /></ManagerGate>} />
         <Route path="/usuarios" element={<ManagerGate><UsersPage /></ManagerGate>} />
@@ -72,6 +78,10 @@ export default function App() {
         <Route path="/configuracoes" element={<ManagerGate><SettingsPage /></ManagerGate>} />
         <Route path="/integracoes/ifood" element={<ManagerGate><IFoodIntegrationPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/pedidos" element={<ManagerGate><IFoodOrdersPage /></ManagerGate>} />
+        <Route path="/integracoes/ifood/shipping" element={<ManagerGate><IFoodShippingPage /></ManagerGate>} />
+        <Route path="/integracoes/ifood/avaliacoes" element={<ManagerGate><IFoodReviewsPage /></ManagerGate>} />
+        <Route path="/integracoes/ifood/indicadores" element={<ManagerGate><IFoodAnalyticsPage /></ManagerGate>} />
+        <Route path="/integracoes/ifood/financeiro/relatorios" element={<ManagerGate><IFoodFinancialReportsPage /></ManagerGate>} />
         <Route path="/sem-acesso" element={<NoAccessPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

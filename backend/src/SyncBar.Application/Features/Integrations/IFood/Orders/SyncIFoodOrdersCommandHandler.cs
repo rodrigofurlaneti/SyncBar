@@ -33,6 +33,11 @@ namespace SyncBar.Application.Features.Integrations.IFood.Orders;
 /// mapeado (ou não reconhecido) simplesmente não é adicionado — mesmo tratamento tolerante já
 /// usado pra item de produto não identificado por EAN (não bloqueia a confirmação do pedido
 /// dentro do SLA de 8 minutos).
+///
+/// Fase 7 (extensão): grava details.DeliveredBy em IFoodOrder.DeliveredBy — usado pela tela
+/// "Pedidos iFood" pra decidir se oferece o botão "Atribuir entregador" (só quando o pedido é
+/// DELIVERY e a entrega não é feita pela logística do próprio iFood, ver comentário em
+/// IFoodOrder.DeliveredBy).
 /// </summary>
 internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFoodOrdersCommand>
 {
@@ -282,7 +287,7 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
 
         var ifoodOrderResult = IFoodOrder.Create(
             customerOrder.Id, branchId, evt.OrderId, details.DisplayId, details.MerchantId,
-            details.OrderType, now, hasUnmappedItems);
+            details.OrderType, details.DeliveredBy, now, hasUnmappedItems);
 
         if (ifoodOrderResult.IsFailure)
             return true; // pedido já foi salvo no SyncBar — melhor ter o pedido sem o link do que perdê-lo

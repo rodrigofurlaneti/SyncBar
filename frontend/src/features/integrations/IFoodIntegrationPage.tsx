@@ -278,6 +278,23 @@ export function IFoodIntegrationPage() {
         <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
           <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
             <span className="display" style={{ fontSize: "1.2rem" }}>
+              Entregas iFood (Shipping)
+            </span>
+            <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+              Peça um entregador do iFood pra um pedido de outro canal (telefone, WhatsApp, balcão)
+              — cotação de preço/prazo, acompanhamento e cancelamento. Tudo sob demanda.
+            </span>
+          </div>
+          <Link to="/integracoes/ifood/shipping">
+            <Button variant="ghost">Ver entregas iFood</Button>
+          </Link>
+        </div>
+      </section>
+
+      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
+        <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+          <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
+            <span className="display" style={{ fontSize: "1.2rem" }}>
               Cardápio
             </span>
             <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
@@ -304,14 +321,19 @@ export function IFoodIntegrationPage() {
               calculou. Sincroniza sozinho 1x por dia.
             </span>
           </div>
-          <Button
-            variant="ghost"
-            loading={syncFinancialMutation.isPending}
-            disabled={!firstMappedBranch}
-            onClick={() => syncFinancialMutation.mutate()}
-          >
-            Sincronizar agora
-          </Button>
+          <div className="ui-row" style={{ gap: 8 }}>
+            <Link to="/integracoes/ifood/financeiro/relatorios">
+              <Button variant="ghost">Relatórios completos</Button>
+            </Link>
+            <Button
+              variant="ghost"
+              loading={syncFinancialMutation.isPending}
+              disabled={!firstMappedBranch}
+              onClick={() => syncFinancialMutation.mutate()}
+            >
+              Sincronizar agora
+            </Button>
+          </div>
         </div>
 
         {!firstMappedBranch && (
@@ -375,6 +397,39 @@ export function IFoodIntegrationPage() {
             )}
           </>
         )}
+      </section>
+
+      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
+        <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+          <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
+            <span className="display" style={{ fontSize: "1.2rem" }}>
+              Avaliações
+            </span>
+            <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+              Veja e responda às avaliações dos clientes direto no iFood (nota média, comentários,
+              respostas). Sem sincronização — sempre lido/escrito ao vivo.
+            </span>
+          </div>
+          <Link to="/integracoes/ifood/avaliacoes">
+            <Button variant="ghost">Ver avaliações</Button>
+          </Link>
+        </div>
+      </section>
+
+      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
+        <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+          <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
+            <span className="display" style={{ fontSize: "1.2rem" }}>
+              Indicadores
+            </span>
+            <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+              GMV, taxas e outras métricas de pedidos por período, agrupadas por canal de venda.
+            </span>
+          </div>
+          <Link to="/integracoes/ifood/indicadores">
+            <Button variant="ghost">Ver indicadores</Button>
+          </Link>
+        </div>
       </section>
 
       {firstMappedBranch && <MerchantOperationsSection branchId={firstMappedBranch.branchId} />}

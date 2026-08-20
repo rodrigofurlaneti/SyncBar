@@ -3,6 +3,8 @@ import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { addPublicOrderItem, getPublicMenu } from "./api";
 import { formatBRL } from "../../lib/types";
+import type { MenuItemResponse, OrderItemComplementSelection } from "../../lib/types";
+import { ComplementSelectorModal } from "../orders/ComplementSelectorModal";
 
 // Página pública (sem login) acessada via QR Code na mesa — o token na URL é o único
 // "segredo": identifica a mesa e a filial. Cada item é enviado ao pedido assim que
@@ -13,6 +15,9 @@ export function PublicOrderPage() {
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [sentIds, setSentIds] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Fase 6a: item com grupos de complementos vinculados, aguardando escolha no
+  // ComplementSelectorModal antes de enviar o pedido (itens sem grupos vão direto).
+  const [selectingItem, setSelectingItem] = useState<MenuItemResponse | null>(null);
 
   const menuQuery = useQuery({
     queryKey: ["public-menu", token],
@@ -22,15 +27,26 @@ export function PublicOrderPage() {
   });
 
   const addMutation = useMutation({
-    mutationFn: (productId: number) =>
-      addPublicOrderItem(token!, productId, quantities[productId] ?? 1, null),
-    onSuccess: (_result, productId) => {
+    mutationFn: ({
+      productId,
+      complements,
+    }: {
+      productId: number;
+      complements?: OrderItemComplementSelection[];
+    }) => addPublicOrderItem(token!, productId, quantities[productId] ?? 1, null, complements),
+    onSuccess: (_result, { productId }) => {
       setError(null);
       setSentIds((current) => [...current, productId]);
       setQuantities((current) => ({ ...current, [productId]: 1 }));
+      setSelectingItem(null);
     },
     onError: (e) => setError(e instanceof Error ? e.message : "Falha ao enviar o pedido."),
   });
+
+  const handlePickItem = (item: MenuItemResponse) => {
+    if (item.complementGroups.length > 0) setSelectingItem(item);
+    else addMutation.mutate({ productId: item.id });
+  };
 
   const setQty = (productId: number, qty: number) =>
     setQuantities((current) => ({ ...current, [productId]: Math.max(1, qty) }));
@@ -69,6 +85,19 @@ export function PublicOrderPage() {
 
       {error && <p className="error-text">{error}</p>}
 
+      {selectingItem && (
+        <ComplementSelectorModal
+          productName={selectingItem.name}
+          groups={selectingItem.complementGroups}
+          onCancel={() => setSelectingItem(null)}
+          submitting={addMutation.isPending}
+          confirmLabel="Pedir"
+          onConfirm={(complements) =>
+            addMutation.mutate({ productId: selectingItem.id, complements })
+          }
+        />
+      )}
+
       <div style={{ display: "grid", gap: 10 }}>
         {menu.items.map((item) => {
           const justSent = sentIds.includes(item.id);
@@ -106,7 +135,7 @@ export function PublicOrderPage() {
                     className="btn-primary"
                     style={{ minHeight: 44, padding: "0 14px", fontSize: "0.85rem" }}
                     disabled={addMutation.isPending}
-                    onClick={() => addMutation.mutate(item.id)}
+                    onClick={() => handlePickItem(item)}
                   >
                     {justSent ? "Pedir de novo" : "Pedir"}
                   </button>

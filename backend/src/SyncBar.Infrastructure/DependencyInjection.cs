@@ -70,6 +70,8 @@ public static class DependencyInjection
         services.AddScoped<IIFoodIntegrationSettingRepository, IFoodIntegrationSettingRepository>();
         services.AddScoped<IIFoodMerchantMappingRepository, IFoodMerchantMappingRepository>();
         services.AddScoped<IIFoodOrderRepository, IFoodOrderRepository>();
+        services.AddScoped<IIFoodLogisticsDeliveryRepository, IFoodLogisticsDeliveryRepository>();
+        services.AddScoped<IIFoodShippingDeliveryRepository, IFoodShippingDeliveryRepository>();
         services.AddScoped<IIFoodCategoryMappingRepository, IFoodCategoryMappingRepository>();
         services.AddScoped<IIFoodProductMappingRepository, IFoodProductMappingRepository>();
         services.AddScoped<IIFoodFinancialEventRepository, IFoodFinancialEventRepository>();
@@ -138,11 +140,13 @@ public static class DependencyInjection
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodCatalogClient, IFoodCatalogClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
 
-        // Sincronização financeira (fase 4): cliente HTTP do módulo Financial (Financial Events +
-        // Settlement, único escopo desta rodada) e o loop 1x/dia (BackgroundService, mesmo padrão
-        // do polling de pedidos, só com intervalo bem maior — dados financeiros do iFood não
-        // atualizam mais rápido que isso). Nomes de campo do client são melhor-esforço — ver
-        // comentário em IIFoodFinancialClient sobre a necessidade de confirmar contra o sandbox.
+        // Sincronização financeira (fase 4, corrigida na fase 9): cliente HTTP do módulo
+        // Financial e o loop 1x/dia (BackgroundService, mesmo padrão do polling de pedidos, só
+        // com intervalo bem maior — dados financeiros do iFood não atualizam mais rápido que
+        // isso). Fase 9 corrigiu um endpoint quebrado (financial/v3/financial-events nunca
+        // existiu — trocado pelo real financial/v3.0/.../reconciliation) e ampliou a cobertura
+        // pros 19 endpoints oficiais do módulo (v2.0/v2.1/v3.0) — ver comentário em
+        // IIFoodFinancialClient.
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodFinancialClient, IFoodFinancialClient>(
             client => client.Timeout = TimeSpan.FromSeconds(30));
         services.AddHostedService<IFoodFinancialSyncBackgroundService>();
@@ -153,6 +157,38 @@ public static class DependencyInjection
         // exato de corpo/resposta é melhor-esforço — ver comentário em IIFoodMerchantClient.
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodMerchantClient, IFoodMerchantClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
+
+        // Logística por frota própria (fase 7): cliente HTTP do módulo Logistics — sob demanda
+        // (sem background service; a equipe aciona cada passo manualmente na tela "Pedidos
+        // iFood"/"Logística": atribuir entregador, saiu pra origem, chegou na origem, despachou,
+        // chegou no destino, verificar código de entrega). Endpoints e formatos confirmados
+        // contra a doc oficial (Postman collection "Logistics") em 2026-08-20 — ver comentário em
+        // IIFoodLogisticsClient.
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodLogisticsClient, IFoodLogisticsClient>(
+            client => client.Timeout = TimeSpan.FromSeconds(15));
+
+        // Shipping (fase 8): cliente HTTP do módulo Shipping — entrega, via malha de
+        // entregadores do iFood, de pedidos que NÃO vieram do iFood (telefone, WhatsApp, site
+        // próprio). Sob demanda (sem background service; a equipe cota, confirma e acompanha
+        // manualmente na tela "Entregas iFood"). Endpoints e formatos confirmados contra a doc
+        // oficial (Postman collection "Shipping") em 2026-08-20 — ver comentário em
+        // IIFoodShippingClient. Fluxo de troca de endereço em andamento (accept/deny/request/
+        // userConfirm) NÃO implementado nesta fase — ver ressalva no mesmo arquivo.
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodShippingClient, IFoodShippingClient>(
+            client => client.Timeout = TimeSpan.FromSeconds(15));
+
+        // Avaliações (fase 9): cliente HTTP do módulo Review (review/v1.0) — sob demanda, sem
+        // persistência local (o iFood já é a fonte de verdade; a tela só lista/responde/mostra o
+        // resumo). Endpoints e formatos confirmados contra a doc oficial (Postman collection
+        // "Review v1") — ver comentário em IIFoodReviewClient.
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodReviewClient, IFoodReviewClient>(
+            client => client.Timeout = TimeSpan.FromSeconds(15));
+
+        // Indicadores (fase 9): cliente HTTP do módulo Analytics (analytics/v1.0) — 1 endpoint
+        // (KPIs de pedidos). O DSL de filtro/agregação real é muito maior do que o exposto hoje —
+        // ver ressalva em IIFoodAnalyticsClient.
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodAnalyticsClient, IFoodAnalyticsClient>(
+            client => client.Timeout = TimeSpan.FromSeconds(20));
 
         return services;
     }

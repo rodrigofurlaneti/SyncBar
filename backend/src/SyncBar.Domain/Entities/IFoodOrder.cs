@@ -19,6 +19,13 @@ public sealed class IFoodOrder : AggregateRoot
     public string MerchantId { get; private set; } = null!;
     public string IFoodOrderType { get; private set; } = null!; // DELIVERY / TAKEOUT / DINE_IN (bruto do iFood)
     public string Status { get; private set; } = null!;
+    // Quem entrega o pedido, bruto do iFood (delivery.deliveredBy) — "IFOOD" quando é a logística
+    // do próprio iFood; qualquer outro valor (ex.: "MERCHANT") indica self-delivery/frota
+    // própria, elegível pro fluxo de Logística (fase 7, ver IFoodLogisticsDelivery). Nulo para
+    // pedidos TAKEOUT/DINE_IN (sem entrega) ou quando o iFood não informou o campo.
+    // Ressalva de confiança: nome do valor "IFOOD" assumido pela doc de Logistics/Order — não
+    // há uma lista fechada de valores possíveis documentada explicitamente pelo iFood.
+    public string? DeliveredBy { get; private set; }
     public DateTime ConfirmDeadlineAt { get; private set; }
     public DateTime? ConfirmedAt { get; private set; }
     // Algum item do pedido não bateu com nenhum Product do catálogo (por EAN/código de barras)
@@ -33,7 +40,7 @@ public sealed class IFoodOrder : AggregateRoot
 
     private IFoodOrder(
         long customerOrderId, long branchId, string ifoodOrderId, string? displayId, string merchantId,
-        string ifoodOrderType, DateTime now, bool hasUnmappedItems) : base(0)
+        string ifoodOrderType, string? deliveredBy, DateTime now, bool hasUnmappedItems) : base(0)
     {
         CustomerOrderId = customerOrderId;
         BranchId = branchId;
@@ -41,6 +48,7 @@ public sealed class IFoodOrder : AggregateRoot
         DisplayId = displayId;
         MerchantId = merchantId;
         IFoodOrderType = ifoodOrderType;
+        DeliveredBy = deliveredBy;
         Status = IFoodOrderStatuses.Placed;
         // SLA oficial: confirmar em até 8 minutos. Pedidos agendados usam preparationStartDateTime
         // como referência oficial — não diferenciado nesta fase porque o fluxo essencial confirma
@@ -53,7 +61,7 @@ public sealed class IFoodOrder : AggregateRoot
 
     public static Result<IFoodOrder> Create(
         long customerOrderId, long branchId, string ifoodOrderId, string? displayId, string merchantId,
-        string ifoodOrderType, DateTime now, bool hasUnmappedItems)
+        string ifoodOrderType, string? deliveredBy, DateTime now, bool hasUnmappedItems)
     {
         if (string.IsNullOrWhiteSpace(ifoodOrderId))
             return Result.Failure<IFoodOrder>(new Error("IFoodOrder.MissingId", "iFood order id is required."));
@@ -61,7 +69,7 @@ public sealed class IFoodOrder : AggregateRoot
             return Result.Failure<IFoodOrder>(new Error("IFoodOrder.MissingMerchantId", "Merchant id is required."));
 
         return Result.Success(new IFoodOrder(
-            customerOrderId, branchId, ifoodOrderId, displayId, merchantId, ifoodOrderType, now, hasUnmappedItems));
+            customerOrderId, branchId, ifoodOrderId, displayId, merchantId, ifoodOrderType, deliveredBy, now, hasUnmappedItems));
     }
 
     public void MarkConfirmed(DateTime now)
