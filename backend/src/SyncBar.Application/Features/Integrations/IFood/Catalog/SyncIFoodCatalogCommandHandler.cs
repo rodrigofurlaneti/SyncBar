@@ -14,6 +14,11 @@ namespace SyncBar.Application.Features.Integrations.IFood.Catalog;
 /// controle de estoque, e pausa (PATCH /items/status) itens cujo Product saiu da lista de ativos
 /// (foi desativado) — essa última parte é o que permite ao DeactivateProductCommandHandler
 /// disparar o MESMO comando dos outros handlers em vez de precisar de um comando dedicado.
+///
+/// Fase 6a (extensão): produtos com ProductComplementGroup vinculado agora enviam
+/// optionGroups/options reais no PUT /items — get-or-create de IFoodComplementGroupMapping/
+/// IFoodComplementMapping por filial (mesmo padrão já usado para categoria/produto acima). Ver
+/// ressalva sobre nomes de campo em IIFoodCatalogClient.
 /// </summary>
 internal sealed class SyncIFoodCatalogCommandHandler : BaseCommandHandler<SyncIFoodCatalogCommand, IFoodCatalogSyncSummary>
 {
@@ -23,6 +28,11 @@ internal sealed class SyncIFoodCatalogCommandHandler : BaseCommandHandler<SyncIF
     private readonly IProductRepository _productRepository;
     private readonly IIFoodCategoryMappingRepository _categoryMappingRepository;
     private readonly IIFoodProductMappingRepository _productMappingRepository;
+    private readonly IProductComplementGroupRepository _productComplementGroupRepository;
+    private readonly IComplementGroupRepository _complementGroupRepository;
+    private readonly IComplementItemRepository _complementItemRepository;
+    private readonly IIFoodComplementGroupMappingRepository _complementGroupMappingRepository;
+    private readonly IIFoodComplementMappingRepository _complementMappingRepository;
     private readonly IStockItemRepository _stockItemRepository;
     private readonly IIFoodCatalogClient _catalogClient;
     private readonly IUnitOfWork _unitOfWork;
@@ -34,6 +44,11 @@ internal sealed class SyncIFoodCatalogCommandHandler : BaseCommandHandler<SyncIF
         IProductRepository productRepository,
         IIFoodCategoryMappingRepository categoryMappingRepository,
         IIFoodProductMappingRepository productMappingRepository,
+        IProductComplementGroupRepository productComplementGroupRepository,
+        IComplementGroupRepository complementGroupRepository,
+        IComplementItemRepository complementItemRepository,
+        IIFoodComplementGroupMappingRepository complementGroupMappingRepository,
+        IIFoodComplementMappingRepository complementMappingRepository,
         IStockItemRepository stockItemRepository,
         IIFoodCatalogClient catalogClient,
         ILogTrackerRepository logRepository,
@@ -46,6 +61,11 @@ internal sealed class SyncIFoodCatalogCommandHandler : BaseCommandHandler<SyncIF
         _productRepository = productRepository;
         _categoryMappingRepository = categoryMappingRepository;
         _productMappingRepository = productMappingRepository;
+        _productComplementGroupRepository = productComplementGroupRepository;
+        _complementGroupRepository = complementGroupRepository;
+        _complementItemRepository = complementItemRepository;
+        _complementGroupMappingRepository = complementGroupMappingRepository;
+        _complementMappingRepository = complementMappingRepository;
         _stockItemRepository = stockItemRepository;
         _catalogClient = catalogClient;
         _unitOfWork = unitOfWork;
@@ -70,6 +90,26 @@ internal sealed class SyncIFoodCatalogCommandHandler : BaseCommandHandler<SyncIF
                 var categories = await _categoryRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
                 var products = await _productRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
                 var activeProductIds = products.Select(p => p.Id).ToHashSet();
+
+                // Fase 6a (extensão): complementos vinculados aos produtos ativos, resolvidos em
+                // lote UMA vez por empresa (não por filial) — os mapeamentos iFood (grupo/opção)
+                // é que são por filial, ver dentro do loop de branches abaixo.
+                var productComplementLinks = await _productComplementGroupRepository.GetByProductsAsync(
+                    products.Select(p => p.Id).ToList(), cancellationToken);
+                var complementGroupIds = productComplementLinks.Select(l => l.ComplementGroupId).Distinct().ToList();
+                var complementGroups = complementGroupIds.Count > 0
+                    ? await _complementGroupRepository.GetByIdsAsync(complementGroupIds, cancellationToken)
+                    : [];
+                var complementGroupsById = complementGroups.ToDictionary(g => g.Id);
+                var complementItemIds = complementGroups.SelectMany(g => g.Complements).Select(c => c.ComplementItemId).Distinct().ToList();
+                var complementItems = complementItemIds.Count > 0
+                    ? await _complementItemRepository.GetByIdsAsync(complementItemIds, cancellationToken)
+                    : [];
+                var complementItemNames = complementItems.ToDictionary(i => i.Id, i => i.Name);
+                var complementLinksByProduct = productComplementLinks
+                    .Where(l => complementGroupsById.ContainsKey(l.ComplementGroupId))
+                    .GroupBy(l => l.ProductId)
+                    .ToDictionary(g => g.Key, g => g.OrderBy(l => l.DisplayOrder).ToList());
 
                 var branchesSynced = 0;
                 var categoriesCreated = 0;
@@ -138,6 +178,66 @@ internal sealed class SyncIFoodCatalogCommandHandler : BaseCommandHandler<SyncIF
                             productMapping = createdMapping.Value;
                         }
 
+                        // Fase 6a (extensão): monta optionGroups/options reais quando o produto
+                        // tem grupos de complemento vinculados — get-or-create dos mapeamentos
+                        // iFood (grupo/opção) por filial, mesmo padrão do mapeamento de produto acima.
+                        var optionGroups = new List<IFoodUpsertItemOptionGroup>();
+                        if (complementLinksByProduct.TryGetValue(product.Id, out var productComplementLinksForProduct))
+                        {
+                            foreach (var link in productComplementLinksForProduct)
+                            {
+                                if (!complementGroupsById.TryGetValue(link.ComplementGroupId, out var group) || !group.IsActive)
+                                    continue;
+
+                                var groupMapping = await _complementGroupMappingRepository.GetByComplementGroupAndBranchAsync(group.Id, branchId, cancellationToken);
+                                if (groupMapping is null)
+                                {
+                                    var createdGroupMapping = IFoodComplementGroupMapping.Create(group.Id, branchId);
+                                    if (createdGroupMapping.IsFailure)
+                                    {
+                                        errors++;
+                                        continue;
+                                    }
+
+                                    await _complementGroupMappingRepository.AddAsync(createdGroupMapping.Value, cancellationToken);
+                                    await _unitOfWork.CommitAsync(cancellationToken);
+                                    groupMapping = createdGroupMapping.Value;
+                                }
+
+                                var options = new List<IFoodUpsertItemOption>();
+                                foreach (var complement in group.Complements.Where(c => c.IsActive))
+                                {
+                                    var complementMapping = await _complementMappingRepository.GetByComplementAndBranchAsync(complement.Id, branchId, cancellationToken);
+                                    if (complementMapping is null)
+                                    {
+                                        var createdComplementMapping = IFoodComplementMapping.Create(complement.Id, branchId);
+                                        if (createdComplementMapping.IsFailure)
+                                        {
+                                            errors++;
+                                            continue;
+                                        }
+
+                                        await _complementMappingRepository.AddAsync(createdComplementMapping.Value, cancellationToken);
+                                        await _unitOfWork.CommitAsync(cancellationToken);
+                                        complementMapping = createdComplementMapping.Value;
+                                    }
+
+                                    options.Add(new IFoodUpsertItemOption(
+                                        complementMapping.IFoodOptionId,
+                                        complementMapping.IFoodProductId,
+                                        complementItemNames.TryGetValue(complement.ComplementItemId, out var itemName) ? itemName : "?",
+                                        complement.ExtraPrice,
+                                        true));
+                                }
+
+                                if (options.Count > 0)
+                                {
+                                    optionGroups.Add(new IFoodUpsertItemOptionGroup(
+                                        groupMapping.IFoodOptionGroupId, group.Name, group.MinSelection, group.MaxSelection, options));
+                                }
+                            }
+                        }
+
                         var upsertResult = await _catalogClient.UpsertItemAsync(accessToken, merchantId, new IFoodUpsertItemRequest(
                             productMapping.IFoodItemId,
                             ifoodCategoryId,
@@ -147,7 +247,8 @@ internal sealed class SyncIFoodCatalogCommandHandler : BaseCommandHandler<SyncIF
                             productMapping.IFoodProductId,
                             product.Name,
                             product.Description,
-                            $"SB-{product.Id}-P"), cancellationToken);
+                            $"SB-{product.Id}-P",
+                            optionGroups), cancellationToken);
 
                         if (!upsertResult.Success)
                         {

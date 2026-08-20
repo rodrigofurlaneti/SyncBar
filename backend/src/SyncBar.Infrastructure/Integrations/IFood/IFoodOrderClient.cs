@@ -21,6 +21,10 @@ namespace SyncBar.Infrastructure.Integrations.IFood;
 /// merchant). As demais ações (detalhes, confirmar, avançar status) continuam no módulo Order
 /// (order/v1.0), que não muda nesta fase.
 ///
+/// Fase 6a (extensão): GetOrderDetailsAsync passou a ler item.options (ver IFoodOrderItemOptionDto)
+/// — nomes de campo (id/name/quantity/unitPrice) assumidos por analogia com o próprio item
+/// (mesma ressalva de confiança já registrada em IIFoodOrderClient).
+///
 /// NÃO implementado nesta fase (fora do escopo "essencial", ver ifood-integration-status no
 /// projeto claude.ai): rastreamento de entregador, disputas (Handshake), cálculo de
 /// preparationStartDateTime pra pedidos agendados, código de retirada/entrega, Webhook.
@@ -109,7 +113,10 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
             dto.Delivery?.DeliveredBy,
             dto.Takeout?.Mode,
             dto.Total?.OrderAmount ?? 0m,
-            (dto.Items ?? []).Select(i => new IFoodOrderItemDto(i.ExternalCode, i.Ean, i.Name ?? "Item", i.Quantity, i.UnitPrice)).ToList());
+            (dto.Items ?? []).Select(i => new IFoodOrderItemDto(
+                i.ExternalCode, i.Ean, i.Name ?? "Item", i.Quantity, i.UnitPrice,
+                (i.Options ?? []).Select(o => new IFoodOrderItemOptionDto(o.Id, o.Name, o.Quantity, o.UnitPrice)).ToList()))
+                .ToList());
     }
 
     public Task<IFoodOrderActionResult> ConfirmOrderAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
@@ -188,7 +195,10 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
     private sealed record MerchantDto(string Id, string? Name);
     private sealed record CustomerDto(string? Name, PhoneDto? Phone);
     private sealed record PhoneDto(string? Number);
-    private sealed record ItemDto(string? ExternalCode, string? Ean, string? Name, decimal Quantity, decimal UnitPrice);
+    // Fase 6a (extensão): Options — lista de complementos escolhidos pra este item (ver ressalva
+    // de confiança em IIFoodOrderClient/IFoodOrderItemOptionDto).
+    private sealed record ItemDto(string? ExternalCode, string? Ean, string? Name, decimal Quantity, decimal UnitPrice, List<ItemOptionDto>? Options);
+    private sealed record ItemOptionDto(string? Id, string? Name, decimal Quantity, decimal UnitPrice);
     private sealed record TotalDto(decimal OrderAmount);
     private sealed record DeliveryDto(string? DeliveredBy, DeliveryAddressDto? DeliveryAddress);
     private sealed record DeliveryAddressDto(string? FormattedAddress);

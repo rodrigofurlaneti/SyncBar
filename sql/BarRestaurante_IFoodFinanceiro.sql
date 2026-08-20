@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS IFoodFinancialEvent (
     IFoodEventId           VARCHAR(100) NOT NULL,
     Name                   VARCHAR(150) NOT NULL,
     Description            VARCHAR(500) NULL,
-    Trigger                VARCHAR(100) NULL,
+    `Trigger`              VARCHAR(100) NULL,
     Amount                 DECIMAL(18,2) NOT NULL,
     HasTransferImpact      TINYINT(1) NOT NULL DEFAULT 0,
     CompetenceDate         DATETIME(6) NOT NULL,

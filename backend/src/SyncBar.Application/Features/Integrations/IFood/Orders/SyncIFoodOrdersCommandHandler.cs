@@ -25,6 +25,14 @@ namespace SyncBar.Application.Features.Integrations.IFood.Orders;
 /// IFoodTokenProvider — dedup não precisa de tabela própria, só de uma janela de tempo maior
 /// que a retenção de 8h da API). ACK é sempre enviado pra todo evento recebido, mesmo
 /// duplicado ou fora de escopo — evita acumular "strikes" no throttling por falta de ACK.
+///
+/// Fase 6a (extensão): itens de pedido com options (complementos escolhidos no iFood) passam a
+/// virar OrderItemComplement no SyncBar — casa option.id contra IFoodComplementMapping
+/// (IFoodOptionId) por filial, resolve o Complement correspondente (preço/grupo) entre os
+/// ComplementGroup ativos da empresa, e aplica via CustomerOrder.AddComplement. Complemento não
+/// mapeado (ou não reconhecido) simplesmente não é adicionado — mesmo tratamento tolerante já
+/// usado pra item de produto não identificado por EAN (não bloqueia a confirmação do pedido
+/// dentro do SLA de 8 minutos).
 /// </summary>
 internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFoodOrdersCommand>
 {
@@ -39,6 +47,8 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
     private readonly ICustomerOrderRepository _customerOrderRepository;
     private readonly IProductRepository _productRepository;
     private readonly IBranchRepository _branchRepository;
+    private readonly IComplementGroupRepository _complementGroupRepository;
+    private readonly IIFoodComplementMappingRepository _complementMappingRepository;
     private readonly TimeProvider _timeProviderCustom;
     private readonly IMemoryCache _cache;
     private readonly IUnitOfWork _unitOfWork;
@@ -52,6 +62,8 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
         ICustomerOrderRepository customerOrderRepository,
         IProductRepository productRepository,
         IBranchRepository branchRepository,
+        IComplementGroupRepository complementGroupRepository,
+        IIFoodComplementMappingRepository complementMappingRepository,
         TimeProvider timeProviderCustom,
         IMemoryCache cache,
         ILogTrackerRepository logRepository,
@@ -66,6 +78,8 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
         _customerOrderRepository = customerOrderRepository;
         _productRepository = productRepository;
         _branchRepository = branchRepository;
+        _complementGroupRepository = complementGroupRepository;
+        _complementMappingRepository = complementMappingRepository;
         _timeProviderCustom = timeProviderCustom;
         _cache = cache;
         _unitOfWork = unitOfWork;
@@ -217,6 +231,12 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
         var customerOrder = orderResult.Value;
         var hasUnmappedItems = false;
 
+        // Fase 6a (extensão): só busca os complementos ativos da empresa se algum item do pedido
+        // realmente trouxer options — evita a query extra no caminho comum (pedido sem
+        // complementos). Complement não é consultável isoladamente por Id (é filho de
+        // ComplementGroup no domínio), então resolve por empresa inteira e indexa por Id uma vez.
+        Dictionary<long, (Complement Complement, long ComplementGroupId)>? complementsById = null;
+
         foreach (var item in details.Items)
         {
             Domain.Entities.Product? product = null;
@@ -229,7 +249,32 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
                 continue; // item não identificado no catálogo — sinalizado no pedido, não bloqueia a confirmação
             }
 
+            var itemCountBefore = customerOrder.Items.Count;
             customerOrder.AddItem(product.Id, item.UnitPrice, item.Quantity <= 0 ? 1 : item.Quantity, null, employeeId, now);
+            if (customerOrder.Items.Count == itemCountBefore)
+                continue; // AddItem falhou (quantidade inválida etc.) — item já teria virado hasUnmappedItems se fosse o caso
+
+            var orderItemId = customerOrder.Items.ElementAt(itemCountBefore).Id;
+
+            if (item.Options.Count == 0)
+                continue;
+
+            complementsById ??= await BuildComplementsByIdAsync(companyId, cancellationToken);
+
+            foreach (var option in item.Options)
+            {
+                if (!Guid.TryParse(option.Id, out var ifoodOptionId))
+                    continue;
+
+                var complementMapping = await _complementMappingRepository.GetByIFoodOptionIdAndBranchAsync(ifoodOptionId, branchId, cancellationToken);
+                if (complementMapping is null)
+                    continue; // opção não mapeada (ou mapeada em outra filial) — não bloqueia o pedido
+
+                if (!complementsById.TryGetValue(complementMapping.ComplementId, out var resolved))
+                    continue; // Complement foi removido/desativado depois do mapeamento ser criado
+
+                customerOrder.AddComplement(orderItemId, resolved.Complement.Id, resolved.Complement.ExtraPrice, now);
+            }
         }
 
         await _customerOrderRepository.AddAsync(customerOrder, cancellationToken);
@@ -256,6 +301,22 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
         }
 
         return true;
+    }
+
+    // Fase 6a (extensão): Complement é Entity filha de ComplementGroup (sem repositório próprio
+    // por Id) — carrega todos os grupos ativos da empresa uma vez e indexa por ComplementId.
+    private async Task<Dictionary<long, (Complement Complement, long ComplementGroupId)>> BuildComplementsByIdAsync(
+        long companyId, CancellationToken cancellationToken)
+    {
+        var groups = await _complementGroupRepository.GetByCompanyAsync(companyId, cancellationToken);
+        var result = new Dictionary<long, (Complement, long)>();
+        foreach (var group in groups)
+        {
+            foreach (var complement in group.Complements.Where(c => c.IsActive))
+                result[complement.Id] = (complement, group.Id);
+        }
+
+        return result;
     }
 
     private async Task<bool> ProcessCancelledAsync(IFoodPollingEvent evt, DateTime now, CancellationToken cancellationToken)

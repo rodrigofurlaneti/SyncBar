@@ -8,7 +8,8 @@ namespace SyncBar.Infrastructure.Integrations.IFood;
 /// Cliente HTTP real do módulo Catalog do iFood — endpoints e formatos confirmados em 2026-08-19
 /// contra a documentação oficial colada pelo usuário. Cobre o "fluxo essencial": criar categoria,
 /// criar/atualizar item simples, pausar/reativar item e definir estoque. Ver comentário completo
-/// em IIFoodCatalogClient sobre o que fica de fora nesta fase.
+/// em IIFoodCatalogClient sobre o que fica de fora nesta fase, e sobre o nível de confiança dos
+/// nomes de campo de optionGroups/options (Fase 6a).
 /// </summary>
 internal sealed class IFoodCatalogClient(HttpClient httpClient) : IIFoodCatalogClient
 {
@@ -66,7 +67,28 @@ internal sealed class IFoodCatalogClient(HttpClient httpClient) : IIFoodCatalogC
                     externalCode = request.ProductExternalCode,
                 },
             },
-            optionGroups = Array.Empty<object>(),
+            // Fase 6a (extensão): grupos de complemento reais quando o produto tiver
+            // ProductComplementGroup vinculado — vazio (comportamento anterior) caso contrário.
+            optionGroups = (request.OptionGroups ?? []).Select(og => new
+            {
+                id = og.GroupId.ToString(),
+                name = og.Name,
+                status = "AVAILABLE",
+                min = og.MinOptions,
+                max = og.MaxOptions,
+                options = og.Options.Select(o => new
+                {
+                    id = o.OptionId.ToString(),
+                    status = o.Available ? "AVAILABLE" : "UNAVAILABLE",
+                    price = new { value = o.Price },
+                    product = new
+                    {
+                        id = o.ProductId.ToString(),
+                        name = o.Name,
+                    },
+                }).ToArray(),
+            }).ToArray(),
+            // "options" no nível raiz do payload é usado só por combos (Fase 6c) — continua vazio.
             options = Array.Empty<object>(),
         };
 

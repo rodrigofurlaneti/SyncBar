@@ -2,7 +2,17 @@ namespace SyncBar.Application.Abstractions.Integrations.IFood;
 
 public sealed record IFoodPollingEvent(string Id, string Code, string? FullCode, string OrderId, DateTime CreatedAt);
 
-public sealed record IFoodOrderItemDto(string? ExternalCode, string? Ean, string Name, decimal Quantity, decimal UnitPrice);
+// Fase 6a (extensão): opção de complemento selecionada dentro de um item do pedido — Id é o
+// option.id do iFood, casado contra IFoodComplementMapping.IFoodOptionId (ver
+// IIFoodComplementMappingRepository.GetByIFoodOptionIdAndBranchAsync). ⚠️ Ainda NÃO confirmado
+// campo-a-campo contra uma resposta real de sandbox (o "fluxo essencial" original, fases 2/2.1,
+// não cobria pedidos com complementos — mesma ressalva já registrada para o payload de saída em
+// IIFoodCatalogClient).
+public sealed record IFoodOrderItemOptionDto(string? Id, string? Name, decimal Quantity, decimal UnitPrice);
+
+public sealed record IFoodOrderItemDto(
+    string? ExternalCode, string? Ean, string Name, decimal Quantity, decimal UnitPrice,
+    IReadOnlyCollection<IFoodOrderItemOptionDto> Options);
 
 public sealed record IFoodOrderDetailsDto(
     string Id,
@@ -34,6 +44,9 @@ public sealed record IFoodOrderActionResult(bool Success, string? ErrorMessage);
 /// Fase 2.1 (reforço do polling de eventos): path corrigido pro módulo Events
 /// (events/v1.0/events:polling), que exige o conjunto de merchants habilitados na chamada
 /// (header x-polling-merchants) — ver doc completa do módulo Events.
+///
+/// Fase 6a (extensão): IFoodOrderItemDto ganhou Options (ver IFoodOrderItemOptionDto) — permite
+/// SyncIFoodOrdersCommandHandler reconhecer complementos escolhidos num pedido vindo do iFood.
 /// </summary>
 public interface IIFoodOrderClient
 {
