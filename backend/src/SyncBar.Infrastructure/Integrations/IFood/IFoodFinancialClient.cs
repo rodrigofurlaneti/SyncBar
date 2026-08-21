@@ -50,14 +50,56 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
         // de v2.0/v2.1) — periodStart/periodEnd ficam na assinatura por compatibilidade com quem
         // já chama este método (sync diário), mas não são enviados como query.
         var url = $"{BaseUrlV3}/{Uri.EscapeDataString(merchantId)}/settlements";
-        var items = await GetRawArrayAsync(url, accessToken, cancellationToken);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            return [];
+
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
 
         var settlements = new List<IFoodSettlementDto>();
-        foreach (var item in items)
+        var root = document.RootElement;
+
+        // Corrigido em 2026-08-20: a resposta real é um objeto único {beginDate, endDate, balance,
+        // merchantId, settlements: [{startDateCalculation, endDateCalculation, closingItems: [...]}],
+        // consolidatedMerchants} — dois níveis mais fundo do que o catálogo genérico de relatórios
+        // (v2.0/v2.1) assume (que espera uma lista plana já na raiz ou numa chave conhecida). Os
+        // lançamentos de fato (id/type/amount/...) estão em settlements[].closingItems[], não em
+        // settlements[] diretamente — sem este achatamento, cada "período" virava 1 registro
+        // falso com id aleatório e amount=0 (nenhum campo batia).
+        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("settlements", out var periods) && periods.ValueKind == JsonValueKind.Array)
         {
-            var dto = TryParseSettlement(item);
-            if (dto is not null)
-                settlements.Add(dto);
+            foreach (var period in periods.EnumerateArray())
+            {
+                if (!period.TryGetProperty("closingItems", out var closingItems) || closingItems.ValueKind != JsonValueKind.Array)
+                    continue;
+
+                foreach (var item in closingItems.EnumerateArray())
+                {
+                    var dto = TryParseSettlement(item);
+                    if (dto is not null)
+                        settlements.Add(dto);
+                }
+            }
+        }
+        else
+        {
+            // Formato inesperado/mudou de novo — tenta o caminho antigo (lista plana) como
+            // fallback em vez de simplesmente devolver vazio.
+            var fallbackRoot = ResolveArrayRoot(root);
+            if (fallbackRoot.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in fallbackRoot.EnumerateArray())
+                {
+                    var dto = TryParseSettlement(item);
+                    if (dto is not null)
+                        settlements.Add(dto);
+                }
+            }
         }
 
         return settlements;
@@ -303,6 +345,8 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
         try
         {
             var raw = item.GetRawText();
+            // Campos do closingItem individual (id/type/product/amount/status/paymentDate) —
+            // transactionId existe na doc mas ainda não tem lugar no DTO atual, fica só no raw.
             var id = GetString(item, "id", "settlementId") ?? Guid.NewGuid().ToString();
             var type = GetString(item, "type") ?? "REPASSE";
             var product = GetString(item, "product");
@@ -310,8 +354,11 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
             var status = GetString(item, "status") ?? "UNKNOWN";
             var paymentDate = GetDate(item, "paymentDate", "expectedPaymentDate");
 
+            // accountDetails é o nome real do wrapper na resposta v3.0 (ver ressalva na classe);
+            // bankAccount fica como fallback pro caso de outro formato de relatório reusar este parser.
             string? bankCode = null, bankAgency = null, bankAccount = null;
-            if (item.TryGetProperty("bankAccount", out var bank) && bank.ValueKind == JsonValueKind.Object)
+            if ((item.TryGetProperty("accountDetails", out var bank) || item.TryGetProperty("bankAccount", out bank))
+                && bank.ValueKind == JsonValueKind.Object)
             {
                 bankCode = GetString(bank, "bankCode", "bank");
                 bankAgency = GetString(bank, "agency");

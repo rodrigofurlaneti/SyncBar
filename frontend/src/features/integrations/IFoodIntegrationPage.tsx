@@ -6,8 +6,11 @@ import {
   deleteIFoodInterruption,
   getIFoodFinancialSummary,
   getIFoodInterruptions,
+  getIFoodMerchantDetails,
   getIFoodMerchantMappings,
+  getIFoodMerchantsList,
   getIFoodMerchantStatus,
+  getIFoodMerchantStatusByOperation,
   getIFoodOpeningHours,
   getIFoodSettings,
   saveIFoodOpeningHours,
@@ -278,6 +281,23 @@ export function IFoodIntegrationPage() {
         <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
           <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
             <span className="display" style={{ fontSize: "1.2rem" }}>
+              Logística (frota própria)
+            </span>
+            <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+              Entregue com a equipe da própria casa pedidos que vieram do iFood — atribua o
+              entregador e avise cada passo (saiu, chegou, despachou, entregou).
+            </span>
+          </div>
+          <Link to="/integracoes/ifood/logistica">
+            <Button variant="ghost">Ver logística</Button>
+          </Link>
+        </div>
+      </section>
+
+      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
+        <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+          <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
+            <span className="display" style={{ fontSize: "1.2rem" }}>
               Entregas iFood (Shipping)
             </span>
             <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
@@ -432,7 +452,7 @@ export function IFoodIntegrationPage() {
         </div>
       </section>
 
-      {firstMappedBranch && <MerchantOperationsSection branchId={firstMappedBranch.branchId} />}
+      {firstMappedBranch && <MerchantOperationsSection branchId={firstMappedBranch.branchId} companyId={companyId} />}
       {!firstMappedBranch && (
         <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 8, marginTop: 16 }}>
           <span className="display" style={{ fontSize: "1.1rem" }}>
@@ -456,15 +476,18 @@ export function IFoodIntegrationPage() {
             iFood, mapear cada loja ao MerchantId correspondente, sincronizar pedidos (receber,
             confirmar dentro do SLA, iniciar preparo/pronto/cancelar), sincronizar cardápio
             (categorias, produtos, preço, pausar/reativar, estoque de produtos com controle de
-            estoque), trilha financeira (lançamentos e repasses do iFood, alerta de
-            discrepância), e operação da loja (status em tempo real, pausar/reabrir, horários de
-            funcionamento, tempo de preparo customizado).
+            estoque), trilha financeira (lançamentos, repasses e os 13 relatórios completos do
+            iFood, alerta de discrepância), operação da loja (status em tempo real,
+            pausar/reabrir, horários de funcionamento, tempo de preparo customizado), logística
+            por frota própria e entrega Sob Demanda (Shipping) — inclusive pra pedidos que vieram
+            de outros canais —, avaliações (ver/responder) e indicadores de pedidos.
           </li>
           <li>
-            <strong style={{ color: "var(--ink)" }}>Pendente:</strong> complementos/pizzas/combos e
-            múltiplos canais no cardápio, logística com frota própria e pedidos externos com
-            entrega Sob Demanda. Fora do escopo dos pedidos: rastreamento de entregador em tempo
-            real fora da Fase 7, pedidos agendados, disputas pós-entrega (Handshake).
+            <strong style={{ color: "var(--ink)" }}>Pendente:</strong> complementos/pizzas/combos
+            avançados no cardápio (multisetup, migração v1↔v2, imagem em lote), disputas
+            pós-entrega (Handshake) além do aceitar/rejeitar básico, rastreamento em tela do
+            pedido do módulo Order (fora da tela de Shipping/Logística), avaliações no formato
+            v2, e pedidos agendados.
           </li>
         </ul>
       </section>
@@ -529,13 +552,38 @@ const WEEKDAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sex
 // (pausar/reabrir), horários de funcionamento (cópia local editável, reenviada ao salvar) e
 // tempo de preparo customizado. Tudo por filial — usa a mesma loja "padrão" (primeira mapeada)
 // que a seção Financeiro, mesma decisão de não ter seletor de loja ainda.
-function MerchantOperationsSection({ branchId }: { branchId: number }) {
+function MerchantOperationsSection({ branchId, companyId }: { branchId: number; companyId: number }) {
   const queryClient = useQueryClient();
   const toast = useToast();
 
   const statusQuery = useQuery({
     queryKey: ["integrations", "ifood", "merchant", "status", branchId],
     queryFn: () => getIFoodMerchantStatus(branchId),
+  });
+
+  // Fase 9c — fecha os gaps restantes do módulo Merchant da auditoria de 2026-08-20/21: listar
+  // lojas do client_id, ver detalhes de uma loja e consultar status por operação (ex.: DELIVERY,
+  // TAKEOUT — diferente do status geral acima, que só olha a primeira operação da lista).
+  const [showMerchantsList, setShowMerchantsList] = useState(false);
+  const merchantsListQuery = useQuery({
+    queryKey: ["integrations", "ifood", "merchant", "list", companyId],
+    queryFn: () => getIFoodMerchantsList(companyId),
+    enabled: showMerchantsList,
+  });
+
+  const [showMerchantDetails, setShowMerchantDetails] = useState(false);
+  const merchantDetailsQuery = useQuery({
+    queryKey: ["integrations", "ifood", "merchant", "details", branchId],
+    queryFn: () => getIFoodMerchantDetails(branchId),
+    enabled: showMerchantDetails,
+  });
+
+  const [operationQuery, setOperationQuery] = useState("DELIVERY");
+  const [operationLookup, setOperationLookup] = useState<string | null>(null);
+  const statusByOperationQuery = useQuery({
+    queryKey: ["integrations", "ifood", "merchant", "status-by-operation", branchId, operationLookup],
+    queryFn: () => getIFoodMerchantStatusByOperation(branchId, operationLookup ?? ""),
+    enabled: !!operationLookup,
   });
 
   const interruptionsQuery = useQuery({
@@ -642,6 +690,93 @@ function MerchantOperationsSection({ branchId }: { branchId: number }) {
             <span className="chip">{statusQuery.data.operationState ?? "Desconhecido"}</span>
             {statusQuery.data.validations.map((v) => (
               <span key={v.id} style={{ color: "var(--ink-faint)", fontSize: "0.85rem" }}>
+                {v.id} ({v.state}){v.message ? ` — ${v.message}` : ""}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Fase 9c — List merchants / Get merchant details / Get status by operation */}
+      <div style={{ display: "grid", gap: 10, borderTop: "1px solid var(--line-soft)", paddingTop: 14 }}>
+        <span style={{ fontWeight: 600 }}>Lojas do client_id</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          loading={showMerchantsList && merchantsListQuery.isFetching}
+          onClick={() => (showMerchantsList ? void merchantsListQuery.refetch() : setShowMerchantsList(true))}
+        >
+          Listar lojas no iFood
+        </Button>
+        {showMerchantsList && merchantsListQuery.isError && <QueryError error={merchantsListQuery.error} what="a lista de lojas" />}
+        {showMerchantsList && (merchantsListQuery.data ?? []).length > 0 && (
+          <div style={{ display: "grid", gap: 4 }}>
+            {merchantsListQuery.data!.map((m) => (
+              <span key={m.id} style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>
+                {m.name ?? m.id} {m.corporateName ? `— ${m.corporateName}` : ""} <span style={{ color: "var(--ink-faint)" }}>({m.id})</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "grid", gap: 10, borderTop: "1px solid var(--line-soft)", paddingTop: 14 }}>
+        <span style={{ fontWeight: 600 }}>Detalhes da loja</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          loading={showMerchantDetails && merchantDetailsQuery.isFetching}
+          onClick={() => (showMerchantDetails ? void merchantDetailsQuery.refetch() : setShowMerchantDetails(true))}
+        >
+          Ver detalhes no iFood
+        </Button>
+        {showMerchantDetails && merchantDetailsQuery.isError && <QueryError error={merchantDetailsQuery.error} what="os detalhes da loja" />}
+        {showMerchantDetails && merchantDetailsQuery.data && (
+          <div style={{ display: "grid", gap: 4, fontSize: "0.85rem", color: "var(--ink-dim)" }}>
+            <span>Nome: {merchantDetailsQuery.data.name ?? "—"}</span>
+            <span>Razão social: {merchantDetailsQuery.data.corporateName ?? "—"}</span>
+            <span>Tipo: {merchantDetailsQuery.data.type ?? "—"}</span>
+            <span>Status: {merchantDetailsQuery.data.status ?? "—"}</span>
+            {merchantDetailsQuery.data.address && (
+              <span>
+                Endereço: {merchantDetailsQuery.data.address.street}, {merchantDetailsQuery.data.address.number} —{" "}
+                {merchantDetailsQuery.data.address.city}/{merchantDetailsQuery.data.address.state}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "grid", gap: 10, borderTop: "1px solid var(--line-soft)", paddingTop: 14 }}>
+        <span style={{ fontWeight: 600 }}>Status por operação</span>
+        <div className="ui-row ui-row-wrap" style={{ gap: 10, alignItems: "end" }}>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <TextField
+              label="Operação"
+              value={operationQuery}
+              onChange={(e) => setOperationQuery(e.target.value)}
+              placeholder="ex.: DELIVERY, TAKEOUT"
+            />
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!operationQuery.trim()}
+            loading={statusByOperationQuery.isFetching}
+            onClick={() => setOperationLookup(operationQuery.trim())}
+          >
+            Consultar
+          </Button>
+        </div>
+        {statusByOperationQuery.isError && <QueryError error={statusByOperationQuery.error} what="o status da operação" />}
+        {statusByOperationQuery.data && (
+          <div style={{ display: "grid", gap: 4, fontSize: "0.85rem", color: "var(--ink-dim)" }}>
+            <span>
+              {statusByOperationQuery.data.operation ?? operationLookup} — {statusByOperationQuery.data.available ? "Disponível" : "Indisponível"}
+              {statusByOperationQuery.data.state ? ` (${statusByOperationQuery.data.state})` : ""}
+            </span>
+            {statusByOperationQuery.data.validations.map((v) => (
+              <span key={v.id} style={{ color: "var(--ink-faint)" }}>
                 {v.id} ({v.state}){v.message ? ` — ${v.message}` : ""}
               </span>
             ))}
@@ -771,6 +906,10 @@ function MerchantOperationsSection({ branchId }: { branchId: number }) {
       {/* Tempo de preparo */}
       <div style={{ display: "grid", gap: 10, borderTop: "1px solid var(--line-soft)", paddingTop: 14 }}>
         <span style={{ fontWeight: 600 }}>Tempo de preparo</span>
+        <span style={{ color: "var(--warn, #d97706)", fontSize: "0.82rem" }}>
+          ⚠ Este endpoint não consta na documentação oficial auditada em 2026-08-20/21 — trate como
+          não confirmado e valide numa loja de teste antes de depender dele.
+        </span>
         {!hasIFoodCustomerId && (
           <span style={{ color: "var(--ink-faint)", fontSize: "0.85rem" }}>
             Configure o "iFood Customer ID" na seção de credenciais acima para habilitar este

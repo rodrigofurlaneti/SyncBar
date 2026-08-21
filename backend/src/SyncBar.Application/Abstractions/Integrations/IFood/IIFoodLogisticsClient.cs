@@ -7,6 +7,13 @@ public sealed record IFoodLogisticsActionResult(bool Success, string? ErrorMessa
 // erro de transporte, é uma tentativa de verificação que falhou).
 public sealed record IFoodVerifyDeliveryCodeResult(bool Success, bool CodeMatched, string? ErrorMessage);
 
+// Fase 9c — GET /orders/{id} (detalhes da entrega). A doc oficial documenta a resposta de sucesso
+// só como "<object>" (200 OK), sem NENHUM schema de campos — nem nomeado nem por exemplo (ver
+// auditoria de 2026-08-20 no projeto claude.ai). Por isso o payload é exposto cru (RawPayload,
+// string JSON) em vez de um DTO tipado — tipar campos aqui seria adivinhação, não uma leitura da
+// doc. Quem consumir este resultado decide o que extrair do JSON manualmente.
+public sealed record IFoodLogisticsOrderDetailsResult(bool Success, string? RawPayload, string? ErrorMessage);
+
 /// <summary>
 /// Abstração do módulo Logistics do iFood (fase 7, entrega por frota própria) — assignDriver,
 /// goingToOrigin, arrivedAtOrigin, dispatch, arrivedAtDestination, verifyDeliveryCode. Todos os
@@ -16,9 +23,10 @@ public sealed record IFoodVerifyDeliveryCodeResult(bool Success, bool CodeMatche
 /// collection "Logistics") colada pelo usuário. Implementação real:
 /// Infrastructure.Integrations.IFood.IFoodLogisticsClient.
 ///
-/// NÃO implementado nesta fase: GET /orders/{id} (detalhes da entrega — a doc só documenta a
-/// resposta como um objeto opaco, sem schema de campos; não há necessidade dela no fluxo
-/// essencial porque o SyncBar já guarda tudo que precisa localmente em IFoodLogisticsDelivery).
+/// Fase 9c: GET /orders/{id} (GetOrderDetailsAsync) implementado como payload cru — ver ressalva
+/// na DTO acima. Não há necessidade de mais que isso no fluxo essencial porque o SyncBar já guarda
+/// localmente o que precisa em IFoodLogisticsDelivery; este endpoint serve como consulta
+/// complementar/diagnóstico direto contra o iFood.
 /// </summary>
 public interface IIFoodLogisticsClient
 {
@@ -31,4 +39,7 @@ public interface IIFoodLogisticsClient
     Task<IFoodLogisticsActionResult> ArrivedAtDestinationAsync(string accessToken, string ifoodOrderId, CancellationToken cancellationToken = default);
     Task<IFoodVerifyDeliveryCodeResult> VerifyDeliveryCodeAsync(
         string accessToken, string ifoodOrderId, string code, CancellationToken cancellationToken = default);
+
+    // Fase 9c: consulta opaca — ver ressalva na DTO IFoodLogisticsOrderDetailsResult.
+    Task<IFoodLogisticsOrderDetailsResult> GetOrderDetailsAsync(string accessToken, string ifoodOrderId, CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,5 @@
 using SyncBar.Application.Abstractions.Integrations.IFood;
+using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Features.Integrations.IFood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;

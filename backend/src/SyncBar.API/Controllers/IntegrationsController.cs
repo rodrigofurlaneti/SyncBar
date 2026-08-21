@@ -112,6 +112,87 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    // Fase 9b — rastreamento do entregador e código de retirada do módulo Order (pedidos que
+    // vieram do iFood), mais aceite/rejeição de disputas Handshake informadas manualmente pela
+    // equipe (ver ressalva em AcceptIFoodDisputeCommand).
+    [HttpGet("ifood/orders/{ifoodOrderId:long}/tracking")]
+    public Task<IActionResult> GetIFoodOrderTracking(long ifoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodOrderTracking), async () =>
+        {
+            var result = await Mediator.Send(new GetIFoodOrderTrackingQuery(ifoodOrderId), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpPost("ifood/orders/{ifoodOrderId:long}/validate-pickup-code")]
+    public Task<IActionResult> ValidateIFoodPickupCode(long ifoodOrderId, [FromBody] ValidateIFoodPickupCodeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ValidateIFoodPickupCode), async () =>
+        {
+            var result = await Mediator.Send(new ValidateIFoodPickupCodeCommand(ifoodOrderId, request.Code), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(new { codeMatched = result.Value });
+        });
+
+    [HttpPost("ifood/disputes/{disputeId}/accept")]
+    public Task<IActionResult> AcceptIFoodDispute(string disputeId, [FromBody] IFoodDisputeActionRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(AcceptIFoodDispute), async () =>
+        {
+            var result = await Mediator.Send(new AcceptIFoodDisputeCommand(request.BranchId, disputeId), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpPost("ifood/disputes/{disputeId}/reject")]
+    public Task<IActionResult> RejectIFoodDispute(string disputeId, [FromBody] RejectIFoodDisputeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RejectIFoodDispute), async () =>
+        {
+            var result = await Mediator.Send(new RejectIFoodDisputeCommand(request.BranchId, disputeId, request.Reason), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    // Fase 9c — fecha os gaps restantes do módulo Order da auditoria de 2026-08-20: proposta de
+    // alternativa em disputa, virtual bag e requestDriver/cancelRequestDriver/verifyDeliveryCode
+    // do PRÓPRIO módulo Order (distintos dos homônimos em Shipping/Logistics já implementados —
+    // ver comentário em IIFoodOrderClient).
+    [HttpPost("ifood/disputes/{disputeId}/alternatives/{alternativeId}")]
+    public Task<IActionResult> RequestIFoodDisputeAlternative(
+        string disputeId, string alternativeId, [FromBody] RequestIFoodDisputeAlternativeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIFoodDisputeAlternative), async () =>
+        {
+            var result = await Mediator.Send(new RequestIFoodDisputeAlternativeCommand(
+                request.BranchId, disputeId, alternativeId, request.AlternativeType, request.Amount, request.Currency), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpGet("ifood/orders/{ifoodOrderId:long}/virtual-bag")]
+    public Task<IActionResult> GetIFoodOrderVirtualBag(long ifoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodOrderVirtualBag), async () =>
+        {
+            var result = await Mediator.Send(new GetIFoodOrderVirtualBagQuery(ifoodOrderId), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpPost("ifood/orders/{ifoodOrderId:long}/request-driver")]
+    public Task<IActionResult> RequestIFoodOrderDriver(long ifoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIFoodOrderDriver), async () =>
+        {
+            var result = await Mediator.Send(new RequestIFoodOrderDriverCommand(ifoodOrderId), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPost("ifood/orders/{ifoodOrderId:long}/cancel-request-driver")]
+    public Task<IActionResult> CancelIFoodOrderDriverRequest(long ifoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CancelIFoodOrderDriverRequest), async () =>
+        {
+            var result = await Mediator.Send(new CancelIFoodOrderDriverRequestCommand(ifoodOrderId), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPost("ifood/orders/{ifoodOrderId:long}/verify-delivery-code")]
+    public Task<IActionResult> VerifyIFoodOrderDeliveryCode(long ifoodOrderId, [FromBody] VerifyIFoodOrderDeliveryCodeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(VerifyIFoodOrderDeliveryCode), async () =>
+        {
+            var result = await Mediator.Send(new VerifyIFoodOrderDeliveryCodeCommand(ifoodOrderId, request.Code), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(new { codeMatched = result.Value });
+        });
+
     // Cardápio iFood ("fluxo essencial", fase 3) — assim como os pedidos, a sincronização roda
     // sozinha (disparada automaticamente a cada produto/categoria criado/editado/desativado, ver
     // IIFoodCatalogSyncTrigger); este endpoint é só o botão "Sincronizar agora" da tela, pra
@@ -235,6 +316,33 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    // Fase 9c — fecha os gaps restantes do módulo Merchant da auditoria de 2026-08-20: listar
+    // lojas do client_id, ver detalhes de uma loja específica e consultar status por operação
+    // (ex.: DELIVERY, TAKEOUT — diferente do status geral já coberto acima).
+    [HttpGet("ifood/merchant/list/company/{companyId:long}")]
+    public Task<IActionResult> GetIFoodMerchantsList(long companyId, [FromQuery] int page, [FromQuery] int size, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodMerchantsList), async () =>
+        {
+            var result = await Mediator.Send(new GetIFoodMerchantsListQuery(companyId, page <= 0 ? 1 : page, size <= 0 ? 100 : size), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpGet("ifood/merchant/details/branch/{branchId:long}")]
+    public Task<IActionResult> GetIFoodMerchantDetails(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodMerchantDetails), async () =>
+        {
+            var result = await Mediator.Send(new GetIFoodMerchantDetailsQuery(branchId), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpGet("ifood/merchant/status/branch/{branchId:long}/operation/{operation}")]
+    public Task<IActionResult> GetIFoodMerchantStatusByOperation(long branchId, string operation, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodMerchantStatusByOperation), async () =>
+        {
+            var result = await Mediator.Send(new GetIFoodMerchantStatusByOperationQuery(branchId, operation), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
     // Logística por frota própria (fase 7, módulo Logistics) — só se aplica a pedidos DELIVERY
     // com deliveredBy diferente de "IFOOD" (ver IFoodOrder.DeliveredBy); tudo sob demanda, cada
     // passo é acionado manualmente pela equipe conforme o entregador avança (atribuir → saiu pra
@@ -293,6 +401,16 @@ public sealed class IntegrationsController(
         {
             var result = await Mediator.Send(new VerifyIFoodDeliveryCodeCommand(ifoodOrderId, request.Code), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(new { codeMatched = result.Value });
+        });
+
+    // Fase 9c — fecha o gap restante do módulo Logistics da auditoria de 2026-08-20: detalhes da
+    // entrega direto no iFood (resposta sem schema documentado — ver IFoodLogisticsOrderDetailsResult).
+    [HttpGet("ifood/logistics/order/{ifoodOrderId:long}/details")]
+    public Task<IActionResult> GetIFoodLogisticsOrderDetails(long ifoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodLogisticsOrderDetails), async () =>
+        {
+            var result = await Mediator.Send(new GetIFoodLogisticsOrderDetailsQuery(ifoodOrderId), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
     // Shipping (fase 8, módulo Shipping) — entrega, via malha de entregadores do iFood, de
@@ -434,6 +552,16 @@ public sealed class IntegrationsController(
 public sealed record SyncIFoodCatalogRequest(long CompanyId);
 
 public sealed record CancelIFoodOrderRequest(string ReasonCode);
+
+public sealed record ValidateIFoodPickupCodeRequest(string Code);
+
+public sealed record IFoodDisputeActionRequest(long BranchId);
+
+public sealed record RejectIFoodDisputeRequest(long BranchId, string Reason);
+
+public sealed record RequestIFoodDisputeAlternativeRequest(long BranchId, string AlternativeType, decimal? Amount, string? Currency);
+
+public sealed record VerifyIFoodOrderDeliveryCodeRequest(string Code);
 
 public sealed record SyncIFoodFinancialRequest(long CompanyId);
 

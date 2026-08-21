@@ -67,6 +67,29 @@ internal sealed class IFoodLogisticsClient(HttpClient httpClient) : IIFoodLogist
         }
     }
 
+    public async Task<IFoodLogisticsOrderDetailsResult> GetOrderDetailsAsync(string accessToken, string ifoodOrderId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/orders/{ifoodOrderId}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+                return new IFoodLogisticsOrderDetailsResult(false, null, $"iFood retornou {(int)response.StatusCode}: {Truncate(body)}");
+
+            // Resposta documentada só como "<object>" — sem schema (ver ressalva na interface).
+            // Devolvida crua; quem consumir decide o que extrair.
+            return new IFoodLogisticsOrderDetailsResult(true, body, null);
+        }
+        catch (Exception ex)
+        {
+            return new IFoodLogisticsOrderDetailsResult(false, null, ex.Message);
+        }
+    }
+
     private async Task<IFoodLogisticsActionResult> PostActionAsync(string url, string accessToken, object? payload, CancellationToken cancellationToken)
     {
         try

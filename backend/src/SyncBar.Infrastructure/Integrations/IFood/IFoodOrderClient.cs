@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using SyncBar.Application.Abstractions.Integrations.IFood;
 
 namespace SyncBar.Infrastructure.Integrations.IFood;
@@ -25,9 +26,19 @@ namespace SyncBar.Infrastructure.Integrations.IFood;
 /// — nomes de campo (id/name/quantity/unitPrice) assumidos por analogia com o próprio item
 /// (mesma ressalva de confiança já registrada em IIFoodOrderClient).
 ///
+/// Fase 9b: rastreamento (GetOrderTrackingAsync), código de retirada (ValidatePickupCodeAsync) e
+/// disputas Handshake accept/reject (AcceptDisputeAsync/RejectDisputeAsync) — endpoints e
+/// formatos confirmados em 2026-08-20 contra a doc oficial (Postman collection "Order") colada
+/// pelo usuário. Disputas não têm ingestão local de eventos ainda (ver ressalva em
+/// IFoodDisputeActionResult) — a equipe informa o disputeId manualmente.
+///
+/// Fase 9c: fecha os gaps restantes do módulo Order da auditoria de 2026-08-20 — virtual bag
+/// (GetVirtualBagAsync), proposta de alternativa em disputa (RequestDisputeAlternativeAsync) e os
+/// requestDriver/cancelRequestDriver/verifyDeliveryCode do PRÓPRIO módulo Order (distintos dos
+/// homônimos em Shipping/Logistics — ver ressalva em IIFoodOrderClient).
+///
 /// NÃO implementado nesta fase (fora do escopo "essencial", ver ifood-integration-status no
-/// projeto claude.ai): rastreamento de entregador, disputas (Handshake), cálculo de
-/// preparationStartDateTime pra pedidos agendados, código de retirada/entrega, Webhook.
+/// projeto claude.ai): cálculo de preparationStartDateTime pra pedidos agendados, Webhook.
 /// </summary>
 internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClient
 {
@@ -157,6 +168,218 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
         return await SendActionAsync(request, cancellationToken);
     }
 
+    public async Task<IFoodOrderTrackingDto?> GetOrderTrackingAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{OrderBaseUrl}/orders/{orderId}/tracking");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        // 404 é esperado quando ainda não há rastreamento disponível (ex.: entregador ainda não
+        // atribuído) — quem chama decide se tenta de novo depois.
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        var dto = await response.Content.ReadFromJsonAsync<TrackingResponseDto>(cancellationToken: cancellationToken);
+        if (dto is null) return null;
+
+        return new IFoodOrderTrackingDto(dto.Latitude, dto.Longitude, dto.ExpectedDelivery, dto.DeliveryEtaEnd, dto.PickupEtaStart);
+    }
+
+    public async Task<IFoodPickupValidationResult> ValidatePickupCodeAsync(string accessToken, string orderId, string code, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{OrderBaseUrl}/orders/{orderId}/validatePickupCode")
+        {
+            Content = JsonContent.Create(new { code }),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        try
+        {
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                return new IFoodPickupValidationResult(false, false, $"iFood retornou {(int)response.StatusCode}: {Truncate(errorBody)}");
+            }
+
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (string.IsNullOrWhiteSpace(body))
+                return new IFoodPickupValidationResult(true, false, null);
+
+            var dto = System.Text.Json.JsonSerializer.Deserialize<PickupValidationResponseDto>(
+                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return new IFoodPickupValidationResult(true, dto?.Success ?? false, null);
+        }
+        catch (Exception ex)
+        {
+            return new IFoodPickupValidationResult(false, false, ex.Message);
+        }
+    }
+
+    public async Task<IFoodDisputeActionResult> AcceptDisputeAsync(string accessToken, string disputeId, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{OrderBaseUrl}/disputes/{disputeId}/accept");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await SendDisputeActionAsync(request, cancellationToken);
+    }
+
+    public async Task<IFoodDisputeActionResult> RejectDisputeAsync(string accessToken, string disputeId, string reason, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{OrderBaseUrl}/disputes/{disputeId}/reject")
+        {
+            Content = JsonContent.Create(new { reason }),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await SendDisputeActionAsync(request, cancellationToken);
+    }
+
+    private async Task<IFoodDisputeActionResult> SendDisputeActionAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                return new IFoodDisputeActionResult(false, null, $"iFood retornou {(int)response.StatusCode}: {Truncate(errorBody)}");
+            }
+
+            var dto = await response.Content.ReadFromJsonAsync<DisputeActionResponseDto>(cancellationToken: cancellationToken);
+            return new IFoodDisputeActionResult(true, dto?.Status, null);
+        }
+        catch (Exception ex)
+        {
+            return new IFoodDisputeActionResult(false, null, ex.Message);
+        }
+    }
+
+    public async Task<IFoodDisputeActionResult> RequestDisputeAlternativeAsync(
+        string accessToken, string disputeId, string alternativeId, string alternativeType,
+        decimal? amount, string? currency, CancellationToken cancellationToken = default)
+    {
+        object payload = amount is not null
+            ? new { type = alternativeType, metadata = new { amount = new { value = amount.Value, currency } } }
+            : new { type = alternativeType };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{OrderBaseUrl}/disputes/{disputeId}/alternatives/{alternativeId}")
+        {
+            Content = JsonContent.Create(payload),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return await SendDisputeActionAsync(request, cancellationToken);
+    }
+
+    public async Task<IFoodVirtualBagResult> GetVirtualBagAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{OrderBaseUrl}/orders/{orderId}/virtual-bag");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            var rawBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return new IFoodVirtualBagResult(false, null, null, null, null, null, null, [], null, null, null, $"iFood retornou {(int)response.StatusCode}: {Truncate(rawBody)}");
+
+            // Resposta profundamente aninhada e não confirmada campo-a-campo (ver ressalva na
+            // interface) — parsing defensivo com JsonDocument em vez de um record tipado rígido,
+            // pra não quebrar a leitura inteira se um sub-objeto vier faltando ou com nome diferente.
+            using var document = JsonDocument.Parse(rawBody);
+            var root = document.RootElement;
+
+            var id = GetJsonString(root, "id");
+            var shortCode = GetJsonString(root, "shortCode");
+            var status = GetJsonString(root, "status");
+            DateTime? createdAt = GetJsonString(root, "createdAt") is { } createdAtStr && DateTime.TryParse(createdAtStr, out var parsedCreatedAt) ? parsedCreatedAt : null;
+
+            string? merchantName = null;
+            if (root.TryGetProperty("merchant", out var merchantEl) && merchantEl.ValueKind == JsonValueKind.Object)
+                merchantName = GetJsonString(merchantEl, "name");
+
+            string? customerName = null;
+            if (root.TryGetProperty("customer", out var customerEl) && customerEl.ValueKind == JsonValueKind.Object)
+                customerName = GetJsonString(customerEl, "name");
+
+            var items = new List<IFoodVirtualBagItemDto>();
+            string? grossValueAmount = null;
+            string? grossValueCurrency = null;
+            if (root.TryGetProperty("bag", out var bagEl) && bagEl.ValueKind == JsonValueKind.Object)
+            {
+                if (bagEl.TryGetProperty("items", out var itemsEl) && itemsEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in itemsEl.EnumerateArray())
+                    {
+                        var quantity = item.TryGetProperty("quantity", out var qtyEl) && qtyEl.ValueKind == JsonValueKind.Number && qtyEl.TryGetInt32(out var qty) ? qty : 0;
+                        items.Add(new IFoodVirtualBagItemDto(GetJsonString(item, "uniqueId"), GetJsonString(item, "name"), quantity, GetJsonString(item, "ean")));
+                    }
+                }
+
+                if (bagEl.TryGetProperty("prices", out var pricesEl) && pricesEl.ValueKind == JsonValueKind.Object &&
+                    pricesEl.TryGetProperty("grossValue", out var grossEl) && grossEl.ValueKind == JsonValueKind.Object)
+                {
+                    grossValueAmount = GetJsonString(grossEl, "value");
+                    grossValueCurrency = GetJsonString(grossEl, "currency");
+                }
+            }
+
+            return new IFoodVirtualBagResult(true, id, shortCode, status, createdAt, merchantName, customerName, items, grossValueAmount, grossValueCurrency, rawBody, null);
+        }
+        catch (Exception ex)
+        {
+            return new IFoodVirtualBagResult(false, null, null, null, null, null, null, [], null, null, null, ex.Message);
+        }
+    }
+
+    public Task<IFoodOrderActionResult> RequestOrderDriverAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+        => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/requestDriver", accessToken, cancellationToken);
+
+    public Task<IFoodOrderActionResult> CancelOrderRequestDriverAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+        => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/cancelRequestDriver", accessToken, cancellationToken);
+
+    public async Task<IFoodPickupValidationResult> VerifyOrderDeliveryCodeAsync(string accessToken, string orderId, string code, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{OrderBaseUrl}/orders/{orderId}/verifyDeliveryCode")
+        {
+            Content = JsonContent.Create(new { code }),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        try
+        {
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                return new IFoodPickupValidationResult(false, false, $"iFood retornou {(int)response.StatusCode}: {Truncate(errorBody)}");
+            }
+
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (string.IsNullOrWhiteSpace(body))
+                return new IFoodPickupValidationResult(true, false, null);
+
+            var dto = JsonSerializer.Deserialize<PickupValidationResponseDto>(body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return new IFoodPickupValidationResult(true, dto?.Success ?? false, null);
+        }
+        catch (Exception ex)
+        {
+            return new IFoodPickupValidationResult(false, false, ex.Message);
+        }
+    }
+
+    private static string? GetJsonString(JsonElement element, string propertyName)
+    {
+        if (element.ValueKind == JsonValueKind.Object && element.TryGetProperty(propertyName, out var value))
+        {
+            return value.ValueKind switch
+            {
+                JsonValueKind.String => value.GetString(),
+                JsonValueKind.Number => value.GetRawText(),
+                _ => null,
+            };
+        }
+        return null;
+    }
+
     private async Task<IFoodOrderActionResult> PostActionAsync(string url, string accessToken, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
@@ -205,4 +428,9 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
     private sealed record TakeoutDto(string? Mode);
     private sealed record CancellationReasonsResponseDto(List<ReasonDto>? Reasons);
     private sealed record ReasonDto(string Code, string Description);
+    // Fase 9b: tracking traz os campos direto na raiz (deliveryEtaEnd/pickupEtaStart em minutos,
+    // trackDate ignorado — não usado na tela).
+    private sealed record TrackingResponseDto(double? Latitude, double? Longitude, DateTime? ExpectedDelivery, double? DeliveryEtaEnd, double? PickupEtaStart);
+    private sealed record PickupValidationResponseDto(bool Success);
+    private sealed record DisputeActionResponseDto(string? Id, string? Status, string? DisputeId, DateTime? CreatedAt);
 }

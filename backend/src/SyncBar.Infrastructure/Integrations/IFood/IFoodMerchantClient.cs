@@ -216,6 +216,12 @@ internal sealed class IFoodMerchantClient(HttpClient httpClient) : IIFoodMerchan
     public async Task<IFoodMerchantActionResult> UpsertPreparationTimeAsync(
         string accessToken, string merchantId, string ifoodCustomerId, int minutes, CancellationToken cancellationToken = default)
     {
+        // ⚠️ RISCO CONHECIDO (auditoria de 2026-08-20/21, ver IIFoodMerchantClient): este path
+        // (/merchants/{id}/myPreparationTime) NÃO consta na coleção Postman oficial do módulo
+        // Merchant — os 9 endpoints reais dessa coleção foram enumerados campo-a-campo e nenhum
+        // menciona "Preparation". Mantido como estava por falta de alternativa oficial confirmada
+        // (adivinhar um path novo seria pior do que deixar o risco documentado); tratar como não
+        // confiável até validação manual em sandbox real.
         var payload = new { preparationTime = minutes };
 
         // Tenta PUT primeiro (atualizar configuração já existente); se o iFood responder 404
@@ -234,6 +240,127 @@ internal sealed class IFoodMerchantClient(HttpClient httpClient) : IIFoodMerchan
     public async Task<IFoodMerchantActionResult> DeletePreparationTimeAsync(
         string accessToken, string merchantId, string ifoodCustomerId, CancellationToken cancellationToken = default)
         => await SendActionAsync(HttpMethod.Delete, $"{BaseUrl}/merchants/{merchantId}/myPreparationTime", accessToken, null, ifoodCustomerId, cancellationToken);
+
+    public async Task<IFoodMerchantListResult> ListMerchantsAsync(string accessToken, int page = 1, int size = 100, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/merchants?page={page}&size={size}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                return new IFoodMerchantListResult(false, [], $"iFood retornou {(int)response.StatusCode}: {Truncate(body)}");
+            }
+
+            var payload = await response.Content.ReadFromJsonAsync<List<MerchantSummaryDto>>(cancellationToken: cancellationToken);
+            var merchants = (payload ?? [])
+                .Where(m => !string.IsNullOrWhiteSpace(m.Id))
+                .Select(m => new IFoodMerchantSummaryDto(m.Id!, m.Name, m.CorporateName))
+                .ToList();
+
+            return new IFoodMerchantListResult(true, merchants, null);
+        }
+        catch (Exception ex)
+        {
+            return new IFoodMerchantListResult(false, [], ex.Message);
+        }
+    }
+
+    public async Task<IFoodMerchantDetailsResult> GetMerchantDetailsAsync(string accessToken, string merchantId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/merchants/{merchantId}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                return new IFoodMerchantDetailsResult(false, null, null, null, null, null, null, null, null, $"iFood retornou {(int)response.StatusCode}: {Truncate(body)}");
+            }
+
+            var dto = await response.Content.ReadFromJsonAsync<MerchantDetailsDto>(cancellationToken: cancellationToken);
+            if (dto is null)
+                return new IFoodMerchantDetailsResult(false, null, null, null, null, null, null, null, null, "Resposta vazia do iFood.");
+
+            IFoodMerchantAddressDto? address = dto.Address is null
+                ? null
+                : new IFoodMerchantAddressDto(
+                    dto.Address.Country, dto.Address.State, dto.Address.City, dto.Address.PostalCode, dto.Address.District,
+                    dto.Address.Street, dto.Address.Number, dto.Address.Latitude, dto.Address.Longitude);
+
+            return new IFoodMerchantDetailsResult(
+                true, dto.Id, dto.Name, dto.CorporateName, dto.Description, dto.Type, dto.Status, dto.CreatedAt, address, null);
+        }
+        catch (Exception ex)
+        {
+            return new IFoodMerchantDetailsResult(false, null, null, null, null, null, null, null, null, ex.Message);
+        }
+    }
+
+    public async Task<IFoodMerchantStatusByOperationResult> GetStatusByOperationAsync(
+        string accessToken, string merchantId, string operation, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/merchants/{merchantId}/status/{operation}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                return new IFoodMerchantStatusByOperationResult(false, null, null, false, null, [], $"iFood retornou {(int)response.StatusCode}: {Truncate(body)}");
+            }
+
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            var root = document.RootElement;
+
+            var operationName = GetString(root, "operation");
+            var salesChannel = GetString(root, "salesChannel");
+            var available = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("available", out var availableEl) &&
+                             (availableEl.ValueKind == JsonValueKind.True || availableEl.ValueKind == JsonValueKind.False) && availableEl.GetBoolean();
+            var state = GetString(root, "state");
+
+            var validations = new List<IFoodMerchantValidation>();
+            if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("validations", out var validationsArray) &&
+                validationsArray.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var v in validationsArray.EnumerateArray())
+                {
+                    var id = GetString(v, "id", "code") ?? "UNKNOWN";
+                    var vState = GetString(v, "state", "status") ?? "UNKNOWN";
+                    string? message = null;
+                    if (v.TryGetProperty("message", out var messageEl))
+                    {
+                        message = messageEl.ValueKind == JsonValueKind.Object
+                            ? GetString(messageEl, "description", "subtitle", "title")
+                            : (messageEl.ValueKind == JsonValueKind.String ? messageEl.GetString() : null);
+                    }
+                    validations.Add(new IFoodMerchantValidation(id, vState, message));
+                }
+            }
+
+            return new IFoodMerchantStatusByOperationResult(true, operationName, salesChannel, available, state, validations, null);
+        }
+        catch (Exception ex)
+        {
+            return new IFoodMerchantStatusByOperationResult(false, null, null, false, null, [], ex.Message);
+        }
+    }
+
+    private sealed record MerchantSummaryDto(string? Id, string? Name, string? CorporateName);
+    private sealed record MerchantDetailsDto(
+        string? Id, string? Name, string? CorporateName, string? Description, string? Type, string? Status,
+        DateTime? CreatedAt, MerchantAddressDto? Address);
+    private sealed record MerchantAddressDto(
+        string? Country, string? State, string? City, string? PostalCode, string? District,
+        string? Street, string? Number, double? Latitude, double? Longitude);
 
     private async Task<IFoodMerchantActionResult> SendActionAsync(
         HttpMethod method, string url, string accessToken, object? payload, string? ifoodCustomerId, CancellationToken cancellationToken,

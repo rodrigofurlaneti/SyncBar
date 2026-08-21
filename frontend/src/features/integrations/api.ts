@@ -104,6 +104,94 @@ export const cancelIFoodOrder = (ifoodOrderId: number, reasonCode: string): Prom
     body: JSON.stringify({ reasonCode }),
   });
 
+// Fase 9b — rastreamento (posição do entregador) e código de retirada do módulo Order (pedidos
+// que vieram do iFood), mais disputas Handshake (aceitar/rejeitar por id informado manualmente —
+// ver comentário no backend, AcceptIFoodDisputeCommand).
+export interface IFoodOrderTrackingResponse {
+  latitude: number | null;
+  longitude: number | null;
+  expectedDelivery: string | null;
+  deliveryEtaEndMinutes: number | null;
+  pickupEtaStartMinutes: number | null;
+}
+
+export const getIFoodOrderTracking = (ifoodOrderId: number): Promise<IFoodOrderTrackingResponse> =>
+  api<IFoodOrderTrackingResponse>(`/api/integrations/ifood/orders/${ifoodOrderId}/tracking`);
+
+export const validateIFoodPickupCode = (ifoodOrderId: number, code: string): Promise<{ codeMatched: boolean }> =>
+  api<{ codeMatched: boolean }>(`/api/integrations/ifood/orders/${ifoodOrderId}/validate-pickup-code`, {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+
+export interface IFoodDisputeActionResponse {
+  success: boolean;
+  status: string | null;
+}
+
+export const acceptIFoodDispute = (branchId: number, disputeId: string): Promise<IFoodDisputeActionResponse> =>
+  api<IFoodDisputeActionResponse>(`/api/integrations/ifood/disputes/${encodeURIComponent(disputeId)}/accept`, {
+    method: "POST",
+    body: JSON.stringify({ branchId }),
+  });
+
+export const rejectIFoodDispute = (branchId: number, disputeId: string, reason: string): Promise<IFoodDisputeActionResponse> =>
+  api<IFoodDisputeActionResponse>(`/api/integrations/ifood/disputes/${encodeURIComponent(disputeId)}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ branchId, reason }),
+  });
+
+// Fase 9c — fecha os gaps restantes do módulo Order da auditoria de 2026-08-20/21: proposta de
+// alternativa em disputa, virtual bag e requestDriver/cancelRequestDriver/verifyDeliveryCode do
+// PRÓPRIO módulo Order (distintos dos homônimos em Shipping/Logistics, já cobertos acima).
+export const requestIFoodDisputeAlternative = (
+  branchId: number,
+  disputeId: string,
+  alternativeId: string,
+  alternativeType: string,
+  amount?: number,
+  currency?: string,
+): Promise<IFoodDisputeActionResponse> =>
+  api<IFoodDisputeActionResponse>(
+    `/api/integrations/ifood/disputes/${encodeURIComponent(disputeId)}/alternatives/${encodeURIComponent(alternativeId)}`,
+    { method: "POST", body: JSON.stringify({ branchId, alternativeType, amount: amount ?? null, currency: currency ?? null }) },
+  );
+
+export interface IFoodVirtualBagItem {
+  uniqueId: string | null;
+  name: string | null;
+  quantity: number;
+  ean: string | null;
+}
+
+export interface IFoodOrderVirtualBagResponse {
+  id: string | null;
+  shortCode: string | null;
+  status: string | null;
+  createdAt: string | null;
+  merchantName: string | null;
+  customerName: string | null;
+  items: IFoodVirtualBagItem[];
+  grossValueAmount: string | null;
+  grossValueCurrency: string | null;
+  rawPayload: string | null;
+}
+
+export const getIFoodOrderVirtualBag = (ifoodOrderId: number): Promise<IFoodOrderVirtualBagResponse> =>
+  api<IFoodOrderVirtualBagResponse>(`/api/integrations/ifood/orders/${ifoodOrderId}/virtual-bag`);
+
+export const requestIFoodOrderDriver = (ifoodOrderId: number): Promise<void> =>
+  api<void>(`/api/integrations/ifood/orders/${ifoodOrderId}/request-driver`, { method: "POST" });
+
+export const cancelIFoodOrderDriverRequest = (ifoodOrderId: number): Promise<void> =>
+  api<void>(`/api/integrations/ifood/orders/${ifoodOrderId}/cancel-request-driver`, { method: "POST" });
+
+export const verifyIFoodOrderDeliveryCode = (ifoodOrderId: number, code: string): Promise<{ codeMatched: boolean }> =>
+  api<{ codeMatched: boolean }>(`/api/integrations/ifood/orders/${ifoodOrderId}/verify-delivery-code`, {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+
 // Cardápio iFood ("fluxo essencial") — sincronização roda sozinha (a cada produto/categoria
 // criado/editado/desativado); este endpoint é só o botão "Sincronizar agora" da tela.
 export interface IFoodCatalogSyncSummary {
@@ -230,6 +318,60 @@ export const setIFoodPreparationTime = (branchId: number, minutes: number | null
     body: JSON.stringify({ branchId, minutes }),
   });
 
+// Fase 9c — fecha os gaps restantes do módulo Merchant da auditoria de 2026-08-20/21: listar
+// lojas do client_id, ver detalhes de uma loja específica e consultar status por operação (ex.:
+// "DELIVERY", "TAKEOUT" — diferente do status geral acima, que só olha a primeira operação).
+export interface IFoodMerchantSummaryItem {
+  id: string;
+  name: string | null;
+  corporateName: string | null;
+}
+
+export const getIFoodMerchantsList = (companyId: number, page = 1, size = 100): Promise<IFoodMerchantSummaryItem[]> =>
+  api<IFoodMerchantSummaryItem[]>(`/api/integrations/ifood/merchant/list/company/${companyId}?page=${page}&size=${size}`);
+
+export interface IFoodMerchantAddress {
+  country: string | null;
+  state: string | null;
+  city: string | null;
+  postalCode: string | null;
+  district: string | null;
+  street: string | null;
+  number: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface IFoodMerchantDetailsResponse {
+  id: string | null;
+  name: string | null;
+  corporateName: string | null;
+  description: string | null;
+  type: string | null;
+  status: string | null;
+  createdAt: string | null;
+  address: IFoodMerchantAddress | null;
+}
+
+export const getIFoodMerchantDetails = (branchId: number): Promise<IFoodMerchantDetailsResponse> =>
+  api<IFoodMerchantDetailsResponse>(`/api/integrations/ifood/merchant/details/branch/${branchId}`);
+
+export interface IFoodMerchantStatusByOperationResponse {
+  operation: string | null;
+  salesChannel: string | null;
+  available: boolean;
+  state: string | null;
+  validations: IFoodMerchantValidationItem[];
+}
+
+export const getIFoodMerchantStatusByOperation = (
+  branchId: number,
+  operation: string,
+): Promise<IFoodMerchantStatusByOperationResponse> =>
+  api<IFoodMerchantStatusByOperationResponse>(
+    `/api/integrations/ifood/merchant/status/branch/${branchId}/operation/${encodeURIComponent(operation)}`,
+  );
+
 // Logística por frota própria (fase 7, módulo Logistics) — só se aplica a pedidos DELIVERY com
 // deliveredBy diferente de "IFOOD" (ver IFoodOrderResponse.deliveredBy). Tudo sob demanda: cada
 // passo é acionado manualmente pela equipe conforme o entregador avança.
@@ -286,6 +428,16 @@ export const verifyIFoodDeliveryCode = (
     method: "POST",
     body: JSON.stringify({ code }),
   });
+
+// Fase 9c — fecha o gap restante do módulo Logistics da auditoria: detalhes da entrega direto no
+// iFood. A doc oficial não documenta o schema de resposta (só "<object>"), então rawPayload é o
+// JSON bruto — a tela decide o que exibir dele.
+export interface IFoodLogisticsOrderDetailsResponse {
+  rawPayload: string | null;
+}
+
+export const getIFoodLogisticsOrderDetails = (ifoodOrderId: number): Promise<IFoodLogisticsOrderDetailsResponse> =>
+  api<IFoodLogisticsOrderDetailsResponse>(`/api/integrations/ifood/logistics/order/${ifoodOrderId}/details`);
 
 // Shipping (fase 8, módulo Shipping) — entrega, via malha de entregadores do iFood, de pedidos
 // que NÃO vieram do iFood (telefone, WhatsApp, balcão). Cotação → pedir motorista → acompanhar →
