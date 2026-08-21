@@ -1,4 +1,4 @@
-﻿using SyncBar.Domain.Constants;
+using SyncBar.Domain.Constants;
 using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
@@ -75,7 +75,7 @@ public sealed class CustomerOrder : AggregateRoot
             branchId, diningTableId, comandaId, employeeId, guestCount, notes, creditLimitAmount,
             orderTypeId, customerName, customerPhone, deliveryAddress, customerId, Now));
     }
-    
+
     public Result AddItemWithPromotion(Product product, decimal quantity, string? notes, Promotion? activePromotion, long employeeId, DateTime Now)
     {
         var unitPrice = product.SalePrice;
@@ -126,6 +126,45 @@ public sealed class CustomerOrder : AggregateRoot
 
         _items.Add(item.Value);
         OrderStatusId = OrderStatusIds.EmAndamento;
+        RecalculateTotals();
+        UpdatedAt = Now;
+        return Result.Success();
+    }
+
+    // Adiciona um complemento escolhido (ex.: "bacon extra") a um item já lançado no pedido —
+    // localiza o OrderItem filho e delega, depois recalcula os totais do pedido (o total do
+    // item já inclui o preço do complemento, ver OrderItem.RecalculateTotal).
+    public Result AddComplement(long orderItemId, long complementId, decimal unitPriceCharged, DateTime Now)
+    {
+        if (!IsOpen())
+            return Result.Failure(new Error("CustomerOrder.NotOpen", "Items can only be changed on an open order."));
+
+        var item = _items.FirstOrDefault(i => i.Id == orderItemId && i.IsActive);
+        if (item is null)
+            return Result.Failure(new Error("CustomerOrder.ItemNotFound", "Order item not found."));
+
+        var result = item.AddComplement(complementId, unitPriceCharged, Now);
+        if (result.IsFailure)
+            return result;
+
+        RecalculateTotals();
+        UpdatedAt = Now;
+        return Result.Success();
+    }
+
+    public Result RemoveComplement(long orderItemId, long orderItemComplementId, DateTime Now)
+    {
+        if (!IsOpen())
+            return Result.Failure(new Error("CustomerOrder.NotOpen", "Items can only be changed on an open order."));
+
+        var item = _items.FirstOrDefault(i => i.Id == orderItemId && i.IsActive);
+        if (item is null)
+            return Result.Failure(new Error("CustomerOrder.ItemNotFound", "Order item not found."));
+
+        var result = item.RemoveComplement(orderItemComplementId, Now);
+        if (result.IsFailure)
+            return result;
+
         RecalculateTotals();
         UpdatedAt = Now;
         return Result.Success();

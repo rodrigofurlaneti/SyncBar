@@ -1,7 +1,7 @@
 // Chamadas sem autenticação — o "segredo" é o token do QR Code da mesa.
 // Não usa lib/apiClient (que injeta Authorization e tenta refresh de sessão).
 
-import type { PublicMenuResponse } from "../../lib/types";
+import type { OrderItemComplementSelection, PublicMenuResponse } from "../../lib/types";
 
 async function publicApi<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -28,8 +28,10 @@ export const addPublicOrderItem = (
   productId: number,
   quantity: number,
   notes: string | null,
+  // Fase 6a: seleção de complementos do autoatendimento QR Code — mesmo formato de OrderDrawer.
+  complements?: OrderItemComplementSelection[],
 ): Promise<{ orderId: number }> =>
   publicApi<{ orderId: number }>(`/api/publicordering/${token}/items`, {
     method: "POST",
-    body: JSON.stringify({ productId, quantity, notes }),
+    body: JSON.stringify({ productId, quantity, notes, complements: complements ?? null }),
   });

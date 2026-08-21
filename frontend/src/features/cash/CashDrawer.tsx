@@ -285,7 +285,7 @@ export function CashDrawer({ onClose }: Props) {
                   {featuresQuery.data?.canManageAccess && (
                     <button
                       className="btn-danger"
-                      style={{ minHeight: 36, padding: "0 10px", fontSize: "0.82rem" }}
+                      style={{ minHeight: 44, padding: "0 10px", fontSize: "0.82rem" }}
                       disabled={refundMutation.isPending}
                       onClick={async () => {
                         const reason = await dialog.prompt({

@@ -10,6 +10,16 @@ export interface LoginResponse {
   employeeId: number | null;
 }
 
+// Fase 6a (frontend): espelha OrderItemComplementResponse (Application/Features/Orders/OrderResponse.cs).
+// ComplementItemName não vem do backend aqui (cross-aggregate) — resolvido no front casando
+// complementId contra o catálogo já carregado via getComplementGroups (mesma ideia de productId
+// em OrderItemResponse não carregar o nome do produto).
+export interface OrderItemComplementResponse {
+  id: number;
+  complementId: number;
+  unitPriceCharged: number;
+}
+
 export interface OrderItemResponse {
   id: number;
   productId: number;
@@ -19,6 +29,15 @@ export interface OrderItemResponse {
   discountAmount: number;
   totalAmount: number;
   notes: string | null;
+  complements: OrderItemComplementResponse[];
+}
+
+// Fase 6a (frontend): seleção de complemento enviada ao lançar um item — espelha
+// Application/Features/Orders/AddItem/OrderItemComplementSelection.cs. O preço nunca é enviado
+// pelo front: é sempre resolvido no backend a partir do Complement cadastrado.
+export interface OrderItemComplementSelection {
+  complementGroupId: number;
+  complementId: number;
 }
 
 export interface OrderResponse {
@@ -41,6 +60,60 @@ export interface OrderResponse {
   items: OrderItemResponse[];
 }
 
+// Fase 6a (frontend): espelham SyncBar.Application.Features.Catalog.Complements — grupos de
+// complementos (ex.: "Escolha uma bebida") e as opções dentro deles (ex.: "Coca-Cola").
+export interface ComplementResponse {
+  id: number;
+  complementItemId: number;
+  complementItemName: string;
+  extraPrice: number;
+  isActive: boolean;
+}
+
+export interface ComplementGroupResponse {
+  id: number;
+  name: string;
+  complementGroupTypeId: number;
+  minSelection: number;
+  maxSelection: number;
+  isActive: boolean;
+  complements: ComplementResponse[];
+}
+
+export interface ComplementItemResponse {
+  id: number;
+  name: string;
+  isActive: boolean;
+}
+
+// Espelha ProductComplementGroupResponse.cs — vínculo produto × grupo, já com o grupo achatado
+// (sem objeto aninhado) do jeito que o backend devolve.
+export interface ProductComplementGroupResponse {
+  productComplementGroupId: number;
+  complementGroupId: number;
+  complementGroupName: string;
+  complementGroupTypeId: number;
+  minSelection: number;
+  maxSelection: number;
+  displayOrder: number;
+  complements: ComplementResponse[];
+}
+
+// Ids fixos de LookupIds.ComplementGroupTypeIds (backend) — usar como enum no front.
+export const ComplementGroupTypeIds = {
+  SelecaoAdicional: 1,
+  Especificacao: 2,
+  Ingredientes: 3,
+  Utensilios: 4,
+} as const;
+
+export const complementGroupTypeLabel: Record<number, string> = {
+  1: "Seleção adicional",
+  2: "Especificação",
+  3: "Ingredientes",
+  4: "Utensílios",
+};
+
 export interface MenuItemResponse {
   id: number;
   categoryId: number;
@@ -53,6 +126,9 @@ export interface MenuItemResponse {
   isStockControlled: boolean;
   preparationTimeMinutes: number | null;
   imageUrl: string | null;
+  // Fase 6a (extensão backend): grupos de complementos vinculados a este produto — ver
+  // MenuComplementsBuilder.cs. Lista vazia quando o produto não tem complementos.
+  complementGroups: ComplementGroupResponse[];
 }
 
 export interface TableResponse {

@@ -1,4 +1,5 @@
-﻿using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Integrations.IFood;
+using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -8,15 +9,18 @@ namespace SyncBar.Application.Features.Catalog.CreateCategory;
 internal sealed class CreateCategoryCommandHandler : BaseCommandHandler<CreateCategoryCommand, long>
 {
     private readonly ICategoryRepository _categoryRepository;
+    private readonly IIFoodCatalogSyncTrigger _catalogSyncTrigger;
     private readonly IUnitOfWork _unitOfWork;
 
     public CreateCategoryCommandHandler(
         ICategoryRepository categoryRepository,
+        IIFoodCatalogSyncTrigger catalogSyncTrigger,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
     {
         _categoryRepository = categoryRepository;
+        _catalogSyncTrigger = catalogSyncTrigger;
         _unitOfWork = unitOfWork;
     }
 
@@ -33,6 +37,8 @@ internal sealed class CreateCategoryCommandHandler : BaseCommandHandler<CreateCa
 
                 await _categoryRepository.AddAsync(category.Value, cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
+
+                _catalogSyncTrigger.TriggerCompanySync(request.CompanyId);
 
                 return Result.Success(category.Value.Id);
             });

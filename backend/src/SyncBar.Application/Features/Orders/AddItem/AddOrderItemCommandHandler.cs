@@ -1,4 +1,4 @@
-﻿using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Domain.Exceptions;
 using SyncBar.Domain.Entities;
@@ -14,6 +14,8 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
     private readonly IProductRepository _productRepository;
     private readonly IPromotionRepository _promotionRepository;
     private readonly IProductStockRepository _stockRepository;
+    private readonly IProductComplementGroupRepository _productComplementGroupRepository;
+    private readonly IComplementGroupRepository _complementGroupRepository;
     private readonly IPrintingService _printingService;
     private readonly TimeProvider _TimeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
@@ -23,6 +25,8 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         IProductRepository productRepository,
         IPromotionRepository promotionRepository,
         IProductStockRepository stockRepository,
+        IProductComplementGroupRepository productComplementGroupRepository,
+        IComplementGroupRepository complementGroupRepository,
         IPrintingService printingService,
         TimeProvider TimeProviderCustom,
         ILogTrackerRepository logRepository,
@@ -33,6 +37,8 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         _productRepository = productRepository;
         _promotionRepository = promotionRepository;
         _stockRepository = stockRepository;
+        _productComplementGroupRepository = productComplementGroupRepository;
+        _complementGroupRepository = complementGroupRepository;
         _printingService = printingService;
         _TimeProviderCustom = TimeProviderCustom;
         _unitOfWork = unitOfWork;
@@ -65,6 +71,32 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
                 // 4. Busca o estoque sequencialmente
                 var stockSnapshot = await _stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
 
+                // 5. Se houver complementos selecionados, valida contra os grupos vinculados ao
+                // produto ANTES de lançar o item — evita lançar o item e falhar depois no meio do caminho.
+                var resolvedComplements = new List<(long ComplementId, decimal ExtraPrice)>();
+                if (request.Complements is { Count: > 0 })
+                {
+                    var links = await _productComplementGroupRepository.GetByProductAsync(product.Id, cancellationToken);
+                    var allowedGroupIds = links.Select(l => l.ComplementGroupId).ToHashSet();
+
+                    foreach (var selection in request.Complements)
+                    {
+                        if (!allowedGroupIds.Contains(selection.ComplementGroupId))
+                            return Result.Failure(new Error("OrderItem.ComplementGroupNotAvailable",
+                                $"Complement group {selection.ComplementGroupId} is not available for this product."));
+
+                        var group = await _complementGroupRepository.GetByIdAsync(selection.ComplementGroupId, cancellationToken);
+                        if (group is null || !group.IsActive)
+                            return Result.Failure(new Error("ComplementGroup.NotFound", "Complement group not found."));
+
+                        var complement = group.Complements.FirstOrDefault(c => c.Id == selection.ComplementId && c.IsActive);
+                        if (complement is null)
+                            return Result.Failure(new Error("ComplementGroup.ComplementNotFound", "Complement not found in this group."));
+
+                        resolvedComplements.Add((complement.Id, complement.ExtraPrice));
+                    }
+                }
+
                 var itemCountBefore = order.Items.Count;
                 // O domínio usa DateTime puro (DATETIME2 no banco), não DateTimeOffset —
                 // e o padrão do projeto é hora LOCAL (ver OpenOrderCommandHandler), não UTC,
@@ -77,6 +109,20 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
                 var result = order.AddItemWithPromotion(product, request.Quantity, request.Notes, activePromotion, request.EmployeeId ?? 0, currentTime);
                 if (result.IsFailure)
                     return result;
+
+                // 6. Aplica os complementos resolvidos na linha PRINCIPAL recém-lançada (a primeira
+                // adicionada por AddItemWithPromotion — o item bônus de promoção EmDobro, se houver,
+                // não recebe complementos).
+                if (resolvedComplements.Count > 0)
+                {
+                    var primaryItemId = order.Items.ElementAt(itemCountBefore).Id;
+                    foreach (var (complementId, extraPrice) in resolvedComplements)
+                    {
+                        var complementResult = order.AddComplement(primaryItemId, complementId, extraPrice, currentTime);
+                        if (complementResult.IsFailure)
+                            return complementResult;
+                    }
+                }
 
                 if (stockSnapshot is not null)
                 {

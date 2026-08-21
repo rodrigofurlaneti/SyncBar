@@ -174,7 +174,7 @@ export function UsersPage() {
               <div style={{ display: "flex", gap: 8 }}>
                 <button
                   className="btn-ghost"
-                  style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                  style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                   onClick={() => {
                     setError(null);
                     setSelectedRoles(user.roleIds);
@@ -185,7 +185,7 @@ export function UsersPage() {
                 </button>
                 <button
                   className="btn-danger"
-                  style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                  style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                   onClick={async () => {
                     if (
                       await dialog.confirm({

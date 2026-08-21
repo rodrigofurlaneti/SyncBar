@@ -196,7 +196,7 @@ export function PurchasingPage() {
                                 {s.isActive && (
                                     <button
                                         className="btn-danger"
-                                        style={{ minHeight: 36, padding: "0 10px", fontSize: "0.85rem" }}
+                                        style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                                         onClick={async () => {
                                             if (await dialog.confirm({ title: "Desativar fornecedor", message: `Desativar "${s.legalName}"?`, confirmLabel: "Desativar", danger: true }))
                                                 deactivateSupplierMutation.mutate(s.id);

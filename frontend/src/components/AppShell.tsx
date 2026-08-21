@@ -13,6 +13,7 @@ const links = [
   { to: "/reservas", label: "Reservas", feature: "Salao" },
   { to: "/clientes", label: "Clientes", feature: "Salao" },
   { to: "/produtos", label: "Cardápio", feature: "Cardapio" },
+  { to: "/complementos", label: "Complementos", feature: "Cardapio" },
   { to: "/estoque", label: "Estoque", feature: "Estoque" },
   { to: "/compras", label: "Compras", feature: "Estoque" },
   { to: "/preparo", label: "Preparo", feature: "Preparo" },
@@ -95,7 +96,10 @@ export function AppShell() {
           )}
         </nav>
         <span style={{ flex: 1 }} />
-        <span className="chip" style={{ "--dot": "var(--free)" } as React.CSSProperties}>
+        <span
+          className="chip topbar-branch-chip"
+          style={{ "--dot": "var(--free)" } as React.CSSProperties}
+        >
           Filial {branchId}
         </span>
         {canSee("Caixa") && (

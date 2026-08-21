@@ -159,14 +159,14 @@ export function StockPage() {
                                 </span>
                                 <button
                                     className="btn-ghost"
-                                    style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                                    style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                                     onClick={() => setLedgerItem(item)}
                                 >
                                     Extrato
                                 </button>
                                 <button
                                     className="btn-ghost"
-                                    style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                                    style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                                     onClick={() => {
                                         setError(null);
                                         setLimitsItem(item);

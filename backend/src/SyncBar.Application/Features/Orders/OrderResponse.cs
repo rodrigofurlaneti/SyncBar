@@ -1,5 +1,10 @@
 namespace SyncBar.Application.Features.Orders;
 
+// ComplementItemName não é resolvido aqui (OrderItemComplement só conhece o ComplementId,
+// cross-aggregate) — o front-end casa pelo Id usando o catálogo de complementos já carregado
+// (GetComplementGroups), mesma ideia de ProductId em OrderItemResponse não carregar o nome do produto.
+public sealed record OrderItemComplementResponse(long Id, long ComplementId, decimal UnitPriceCharged);
+
 public sealed record OrderItemResponse(
     long Id,
     long ProductId,
@@ -8,7 +13,8 @@ public sealed record OrderItemResponse(
     decimal UnitPrice,
     decimal DiscountAmount,
     decimal TotalAmount,
-    string? Notes);
+    string? Notes,
+    IReadOnlyCollection<OrderItemComplementResponse> Complements);
 
 public sealed record OrderResponse(
     long Id,

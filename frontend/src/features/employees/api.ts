@@ -7,6 +7,12 @@ export const getEmployeesByBranch = (branchId: number): Promise<EmployeeResponse
 export const getJobTitles = (companyId: number): Promise<JobTitleResponse[]> =>
   api<JobTitleResponse[]>(`/api/employees/jobtitles/company/${companyId}`);
 
+export const createJobTitle = (companyId: number, name: string): Promise<number> =>
+  api<number>("/api/employees/jobtitles", {
+    method: "POST",
+    body: JSON.stringify({ companyId, name }),
+  });
+
 export interface EmployeePayload {
   branchId: number;
   jobTitleId: number;

@@ -167,7 +167,7 @@ export function PrintingPage() {
             <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
               <button
                 className="btn-ghost"
-                style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                 disabled={testMutation.isPending}
                 onClick={() => testMutation.mutate(printer.id)}
               >
@@ -175,7 +175,7 @@ export function PrintingPage() {
               </button>
               <button
                 className="btn-danger"
-                style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
+                style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                 onClick={async () => {
                   if (
                     await dialog.confirm({

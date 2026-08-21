@@ -11,7 +11,7 @@ internal sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderIte
         builder.ToTable("OrderItem");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        
+
         builder.Property(x => x.Quantity).HasColumnType("decimal(18,3)").IsRequired();
         builder.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.DiscountAmount).HasColumnType("decimal(18,2)").IsRequired();
@@ -21,14 +21,18 @@ internal sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderIte
         builder.Property(x => x.DeliveredAt).HasColumnType("datetime(6)");
         builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
-        
+
         builder.HasIndex(x => x.CustomerOrderId).HasDatabaseName("IX_OrderItem_CustomerOrderId");
         builder.HasIndex(x => x.ProductId).HasDatabaseName("IX_OrderItem_ProductId");
         builder.HasIndex(x => x.OrderItemStatusId).HasDatabaseName("IX_OrderItem_OrderItemStatusId");
         builder.HasIndex(x => x.EmployeeId).HasDatabaseName("IX_OrderItem_EmployeeId");
-        
+
         builder.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).HasConstraintName("FK_OrderItem_Product").OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<OrderItemStatus>().WithMany().HasForeignKey(x => x.OrderItemStatusId).HasConstraintName("FK_OrderItem_OrderItemStatus").OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId).HasConstraintName("FK_OrderItem_Employee").OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(x => x.Complements).WithOne().HasForeignKey(c => c.OrderItemId)
+            .HasConstraintName("FK_OrderItemComplement_OrderItem").OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Complements).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

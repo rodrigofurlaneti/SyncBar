@@ -142,7 +142,7 @@ export function PromotionsPage() {
                   </div>
                   <button
                     className="btn-danger"
-                    style={{ minHeight: 36, padding: "0 10px", fontSize: "0.85rem" }}
+                    style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                     disabled={removeMutation.isPending}
                     onClick={async () => {
                       if (

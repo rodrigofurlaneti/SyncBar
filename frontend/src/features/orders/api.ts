@@ -1,5 +1,5 @@
 import { api } from "../../lib/apiClient";
-import type { OrderResponse } from "../../lib/types";
+import type { OrderItemComplementSelection, OrderResponse } from "../../lib/types";
 
 export interface OpenOrderPayload {
   branchId: number;
@@ -29,10 +29,13 @@ export const addOrderItem = (
   quantity: number,
   notes: string | null,
   employeeId: number | null,
+  // Fase 6a: seleção de complementos feita no ComplementSelectorModal, junto do lançamento —
+  // omitido/vazio quando o produto não tem grupos de complementos vinculados.
+  complements?: OrderItemComplementSelection[],
 ): Promise<void> =>
   api<void>(`/api/orders/${orderId}/items`, {
     method: "POST",
-    body: JSON.stringify({ productId, quantity, notes, employeeId }),
+    body: JSON.stringify({ productId, quantity, notes, employeeId, complements: complements ?? null }),
   });
 
 export const updateItemStatus = (

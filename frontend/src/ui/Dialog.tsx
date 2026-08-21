@@ -1,11 +1,9 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Modal } from "./Modal";
-import { Button } from "./Button";
+import { swal, swalClasses } from "../lib/swal";
 
 interface ConfirmOptions {
   title?: string;
-  message: ReactNode;
+  message: string;
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
@@ -13,7 +11,7 @@ interface ConfirmOptions {
 
 interface PromptOptions {
   title?: string;
-  message?: ReactNode;
+  message?: string;
   label: string;
   defaultValue?: string;
   placeholder?: string;
@@ -27,103 +25,55 @@ interface DialogApi {
   prompt: (options: PromptOptions) => Promise<string | null>;
 }
 
-const DialogContext = createContext<DialogApi | null>(null);
+const dialogApi: DialogApi = {
+  async confirm(options) {
+    const result = await swal.fire({
+      title: options.title ?? "Confirmar",
+      text: options.message,
+      icon: options.danger ? "warning" : "question",
+      showCancelButton: true,
+      confirmButtonText: options.confirmLabel ?? "Confirmar",
+      cancelButtonText: options.cancelLabel ?? "Cancelar",
+      customClass: {
+        ...swalClasses,
+        confirmButton: options.danger ? "btn-danger" : "btn-primary",
+      },
+    });
+    return result.isConfirmed;
+  },
 
-type State =
-  | { kind: "none" }
-  | { kind: "confirm"; options: ConfirmOptions; resolve: (v: boolean) => void }
-  | { kind: "prompt"; options: PromptOptions; resolve: (v: string | null) => void };
+  async prompt(options) {
+    const result = await swal.fire({
+      title: options.title ?? "Informe um valor",
+      text: options.message,
+      input: "text",
+      inputLabel: options.label,
+      inputValue: options.defaultValue ?? "",
+      inputPlaceholder: options.placeholder,
+      inputAttributes: {
+        inputmode: options.inputMode ?? "text",
+        autocapitalize: "off",
+      },
+      showCancelButton: true,
+      confirmButtonText: options.confirmLabel ?? "Confirmar",
+      cancelButtonText: options.cancelLabel ?? "Cancelar",
+    });
+    // Confirmar devolve o texto (mesmo vazio); Cancelar/Esc/fora devolve null.
+    if (!result.isConfirmed) return null;
+    return (result.value as string | undefined) ?? "";
+  },
+};
 
+/**
+ * O SweetAlert2 gerencia seu próprio overlay/portal fora da árvore do React
+ * (foco preso, Esc, retorno de foco — tudo nativo), então não precisa mais de
+ * estado React nem de <Modal>. Mantido como passthrough só para não quebrar
+ * quem ainda monta <DialogProvider> em main.tsx.
+ */
 export function DialogProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<State>({ kind: "none" });
-  const [value, setValue] = useState("");
-  const stateRef = useRef(state);
-  stateRef.current = state;
-
-  const close = useCallback(() => setState({ kind: "none" }), []);
-
-  const confirm = useCallback(
-    (options: ConfirmOptions) =>
-      new Promise<boolean>((resolve) => setState({ kind: "confirm", options, resolve })),
-    [],
-  );
-
-  const prompt = useCallback(
-    (options: PromptOptions) =>
-      new Promise<string | null>((resolve) => {
-        setValue(options.defaultValue ?? "");
-        setState({ kind: "prompt", options, resolve });
-      }),
-    [],
-  );
-
-  const api = useMemo<DialogApi>(() => ({ confirm, prompt }), [confirm, prompt]);
-
-  const settle = (result: boolean | string | null) => {
-    const s = stateRef.current;
-    if (s.kind === "confirm") s.resolve(result as boolean);
-    if (s.kind === "prompt") s.resolve(result as string | null);
-    close();
-  };
-
-  return (
-    <DialogContext.Provider value={api}>
-      {children}
-
-      {state.kind === "confirm" && (
-        <Modal title={state.options.title ?? "Confirmar"} onClose={() => settle(false)} ariaLabel="Confirmação">
-          <p style={{ margin: 0, color: "var(--ink-dim)" }}>{state.options.message}</p>
-          <div className="ui-row" style={{ justifyContent: "flex-end", marginTop: 4 }}>
-            <Button onClick={() => settle(false)}>{state.options.cancelLabel ?? "Cancelar"}</Button>
-            <Button
-              variant={state.options.danger ? "danger" : "primary"}
-              onClick={() => settle(true)}
-            >
-              {state.options.confirmLabel ?? "Confirmar"}
-            </Button>
-          </div>
-        </Modal>
-      )}
-
-      {state.kind === "prompt" && (
-        <Modal title={state.options.title ?? "Informe um valor"} onClose={() => settle(null)} ariaLabel="Entrada">
-          <form
-            className="ui-stack"
-            onSubmit={(e) => {
-              e.preventDefault();
-              settle(value); // Confirmar devolve o texto (mesmo vazio); Cancelar devolve null.
-            }}
-          >
-            {state.options.message && (
-              <p style={{ margin: 0, color: "var(--ink-dim)" }}>{state.options.message}</p>
-            )}
-            <label className="field">
-              <span className="field-label">{state.options.label}</span>
-              <input
-                autoFocus
-                inputMode={state.options.inputMode ?? "text"}
-                placeholder={state.options.placeholder}
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-              />
-            </label>
-            <div className="ui-row" style={{ justifyContent: "flex-end" }}>
-              <Button type="button" onClick={() => settle(null)}>
-                {state.options.cancelLabel ?? "Cancelar"}
-              </Button>
-              <Button type="submit" variant="primary">
-                {state.options.confirmLabel ?? "Confirmar"}
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-    </DialogContext.Provider>
-  );
+  return <>{children}</>;
 }
 
 export function useDialog(): DialogApi {
-  const ctx = useContext(DialogContext);
-  if (!ctx) throw new Error("useDialog precisa estar dentro de <DialogProvider>.");
-  return ctx;
+  return dialogApi;
 }

@@ -185,8 +185,9 @@ export function PaymentPanel({ order, onPaid }: Props) {
       </div>
 
       {rows.map((row, index) => (
-        <div key={index} style={{ display: "grid", gap: 8, gridTemplateColumns: "1.3fr 0.8fr auto" }}>
+        <div key={index} className="ui-row ui-row-wrap" style={{ alignItems: "center" }}>
           <select
+            style={{ flex: 2, minWidth: 170 }}
             value={row.paymentMethodId}
             onChange={(e) => setRow(index, { paymentMethodId: Number(e.target.value) })}
           >
@@ -197,16 +198,16 @@ export function PaymentPanel({ order, onPaid }: Props) {
             ))}
           </select>
           <input
+            style={{ flex: 1, minWidth: 110 }}
             placeholder="Valor"
             inputMode="decimal"
             value={row.amount}
             onChange={(e) => setRow(index, { amount: e.target.value })}
           />
           <button
-            className="btn-ghost"
+            className="btn-ghost btn-icon"
             aria-label="Remover forma de pagamento"
             title="Remover forma de pagamento"
-            style={{ minHeight: 44, padding: "0 12px" }}
             disabled={rows.length === 1}
             onClick={() => setRows((current) => current.filter((_, i) => i !== index))}
           >
@@ -214,7 +215,7 @@ export function PaymentPanel({ order, onPaid }: Props) {
           </button>
           {needsReceipt(row.paymentMethodId) && (
             <input
-              style={{ gridColumn: "1 / -1" }}
+              style={{ flex: "1 1 100%" }}
               placeholder="Comprovante / autorização (ex.: AUT-123456)"
               value={row.authorizationCode}
               onChange={(e) => setRow(index, { authorizationCode: e.target.value })}

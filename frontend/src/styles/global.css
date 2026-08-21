@@ -252,6 +252,18 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
   .brand {
     font-size: 1.4rem;
   }
+
+  /* Última linha de defesa em telas muito estreitas: some com o chip de
+     filial (não essencial) e permite quebrar em 2 linhas em vez de gerar
+     scroll horizontal caso ainda falte espaço para Caixa/tema/Sair. */
+  .topbar-branch-chip {
+    display: none;
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
 }
 
 .brand {
@@ -314,9 +326,11 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
 }
 .ticket-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
+  row-gap: 6px;
   padding: 10px 18px;
   border-bottom: 1px solid var(--line-soft);
   transition: background var(--duration-fast) var(--ease-standard);
@@ -438,32 +452,91 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
 }
 
-/* --- Toast --------------------------------------------------- */
-.toast-stack {
-  position: fixed;
-  right: 18px; bottom: 18px;
-  display: grid;
-  gap: 10px;
-  z-index: 80;
-  width: min(360px, calc(100vw - 36px));
+/* --- SweetAlert2 (confirmações/prompts/toasts) — tema SyncBar ------------- */
+.sb-swal-container {
+  background: rgba(10, 10, 12, 0.66) !important;
+  backdrop-filter: blur(3px);
 }
-.toast {
-  display: flex; align-items: flex-start; gap: 10px;
+[data-theme="light"] .sb-swal-container {
+  background: rgba(36, 31, 24, 0.42) !important;
+}
+
+.swal2-popup.sb-swal-popup {
+  width: min(420px, 92vw);
+  background: var(--bg-raise);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  font-family: var(--font-body);
+}
+
+.sb-swal-title {
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  font-size: 1.5rem;
+  padding: 0;
+  margin: 0 0 4px;
+}
+
+.sb-swal-html { color: var(--ink-dim); font-size: 1rem; margin: 8px 0 0; padding: 0; }
+
+.sb-swal-actions { margin-top: 18px; gap: 10px; }
+.sb-swal-actions .btn-primary,
+.sb-swal-actions .btn-ghost,
+.sb-swal-actions .btn-danger { margin: 0; }
+
+.sb-swal-input.swal2-input {
   background: var(--bg-press);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  min-height: var(--touch);
+  font-size: 1rem;
+  box-shadow: none;
+  margin: 10px 0 0;
+}
+.sb-swal-input.swal2-input:focus {
+  outline: 2px solid var(--amber);
+  outline-offset: -1px;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.swal2-icon.sb-swal-icon { margin: 8px auto 14px; }
+.swal2-icon.swal2-question { border-color: var(--reserved); color: var(--reserved); }
+.swal2-icon.swal2-warning { border-color: var(--amber); color: var(--amber); }
+.swal2-icon.swal2-success { border-color: var(--ok); }
+.swal2-icon.swal2-success [class^="swal2-success-line"] { background-color: var(--ok); }
+.swal2-icon.swal2-success .swal2-success-ring { border-color: rgba(63, 178, 127, 0.3); }
+.swal2-icon.swal2-error { border-color: var(--danger); color: var(--danger); }
+.swal2-icon.swal2-error [class^="swal2-x-mark-line"] { background-color: var(--danger); }
+.swal2-timer-progress-bar { background: var(--amber) !important; }
+
+/* animação de entrada consistente com .rise (fade + slide) em vez do "pop" padrão do plugin */
+@keyframes sb-swal-show { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes sb-swal-hide { from { opacity: 1; } to { opacity: 0; transform: translateY(4px) scale(0.98); } }
+.sb-swal-show { animation: sb-swal-show var(--duration-entrance) var(--ease-standard) both !important; }
+.sb-swal-hide { animation: sb-swal-hide var(--duration-fast) var(--ease-standard) both !important; }
+
+/* toasts (canto superior direito) — substituem o .toast-stack/.toast antigos */
+.swal2-popup.sb-swal-toast {
+  background: var(--bg-press);
+  color: var(--ink);
   border: 1px solid var(--line);
   border-left-width: 4px;
   border-radius: 12px;
-  padding: 12px 14px;
-  color: var(--ink);
-  font-size: 0.92rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  animation: rise var(--duration-base) var(--ease-standard) both;
+  padding: 10px 14px;
+  font-size: 0.92rem;
 }
-.toast--success { border-left-color: var(--ok); }
-.toast--error { border-left-color: var(--danger); }
-.toast--info { border-left-color: var(--reserved); }
-.toast-close { background: transparent; color: var(--ink-faint); min-height: auto; padding: 0 4px; }
-.toast-close:hover { color: var(--ink); }
+.sb-swal-toast .swal2-title { color: var(--ink); font-size: 0.92rem; font-family: var(--font-body); font-weight: 400; padding: 0; margin: 0; }
+.sb-swal-toast .swal2-timer-progress-bar-container { border-radius: 0 0 12px 12px; overflow: hidden; }
+.sb-swal-toast--success { border-left-color: var(--ok); }
+.sb-swal-toast--error { border-left-color: var(--danger); }
+.sb-swal-toast--info { border-left-color: var(--reserved); }
 
 /* --- Skeleton / EmptyState ----------------------------------- */
 .skeleton {
@@ -475,7 +548,7 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
 @keyframes ui-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .rise, .toast, .skeleton, .btn-loading::after { animation: none !important; }
+  .rise, .skeleton, .btn-loading::after, .sb-swal-show, .sb-swal-hide { animation: none !important; }
 }
 
 /* --- Drawer action bar (rodapé fixo com a ação primária) ------ */

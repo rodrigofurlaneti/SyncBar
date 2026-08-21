@@ -34,11 +34,23 @@ export function Modal({
   const titleId = useId();
   const isDrawer = variant === "drawer";
 
+  // onClose quase sempre chega como uma arrow function nova a cada render do
+  // pai (ex.: onClose={() => setCreating(false)}). Guardamos a versão mais
+  // recente numa ref e mantemos o efeito abaixo com deps [] (roda só no
+  // mount/unmount) — senão, a cada tecla digitada num campo do formulário o
+  // componente pai re-renderiza, `onClose` muda de identidade, o efeito
+  // reexecuta e rouba o foco de volta pro primeiro elemento focável do painel
+  // (o botão ✕), tirando o cursor do campo que a pessoa estava digitando.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const panel = panelRef.current;
 
-    // foca o primeiro elemento focável (ou o painel)
+    // foca o primeiro elemento focável (ou o painel) — só na abertura
     const focusables = panel?.querySelectorAll<HTMLElement>(FOCUSABLE);
     (focusables && focusables.length ? focusables[0] : panel)?.focus();
 
@@ -49,7 +61,7 @@ export function Modal({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key === "Tab" && panel) {
@@ -79,7 +91,8 @@ export function Modal({
       document.body.style.overflow = prevOverflow;
       previouslyFocused?.focus?.();
     };
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intencional: só no mount/unmount, ver comentário acima
+  }, []);
 
   return (
     <div

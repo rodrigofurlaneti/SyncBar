@@ -1,4 +1,5 @@
 using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Application.Features.Orders.AddItem;
 
 namespace SyncBar.Application.Features.PublicOrdering.AddItem;
 
@@ -8,4 +9,5 @@ public sealed record AddPublicOrderItemCommand(
     Guid Token,
     long ProductId,
     decimal Quantity,
-    string? Notes) : ICommand<long>;
+    string? Notes,
+    IReadOnlyCollection<OrderItemComplementSelection>? Complements = null) : ICommand<long>;
