@@ -308,15 +308,18 @@ function CategoryFormModal({
   const [index, setIndex] = useState(category?.index != null ? String(category.index) : "");
 
   const saveMutation = useMutation({
-    mutationFn: () =>
-      category?.id
-        ? editIFoodCategory(branchId, catalogId, category.id, {
-            name: name.trim() || undefined,
-            externalCode: externalCode.trim() || undefined,
-            status: status || undefined,
-            index: index.trim() ? Number(index) : undefined,
-          })
-        : createIFoodCategory(branchId, catalogId, name.trim()),
+    mutationFn: async () => {
+      if (category?.id) {
+        await editIFoodCategory(branchId, catalogId, category.id, {
+          name: name.trim() || undefined,
+          externalCode: externalCode.trim() || undefined,
+          status: status || undefined,
+          index: index.trim() ? Number(index) : undefined,
+        });
+      } else {
+        await createIFoodCategory(branchId, catalogId, name.trim());
+      }
+    },
     onSuccess: () => {
       toast.success(category ? "Categoria atualizada no iFood." : "Categoria criada no iFood.");
       onSaved();
