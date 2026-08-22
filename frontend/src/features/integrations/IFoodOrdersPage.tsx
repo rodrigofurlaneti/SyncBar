@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  acceptIFoodDeliveryAddressChange,
   acceptIFoodDispute,
   assignIFoodDriver,
   cancelIFoodOrder,
   cancelIFoodOrderDriverRequest,
+  confirmIFoodUserAddress,
+  denyIFoodDeliveryAddressChange,
   dispatchIFoodLogistics,
   getIFoodCancellationReasons,
   getIFoodLogisticsDeliveries,
@@ -17,6 +20,7 @@ import {
   markIFoodGoingToOrigin,
   markIFoodOrderReady,
   rejectIFoodDispute,
+  requestIFoodDeliveryAddressChange,
   requestIFoodDisputeAlternative,
   requestIFoodOrderDriver,
   startIFoodOrderPreparation,
@@ -103,6 +107,39 @@ const LOGISTICS_STATUS_COLOR: Record<string, string> = {
   DELIVERY_CODE_VERIFIED: "var(--ok)",
 };
 
+// Fase 12 — aviso sonoro/visual de pedido novo. A sincronização em si já roda no backend
+// (IFoodOrderPollingBackgroundService, a cada 30s) e esta tela já reconsulta a lista a cada 15s
+// (REFRESH_INTERVAL_MS); faltava só avisar o operador quando um pedido novo aparece na lista, em
+// vez de depender de alguém ficar olhando a tela. Toca dois beeps curtos via Web Audio API — sem
+// depender de nenhum arquivo de áudio externo. Falha silenciosamente se o navegador bloquear
+// áudio (ex.: antes de qualquer interação do usuário na página) — o toast visual ainda avisa.
+function playNewOrderChime() {
+  try {
+    const AudioCtxCtor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtxCtor) return;
+    const ctx = new AudioCtxCtor();
+    const playBeep = (startTime: number, frequency: number) => {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.3, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.25);
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start(startTime);
+      oscillator.stop(startTime + 0.3);
+    };
+    const now = ctx.currentTime;
+    playBeep(now, 880);
+    playBeep(now + 0.3, 1046.5);
+    setTimeout(() => void ctx.close(), 800);
+  } catch {
+    // Ambiente sem suporte a Web Audio, ou áudio bloqueado — segue só com o toast visual.
+  }
+}
+
 export function IFoodOrdersPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -117,6 +154,42 @@ export function IFoodOrdersPage() {
     queryFn: () => getIFoodOrders(branchId),
     refetchInterval: REFRESH_INTERVAL_MS,
   });
+
+  // Snapshot dos IDs de pedido já vistos — null enquanto a tela ainda não terminou o primeiro
+  // carregamento (nesse caso não alerta nada, senão todo pedido em aberto viraria um "pedido
+  // novo" assim que a tela abre).
+  const knownOrderIdsRef = useRef<Set<number> | null>(null);
+
+  // Troca de filial: descarta o snapshot antigo pra não comparar pedidos de lojas diferentes.
+  useEffect(() => {
+    knownOrderIdsRef.current = null;
+  }, [branchId]);
+
+  useEffect(() => {
+    const orders = ordersQuery.data;
+    if (!orders) return;
+
+    const currentIds = new Set(orders.map((order) => order.id));
+
+    if (knownOrderIdsRef.current === null) {
+      knownOrderIdsRef.current = currentIds;
+      return;
+    }
+
+    const previouslyKnown = knownOrderIdsRef.current;
+    const newOrders = orders.filter((order) => !previouslyKnown.has(order.id));
+    knownOrderIdsRef.current = currentIds;
+
+    if (newOrders.length === 0) return;
+
+    playNewOrderChime();
+    for (const order of newOrders) {
+      const typeLabel = TYPE_LABEL[order.ifoodOrderType] ?? order.ifoodOrderType;
+      toast.info(
+        `🔔 Novo pedido iFood — ${order.customerName} · ${typeLabel} · R$ ${order.totalAmount.toFixed(2)}`,
+      );
+    }
+  }, [ordersQuery.data, toast]);
 
   const deliveriesQuery = useQuery({
     queryKey: ["integrations", "ifood", "logistics", branchId],
@@ -259,6 +332,17 @@ function IFoodOrderCard({
           </span>
           {order.deliveryAddress && (
             <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>{order.deliveryAddress}</span>
+          )}
+          {order.orderTiming === "SCHEDULED" && order.preparationStartDateTime && (
+            <span style={{ color: "var(--info, #3b82f6)", fontSize: "0.85rem", fontWeight: 600 }}>
+              📅 Agendado para{" "}
+              {new Date(order.preparationStartDateTime).toLocaleString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
           )}
         </div>
         <div style={{ display: "grid", gap: 6, justifyItems: "end" }}>
@@ -742,6 +826,16 @@ function OrderAdvancedActionsModal({ order, onClose }: { order: IFoodOrderRespon
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [code, setCode] = useState("");
 
+  // Fase 11 — troca de endereço de entrega em andamento (módulo Shipping).
+  const [showAddressChangeForm, setShowAddressChangeForm] = useState(false);
+  const [addrStreetNumber, setAddrStreetNumber] = useState("");
+  const [addrStreetName, setAddrStreetName] = useState("");
+  const [addrComplement, setAddrComplement] = useState("");
+  const [addrNeighborhood, setAddrNeighborhood] = useState("");
+  const [addrCity, setAddrCity] = useState("");
+  const [addrState, setAddrState] = useState("");
+  const [addrReference, setAddrReference] = useState("");
+
   const bagQuery = useQuery({
     queryKey: ["integrations", "ifood", "virtual-bag", order.id],
     queryFn: () => getIFoodOrderVirtualBag(order.id),
@@ -772,6 +866,49 @@ function OrderAdvancedActionsModal({ order, onClose }: { order: IFoodOrderRespon
       }
     },
     onError: () => toast.error("Não foi possível verificar o código no iFood."),
+  });
+
+  const requestAddressChangeMutation = useMutation({
+    mutationFn: () =>
+      requestIFoodDeliveryAddressChange(order.id, {
+        streetNumber: addrStreetNumber.trim(),
+        streetName: addrStreetName.trim(),
+        complement: addrComplement.trim() || undefined,
+        neighborhood: addrNeighborhood.trim(),
+        city: addrCity.trim(),
+        state: addrState.trim(),
+        reference: addrReference.trim() || undefined,
+      }),
+    onSuccess: () => {
+      toast.success("Troca de endereço solicitada ao iFood.");
+      setShowAddressChangeForm(false);
+      setAddrStreetNumber("");
+      setAddrStreetName("");
+      setAddrComplement("");
+      setAddrNeighborhood("");
+      setAddrCity("");
+      setAddrState("");
+      setAddrReference("");
+    },
+    onError: () => toast.error("Não foi possível solicitar a troca de endereço no iFood."),
+  });
+
+  const acceptAddressChangeMutation = useMutation({
+    mutationFn: () => acceptIFoodDeliveryAddressChange(order.id),
+    onSuccess: () => toast.success("Troca de endereço aceita no iFood."),
+    onError: () => toast.error("Não foi possível aceitar a troca de endereço no iFood."),
+  });
+
+  const denyAddressChangeMutation = useMutation({
+    mutationFn: () => denyIFoodDeliveryAddressChange(order.id),
+    onSuccess: () => toast.success("Troca de endereço recusada no iFood."),
+    onError: () => toast.error("Não foi possível recusar a troca de endereço no iFood."),
+  });
+
+  const confirmUserAddressMutation = useMutation({
+    mutationFn: () => confirmIFoodUserAddress(order.id),
+    onSuccess: () => toast.success("Endereço do usuário confirmado no iFood."),
+    onError: () => toast.error("Não foi possível confirmar o endereço do usuário no iFood."),
   });
 
   const bag = bagQuery.data;
@@ -832,6 +969,74 @@ function OrderAdvancedActionsModal({ order, onClose }: { order: IFoodOrderRespon
               </Button>
             </div>
           )}
+        </div>
+
+        <div style={{ display: "grid", gap: 8 }}>
+          <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>Troca de endereço de entrega (módulo Shipping)</span>
+          <span style={{ color: "var(--ink-faint)", fontSize: "0.8rem" }}>
+            fluxo bidirecional — solicite um novo endereço pra propor a troca, ou aceite/recuse/confirme
+            quando é o cliente quem propõe pelo app dele
+          </span>
+
+          {!showAddressChangeForm ? (
+            <Button variant="ghost" size="sm" onClick={() => setShowAddressChangeForm(true)}>
+              Solicitar novo endereço
+            </Button>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              <div className="ui-row ui-row-wrap" style={{ gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 100 }}>
+                  <TextField label="Número" value={addrStreetNumber} onChange={(e) => setAddrStreetNumber(e.target.value)} />
+                </div>
+                <div style={{ flex: 2, minWidth: 180 }}>
+                  <TextField label="Rua" value={addrStreetName} onChange={(e) => setAddrStreetName(e.target.value)} />
+                </div>
+              </div>
+              <div className="ui-row ui-row-wrap" style={{ gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <TextField label="Complemento" value={addrComplement} onChange={(e) => setAddrComplement(e.target.value)} />
+                </div>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <TextField label="Bairro" value={addrNeighborhood} onChange={(e) => setAddrNeighborhood(e.target.value)} />
+                </div>
+              </div>
+              <div className="ui-row ui-row-wrap" style={{ gap: 8 }}>
+                <div style={{ flex: 2, minWidth: 160 }}>
+                  <TextField label="Cidade" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} />
+                </div>
+                <div style={{ flex: 1, minWidth: 100 }}>
+                  <TextField label="Estado (UF)" value={addrState} onChange={(e) => setAddrState(e.target.value)} />
+                </div>
+              </div>
+              <TextField label="Referência (opcional)" value={addrReference} onChange={(e) => setAddrReference(e.target.value)} />
+              <div className="ui-row" style={{ gap: 8, justifyContent: "flex-end" }}>
+                <Button variant="ghost" size="sm" onClick={() => setShowAddressChangeForm(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={!addrStreetNumber.trim() || !addrStreetName.trim() || !addrNeighborhood.trim() || !addrCity.trim() || !addrState.trim()}
+                  loading={requestAddressChangeMutation.isPending}
+                  onClick={() => requestAddressChangeMutation.mutate()}
+                >
+                  Enviar solicitação
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="ui-row ui-row-wrap" style={{ gap: 8 }}>
+            <Button variant="ghost" size="sm" loading={acceptAddressChangeMutation.isPending} onClick={() => acceptAddressChangeMutation.mutate()}>
+              Aceitar troca
+            </Button>
+            <Button variant="ghost" size="sm" loading={denyAddressChangeMutation.isPending} onClick={() => denyAddressChangeMutation.mutate()}>
+              Recusar troca
+            </Button>
+            <Button variant="ghost" size="sm" loading={confirmUserAddressMutation.isPending} onClick={() => confirmUserAddressMutation.mutate()}>
+              Confirmar endereço do usuário
+            </Button>
+          </div>
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end" }}>

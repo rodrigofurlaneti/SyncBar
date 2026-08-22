@@ -212,6 +212,40 @@ internal sealed class IFoodShippingClient(HttpClient httpClient) : IIFoodShippin
         string accessToken, string ifoodOrderId, CancellationToken cancellationToken = default)
         => await PostActionAsync($"{BaseUrl}/orders/{ifoodOrderId}/cancelRequestDriver", accessToken, null, cancellationToken);
 
+    // Fase 11 — fluxo de troca de endereço de entrega em andamento. Os 3 verbos de resposta
+    // (accept/deny/userConfirm) não têm body na doc oficial; só o request tem.
+    public async Task<IFoodShippingActionResult> RequestDeliveryAddressChangeAsync(
+        string accessToken, string ifoodOrderId, IFoodShippingDeliveryAddressChangePayload payload, CancellationToken cancellationToken = default)
+    {
+        var body = new
+        {
+            streetNumber = payload.StreetNumber,
+            streetName = payload.StreetName,
+            complement = payload.Complement,
+            neighborhood = payload.Neighborhood,
+            city = payload.City,
+            state = payload.State,
+            country = payload.Country,
+            reference = payload.Reference,
+            coordinates = payload.Latitude.HasValue && payload.Longitude.HasValue
+                ? new { latitude = payload.Latitude.Value, longitude = payload.Longitude.Value }
+                : null,
+        };
+        return await PostActionAsync($"{BaseUrl}/orders/{ifoodOrderId}/deliveryAddressChangeRequest", accessToken, body, cancellationToken);
+    }
+
+    public async Task<IFoodShippingActionResult> AcceptDeliveryAddressChangeAsync(
+        string accessToken, string ifoodOrderId, CancellationToken cancellationToken = default)
+        => await PostActionAsync($"{BaseUrl}/orders/{ifoodOrderId}/acceptDeliveryAddressChange", accessToken, null, cancellationToken);
+
+    public async Task<IFoodShippingActionResult> DenyDeliveryAddressChangeAsync(
+        string accessToken, string ifoodOrderId, CancellationToken cancellationToken = default)
+        => await PostActionAsync($"{BaseUrl}/orders/{ifoodOrderId}/denyDeliveryAddressChange", accessToken, null, cancellationToken);
+
+    public async Task<IFoodShippingActionResult> ConfirmUserAddressAsync(
+        string accessToken, string ifoodOrderId, CancellationToken cancellationToken = default)
+        => await PostActionAsync($"{BaseUrl}/orders/{ifoodOrderId}/userConfirmAddress", accessToken, null, cancellationToken);
+
     private async Task<IFoodShippingActionResult> PostActionAsync(string url, string accessToken, object? payload, CancellationToken cancellationToken)
     {
         try

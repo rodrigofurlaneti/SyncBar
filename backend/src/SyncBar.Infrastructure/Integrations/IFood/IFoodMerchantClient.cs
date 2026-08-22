@@ -27,7 +27,7 @@ internal sealed class IFoodMerchantClient(HttpClient httpClient) : IIFoodMerchan
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync(cancellationToken);
-                return new IFoodMerchantStatusResult(false, null, [], $"iFood retornou {(int)response.StatusCode}: {Truncate(body)}");
+                return new IFoodMerchantStatusResult(false, null, false, [], $"iFood retornou {(int)response.StatusCode}: {Truncate(body)}");
             }
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -43,6 +43,14 @@ internal sealed class IFoodMerchantClient(HttpClient httpClient) : IIFoodMerchan
 
             var operationState = GetString(statusElement, "state", "status", "operationState");
 
+            // Fase 13 — a mesma resposta traz um "available: boolean" por operação (confirmado
+            // contra a coleção Postman oficial do módulo Merchant), até então descartado por este
+            // método. Extraído com o mesmo parsing defensivo já usado em GetStatusByOperationAsync.
+            var available = statusElement.ValueKind == JsonValueKind.Object &&
+                             statusElement.TryGetProperty("available", out var availableEl) &&
+                             (availableEl.ValueKind == JsonValueKind.True || availableEl.ValueKind == JsonValueKind.False) &&
+                             availableEl.GetBoolean();
+
             var validations = new List<IFoodMerchantValidation>();
             if (statusElement.ValueKind == JsonValueKind.Object &&
                 statusElement.TryGetProperty("validations", out var validationsArray) &&
@@ -57,11 +65,11 @@ internal sealed class IFoodMerchantClient(HttpClient httpClient) : IIFoodMerchan
                 }
             }
 
-            return new IFoodMerchantStatusResult(true, operationState, validations, null);
+            return new IFoodMerchantStatusResult(true, operationState, available, validations, null);
         }
         catch (Exception ex)
         {
-            return new IFoodMerchantStatusResult(false, null, [], ex.Message);
+            return new IFoodMerchantStatusResult(false, null, false, [], ex.Message);
         }
     }
 

@@ -26,6 +26,15 @@ public sealed class IFoodOrder : AggregateRoot
     // Ressalva de confiança: nome do valor "IFOOD" assumido pela doc de Logistics/Order — não
     // há uma lista fechada de valores possíveis documentada explicitamente pelo iFood.
     public string? DeliveredBy { get; private set; }
+    // Fase 14 — antes buscado da API (IFoodOrderDetailsDto) e descartado sem persistir. "IMMEDIATE"
+    // (padrão) ou "SCHEDULED"; PreparationStartDateTime só é preenchido quando OrderTiming é
+    // "SCHEDULED". Guardado agora pra tela de Pedidos poder mostrar "Agendado para HH:mm" — a SLA
+    // de confirmação de 8 minutos (ConfirmDeadlineAt) continua contada a partir de agora mesmo
+    // pra pedido agendado, sem mudança de comportamento: o fluxo essencial já confirma
+    // automaticamente assim que o pedido chega, e não há doc oficial confirmando se o iFood espera
+    // um prazo de confirmação diferente pra pedido agendado — ver ifood-integration-status.md.
+    public string OrderTiming { get; private set; } = "IMMEDIATE";
+    public DateTime? PreparationStartDateTime { get; private set; }
     public DateTime ConfirmDeadlineAt { get; private set; }
     public DateTime? ConfirmedAt { get; private set; }
     // Algum item do pedido não bateu com nenhum Product do catálogo (por EAN/código de barras)
@@ -40,7 +49,8 @@ public sealed class IFoodOrder : AggregateRoot
 
     private IFoodOrder(
         long customerOrderId, long branchId, string ifoodOrderId, string? displayId, string merchantId,
-        string ifoodOrderType, string? deliveredBy, DateTime now, bool hasUnmappedItems) : base(0)
+        string ifoodOrderType, string? deliveredBy, string orderTiming, DateTime? preparationStartDateTime,
+        DateTime now, bool hasUnmappedItems) : base(0)
     {
         CustomerOrderId = customerOrderId;
         BranchId = branchId;
@@ -49,6 +59,8 @@ public sealed class IFoodOrder : AggregateRoot
         MerchantId = merchantId;
         IFoodOrderType = ifoodOrderType;
         DeliveredBy = deliveredBy;
+        OrderTiming = string.IsNullOrWhiteSpace(orderTiming) ? "IMMEDIATE" : orderTiming;
+        PreparationStartDateTime = preparationStartDateTime;
         Status = IFoodOrderStatuses.Placed;
         // SLA oficial: confirmar em até 8 minutos. Pedidos agendados usam preparationStartDateTime
         // como referência oficial — não diferenciado nesta fase porque o fluxo essencial confirma
@@ -61,7 +73,8 @@ public sealed class IFoodOrder : AggregateRoot
 
     public static Result<IFoodOrder> Create(
         long customerOrderId, long branchId, string ifoodOrderId, string? displayId, string merchantId,
-        string ifoodOrderType, string? deliveredBy, DateTime now, bool hasUnmappedItems)
+        string ifoodOrderType, string? deliveredBy, string orderTiming, DateTime? preparationStartDateTime,
+        DateTime now, bool hasUnmappedItems)
     {
         if (string.IsNullOrWhiteSpace(ifoodOrderId))
             return Result.Failure<IFoodOrder>(new Error("IFoodOrder.MissingId", "iFood order id is required."));
@@ -69,7 +82,8 @@ public sealed class IFoodOrder : AggregateRoot
             return Result.Failure<IFoodOrder>(new Error("IFoodOrder.MissingMerchantId", "Merchant id is required."));
 
         return Result.Success(new IFoodOrder(
-            customerOrderId, branchId, ifoodOrderId, displayId, merchantId, ifoodOrderType, deliveredBy, now, hasUnmappedItems));
+            customerOrderId, branchId, ifoodOrderId, displayId, merchantId, ifoodOrderType, deliveredBy,
+            orderTiming, preparationStartDateTime, now, hasUnmappedItems));
     }
 
     public void MarkConfirmed(DateTime now)

@@ -53,6 +53,23 @@ public sealed record IFoodShippingCancellationReasonDto(string CancelCodeId, str
 
 public sealed record IFoodSafeDeliveryScoreResult(bool Success, string? ErrorMessage, string? Score);
 
+// Payload do fluxo de troca de endereço em andamento (fase 11) — o cliente pede pra mudar o
+// endereço de entrega pelo app dele durante a corrida; o iFood notifica o lojista (via polling,
+// fora do escopo desta abstração) e o lojista usa RequestDeliveryAddressChangeAsync pra propor um
+// novo endereço, ou Accept/Deny quando é o CLIENTE quem propôs (fluxo bidirecional — a doc oficial
+// não distingue quem inicia, só os 4 verbos de ação). Coordinates são opcionais na doc oficial.
+public sealed record IFoodShippingDeliveryAddressChangePayload(
+    string StreetNumber,
+    string StreetName,
+    string? Complement,
+    string Neighborhood,
+    string City,
+    string State,
+    string Country,
+    string? Reference,
+    double? Latitude,
+    double? Longitude);
+
 /// <summary>
 /// Abstração do módulo Shipping do iFood (fase 8) — "The Shipping API allows the merchant to
 /// send orders to iFood that were placed through other sales channels (phone, whatsapp or their
@@ -63,13 +80,10 @@ public sealed record IFoodSafeDeliveryScoreResult(bool Success, string? ErrorMes
 /// collection "Shipping") colada pelo usuário. Implementação real:
 /// Infrastructure.Integrations.IFood.IFoodShippingClient.
 ///
-/// NÃO implementado nesta fase (fluxo de troca de endereço em andamento, 4 endpoints:
-/// deliveryAddressChangeRequest/acceptDeliveryAddressChange/denyDeliveryAddressChange/
-/// userConfirmAddress) — é um fluxo de negociação disparado normalmente pelo APP DO CLIENTE
-/// durante a entrega (o cliente pede pra mudar o endereço e o app do entregador manda a
-/// notificação), sem um gatilho claro do lado do lojista na doc consultada; fica como próximo
-/// incremento quando houver clareza de como o SyncBar ficaria sabendo que uma mudança foi pedida
-/// (provavelmente via evento de polling, ainda não mapeado pra este módulo).
+/// Fase 11 — fecha os últimos 4 endpoints da auditoria (troca de endereço de entrega em
+/// andamento): RequestDeliveryAddressChangeAsync/AcceptDeliveryAddressChangeAsync/
+/// DenyDeliveryAddressChangeAsync/ConfirmUserAddressAsync, todos sobre a variante "pedido já
+/// existente no iFood" (mesmo IFoodOrderId usado em GetDeliveryAvailabilitiesForOrderAsync).
 /// </summary>
 public interface IIFoodShippingClient
 {
@@ -100,4 +114,14 @@ public interface IIFoodShippingClient
         string accessToken, string ifoodOrderId, string quoteId, CancellationToken cancellationToken = default);
 
     Task<IFoodShippingActionResult> CancelDriverForOrderAsync(string accessToken, string ifoodOrderId, CancellationToken cancellationToken = default);
+
+    // Fase 11 — fluxo de troca de endereço de entrega em andamento.
+    Task<IFoodShippingActionResult> RequestDeliveryAddressChangeAsync(
+        string accessToken, string ifoodOrderId, IFoodShippingDeliveryAddressChangePayload payload, CancellationToken cancellationToken = default);
+
+    Task<IFoodShippingActionResult> AcceptDeliveryAddressChangeAsync(string accessToken, string ifoodOrderId, CancellationToken cancellationToken = default);
+
+    Task<IFoodShippingActionResult> DenyDeliveryAddressChangeAsync(string accessToken, string ifoodOrderId, CancellationToken cancellationToken = default);
+
+    Task<IFoodShippingActionResult> ConfirmUserAddressAsync(string accessToken, string ifoodOrderId, CancellationToken cancellationToken = default);
 }

@@ -33,7 +33,8 @@ internal sealed class GetIFoodOrdersQueryHandler(
                     {
                         customerOrdersById.TryGetValue(io.CustomerOrderId, out var co);
                         return new IFoodOrderResponse(
-                            io.Id, io.CustomerOrderId, io.IFoodOrderId, io.DisplayId, io.IFoodOrderType, io.DeliveredBy, io.Status,
+                            io.Id, io.CustomerOrderId, io.IFoodOrderId, io.DisplayId, io.IFoodOrderType, io.DeliveredBy,
+                            io.OrderTiming, io.PreparationStartDateTime, io.Status,
                             io.ConfirmDeadlineAt, io.ConfirmedAt, io.HasUnmappedItems,
                             co?.CustomerName ?? "Cliente iFood", co?.CustomerPhone, co?.DeliveryAddress,
                             co?.TotalAmount ?? 0m, io.CreatedAt);

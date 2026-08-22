@@ -287,7 +287,8 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
 
         var ifoodOrderResult = IFoodOrder.Create(
             customerOrder.Id, branchId, evt.OrderId, details.DisplayId, details.MerchantId,
-            details.OrderType, details.DeliveredBy, now, hasUnmappedItems);
+            details.OrderType, details.DeliveredBy, details.OrderTiming, details.PreparationStartDateTime,
+            now, hasUnmappedItems);
 
         if (ifoodOrderResult.IsFailure)
             return true; // pedido já foi salvo no SyncBar — melhor ter o pedido sem o link do que perdê-lo
