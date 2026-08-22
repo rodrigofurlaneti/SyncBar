@@ -323,9 +323,14 @@ export function IFoodIntegrationPage() {
               uma vez (primeira carga, ou depois de uma falha).
             </span>
           </div>
-          <Button variant="ghost" loading={syncCatalogMutation.isPending} onClick={() => syncCatalogMutation.mutate()}>
-            Sincronizar agora
-          </Button>
+          <div className="ui-row" style={{ gap: 8 }}>
+            <Link to="/integracoes/ifood/catalogo">
+              <Button variant="ghost">Gerenciar catálogo</Button>
+            </Link>
+            <Button variant="ghost" loading={syncCatalogMutation.isPending} onClick={() => syncCatalogMutation.mutate()}>
+              Sincronizar agora
+            </Button>
+          </div>
         </div>
       </section>
 
