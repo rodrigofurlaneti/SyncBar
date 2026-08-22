@@ -255,7 +255,7 @@ internal sealed class IFoodCatalogClient(HttpClient httpClient) : IIFoodCatalogC
             using var request = AuthedGet($"{BaseUrlV2}/merchants/{merchantId}/items/{itemId}/flat", accessToken);
             using var response = await httpClient.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
-                return new IFoodItemFlatResult(false, null, null, null, null, null, await ErrorMessageAsync(response, cancellationToken));
+                return new IFoodItemFlatResult(false, null, null, null, null, null, null, await ErrorMessageAsync(response, cancellationToken));
 
             var text = await response.Content.ReadAsStringAsync(cancellationToken);
             using var doc = JsonDocument.Parse(text);
@@ -268,7 +268,7 @@ internal sealed class IFoodCatalogClient(HttpClient httpClient) : IIFoodCatalogC
         }
         catch (Exception ex)
         {
-            return new IFoodItemFlatResult(false, null, null, null, null, null, ex.Message);
+            return new IFoodItemFlatResult(false, null, null, null, null, null, null, ex.Message);
         }
     }
 

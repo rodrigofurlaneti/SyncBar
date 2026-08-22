@@ -158,6 +158,16 @@ public static class DependencyInjection
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodMerchantClient, IFoodMerchantClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
 
+        // Watcher de saúde da loja no iFood (fase 13 — automação encontrada na revisão de
+        // documentação de 2026-08-22: status de loja era só sob demanda, sem nenhum polling
+        // automático, mesmo risco de "pedido/loja parada e ninguém percebe" que motivou o
+        // usuário a tentar um worker próprio na fase 12). Reaproveita o IIFoodMerchantClient
+        // registrado acima; o alert store é Singleton porque precisa sobreviver entre os ciclos
+        // do BackgroundService (que roda fora de qualquer request HTTP) — ver comentário em
+        // IIFoodOperationalAlertStore sobre o trade-off de guardar só em memória.
+        services.AddSingleton<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodOperationalAlertStore, InMemoryIFoodOperationalAlertStore>();
+        services.AddHostedService<IFoodMerchantStatusWatcherBackgroundService>();
+
         // Logística por frota própria (fase 7): cliente HTTP do módulo Logistics — sob demanda
         // (sem background service; a equipe aciona cada passo manualmente na tela "Pedidos
         // iFood"/"Logística": atribuir entregador, saiu pra origem, chegou na origem, despachou,

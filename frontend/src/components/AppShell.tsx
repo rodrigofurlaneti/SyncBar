@@ -5,6 +5,7 @@ import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
 import { CashDrawer } from "../features/cash/CashDrawer";
 import { useMyFeatures } from "../features/access/hooks";
+import { IFoodAlertsBell } from "./IFoodAlertsBell";
 
 // Somente o operacional fica no topo. Os itens administrativos ficam
 // agrupados dentro de "Config." (só gerente/admin).
@@ -22,7 +23,7 @@ const links = [
 export function AppShell() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { userName, branchId, clear } = useAuthStore();
+  const { userName, branchId, companyId, clear } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const [cashOpen, setCashOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -75,6 +76,28 @@ export function AppShell() {
           ))}
           {access?.canManageAccess && (
             <NavLink
+              to="/integracoes/ifood"
+              onClick={closeNav}
+              title="Central de integrações iFood — pedidos, cardápio, financeiro, logística e mais"
+              style={({ isActive }) => ({
+                padding: "8px 14px",
+                borderRadius: 8,
+                textDecoration: "none",
+                fontFamily: "var(--font-cond)",
+                fontWeight: 600,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase" as const,
+                fontSize: "0.85rem",
+                color: isActive ? "#fff" : "#EA1D2C",
+                background: isActive ? "#EA1D2C" : "transparent",
+                border: "1px solid #EA1D2C",
+              })}
+            >
+              🍔 iFood
+            </NavLink>
+          )}
+          {access?.canManageAccess && (
+            <NavLink
               to="/configuracoes"
               onClick={closeNav}
               style={({ isActive }) => ({
@@ -107,6 +130,7 @@ export function AppShell() {
             Caixa
           </button>
         )}
+        {access?.canManageAccess && <IFoodAlertsBell companyId={companyId} />}
         <button
           type="button"
           className="btn-ghost btn-icon"

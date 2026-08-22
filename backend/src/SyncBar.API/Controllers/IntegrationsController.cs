@@ -835,6 +835,42 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    // Fase 11 — fecha os últimos 4 endpoints da auditoria (troca de endereço de entrega em
+    // andamento, mesma variante "pedido já existente no iFood" acima).
+    [HttpPost("ifood/shipping/order/{ifoodOrderId:long}/delivery-address-change")]
+    public Task<IActionResult> RequestIFoodDeliveryAddressChange(long ifoodOrderId, [FromBody] RequestIFoodDeliveryAddressChangeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIFoodDeliveryAddressChange), async () =>
+        {
+            var result = await Mediator.Send(new RequestDeliveryAddressChangeCommand(
+                ifoodOrderId, request.StreetNumber, request.StreetName, request.Complement, request.Neighborhood,
+                request.City, request.State, request.Country, request.Reference, request.Latitude, request.Longitude), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPost("ifood/shipping/order/{ifoodOrderId:long}/delivery-address-change/accept")]
+    public Task<IActionResult> AcceptIFoodDeliveryAddressChange(long ifoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(AcceptIFoodDeliveryAddressChange), async () =>
+        {
+            var result = await Mediator.Send(new AcceptDeliveryAddressChangeCommand(ifoodOrderId), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPost("ifood/shipping/order/{ifoodOrderId:long}/delivery-address-change/deny")]
+    public Task<IActionResult> DenyIFoodDeliveryAddressChange(long ifoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DenyIFoodDeliveryAddressChange), async () =>
+        {
+            var result = await Mediator.Send(new DenyDeliveryAddressChangeCommand(ifoodOrderId), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPost("ifood/shipping/order/{ifoodOrderId:long}/user-confirm-address")]
+    public Task<IActionResult> ConfirmIFoodUserAddress(long ifoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ConfirmIFoodUserAddress), async () =>
+        {
+            var result = await Mediator.Send(new ConfirmUserAddressCommand(ifoodOrderId), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
     // Avaliações (fase 9, módulo Review v1.0) — sem persistência local, sempre lido/escrito
     // direto no iFood (ver comentário em IIFoodReviewClient).
     [HttpGet("ifood/reviews/branch/{branchId:long}")]
@@ -883,6 +919,26 @@ public sealed class IntegrationsController(
             var result = await Mediator.Send(new GetIFoodOrderKpisQuery(branchId, periodStart, periodEnd, page), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
+
+    // Alertas operacionais do iFood (fase 13) — hoje só populados pelo
+    // IFoodMerchantStatusWatcherBackgroundService (loja indisponível/disponível), guardados em
+    // memória (IIFoodOperationalAlertStore). GET traz os não reconhecidos da empresa pra tela
+    // mostrar em um sino no topo; ACK remove da lista (idempotente — reconhecer de novo não é erro).
+    [HttpGet("ifood/alerts/company/{companyId:long}")]
+    public Task<IActionResult> GetIFoodOperationalAlerts(long companyId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodOperationalAlerts), async () =>
+        {
+            var result = await Mediator.Send(new GetIFoodOperationalAlertsQuery(companyId), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpPost("ifood/alerts/ack")]
+    public Task<IActionResult> AcknowledgeIFoodOperationalAlert([FromBody] AcknowledgeIFoodOperationalAlertCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(AcknowledgeIFoodOperationalAlert), async () =>
+        {
+            var result = await Mediator.Send(command, ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
 }
 
 public sealed record SyncIFoodCatalogRequest(long CompanyId);
@@ -908,6 +964,11 @@ public sealed record VerifyIFoodDeliveryCodeRequest(string Code);
 public sealed record CancelIFoodShippingDeliveryRequest(string Reason, int CancellationCode);
 
 public sealed record RequestIFoodOrderShippingDriverRequest(string QuoteId);
+
+// Fase 11 — payload do request de troca de endereço de entrega (ver IFoodShippingDeliveryAddressChangePayload).
+public sealed record RequestIFoodDeliveryAddressChangeRequest(
+    string StreetNumber, string StreetName, string? Complement, string Neighborhood, string City,
+    string State, string? Country, string? Reference, double? Latitude, double? Longitude);
 
 public sealed record RequestIFoodReconciliationOnDemandRequest(string Competence);
 

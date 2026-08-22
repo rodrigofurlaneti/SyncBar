@@ -262,11 +262,39 @@ export interface IFoodMerchantValidationItem {
 
 export interface IFoodMerchantStatusResponse {
   operationState: string | null;
+  // Fase 13 — antes descartado pelo backend, que só olhava o texto de operationState (vocabulário
+  // não documentado pelo iFood). Use este campo pra saber com certeza se a loja está recebendo
+  // pedidos; operationState fica só como texto informativo pro operador.
+  available: boolean;
   validations: IFoodMerchantValidationItem[];
 }
 
 export const getIFoodMerchantStatus = (branchId: number): Promise<IFoodMerchantStatusResponse> =>
   api<IFoodMerchantStatusResponse>(`/api/integrations/ifood/merchant/status/branch/${branchId}`);
+
+// Alertas operacionais do iFood (fase 13) — hoje só populados pelo watcher de status de loja em
+// segundo plano (backend verifica a cada 5 minutos e avisa quando uma loja fica indisponível, ou
+// volta a ficar disponível, no iFood). Guardados em memória no backend só até serem reconhecidos.
+export type IFoodOperationalAlertSeverity = "Info" | "Warning" | "Critical";
+
+export interface IFoodOperationalAlert {
+  id: string;
+  branchId: number;
+  branchName: string;
+  title: string;
+  message: string;
+  severity: IFoodOperationalAlertSeverity;
+  createdAtUtc: string;
+}
+
+export const getIFoodOperationalAlerts = (companyId: number): Promise<IFoodOperationalAlert[]> =>
+  api<IFoodOperationalAlert[]>(`/api/integrations/ifood/alerts/company/${companyId}`);
+
+export const acknowledgeIFoodOperationalAlert = (companyId: number, alertId: string): Promise<void> =>
+  api<void>("/api/integrations/ifood/alerts/ack", {
+    method: "POST",
+    body: JSON.stringify({ companyId, alertId }),
+  });
 
 export interface IFoodInterruptionItem {
   id: string;
@@ -537,6 +565,40 @@ export interface IFoodSafeDeliveryScoreResponse {
 
 export const getIFoodSafeDeliveryScore = (id: number): Promise<IFoodSafeDeliveryScoreResponse> =>
   api<IFoodSafeDeliveryScoreResponse>(`/api/integrations/ifood/shipping/${id}/safe-delivery-score`);
+
+// Fase 11 — troca de endereço de entrega em andamento (módulo Shipping, variante "pedido já
+// existente no iFood"): o cliente pede pra mudar o endereço pelo app dele durante a corrida; o
+// lojista propõe um novo endereço (request) ou aceita/recusa quando é o CLIENTE quem propôs.
+export interface IFoodDeliveryAddressChangePayload {
+  streetNumber: string;
+  streetName: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  country?: string;
+  reference?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export const requestIFoodDeliveryAddressChange = (
+  ifoodOrderId: number,
+  payload: IFoodDeliveryAddressChangePayload,
+): Promise<void> =>
+  api<void>(`/api/integrations/ifood/shipping/order/${ifoodOrderId}/delivery-address-change`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const acceptIFoodDeliveryAddressChange = (ifoodOrderId: number): Promise<void> =>
+  api<void>(`/api/integrations/ifood/shipping/order/${ifoodOrderId}/delivery-address-change/accept`, { method: "POST" });
+
+export const denyIFoodDeliveryAddressChange = (ifoodOrderId: number): Promise<void> =>
+  api<void>(`/api/integrations/ifood/shipping/order/${ifoodOrderId}/delivery-address-change/deny`, { method: "POST" });
+
+export const confirmIFoodUserAddress = (ifoodOrderId: number): Promise<void> =>
+  api<void>(`/api/integrations/ifood/shipping/order/${ifoodOrderId}/user-confirm-address`, { method: "POST" });
 
 // Fase 9 — cobertura dos 13 relatórios financeiros restantes (financial/v2.0 ×12 +
 // financial/v2.1 ×1) + anticipations/sales (financial/v3.0) via um catálogo genérico. A doc

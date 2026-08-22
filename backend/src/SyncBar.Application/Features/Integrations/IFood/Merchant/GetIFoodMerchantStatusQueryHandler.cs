@@ -38,7 +38,7 @@ internal sealed class GetIFoodMerchantStatusQueryHandler(
                     .Select(v => new IFoodMerchantValidationResponse(v.Id, v.State, v.Message))
                     .ToList();
 
-                return Result.Success(new IFoodMerchantStatusResponse(status.OperationState, validations));
+                return Result.Success(new IFoodMerchantStatusResponse(status.OperationState, status.Available, validations));
             });
     }
 }

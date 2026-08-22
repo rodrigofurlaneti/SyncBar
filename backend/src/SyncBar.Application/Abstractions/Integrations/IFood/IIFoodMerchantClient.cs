@@ -2,8 +2,15 @@ namespace SyncBar.Application.Abstractions.Integrations.IFood;
 
 public sealed record IFoodMerchantValidation(string Id, string State, string? Message);
 
+// Fase 13 — campo Available adicionado: a resposta bruta de GET /merchants/{id}/status já traz
+// um "available: boolean" por operação (mesmo shape do endpoint por operação, confirmado contra
+// a coleção Postman oficial do módulo Merchant), mas até a Fase 13 o client só extraía o campo
+// de texto "state"/"status" e descartava o booleano — obrigando quem consumisse o status a
+// adivinhar disponibilidade a partir do vocabulário (não documentado) do campo state. Usado pelo
+// IFoodMerchantStatusWatcherBackgroundService pra detectar transições disponível↔indisponível de
+// forma confiável, sem depender de um texto de estado cujo vocabulário exato não foi confirmado.
 public sealed record IFoodMerchantStatusResult(
-    bool Success, string? OperationState, IReadOnlyCollection<IFoodMerchantValidation> Validations, string? ErrorMessage);
+    bool Success, string? OperationState, bool Available, IReadOnlyCollection<IFoodMerchantValidation> Validations, string? ErrorMessage);
 
 public sealed record IFoodInterruption(string Id, string? Description, DateTime Start, DateTime End);
 
