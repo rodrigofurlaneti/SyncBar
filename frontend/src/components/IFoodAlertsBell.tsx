@@ -58,6 +58,7 @@ export function IFoodAlertsBell({ companyId }: { companyId: number | null }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const knownAlertIdsRef = useRef<Set<string> | null>(null);
+  const lastCompanyIdRef = useRef<number | null>(null);
 
   const alertsQuery = useQuery({
     queryKey: ["integrations", "ifood", "alerts", companyId],
@@ -75,6 +76,17 @@ export function IFoodAlertsBell({ companyId }: { companyId: number | null }) {
     if (!alertsQuery.data) return;
 
     const currentIds = new Set(alertsQuery.data.map((a) => a.id));
+
+    // Correção pós-revisão (CodeRabbit, PR #4): reseta a baseline quando a empresa selecionada
+    // muda. Sem isso, o primeiro carregamento de alertas da empresa NOVA comparava contra o
+    // snapshot de IDs da empresa ANTERIOR — todo alerta que já existia (só que de outra empresa,
+    // nunca visto por este componente) virava um "alerta novo" barulhento (bipe + toast).
+    if (lastCompanyIdRef.current !== companyId) {
+      lastCompanyIdRef.current = companyId;
+      knownAlertIdsRef.current = currentIds;
+      return;
+    }
+
     if (knownAlertIdsRef.current === null) {
       knownAlertIdsRef.current = currentIds;
       return;
@@ -91,7 +103,7 @@ export function IFoodAlertsBell({ companyId }: { companyId: number | null }) {
       const icon = alert.severity === "Critical" ? "🔴" : alert.severity === "Warning" ? "🟠" : "🔵";
       toast.info(`${icon} ${alert.title} — ${alert.branchName}`);
     }
-  }, [alertsQuery.data, toast]);
+  }, [alertsQuery.data, toast, companyId]);
 
   // Fecha o dropdown ao clicar fora dele.
   useEffect(() => {

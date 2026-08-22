@@ -34,6 +34,20 @@ namespace SyncBar.Infrastructure.Integrations.IFood;
 /// dedup de eventos do polling de pedidos já toma). Estado guardado em memória
 /// (ConcurrentDictionary, por branchId) — some se a API reiniciar, mas o próximo ciclo reconstrói
 /// sozinho em até 5 minutos.
+///
+/// Correção pós-revisão (CodeRabbit, PR #4): a transição usava só `status.Available`, então uma
+/// loja fechada normalmente fora do horário de funcionamento (fim de expediente) virava um
+/// "Loja indisponível" Crítico, e a reabertura seguinte virava um "voltou a ficar disponível" —
+/// ruído todo santo dia. Não dá pra distinguir isso usando `OperationState`/`Validations` do
+/// próprio iFood (o vocabulário exato desses campos NUNCA foi confirmado contra uma resposta real
+/// de sandbox — ver ressalva em IIFoodMerchantClient — então filtrar por um texto tipo "CLOSED"
+/// seria adivinhação, não uma correção). Em vez disso, usa `IFoodOpeningHours` — a cópia local dos
+/// turnos de funcionamento que o próprio SyncBar mantém sincronizada com o iFood (`PUT
+/// /opening-hours`, Fase 5) — como fonte confiável: se a filial tem turnos configurados e o
+/// momento da checagem está FORA de todos eles, o fechamento é esperado e não gera alerta (nem a
+/// reabertura seguinte). Se a filial não tem nenhum turno configurado, não há como classificar —
+/// mantém o comportamento anterior (alerta sempre), mesmo default conservador já usado no resto do
+/// arquivo quando falta dado confiável.
 /// </summary>
 internal sealed class IFoodMerchantStatusWatcherBackgroundService(
     IServiceProvider serviceProvider,
@@ -43,6 +57,11 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
 
     // Estado só em memória, igual ao alert store — ver comentário na classe sobre o motivo.
     private readonly ConcurrentDictionary<long, bool> _lastKnownAvailable = new();
+
+    // Guarda, por filial, se a última transição pra indisponível foi classificada como
+    // "fechamento esperado" (fora do horário configurado) — usado só pra decidir se a transição
+    // de volta pra disponível também deve ser silenciada (reabertura normal, não uma recuperação).
+    private readonly ConcurrentDictionary<long, bool> _unavailableWasExpectedClosure = new();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -76,6 +95,7 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
         var tokenProvider = scope.ServiceProvider.GetRequiredService<IIFoodTokenProvider>();
         var merchantClient = scope.ServiceProvider.GetRequiredService<IIFoodMerchantClient>();
         var alertStore = scope.ServiceProvider.GetRequiredService<IIFoodOperationalAlertStore>();
+        var openingHoursRepository = scope.ServiceProvider.GetRequiredService<IIFoodOpeningHoursRepository>();
 
         var companyIds = await settingRepository.GetEnabledCompanyIdsAsync(stoppingToken);
         foreach (var companyId in companyIds)
@@ -106,7 +126,7 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
                     if (accessToken is null)
                         break; // sem integração habilitada/token válido — tenta de novo no próximo ciclo
 
-                    await CheckBranchAsync(companyId, branchId, mapping.MerchantId!, accessToken, branchRepository, merchantClient, alertStore, stoppingToken);
+                    await CheckBranchAsync(companyId, branchId, mapping.MerchantId!, accessToken, branchRepository, merchantClient, alertStore, openingHoursRepository, stoppingToken);
                 }
                 catch (Exception ex)
                 {
@@ -124,6 +144,7 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
         IBranchRepository branchRepository,
         IIFoodMerchantClient merchantClient,
         IIFoodOperationalAlertStore alertStore,
+        IIFoodOpeningHoursRepository openingHoursRepository,
         CancellationToken cancellationToken)
     {
         var status = await merchantClient.GetStatusAsync(accessToken, merchantId, cancellationToken);
@@ -141,6 +162,17 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
 
         if (wasAvailable.Value && !status.Available)
         {
+            var shifts = await openingHoursRepository.GetByBranchAsync(branchId, cancellationToken);
+            if (shifts.Count > 0 && !IsWithinConfiguredShift(shifts, DateTime.Now))
+            {
+                // Fechamento esperado (fora do horário de funcionamento configurado pela própria
+                // filial) — não é uma indisponibilidade acionável. Ver comentário na classe.
+                _unavailableWasExpectedClosure[branchId] = true;
+                return;
+            }
+
+            _unavailableWasExpectedClosure[branchId] = false;
+
             var reason = status.Validations.FirstOrDefault()?.Message
                 ?? status.OperationState
                 ?? "motivo não informado pelo iFood";
@@ -155,6 +187,10 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
         }
         else if (!wasAvailable.Value && status.Available)
         {
+            var wasExpectedClosure = _unavailableWasExpectedClosure.TryRemove(branchId, out var expected) && expected;
+            if (wasExpectedClosure)
+                return; // reabertura normal depois de um fechamento esperado — não é uma "recuperação"
+
             alertStore.Raise(
                 companyId,
                 branchId,
@@ -163,5 +199,38 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
                 $"{branchName} voltou a receber pedidos pelo iFood normalmente.",
                 IFoodOperationalAlertSeverity.Info);
         }
+    }
+
+    // Turnos em horário local do servidor — mesma convenção já usada em IFoodOpeningHours
+    // (CreatedAt = DateTime.Now, não UtcNow). Cobre turno que cruza a meia-noite (ex.: 22h–2h).
+    private static bool IsWithinConfiguredShift(IReadOnlyCollection<IFoodOpeningHours> shifts, DateTime now)
+    {
+        var nowTimeOfDay = now.TimeOfDay;
+        var nowDayOfWeek = (int)now.DayOfWeek;
+
+        foreach (var shift in shifts)
+        {
+            var end = shift.Start + TimeSpan.FromMinutes(shift.DurationMinutes);
+
+            if (end <= TimeSpan.FromDays(1))
+            {
+                if (shift.DayOfWeek == nowDayOfWeek && nowTimeOfDay >= shift.Start && nowTimeOfDay < end)
+                    return true;
+            }
+            else
+            {
+                // Turno cruza a meia-noite: cobre o restante do dia em que começa e o início do
+                // dia seguinte até a hora de término (já normalizada pra menos de 24h).
+                var endDayOfWeek = (shift.DayOfWeek + 1) % 7;
+                var endTimeOfDayNextDay = end - TimeSpan.FromDays(1);
+
+                if (shift.DayOfWeek == nowDayOfWeek && nowTimeOfDay >= shift.Start)
+                    return true;
+                if (endDayOfWeek == nowDayOfWeek && nowTimeOfDay < endTimeOfDayNextDay)
+                    return true;
+            }
+        }
+
+        return false;
     }
 }
