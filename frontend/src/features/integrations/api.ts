@@ -70,6 +70,11 @@ export interface IFoodOrderResponse {
   // "MERCHANT") = self-delivery/frota própria, elegível pro fluxo de Logística (fase 7). Nulo
   // pra TAKEOUT/DINE_IN ou quando o iFood não informou o campo.
   deliveredBy: string | null;
+  // Fase 14 — "IMMEDIATE" ou "SCHEDULED"; preparationStartDateTime só vem preenchido quando
+  // agendado. Pedidos sincronizados antes da Fase 14 voltam com orderTiming "IMMEDIATE" mesmo
+  // que originalmente fossem agendados (dado não existia na tabela antes desta fase).
+  orderTiming: "IMMEDIATE" | "SCHEDULED" | string;
+  preparationStartDateTime: string | null;
   status: string;
   confirmDeadlineAt: string;
   confirmedAt: string | null;

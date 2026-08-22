@@ -194,6 +194,12 @@ public static class DependencyInjection
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodReviewClient, IFoodReviewClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
 
+        // Watcher de avaliações novas (fase 14 — automação candidata nº3 da revisão da fase 13):
+        // o módulo Review não tem evento/webhook, então só dá pra saber de avaliação nova
+        // consultando periodicamente — 1x/hora, publica no mesmo IIFoodOperationalAlertStore da
+        // fase 13. Reaproveita o IIFoodReviewClient registrado acima.
+        services.AddHostedService<IFoodReviewWatcherBackgroundService>();
+
         // Indicadores (fase 9): cliente HTTP do módulo Analytics (analytics/v1.0) — 1 endpoint
         // (KPIs de pedidos). O DSL de filtro/agregação real é muito maior do que o exposto hoje —
         // ver ressalva em IIFoodAnalyticsClient.

@@ -333,6 +333,17 @@ function IFoodOrderCard({
           {order.deliveryAddress && (
             <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>{order.deliveryAddress}</span>
           )}
+          {order.orderTiming === "SCHEDULED" && order.preparationStartDateTime && (
+            <span style={{ color: "var(--info, #3b82f6)", fontSize: "0.85rem", fontWeight: 600 }}>
+              📅 Agendado para{" "}
+              {new Date(order.preparationStartDateTime).toLocaleString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          )}
         </div>
         <div style={{ display: "grid", gap: 6, justifyItems: "end" }}>
           <StatusBadge color={STATUS_COLOR[order.status] ?? "var(--ink-faint)"}>

@@ -10,6 +10,11 @@ public sealed record IFoodOrderResponse(
     // outro valor (ex.: "MERCHANT") = self-delivery/frota própria, elegível pra tela de
     // Logística (fase 7). Nulo para TAKEOUT/DINE_IN ou quando o iFood não informou o campo.
     string? DeliveredBy,
+    // Fase 14 — "IMMEDIATE" ou "SCHEDULED"; PreparationStartDateTime só preenchido quando
+    // agendado. Usado pela tela de Pedidos pra mostrar "Agendado para HH:mm" em vez de tratar
+    // todo pedido como imediato.
+    string OrderTiming,
+    DateTime? PreparationStartDateTime,
     string Status,
     DateTime ConfirmDeadlineAt,
     DateTime? ConfirmedAt,

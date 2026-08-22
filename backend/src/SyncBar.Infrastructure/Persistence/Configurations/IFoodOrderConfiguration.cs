@@ -17,6 +17,8 @@ internal sealed class IFoodOrderConfiguration : IEntityTypeConfiguration<IFoodOr
         builder.Property(x => x.MerchantId).HasMaxLength(100).IsRequired();
         builder.Property(x => x.IFoodOrderType).HasMaxLength(30).IsRequired();
         builder.Property(x => x.DeliveredBy).HasMaxLength(30);
+        builder.Property(x => x.OrderTiming).HasMaxLength(20).IsRequired().HasDefaultValue("IMMEDIATE");
+        builder.Property(x => x.PreparationStartDateTime).HasColumnType("datetime(6)");
         builder.Property(x => x.Status).HasMaxLength(30).IsRequired();
         builder.Property(x => x.ConfirmDeadlineAt).HasColumnType("datetime(6)").IsRequired();
         builder.Property(x => x.ConfirmedAt).HasColumnType("datetime(6)");
