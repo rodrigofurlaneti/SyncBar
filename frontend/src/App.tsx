@@ -27,6 +27,7 @@ import { IFoodIntegrationPage } from "./features/integrations/IFoodIntegrationPa
 import { IFoodOrdersPage } from "./features/integrations/IFoodOrdersPage";
 import { IFoodShippingPage } from "./features/integrations/IFoodShippingPage";
 import { IFoodLogisticsPage } from "./features/integrations/IFoodLogisticsPage";
+import { IFoodCatalogPage } from "./features/integrations/IFoodCatalogPage";
 import { IFoodReviewsPage } from "./features/integrations/IFoodReviewsPage";
 import { IFoodAnalyticsPage } from "./features/integrations/IFoodAnalyticsPage";
 import { IFoodFinancialReportsPage } from "./features/integrations/IFoodFinancialReportsPage";
@@ -81,6 +82,7 @@ export default function App() {
         <Route path="/integracoes/ifood/pedidos" element={<ManagerGate><IFoodOrdersPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/shipping" element={<ManagerGate><IFoodShippingPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/logistica" element={<ManagerGate><IFoodLogisticsPage /></ManagerGate>} />
+        <Route path="/integracoes/ifood/catalogo" element={<ManagerGate><IFoodCatalogPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/avaliacoes" element={<ManagerGate><IFoodReviewsPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/indicadores" element={<ManagerGate><IFoodAnalyticsPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/financeiro/relatorios" element={<ManagerGate><IFoodFinancialReportsPage /></ManagerGate>} />
