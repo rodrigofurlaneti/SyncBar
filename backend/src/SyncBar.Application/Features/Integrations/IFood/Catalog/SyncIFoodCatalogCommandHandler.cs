@@ -122,6 +122,16 @@ internal sealed class SyncIFoodCatalogCommandHandler : BaseCommandHandler<SyncIF
                     var branchId = mapping.BranchId;
                     var merchantId = mapping.MerchantId!;
 
+                    // Fase 10 — correção de bug presente desde a Fase 3: criar categoria SEMPRE
+                    // exige um catalogId (merchants/{id}/catalogs/{catalogId}/categories) — o
+                    // código antigo chamava merchants/{id}/categories direto, path que não existe
+                    // na doc oficial. Resolve o catalogId da filial (via GetCatalogsAsync, pega o
+                    // primeiro catálogo retornado — sem confirmação oficial de qual escolher
+                    // quando há mais de um; ver IFoodCatalogResolution) antes de criar qualquer
+                    // categoria nova. Categorias já mapeadas continuam funcionando sem isso.
+                    string? catalogId = null;
+                    var catalogResolutionFailed = false;
+
                     // Categorias: get-or-create por filial — o catálogo do iFood é por merchant,
                     // então a mesma Category vira uma categoria diferente em cada loja.
                     var ifoodCategoryIdByCategory = new Dictionary<long, string>();
@@ -134,7 +144,22 @@ internal sealed class SyncIFoodCatalogCommandHandler : BaseCommandHandler<SyncIF
                             continue;
                         }
 
-                        var createdCategory = await _catalogClient.CreateCategoryAsync(accessToken, merchantId, category.Name, cancellationToken);
+                        if (catalogId is null && !catalogResolutionFailed)
+                        {
+                            var resolvedCatalogId = await IFoodCatalogResolution.ResolveDefaultCatalogIdAsync(accessToken, merchantId, _catalogClient, cancellationToken);
+                            if (resolvedCatalogId.IsFailure)
+                                catalogResolutionFailed = true;
+                            else
+                                catalogId = resolvedCatalogId.Value;
+                        }
+
+                        if (catalogId is null)
+                        {
+                            errors++;
+                            continue;
+                        }
+
+                        var createdCategory = await _catalogClient.CreateCategoryAsync(accessToken, merchantId, catalogId, category.Name, cancellationToken);
                         if (!createdCategory.Success || createdCategory.IFoodCategoryId is null)
                         {
                             errors++;

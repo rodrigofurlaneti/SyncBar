@@ -723,3 +723,438 @@ export const getIFoodOrderKpis = (
   params.set("page", String(options?.page ?? 1));
   return api<IFoodOrderKpisResponse>(`/api/integrations/ifood/analytics/branch/${branchId}/order-kpis?${params.toString()}`);
 };
+
+// Fase 10 — módulo Catalog completo. Tier 1 (v2, viva, já usada pela sincronização automática
+// desde a fase 3): CRUD tipado dedicado. Tier 2 (v1, legado): console genérico
+// (invokeIFoodCatalogV1Operation) que cobre os 56 endpoints da v1 sem tipagem dedicada — todo
+// merchant está em v1 OU v2, nunca nos dois. Ressalva: os nomes de campo abaixo foram confirmados
+// contra a collection oficial do Postman, mas os VALORES de exemplo da doc são placeholders
+// gerados pelo Postman (schema mock), não tráfego real capturado — estrutura confirmada, valores
+// não confirmados até testar contra o sandbox.
+
+// --- Categories --------------------------------------------------------------------------------
+
+export interface IFoodCatalogSummaryResponse {
+  catalogId: string | null;
+  status: string | null;
+  context: string[] | null;
+  groupId: string | null;
+  modifiedAt: string | null;
+}
+
+export const getIFoodCatalogs = (branchId: number): Promise<IFoodCatalogSummaryResponse[]> =>
+  api<IFoodCatalogSummaryResponse[]>(`/api/integrations/ifood/catalog/branch/${branchId}/catalogs`);
+
+export interface IFoodCategoryResponse {
+  id: string | null;
+  index: number | null;
+  name: string | null;
+  externalCode: string | null;
+  status: string | null;
+  template: string | null;
+}
+
+export const listIFoodCategories = (branchId: number, catalogId: string, includeItems = false): Promise<IFoodCategoryResponse[]> =>
+  api<IFoodCategoryResponse[]>(
+    `/api/integrations/ifood/catalog/branch/${branchId}/catalogs/${encodeURIComponent(catalogId)}/categories?includeItems=${includeItems}`,
+  );
+
+export const getIFoodCategory = (
+  branchId: number,
+  catalogId: string,
+  categoryId: string,
+  includeItems = false,
+): Promise<IFoodCategoryResponse> =>
+  api<IFoodCategoryResponse>(
+    `/api/integrations/ifood/catalog/branch/${branchId}/catalogs/${encodeURIComponent(catalogId)}/categories/${encodeURIComponent(categoryId)}?includeItems=${includeItems}`,
+  );
+
+export const createIFoodCategory = (branchId: number, catalogId: string, name: string): Promise<{ ifoodCategoryId: string | null }> =>
+  api<{ ifoodCategoryId: string | null }>(
+    `/api/integrations/ifood/catalog/branch/${branchId}/catalogs/${encodeURIComponent(catalogId)}/categories`,
+    { method: "POST", body: JSON.stringify({ name }) },
+  );
+
+export const editIFoodCategory = (
+  branchId: number,
+  catalogId: string,
+  categoryId: string,
+  payload: { name?: string; externalCode?: string; status?: string; index?: number },
+): Promise<IFoodCategoryResponse> =>
+  api<IFoodCategoryResponse>(
+    `/api/integrations/ifood/catalog/branch/${branchId}/catalogs/${encodeURIComponent(catalogId)}/categories/${encodeURIComponent(categoryId)}`,
+    { method: "PUT", body: JSON.stringify(payload) },
+  );
+
+export const deleteIFoodCategory = (branchId: number, categoryId: string): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/categories/${encodeURIComponent(categoryId)}`, { method: "DELETE" });
+
+export interface IFoodSellableItemResponse {
+  itemId: string | null;
+  categoryId: string | null;
+  itemName: string | null;
+  itemExternalCode: string | null;
+  itemEan: string | null;
+  itemPriceValue: number | null;
+}
+
+export const listIFoodSellableItems = (branchId: number, groupId: string): Promise<IFoodSellableItemResponse[]> =>
+  api<IFoodSellableItemResponse[]>(
+    `/api/integrations/ifood/catalog/branch/${branchId}/sellable-items?groupId=${encodeURIComponent(groupId)}`,
+  );
+
+// --- Products ------------------------------------------------------------------------------------
+
+export interface IFoodProductResponse {
+  id: string | null;
+  name: string | null;
+  description: string | null;
+  additionalInformation: string | null;
+  externalCode: string | null;
+  ean: string | null;
+  industrialized: boolean | null;
+  imagePath: string | null;
+}
+
+export const listIFoodProducts = (branchId: number, limit?: number, page?: number): Promise<IFoodProductResponse[]> => {
+  const params = new URLSearchParams();
+  if (limit != null) params.set("limit", String(limit));
+  if (page != null) params.set("page", String(page));
+  const query = params.toString();
+  return api<IFoodProductResponse[]>(`/api/integrations/ifood/catalog/branch/${branchId}/products${query ? `?${query}` : ""}`);
+};
+
+export interface IFoodProductShiftInput {
+  startTime: string;
+  endTime: string;
+  monday: boolean;
+  tuesday: boolean;
+  wednesday: boolean;
+  thursday: boolean;
+  friday: boolean;
+  saturday: boolean;
+  sunday: boolean;
+}
+
+export interface CreateIFoodProductPayload {
+  id?: string;
+  name: string;
+  description?: string;
+  additionalInformation?: string;
+  externalCode?: string;
+  ean?: string;
+  image?: string;
+  shifts?: IFoodProductShiftInput[];
+}
+
+export const createIFoodProduct = (branchId: number, payload: CreateIFoodProductPayload): Promise<IFoodProductResponse> =>
+  api<IFoodProductResponse>(`/api/integrations/ifood/catalog/branch/${branchId}/products`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export type EditIFoodProductPayload = Omit<CreateIFoodProductPayload, "id">;
+
+export const editIFoodProduct = (branchId: number, productId: string, payload: EditIFoodProductPayload): Promise<IFoodProductResponse> =>
+  api<IFoodProductResponse>(`/api/integrations/ifood/catalog/branch/${branchId}/products/${productId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+
+export const deleteIFoodProduct = (branchId: number, productId: string): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/products/${productId}`, { method: "DELETE" });
+
+export interface IFoodBatchProductStatusInput {
+  productId?: string;
+  externalCode?: string;
+  status: string;
+  resources?: string[];
+}
+
+export const batchUpdateIFoodProductStatuses = (
+  branchId: number,
+  items: IFoodBatchProductStatusInput[],
+  catalogContext?: string,
+): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/products/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ items, catalogContext }),
+  });
+
+export interface IFoodBatchProductPriceInput {
+  productId?: string;
+  externalCode?: string;
+  value: number;
+  originalValue?: number;
+  resources?: string[];
+}
+
+export const batchUpdateIFoodProductPrices = (
+  branchId: number,
+  items: IFoodBatchProductPriceInput[],
+  catalogContext?: string,
+): Promise<{ url: string | null; batchId: string | null }> =>
+  api<{ url: string | null; batchId: string | null }>(`/api/integrations/ifood/catalog/branch/${branchId}/products/price`, {
+    method: "POST",
+    body: JSON.stringify({ items, catalogContext }),
+  });
+
+export const listIFoodProductsByExternalCode = (branchId: number, externalCode: string): Promise<IFoodProductResponse[]> =>
+  api<IFoodProductResponse[]>(
+    `/api/integrations/ifood/catalog/branch/${branchId}/products/externalCode/${encodeURIComponent(externalCode)}`,
+  );
+
+export const getIFoodProductById = (branchId: number, productId: string): Promise<IFoodProductResponse> =>
+  api<IFoodProductResponse>(`/api/integrations/ifood/catalog/branch/${branchId}/products/${productId}`);
+
+// --- Items (v2 — flat) -----------------------------------------------------------------------------
+
+export interface IFoodItemFlatResponse {
+  itemId: string | null;
+  status: string | null;
+  priceValue: number | null;
+  externalCode: string | null;
+  categoryId: string | null;
+  rawPayload: string | null;
+}
+
+export const getIFoodItemFlat = (branchId: number, itemId: string): Promise<IFoodItemFlatResponse> =>
+  api<IFoodItemFlatResponse>(`/api/integrations/ifood/catalog/branch/${branchId}/items/${itemId}`);
+
+export interface IFoodItemPriceByCatalogInput {
+  value: number;
+  catalogContext: string;
+  originalValue?: number;
+}
+
+export const setIFoodItemPrice = (
+  branchId: number,
+  itemId: string,
+  value: number,
+  originalValue?: number,
+  priceByCatalog?: IFoodItemPriceByCatalogInput[],
+): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/items/${itemId}/price`, {
+    method: "PUT",
+    body: JSON.stringify({ value, originalValue, priceByCatalog }),
+  });
+
+export interface IFoodItemExternalCodeByCatalogInput {
+  externalCode: string;
+  catalogContext: string;
+}
+
+export const setIFoodItemExternalCode = (
+  branchId: number,
+  itemId: string,
+  externalCode?: string,
+  byCatalog?: IFoodItemExternalCodeByCatalogInput[],
+): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/items/${itemId}/externalCode`, {
+    method: "PUT",
+    body: JSON.stringify({ externalCode, byCatalog }),
+  });
+
+export const deleteIFoodItem = (branchId: number, categoryId: string, productId: string, catalogContext?: string): Promise<void> =>
+  api<void>(
+    `/api/integrations/ifood/catalog/branch/${branchId}/categories/${encodeURIComponent(categoryId)}/items/${productId}${
+      catalogContext ? `?catalogContext=${encodeURIComponent(catalogContext)}` : ""
+    }`,
+    { method: "DELETE" },
+  );
+
+export const listIFoodCategoryItems = (branchId: number, categoryId: string): Promise<{ rawPayload: string | null }> =>
+  api<{ rawPayload: string | null }>(
+    `/api/integrations/ifood/catalog/branch/${branchId}/categories/${encodeURIComponent(categoryId)}/items`,
+  );
+
+// --- Option groups / options -------------------------------------------------------------------------
+
+export interface IFoodOptionGroupResponse {
+  id: string | null;
+  name: string | null;
+  externalCode: string | null;
+  status: string | null;
+  index: number | null;
+}
+
+export const listIFoodOptionGroups = (
+  branchId: number,
+  includeOptions = false,
+  catalogContext?: string,
+): Promise<IFoodOptionGroupResponse[]> => {
+  const params = new URLSearchParams();
+  params.set("includeOptions", String(includeOptions));
+  if (catalogContext) params.set("catalogContext", catalogContext);
+  return api<IFoodOptionGroupResponse[]>(`/api/integrations/ifood/catalog/branch/${branchId}/option-groups?${params.toString()}`);
+};
+
+export const updateIFoodOptionGroup = (branchId: number, optionGroupId: string, name: string): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/option-groups/${optionGroupId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+
+export const deleteIFoodOptionGroup = (branchId: number, optionGroupId: string): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/option-groups/${optionGroupId}`, { method: "DELETE" });
+
+export const disassociateIFoodOptionGroup = (branchId: number, optionGroupId: string, productId: string): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/option-groups/${optionGroupId}/products/${productId}`, {
+    method: "DELETE",
+  });
+
+export const deleteIFoodOption = (
+  branchId: number,
+  optionGroupId: string,
+  productId: string,
+  catalogContext?: string,
+): Promise<void> =>
+  api<void>(
+    `/api/integrations/ifood/catalog/branch/${branchId}/option-groups/${optionGroupId}/options/${productId}${
+      catalogContext ? `?catalogContext=${encodeURIComponent(catalogContext)}` : ""
+    }`,
+    { method: "DELETE" },
+  );
+
+export const updateIFoodOptionGroupStatus = (branchId: number, optionGroupId: string, available: boolean): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/option-groups/${optionGroupId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ available }),
+  });
+
+export const setIFoodOptionPrice = (
+  branchId: number,
+  optionId: string,
+  value: number,
+  originalValue?: number,
+  parentCustomizationOptionId?: string,
+): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/options/${optionId}/price`, {
+    method: "PUT",
+    body: JSON.stringify({ value, originalValue, parentCustomizationOptionId }),
+  });
+
+export const setIFoodOptionExternalCode = (
+  branchId: number,
+  optionId: string,
+  externalCode: string,
+  parentCustomizationOptionId?: string,
+): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/options/${optionId}/externalCode`, {
+    method: "PUT",
+    body: JSON.stringify({ externalCode, parentCustomizationOptionId }),
+  });
+
+export const setIFoodOptionStatus = (
+  branchId: number,
+  optionId: string,
+  available: boolean,
+  parentCustomizationOptionId?: string,
+): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/options/${optionId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ available, parentCustomizationOptionId }),
+  });
+
+// --- Admin (estoque, lote, versão do catálogo, imagem) -----------------------------------------------
+
+export interface IFoodInventoryResponse {
+  productId: string | null;
+  ownerId: string | null;
+  amount: number | null;
+  inStock: boolean | null;
+}
+
+export const getIFoodInventory = (branchId: number, productId: string): Promise<IFoodInventoryResponse> =>
+  api<IFoodInventoryResponse>(`/api/integrations/ifood/catalog/branch/${branchId}/inventory/${productId}`);
+
+export const deleteIFoodInventoryBatch = (branchId: number, productIds: string[]): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/inventory/batch`, {
+    method: "DELETE",
+    body: JSON.stringify({ productIds }),
+  });
+
+export interface IFoodBatchResultItemResponse {
+  resourceId: string | null;
+  result: string | null;
+  failureReason: string | null;
+}
+
+export interface IFoodBatchStatusResponse {
+  batchStatus: string | null;
+  results: IFoodBatchResultItemResponse[];
+}
+
+export const getIFoodBatchResult = (branchId: number, batchId: string): Promise<IFoodBatchStatusResponse> =>
+  api<IFoodBatchStatusResponse>(`/api/integrations/ifood/catalog/branch/${branchId}/batch/${encodeURIComponent(batchId)}`);
+
+export const checkIFoodCatalogVersion = (branchId: number): Promise<{ version: string | null }> =>
+  api<{ version: string | null }>(`/api/integrations/ifood/catalog/branch/${branchId}/version`);
+
+// ⚠️ Operações destrutivas e irreversíveis no catálogo real do merchant — a UI precisa confirmar
+// explicitamente com o usuário antes de chamar.
+export const upgradeIFoodCatalogVersion = (branchId: number, cleanMigration?: boolean): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/upgrade`, {
+    method: "POST",
+    body: JSON.stringify({ cleanMigration }),
+  });
+
+export const downgradeIFoodCatalogVersion = (branchId: number): Promise<void> =>
+  api<void>(`/api/integrations/ifood/catalog/branch/${branchId}/downgrade`, { method: "POST" });
+
+// ⚠️ Schema de corpo/resposta não documentado pelo iFood — repassa o JSON cru fornecido pelo
+// chamador; a resposta também é crua (rawPayload). Tratar como não confiável até testar contra o
+// sandbox.
+export const uploadIFoodImage = (branchId: number, jsonBody: string): Promise<{ rawPayload: string | null }> =>
+  api<{ rawPayload: string | null }>(`/api/integrations/ifood/catalog/branch/${branchId}/image`, {
+    method: "POST",
+    body: JSON.stringify({ jsonBody }),
+  });
+
+// --- v1 (legado) — console genérico ----------------------------------------------------------------
+// Um único endpoint despachante pros 56 endpoints do Catalog v1 sem tipagem dedicada — o chamador
+// escolhe a operação e fornece os parâmetros de rota/query/corpo que ela precisa. A resposta
+// (inclusive erro do iFood) é sempre repassada, mesmo em falha HTTP — ver comentário no backend
+// (InvokeIFoodCatalogV1OperationCommandHandler).
+export const IFOOD_CATALOG_V1_OPERATIONS = [
+  "ListCatalogs", "ListUnsellableItems", "ListCategories", "CreateCategory", "GetCategory", "EditCategory",
+  "DeleteCategory", "ListSellableItems", "EditAisleGroupId", "UpdateItemStatusByItemId",
+  "UpdateOptionStatusByItemIdAndOptionId", "GetItem", "EditItemStatus", "CreateItem", "EditItem", "DeleteItem",
+  "CreateOptionGroup", "ListOptionGroups", "UpdateOptionGroup", "DeleteOptionGroup", "AssociateOptionGroupToProduct",
+  "UpdateOptionGroupProductAssociation", "DisassociateOptionGroupFromProduct", "CreateOption", "UpdateOption",
+  "DeleteOption", "UpdateOptionGroupStatus", "ListProducts", "CreateProduct", "EditProduct", "DeleteProduct",
+  "UpdateProductStatus", "BatchUpdateProductStatuses", "BatchUpdateProductPrices", "ListProductsByExternalCode",
+  "BatchUpdateStatusByExternalCode", "GetProductById", "CreatePizza", "ListPizzas", "UpdatePizza",
+  "UpdatePizzaStatus", "LinkPizzaToCategory", "UnlinkPizzaFromCategory", "BatchUpdatePizzaPricesByExternalCode",
+  "BatchUpdatePizzaPrices", "GetBatchResults", "UpsertInventory", "GetInventory", "DeleteInventoryBatch",
+  "MultisetupUpsertItem", "MultisetupUpdateOptionPrice", "MultisetupUpdateOptionStatus", "MultisetupDeleteCategory",
+  "MultisetupListCategoryItems", "MultisetupDeleteOptionGroup", "MultisetupIsMultisetup",
+] as const;
+
+export type IFoodCatalogV1Operation = (typeof IFOOD_CATALOG_V1_OPERATIONS)[number];
+
+export interface IFoodCatalogV1OperationResponse {
+  success: boolean;
+  statusCode: number;
+  responseBody: string | null;
+  errorMessage: string | null;
+}
+
+// A API não registra um JsonStringEnumConverter (ver Program.cs) — o enum IFoodCatalogV1Operation
+// trafega pelo corpo JSON como o inteiro do seu valor ordinal (índice na declaração do enum no
+// backend), não como string. IFOOD_CATALOG_V1_OPERATIONS está na MESMA ORDEM da declaração C#
+// (ver IIFoodCatalogClient.cs) — o índice do nome no array É o ordinal a enviar.
+export const invokeIFoodCatalogV1Operation = (
+  branchId: number,
+  operation: IFoodCatalogV1Operation,
+  options?: { routeParams?: Record<string, string>; queryParams?: Record<string, string>; jsonBody?: string },
+): Promise<IFoodCatalogV1OperationResponse> =>
+  api<IFoodCatalogV1OperationResponse>(`/api/integrations/ifood/catalog/branch/${branchId}/v1/invoke`, {
+    method: "POST",
+    body: JSON.stringify({
+      operation: IFOOD_CATALOG_V1_OPERATIONS.indexOf(operation),
+      routeParams: options?.routeParams ?? null,
+      queryParams: options?.queryParams ?? null,
+      jsonBody: options?.jsonBody ?? null,
+    }),
+  });
