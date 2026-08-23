@@ -92,7 +92,7 @@ export function getDeliveryTypeLabel(deliveryType?: string): string {
 }
 
 // Status de validação do merchant
-export function getValidationStatusDisplay(state: string, message?: string) {
+export function getValidationStatusDisplay(state: string) {
   const statusMap: Record<string, { label: string; severity: "error" | "warning" | "info" }> = {
     VALID: { label: "✓ Válido", severity: "info" },
     INVALID: { label: "✕ Inválido", severity: "error" },

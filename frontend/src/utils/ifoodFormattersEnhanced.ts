@@ -26,7 +26,7 @@ export function formatOrderType(type: string): string {
   return typeMap[type] || type;
 }
 
-export function formatMerchantAvailability(available: boolean, state?: string): {
+export function formatMerchantAvailability(available: boolean, state?: string | null): {
   label: string;
   color: string;
   bg: string;
@@ -48,15 +48,20 @@ export function formatMerchantAvailability(available: boolean, state?: string): 
   };
 }
 
+// O iFood não documenta o vocabulário de `state` das validações e o backend repassa o valor
+// bruto (ver IFoodMerchantClient) — por isso as duas grafias observadas (ERROR/INVALID,
+// VALID/OK) são mapeadas pra mesma severidade.
 export function formatValidationState(state: string): { severity: "error" | "warning" | "info"; icon: string; label: string } {
   const states: Record<string, { severity: "error" | "warning" | "info"; icon: string; label: string }> = {
     ERROR: { severity: "error", icon: "✕", label: "Erro" },
+    INVALID: { severity: "error", icon: "✕", label: "Inválido" },
     WARNING: { severity: "warning", icon: "⚠", label: "Aviso" },
     INFO: { severity: "info", icon: "ℹ", label: "Informação" },
     VALID: { severity: "info", icon: "✓", label: "Válido" },
+    OK: { severity: "info", icon: "✓", label: "Válido" },
   };
 
-  return states[state] || { severity: "info", icon: "?", label: state };
+  return states[state.toUpperCase()] || { severity: "info", icon: "?", label: state };
 }
 
 export function formatDeliveredBy(deliveredBy?: string | null): string {
@@ -115,7 +120,7 @@ export function formatDisputeStatus(status: string): { label: string; icon: stri
   return statusMap[status] || { label: status, icon: "?", color: "#6b7280" };
 }
 
-export function formatOrderTiming(timing: string, prepStartTime?: string): string {
+export function formatOrderTiming(timing: string, prepStartTime?: string | null): string {
   if (timing === "SCHEDULED" && prepStartTime) {
     const time = new Date(prepStartTime).toLocaleTimeString("pt-BR", {
       hour: "2-digit",
@@ -161,14 +166,14 @@ export function formatDateTimeShort(date: string | Date): string {
 
 // Cálculos e análises
 export function calculateOrderMetrics(
-  orders: Array<{ status: string; ifoodOrderType: string; total?: number }>,
+  orders: Array<{ status: string; ifoodOrderType: string; totalAmount?: number }>,
 ) {
   return {
     total: orders.length,
     delivered: orders.filter((o) => o.status === "CONCLUDED").length,
     cancelled: orders.filter((o) => o.status === "CANCELLED").length,
     inProgress: orders.filter((o) => ["CONFIRMED", "PREPARATION_STARTED", "READY_TO_PICKUP", "DISPATCHED"].includes(o.status)).length,
-    totalValue: orders.reduce((sum, o) => sum + (o.total ?? 0), 0),
+    totalValue: orders.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0),
     deliveryOrders: orders.filter((o) => o.ifoodOrderType === "DELIVERY").length,
     takeoutOrders: orders.filter((o) => o.ifoodOrderType === "TAKEOUT").length,
     dineInOrders: orders.filter((o) => o.ifoodOrderType === "DINE_IN").length,

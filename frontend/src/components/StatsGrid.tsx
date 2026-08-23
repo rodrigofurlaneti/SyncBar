@@ -5,13 +5,20 @@ interface StatsGridProps {
   columns?: number;
 }
 
+const GAP = 12;
+const MIN_CARD_WIDTH = 200;
+
+// `columns` é o teto de colunas em telas largas: cada faixa pede a fração exata de
+// 1/columns da linha, mas nunca menos que MIN_CARD_WIDTH — em telas estreitas o
+// auto-fit quebra pra menos colunas.
 export function StatsGrid({ children, columns = 4 }: StatsGridProps) {
+  const track = `max(${MIN_CARD_WIDTH}px, calc((100% - ${(columns - 1) * GAP}px) / ${columns}))`;
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: `repeat(auto-fit, minmax(${280 / columns}px, 1fr))`,
-        gap: 12,
+        gridTemplateColumns: `repeat(auto-fit, minmax(${track}, 1fr))`,
+        gap: GAP,
         marginBottom: 20,
       }}
     >

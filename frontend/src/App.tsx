@@ -28,8 +28,6 @@ import { IFoodOrdersPage } from "./features/integrations/IFoodOrdersPage";
 import { IFoodShippingPage } from "./features/integrations/IFoodShippingPage";
 import { IFoodLogisticsPage } from "./features/integrations/IFoodLogisticsPage";
 import { IFoodCatalogPage } from "./features/integrations/IFoodCatalogPage";
-import { IFoodReviewsPage } from "./features/integrations/IFoodReviewsPage";
-import { IFoodAnalyticsPage } from "./features/integrations/IFoodAnalyticsPage";
 import { IFoodFinancialReportsPage } from "./features/integrations/IFoodFinancialReportsPage";
 import { IFoodDashboardPage } from "./features/integrations/IFoodDashboardPage";
 import { IFoodStatusDetailedPage } from "./features/integrations/IFoodStatusDetailedPage";

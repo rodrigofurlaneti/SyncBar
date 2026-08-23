@@ -13,9 +13,25 @@ import { TextField } from "../../ui/Field";
 interface KpiData {
   label: string;
   value: number | string;
-  icon: string;
   trend?: number;
-  color?: string;
+}
+
+// Cada bucket é JSON bruto do iFood Analytics e não tem schema garantido: um bucket malformado
+// não pode derrubar os demais, então o parse é feito bucket a bucket.
+function parseBucket(bucket: string, index: number): KpiData | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(bucket);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const record = parsed as Record<string, unknown>;
+  const label = typeof record.label === "string" ? record.label : `Métrica ${index + 1}`;
+  const value =
+    typeof record.value === "string" || typeof record.value === "number" ? record.value : "—";
+  const trend = typeof record.trend === "number" ? record.trend : undefined;
+  return { label, value, trend };
 }
 
 export function IFoodAnalyticsEnhancedPage() {
@@ -29,31 +45,14 @@ export function IFoodAnalyticsEnhancedPage() {
 
   const kpisQuery = useQuery({
     queryKey: ["integrations", "ifood", "analytics", "kpis", branchId, periodStart, periodEnd],
-    queryFn: () =>
-      getIFoodOrderKpis(branchId, new Date(periodStart), new Date(periodEnd), 1),
+    queryFn: () => getIFoodOrderKpis(branchId, { periodStart, periodEnd, page: 1 }),
   });
 
   const data = kpisQuery.data;
 
-  // Parse JSON bruto dos buckets
-  const parsedBuckets: Record<string, KpiData> = {};
-  if (data?.buckets) {
-    try {
-      data.buckets.forEach((bucket, idx) => {
-        const parsed = JSON.parse(bucket);
-        // Ajustar conforme o schema real do iFood
-        parsedBuckets[`bucket_${idx}`] = {
-          label: parsed.label || `Métrica ${idx + 1}`,
-          value: parsed.value || "—",
-          icon: "📊",
-          trend: parsed.trend,
-          color: parsed.color,
-        };
-      });
-    } catch {
-      // Se não conseguir fazer parse, ignora
-    }
-  }
+  const kpis = (data?.buckets ?? [])
+    .map((bucket, idx) => parseBucket(bucket, idx))
+    .filter((kpi): kpi is KpiData => kpi !== null);
 
   if (kpisQuery.isLoading) {
     return (
@@ -122,19 +121,19 @@ export function IFoodAnalyticsEnhancedPage() {
       </div>
 
       {/* KPIs */}
-      {Object.keys(parsedBuckets).length > 0 ? (
+      {kpis.length > 0 ? (
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
           gap: 12,
           marginBottom: 24,
         }}>
-          {Object.values(parsedBuckets).map((kpi, idx) => (
+          {kpis.map((kpi, idx) => (
             <DashboardCard
               key={idx}
-              title={String(kpi.label)}
+              title={kpi.label}
               value={kpi.value}
-              icon={kpi.icon}
+              icon="📊"
               status="info"
               trend={kpi.trend ? { direction: kpi.trend > 0 ? "up" : "down", percentage: Math.abs(kpi.trend) } : undefined}
             />

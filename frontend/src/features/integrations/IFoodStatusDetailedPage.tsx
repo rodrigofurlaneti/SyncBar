@@ -1,15 +1,8 @@
 ﻿import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  getIFoodMerchantStatus,
-  getIFoodMerchantStatusByOperation,
-  toggleIFoodMerchantAvailability,
-  type IFoodMerchantStatusResponse,
-  type IFoodMerchantStatusByOperationResponse,
-} from "./api";
+import { useQuery } from "@tanstack/react-query";
+import { getIFoodMerchantStatus, getIFoodMerchantStatusByOperation } from "./api";
 import { useAuthStore } from "../../stores/authStore";
-import { useToast } from "../../ui/Toast";
 import { Button } from "../../ui/Button";
 import { PageHeader } from "../../components/PageHeader";
 import { QueryError } from "../../components/QueryError";
@@ -19,10 +12,18 @@ import { Alert } from "../../components/Alert";
 import { DashboardCard } from "../../components/DashboardCard";
 import { formatMerchantAvailability, formatValidationState } from "../../utils/ifoodFormattersEnhanced";
 
+const OPERATION_LABELS: Record<string, string> = {
+  DELIVERY: "🚗 Delivery",
+  TAKEOUT: "🛍️ Retirada",
+  DINE_IN: "🍽️ Consumo no local",
+};
+
+function formatOperationLabel(operation: string): string {
+  return OPERATION_LABELS[operation] ?? operation;
+}
+
 export function IFoodStatusDetailedPage() {
   const { branchId } = useAuthStore();
-  const toast = useToast();
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("geral");
   const [selectedOperation, setSelectedOperation] = useState<string | null>(null);
 
@@ -34,20 +35,8 @@ export function IFoodStatusDetailedPage() {
 
   const operationStatusQuery = useQuery({
     queryKey: ["integrations", "ifood", "status-by-operation", branchId, selectedOperation],
-    queryFn: () => {
-      if (!selectedOperation) return null;
-      return getIFoodMerchantStatusByOperation(branchId, selectedOperation);
-    },
+    queryFn: () => getIFoodMerchantStatusByOperation(branchId, selectedOperation!),
     enabled: !!selectedOperation,
-  });
-
-  const toggleMutation = useMutation({
-    mutationFn: (available: boolean) => toggleIFoodMerchantAvailability(branchId, available),
-    onSuccess: () => {
-      toast.success("Disponibilidade atualizada!");
-      void queryClient.invalidateQueries({ queryKey: ["integrations", "ifood", "status-detailed"] });
-    },
-    onError: () => toast.error("Falha ao atualizar disponibilidade."),
   });
 
   const data = statusQuery.data;
@@ -96,11 +85,14 @@ export function IFoodStatusDetailedPage() {
 
   const statusDisplay = formatMerchantAvailability(data.available, data.operationState);
   const validations = data.validations || [];
-  const errorValidations = validations.filter((v) => v.state === "ERROR");
-  const warningValidations = validations.filter((v) => v.state === "WARNING");
+  // O `state` de cada validação vem bruto do iFood (vocabulário não documentado) — a severidade
+  // é resolvida por formatValidationState, que cobre as grafias conhecidas.
+  const errorValidations = validations.filter((v) => formatValidationState(v.state).severity === "error");
+  const warningValidations = validations.filter((v) => formatValidationState(v.state).severity === "warning");
 
-  // Simulação de operações disponíveis (em produção viriam do backend)
-  const availableOperations = ["DELIVERY", "TAKEOUT"];
+  // O iFood não expõe a lista de operações habilitadas da loja; o endpoint de status por
+  // operação é consultado sob demanda para cada uma das operações possíveis.
+  const availableOperations = ["DELIVERY", "TAKEOUT", "DINE_IN"];
 
   return (
     <main style={{ padding: 22, maxWidth: 1200, margin: "0 auto" }}>
@@ -165,18 +157,11 @@ export function IFoodStatusDetailedPage() {
             </div>
           </div>
 
-          {/* Botão de Toggle */}
-          <Button
-            variant={data.available ? "primary" : "ghost"}
-            onClick={() => toggleMutation.mutate(!data.available)}
-            disabled={toggleMutation.isPending}
-          >
-            {toggleMutation.isPending
-              ? "Atualizando..."
-              : data.available
-                ? "🔴 Desativar"
-                : "🟢 Ativar"}
-          </Button>
+          {/* A API do iFood não tem liga/desliga de disponibilidade: pausar a loja é criar uma
+              interrupção, gerenciada na tela da integração. */}
+          <Link to="/integracoes/ifood" style={{ textDecoration: "none" }}>
+            <Button variant="ghost">⏸️ Gerenciar interrupções</Button>
+          </Link>
         </div>
 
         {/* Resumo de Validações */}
@@ -235,22 +220,6 @@ export function IFoodStatusDetailedPage() {
             ) : (
               validations.map((validation) => {
                 const display = formatValidationState(validation.state);
-                const severityBgColors = {
-                  error: "#ffebee",
-                  warning: "#fff3e0",
-                  info: "#e8f5e9",
-                };
-                const severityBorderColors = {
-                  error: "#f44336",
-                  warning: "#f57c00",
-                  info: "#4caf50",
-                };
-                const severityTextColors = {
-                  error: "#b71c1c",
-                  warning: "#e65100",
-                  info: "#1b5e20",
-                };
-
                 return (
                   <Alert
                     key={validation.id}
@@ -259,7 +228,7 @@ export function IFoodStatusDetailedPage() {
                     message={
                       <div>
                         <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                          {display.icon} {validation.state}
+                          {display.icon} {display.label}
                         </div>
                         {validation.message && (
                           <div style={{ fontSize: "0.9rem", marginTop: 8, opacity: 0.9 }}>
@@ -294,7 +263,7 @@ export function IFoodStatusDetailedPage() {
                     transition: "all 0.2s",
                   }}
                 >
-                  {op === "DELIVERY" ? "🚗 Delivery" : "🛍️ Retirada"}
+                  {formatOperationLabel(op)}
                 </button>
               ))}
             </div>
@@ -311,7 +280,7 @@ export function IFoodStatusDetailedPage() {
                   <div style={{ display: "grid", gap: 16 }}>
                     {/* Card de Status */}
                     <DashboardCard
-                      title={`${selectedOperation} - Status`}
+                      title={`${formatOperationLabel(selectedOperation)} - Status`}
                       value={operationData.available ? "Disponível" : "Indisponível"}
                       status={operationData.available ? "success" : "error"}
                       icon={operationData.available ? "✓" : "✕"}
@@ -322,7 +291,7 @@ export function IFoodStatusDetailedPage() {
                     {operationData.validations && operationData.validations.length > 0 && (
                       <div className="card" style={{ padding: 16 }}>
                         <h4 style={{ fontSize: "0.95rem", fontWeight: 700, margin: "0 0 12px" }}>
-                          Validações - {selectedOperation}
+                          Validações - {formatOperationLabel(selectedOperation)}
                         </h4>
                         <div style={{ display: "grid", gap: 8 }}>
                           {operationData.validations.map((v) => {
@@ -335,7 +304,7 @@ export function IFoodStatusDetailedPage() {
                                 message={
                                   <>
                                     <div style={{ fontWeight: 600 }}>
-                                      {display.icon} {v.state}
+                                      {display.icon} {display.label}
                                     </div>
                                     {v.message && (
                                       <div style={{ fontSize: "0.85rem", marginTop: 4 }}>

@@ -1,33 +1,25 @@
-﻿import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import {
-  getIFoodMerchantStatus,
-  getIFoodOrders,
-  getIFoodFinancialSummary,
-  getIFoodReviews,
-  type IFoodOrderResponse,
-} from "./api";
+import { getIFoodMerchantStatus, getIFoodOrders, getIFoodFinancialSummary, getIFoodReviews } from "./api";
 import { useAuthStore } from "../../stores/authStore";
 import { PageHeader } from "../../components/PageHeader";
 import { QueryError } from "../../components/QueryError";
 import { Button } from "../../ui/Button";
 import { DashboardCard } from "../../components/DashboardCard";
-import { StatsGrid, StatItem } from "../../components/StatsGrid";
+import { StatsGrid } from "../../components/StatsGrid";
 import { MetricsRow } from "../../components/MetricsRow";
 import {
   formatOrderStatus,
   formatMerchantAvailability,
   formatCurrency,
   calculateOrderMetrics,
-  formatOrderTiming,
-  formatDate,
-  formatDateTimeShort,
+  formatTime,
 } from "../../utils/ifoodFormattersEnhanced";
+
+const REVIEWS_PAGE_SIZE = 50;
 
 export function IFoodDashboardPage() {
   const { branchId } = useAuthStore();
-  const [dateRange, setDateRange] = useState({ from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), to: new Date() });
 
   // Queries em paralelo
   const statusQuery = useQuery({
@@ -50,7 +42,7 @@ export function IFoodDashboardPage() {
 
   const reviewsQuery = useQuery({
     queryKey: ["integrations", "ifood", "dashboard", "reviews", branchId],
-    queryFn: () => getIFoodReviews(branchId, { limit: 100 }),
+    queryFn: () => getIFoodReviews(branchId, { pageSize: REVIEWS_PAGE_SIZE }),
     refetchInterval: 60000,
   });
 
@@ -60,14 +52,19 @@ export function IFoodDashboardPage() {
   const merchantStatus = statusQuery.data;
   const orders = ordersQuery.data || [];
   const financial = financialQuery.data;
-  const reviews = reviewsQuery.data || [];
+  const reviews = reviewsQuery.data?.reviews ?? [];
 
   const metrics = calculateOrderMetrics(orders);
   const statusDisplay = merchantStatus ? formatMerchantAvailability(merchantStatus.available, merchantStatus.operationState) : null;
 
-  // Estatísticas de reviews
-  const avgRating = reviews.length > 0 ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1) : "—";
-  const respondedReviews = reviews.filter((r) => r.responseState === "CLOSED").length;
+  // Estatísticas de reviews — a lista do iFood não traz um estado de resposta; "respondida" é
+  // simplesmente a avaliação que já tem `reply` preenchido.
+  const scoredReviews = reviews.filter((r) => r.score !== null);
+  const avgRating =
+    scoredReviews.length > 0
+      ? (scoredReviews.reduce((sum, r) => sum + (r.score ?? 0), 0) / scoredReviews.length).toFixed(1)
+      : "—";
+  const respondedReviews = reviews.filter((r) => !!r.reply).length;
 
   const errorMessage = isError ? (statusQuery.isError ? statusQuery.error : ordersQuery.error) : null;
 
@@ -145,15 +142,9 @@ export function IFoodDashboardPage() {
                 value={metrics.total}
                 icon="📦"
                 status="info"
-                subtitle="Últimos 7 dias"
+                subtitle="Pedidos sincronizados"
               />
-              <DashboardCard
-                title="Entregues"
-                value={metrics.delivered}
-                status="success"
-                icon="✓"
-                trend={{ direction: "up", percentage: 5.2 }}
-              />
+              <DashboardCard title="Entregues" value={metrics.delivered} status="success" icon="✓" />
               <DashboardCard
                 title="Em Progresso"
                 value={metrics.inProgress}
@@ -165,7 +156,6 @@ export function IFoodDashboardPage() {
                 value={metrics.cancelled}
                 status="error"
                 icon="✕"
-                trend={{ direction: "down", percentage: 0.8 }}
               />
             </StatsGrid>
           </div>
@@ -200,16 +190,13 @@ export function IFoodDashboardPage() {
                   💰 Financeiro
                 </h4>
                 <MetricsRow
-                  metric="Receita Total"
-                  value={formatCurrency(financial.grossTotal)}
+                  metric="Eventos com repasse"
+                  value={formatCurrency(financial.totalFinancialEventsWithTransferImpact)}
                 />
+                <MetricsRow metric="Repasses recebidos" value={formatCurrency(financial.totalSettlements)} />
                 <MetricsRow
-                  metric="Fees & Taxas"
-                  value={formatCurrency(financial.fees)}
-                />
-                <MetricsRow
-                  metric="Líquido"
-                  value={formatCurrency(financial.netTotal)}
+                  metric="Divergência"
+                  value={financial.hasDiscrepancy ? formatCurrency(financial.discrepancyAmount) : "—"}
                 />
               </div>
             )}
@@ -231,7 +218,7 @@ export function IFoodDashboardPage() {
               <MetricsRow
                 metric="Respondidas"
                 value={respondedReviews}
-                change={(respondedReviews / Math.max(reviews.length, 1)) * 100}
+                unit={`de ${reviews.length}`}
               />
             </div>
           </div>
@@ -275,10 +262,7 @@ export function IFoodDashboardPage() {
                       return (
                         <tr
                           key={order.id}
-                          style={{
-                            borderBottom: "1px solid var(--border)",
-                            hover: { background: "var(--surface-2)" },
-                          }}
+                          style={{ borderBottom: "1px solid var(--border)" }}
                         >
                           <td style={{ padding: 12, fontSize: "0.9rem", fontWeight: 600 }}>
                             {order.displayId || order.ifoodOrderId}
@@ -305,7 +289,7 @@ export function IFoodDashboardPage() {
                                 : "🍽️ Local"}
                           </td>
                           <td style={{ padding: 12, textAlign: "right", fontSize: "0.9rem", fontWeight: 600 }}>
-                            {formatCurrency(order.total || 0)}
+                            {formatCurrency(order.totalAmount)}
                           </td>
                           <td style={{ padding: 12, fontSize: "0.85rem", color: "var(--ink-faint)" }}>
                             {formatTime(order.createdAt)}
@@ -343,7 +327,7 @@ export function IFoodDashboardPage() {
                   ⭐ Respostas de Avaliações
                 </Button>
               </Link>
-              <Link to="/integracoes/ifood/entregas" style={{ textDecoration: "none" }}>
+              <Link to="/integracoes/ifood/logistica" style={{ textDecoration: "none" }}>
                 <Button variant="ghost" style={{ width: "100%", justifyContent: "flex-start" }}>
                   🚗 Status de Entregas
                 </Button>
@@ -359,13 +343,4 @@ export function IFoodDashboardPage() {
       )}
     </main>
   );
-}
-
-// Helper para formatação de hora
-function formatTime(date: string | Date): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
