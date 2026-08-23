@@ -587,3 +587,103 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
 .switch.is-on { background: var(--amber); border-color: var(--amber-deep); }
 .switch.is-on .switch-knob { transform: translateX(26px); background: var(--amber-ink); }
 .switch:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ============================================================
+   Quadro Kanban — Operação de Delivery/Retirada
+   (src/features/orders/DeliveryBoardPage.tsx). Dois modos de
+   visualização (Simples/Completo) consomem as mesmas classes.
+   ============================================================ */
+.kanban-board {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  align-items: flex-start;
+}
+
+.kanban-column {
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  min-width: 268px;
+  max-width: 300px;
+  flex: 1 0 268px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 300px);
+  min-height: 220px;
+}
+.kanban-column.is-placeholder { opacity: 0.55; }
+
+.kanban-column-head {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kanban-column-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.kanban-column-title {
+  font-family: var(--font-cond);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  font-size: 1.02rem;
+}
+.kanban-column-hint {
+  color: var(--ink-faint);
+  font-size: 0.76rem;
+}
+.kanban-column-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--bg-press);
+  color: var(--ink-dim);
+  font-family: var(--font-cond);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.kanban-column-body {
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.kanban-card {
+  background: var(--bg-press);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+.kanban-card:hover { border-color: var(--ink-faint); transform: translateY(-1px); }
+
+.kanban-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.kanban-card-empty {
+  color: var(--ink-faint);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 20px 8px;
+}

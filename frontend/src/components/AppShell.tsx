@@ -11,6 +11,7 @@ import { IFoodAlertsBell } from "./IFoodAlertsBell";
 // agrupados dentro de "Config." (só gerente/admin).
 const links = [
   { to: "/", label: "Salão", feature: "Salao" },
+  { to: "/delivery", label: "Delivery", feature: "Salao" },
   { to: "/reservas", label: "Reservas", feature: "Salao" },
   { to: "/clientes", label: "Clientes", feature: "Salao" },
   { to: "/produtos", label: "Cardápio", feature: "Cardapio" },
