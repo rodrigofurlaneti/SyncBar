@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SyncBar.Application.Abstractions.Tenancy;
 using SyncBar.Domain.Entities;
+using SyncBar.Domain.Exceptions;
 using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Infrastructure.Persistence;
@@ -192,5 +193,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     }
 
     public async Task<int> CommitAsync(CancellationToken cancellationToken = default)
-        => await SaveChangesAsync(cancellationToken);
+    {
+        try
+        {
+            return await SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new ConcurrencyException("Ocorreu um conflito de concorrência ao persistir as alterações.", ex);
+        }
+    }
 }
