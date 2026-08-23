@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDialog } from "../../ui/Dialog";
 import {
@@ -57,6 +57,21 @@ export function ProductsPage() {
     const [modalNewCategory, setModalNewCategory] = useState("");
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // Achado de revisão (web-design-guidelines / performance): antes, `URL.createObjectURL`
+    // era chamado direto no JSX — a cada re-render do formulário (qualquer tecla digitada em
+    // qualquer campo) uma blob URL nova era criada e a anterior nunca era liberada
+    // (URL.revokeObjectURL), vazando memória enquanto o modal ficasse aberto. Agora a URL só é
+    // recriada quando `imageFile` de fato muda, e a anterior é revogada na troca/no unmount.
+    const imagePreviewUrl = useMemo(
+        () => (imageFile !== null ? URL.createObjectURL(imageFile) : null),
+        [imageFile],
+    );
+    useEffect(() => {
+        return () => {
+            if (imagePreviewUrl !== null) URL.revokeObjectURL(imagePreviewUrl);
+        };
+    }, [imagePreviewUrl]);
 
     const menuQuery = useQuery({
         queryKey: ["menu", companyId],
@@ -190,7 +205,11 @@ export function ProductsPage() {
                 </button>
             </div>
 
-            {error && !editing && <p className="error-text">{error}</p>}
+            {error && !editing && (
+                <p className="error-text" role="alert">
+                    {error}
+                </p>
+            )}
             {menuQuery.isError && <QueryError error={menuQuery.error} what="o cardápio" />}
             {categoriesQuery.isError && <QueryError error={categoriesQuery.error} what="as categorias" />}
 
@@ -218,6 +237,9 @@ export function ProductsPage() {
                                 <img
                                     src={product.imageUrl}
                                     alt={product.name}
+                                    width={46}
+                                    height={46}
+                                    loading="lazy"
                                     style={{ width: 46, height: 46, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line)" }}
                                 />
                             ) : (
@@ -423,10 +445,12 @@ export function ProductsPage() {
                             accept="image/jpeg,image/png,image/webp"
                             onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
                         />
-                        {(imageFile !== null || (editing !== "new" && editing !== null && editing.imageUrl)) && (
+                        {(imagePreviewUrl !== null || (editing !== "new" && editing !== null && editing.imageUrl)) && (
                             <img
-                                src={imageFile !== null ? URL.createObjectURL(imageFile) : (editing as MenuItemResponse).imageUrl!}
+                                src={imagePreviewUrl ?? (editing as MenuItemResponse).imageUrl!}
                                 alt="Prévia"
+                                width={90}
+                                height={90}
                                 style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "1px solid var(--line)" }}
                             />
                         )}
@@ -436,7 +460,11 @@ export function ProductsPage() {
                         <ProductComplementLinkPanel productId={editing.id} />
                     )}
 
-                    {error && <p className="error-text">{error}</p>}
+                    {error && (
+                        <p className="error-text" role="alert">
+                            {error}
+                        </p>
+                    )}
                     {form.categoryId === "" && (
                         <p className="field-hint" style={{ margin: 0 }}>
                             Selecione uma categoria para habilitar o salvar.

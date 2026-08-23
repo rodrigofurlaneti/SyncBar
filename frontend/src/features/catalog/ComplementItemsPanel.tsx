@@ -87,7 +87,11 @@ export function ComplementItemsPanel() {
         </Button>
       </div>
 
-      {error && !editing && <p className="error-text">{error}</p>}
+      {error && !editing && (
+        <p className="error-text" role="alert">
+          {error}
+        </p>
+      )}
       {itemsQuery.isError && <QueryError error={itemsQuery.error} what="os complementos" />}
       {itemsQuery.isLoading && <SkeletonList rows={4} rowHeight={52} />}
 

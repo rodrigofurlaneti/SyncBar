@@ -83,7 +83,11 @@ export function PublicOrderPage() {
         </div>
       </div>
 
-      {error && <p className="error-text">{error}</p>}
+      {error && (
+        <p className="error-text" role="alert">
+          {error}
+        </p>
+      )}
 
       {selectingItem && (
         <ComplementSelectorModal
@@ -115,16 +119,24 @@ export function PublicOrderPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <button
                       className="btn-ghost"
+                      type="button"
+                      aria-label={`Diminuir quantidade de ${item.name}`}
                       style={{ minHeight: 44, minWidth: 44, padding: 0 }}
                       onClick={() => setQty(item.id, (quantities[item.id] ?? 1) - 1)}
                     >
                       −
                     </button>
-                    <span className="mono-num" style={{ minWidth: 20, textAlign: "center" }}>
+                    <span
+                      className="mono-num"
+                      aria-live="polite"
+                      style={{ minWidth: 20, textAlign: "center" }}
+                    >
                       {quantities[item.id] ?? 1}
                     </span>
                     <button
                       className="btn-ghost"
+                      type="button"
+                      aria-label={`Aumentar quantidade de ${item.name}`}
                       style={{ minHeight: 44, minWidth: 44, padding: 0 }}
                       onClick={() => setQty(item.id, (quantities[item.id] ?? 1) + 1)}
                     >
@@ -133,6 +145,8 @@ export function PublicOrderPage() {
                   </div>
                   <button
                     className="btn-primary"
+                    type="button"
+                    aria-busy={addMutation.isPending}
                     style={{ minHeight: 44, padding: "0 14px", fontSize: "0.85rem" }}
                     disabled={addMutation.isPending}
                     onClick={() => handlePickItem(item)}
@@ -147,7 +161,7 @@ export function PublicOrderPage() {
       </div>
 
       {sentIds.length > 0 && (
-        <p style={{ textAlign: "center", color: "var(--ok)", marginTop: 18 }}>
+        <p role="status" style={{ textAlign: "center", color: "var(--ok)", marginTop: 18 }}>
           Pedido enviado para a cozinha/bar. Chame o garçom para fechar a conta quando quiser.
         </p>
       )}

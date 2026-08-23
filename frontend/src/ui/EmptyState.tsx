@@ -26,7 +26,11 @@ export function EmptyState({ icon, title, description, action }: Props) {
         color: "var(--ink-faint)",
       }}
     >
-      {icon && <div style={{ fontSize: "2.4rem", lineHeight: 1 }}>{icon}</div>}
+      {icon && (
+        <div aria-hidden="true" style={{ fontSize: "2.4rem", lineHeight: 1 }}>
+          {icon}
+        </div>
+      )}
       <span className="display" style={{ fontSize: "1.3rem", color: "var(--ink)" }}>
         {title}
       </span>

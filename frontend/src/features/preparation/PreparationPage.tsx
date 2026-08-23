@@ -2,7 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { advanceItemStatus, getPreparationQueue } from "./api";
 import { useAuthStore } from "../../stores/authStore";
-import { OrderItemStatus, orderItemStatusLabel } from "../../lib/types";
+import { OrderItemStatus, orderItemStatusLabel, OrderType } from "../../lib/types";
 import type { PreparationItemResponse } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
 
@@ -212,11 +212,24 @@ export function PreparationPage() {
                                 className="ticket-head"
                                 style={{ borderTop: `3px solid ${headColor}`, alignItems: "center" }}
                             >
-                                <span className="display" style={{ fontSize: "1.35rem" }}>
-                                    {ticket.tableNumber !== null
-                                        ? `Mesa ${ticket.tableNumber}`
-                                        : `Comanda ${ticket.comandaCode ?? "?"}`}
-                                </span>
+                                <div style={{ display: "grid", gap: 4 }}>
+                                    <span className="display" style={{ fontSize: "1.35rem" }}>
+                                        {ticket.tableNumber !== null
+                                            ? `Mesa ${ticket.tableNumber}`
+                                            : ticket.comandaCode !== null
+                                              ? `Comanda ${ticket.comandaCode}`
+                                              : ticket.customerName?.trim() || `Pedido #${ticket.customerOrderId}`}
+                                    </span>
+                                    {/* Pedido sem mesa/comanda = Retirada ou Delivery (OpenDeliveryOrderDialog) —
+                                        sem esse selo a cozinha via só "Comanda ?" e não tinha como saber que
+                                        o pedido precisa ser embalado pra entrega/retirada em vez de servido
+                                        numa mesa. */}
+                                    {ticket.orderTypeId !== OrderType.Mesa && (
+                                        <span className="chip" style={{ "--dot": "var(--reserved)" } as React.CSSProperties}>
+                                            {ticket.orderTypeId === OrderType.Delivery ? "DELIVERY" : "RETIRADA"}
+                                        </span>
+                                    )}
+                                </div>
                                 <span className="mono-num" style={{ color: "var(--ink-faint)", fontSize: "0.8rem" }}>
                                     #{ticket.customerOrderId} ·{" "}
                                     {new Date(parseLocalDateTime(ticket.openedAt)).toLocaleTimeString("pt-BR", {

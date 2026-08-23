@@ -456,6 +456,8 @@ export interface PreparationTicketResponse {
   customerOrderId: number;
   tableNumber: number | null;
   comandaCode: string | null;
+  orderTypeId: number;
+  customerName: string | null;
   openedAt: string;
   items: PreparationItemResponse[];
 }

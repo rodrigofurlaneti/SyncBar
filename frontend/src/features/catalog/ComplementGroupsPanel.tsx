@@ -216,8 +216,16 @@ export function ComplementGroupsPanel() {
             </div>
           </div>
 
-          {maxBelowMin && <p className="error-text">O máximo não pode ser menor que o mínimo.</p>}
-          {error && <p className="error-text">{error}</p>}
+          {maxBelowMin && (
+            <p className="error-text" role="alert">
+              O máximo não pode ser menor que o mínimo.
+            </p>
+          )}
+          {error && (
+            <p className="error-text" role="alert">
+              {error}
+            </p>
+          )}
 
           <Button
             variant="primary"
@@ -300,10 +308,12 @@ function GroupCard({ group, expanded, onToggle, onEdit, onDeactivate, activeItem
   return (
     <div className="ticket rise">
       <button
+        type="button"
         className="ticket-row"
         style={{ width: "100%", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
         onClick={onToggle}
         aria-expanded={expanded}
+        aria-controls={`complement-group-panel-${group.id}`}
       >
         <div style={{ display: "grid", gap: 2 }}>
           <span>{group.name}</span>
@@ -317,7 +327,7 @@ function GroupCard({ group, expanded, onToggle, onEdit, onDeactivate, activeItem
       </button>
 
       {expanded && (
-        <div style={{ padding: "0 16px 14px", display: "grid", gap: 10 }}>
+        <div id={`complement-group-panel-${group.id}`} style={{ padding: "0 16px 14px", display: "grid", gap: 10 }}>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button className="btn-ghost" style={{ minHeight: 40, padding: "0 12px", fontSize: "0.85rem" }} onClick={onEdit}>
               Editar grupo
@@ -342,6 +352,7 @@ function GroupCard({ group, expanded, onToggle, onEdit, onDeactivate, activeItem
                   <input
                     autoFocus
                     inputMode="decimal"
+                    aria-label={`Preço extra de ${c.complementItemName} em reais`}
                     value={editPrice}
                     onChange={(e) => setEditPrice(e.target.value)}
                     style={{ width: 110 }}
@@ -398,7 +409,12 @@ function GroupCard({ group, expanded, onToggle, onEdit, onDeactivate, activeItem
 
           {availableItems.length > 0 ? (
             <div className="ui-row ui-row-wrap" style={{ gap: 8, marginTop: 4 }}>
-              <select value={addItemId} onChange={(e) => setAddItemId(e.target.value)} style={{ flex: 1, minWidth: 160 }}>
+              <select
+                value={addItemId}
+                onChange={(e) => setAddItemId(e.target.value)}
+                aria-label={`Selecionar complemento para adicionar ao grupo ${group.name}`}
+                style={{ flex: 1, minWidth: 160 }}
+              >
                 <option value="">Adicionar opção…</option>
                 {availableItems.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -407,7 +423,8 @@ function GroupCard({ group, expanded, onToggle, onEdit, onDeactivate, activeItem
                 ))}
               </select>
               <input
-                placeholder="Preço extra (R$)"
+                placeholder="Preço extra (R$)…"
+                aria-label="Preço extra em reais"
                 inputMode="decimal"
                 value={addPrice}
                 onChange={(e) => setAddPrice(e.target.value)}

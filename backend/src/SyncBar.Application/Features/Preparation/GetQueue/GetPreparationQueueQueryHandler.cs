@@ -94,6 +94,8 @@ internal sealed class GetPreparationQueueQueryHandler(
                             ? tables.FirstOrDefault(t => t.Id == order.DiningTableId.Value)?.Number
                             : null,
                         comandaCode,
+                        order.OrderTypeId,
+                        order.CustomerName,
                         order.OpenedAt,
                         pendingItems));
                 }

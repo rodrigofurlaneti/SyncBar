@@ -117,7 +117,12 @@ export function ProductComplementLinkPanel({ productId }: Props) {
 
       {availableGroups.length > 0 ? (
         <div className="ui-row ui-row-wrap" style={{ gap: 8, marginTop: 6 }}>
-          <select value={addGroupId} onChange={(e) => setAddGroupId(e.target.value)} style={{ flex: 1, minWidth: 160 }}>
+          <select
+            value={addGroupId}
+            onChange={(e) => setAddGroupId(e.target.value)}
+            aria-label="Selecionar grupo de complementos para vincular ao produto"
+            style={{ flex: 1, minWidth: 160 }}
+          >
             <option value="">Vincular grupo…</option>
             {availableGroups.map((g) => (
               <option key={g.id} value={g.id}>
@@ -139,7 +144,11 @@ export function ProductComplementLinkPanel({ productId }: Props) {
         )
       )}
 
-      {error && <p className="error-text">{error}</p>}
+      {error && (
+        <p className="error-text" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
