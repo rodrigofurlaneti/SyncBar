@@ -27,6 +27,10 @@ internal sealed class SetPizzaFlavorPriceCommandHandler(
                 if (configuration is null || !configuration.IsActive)
                     return Result.Failure<long>(new Error("PizzaConfiguration.NotFound", "Pizza configuration not found."));
 
+                var product = await productRepository.GetByIdAsync(configuration.ProductId, cancellationToken);
+                if (product is null)
+                    return Result.Failure<long>(new Error("PizzaConfiguration.NotFound", "Pizza configuration not found."));
+
                 var price = configuration.SetFlavorPrice(request.PizzaFlavorId, request.PizzaSizeId, request.Price);
                 if (price.IsFailure)
                     return Result.Failure<long>(price.Error);
@@ -36,9 +40,7 @@ internal sealed class SetPizzaFlavorPriceCommandHandler(
                 // Diferente de AddSize/AddCrust/AddEdge: é ESTE passo que pode tornar a pizza
                 // vendável pela primeira vez (1º tamanho + 1º preço de sabor) — dispara a
                 // sincronização do catálogo, mesmo critério de LinkProductComplementGroupCommandHandler.
-                var product = await productRepository.GetByIdAsync(configuration.ProductId, cancellationToken);
-                if (product is not null)
-                    catalogSyncTrigger.TriggerCompanySync(product.CompanyId);
+                catalogSyncTrigger.TriggerCompanySync(product.CompanyId);
 
                 return Result.Success(price.Value.Id);
             });

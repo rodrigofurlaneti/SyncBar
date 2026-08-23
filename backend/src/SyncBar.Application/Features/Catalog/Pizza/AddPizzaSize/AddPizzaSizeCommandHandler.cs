@@ -6,6 +6,7 @@ namespace SyncBar.Application.Features.Catalog.Pizza.AddPizzaSize;
 
 internal sealed class AddPizzaSizeCommandHandler(
     IPizzaConfigurationRepository pizzaConfigurationRepository,
+    IProductRepository productRepository,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
     : BaseCommandHandler<AddPizzaSizeCommand, long>(logRepository, unitOfWork)
@@ -22,6 +23,10 @@ internal sealed class AddPizzaSizeCommandHandler(
             {
                 var configuration = await pizzaConfigurationRepository.GetByIdForUpdateAsync(request.PizzaConfigurationId, cancellationToken);
                 if (configuration is null || !configuration.IsActive)
+                    return Result.Failure<long>(new Error("PizzaConfiguration.NotFound", "Pizza configuration not found."));
+
+                var product = await productRepository.GetByIdAsync(configuration.ProductId, cancellationToken);
+                if (product is null)
                     return Result.Failure<long>(new Error("PizzaConfiguration.NotFound", "Pizza configuration not found."));
 
                 var size = configuration.AddSize(request.Name, request.Slices, request.AcceptedFractions, request.DisplayOrder);

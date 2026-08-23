@@ -31,6 +31,9 @@ internal sealed class AddPizzaOrderItemCommandHandler(
             {
                 userIdBox.Value = request.EmployeeId;
 
+                if (request.PizzaFlavorIds is not { Count: > 0 })
+                    return Result.Failure(new Error("PizzaConfiguration.NoFlavorsSelected", "At least one flavor must be selected."));
+
                 var order = await orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
                 if (order is null || !order.IsActive)
                     return Result.Failure(new Error("CustomerOrder.NotFound", "Order not found."));
