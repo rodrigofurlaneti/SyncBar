@@ -131,6 +131,44 @@ public sealed class CustomerOrder : AggregateRoot
         return Result.Success();
     }
 
+    // Fase 17 — lança uma pizza no pedido. Mesma validação de limite de comanda/status de AddItem,
+    // mas delega a criação da linha para OrderItem.CreatePizza (que já registra os sabores
+    // selecionados em _pizzaFlavors). unitPrice já vem calculado pelo chamador
+    // (PizzaConfiguration.CalculateUnitPrice) — este método não conhece a regra de precificação
+    // (sabor mais caro + borda + recheio de borda), só registra o resultado, mesma divisão de
+    // responsabilidade usada em AddItemWithPromotion.
+    public Result AddPizzaItem(
+        long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now,
+        long pizzaSizeId, long? pizzaCrustId, long? pizzaEdgeId, IReadOnlyCollection<long> pizzaFlavorIds)
+    {
+        if (!IsOpen())
+            return Result.Failure(new Error("CustomerOrder.NotOpen", "Items can only be added to an open order."));
+        if (quantity <= 0)
+            return Result.Failure(new Error("CustomerOrder.InvalidQuantity", "Quantity must be greater than zero."));
+
+        if (CreditLimitAmount.HasValue)
+        {
+            var prospectiveTotal = TotalAmount + Math.Round(unitPrice * quantity, 2);
+            if (prospectiveTotal > CreditLimitAmount.Value)
+                return Result.Failure(new Error("Comanda.LimitExceeded",
+                    $"Limite da comanda atingido (R$ {CreditLimitAmount.Value:N2}, consumo iria a R$ {prospectiveTotal:N2}). Peça ao gerente para liberar mais limite."));
+        }
+
+        long? safeEmployeeId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : null;
+
+        var item = OrderItem.CreatePizza(
+            Id, productId, unitPrice, quantity, notes, safeEmployeeId, Now,
+            pizzaSizeId, pizzaCrustId, pizzaEdgeId, pizzaFlavorIds);
+        if (item.IsFailure)
+            return Result.Failure(item.Error);
+
+        _items.Add(item.Value);
+        OrderStatusId = OrderStatusIds.EmAndamento;
+        RecalculateTotals();
+        UpdatedAt = Now;
+        return Result.Success();
+    }
+
     // Adiciona um complemento escolhido (ex.: "bacon extra") a um item já lançado no pedido —
     // localiza o OrderItem filho e delega, depois recalcula os totais do pedido (o total do
     // item já inclui o preço do complemento, ver OrderItem.RecalculateTotal).

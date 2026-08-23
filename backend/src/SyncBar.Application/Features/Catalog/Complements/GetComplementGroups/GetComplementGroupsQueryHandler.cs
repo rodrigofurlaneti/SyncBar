@@ -1,4 +1,5 @@
 using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
@@ -7,6 +8,7 @@ namespace SyncBar.Application.Features.Catalog.Complements.GetComplementGroups;
 internal sealed class GetComplementGroupsQueryHandler(
     IComplementGroupRepository complementGroupRepository,
     IComplementItemRepository complementItemRepository,
+    IProductRepository productRepository,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
     : BaseQueryHandler<GetComplementGroupsQuery, IReadOnlyCollection<ComplementGroupResponse>>(logRepository, unitOfWork)
@@ -27,7 +29,19 @@ internal sealed class GetComplementGroupsQueryHandler(
                     .Distinct()
                     .ToList();
                 var complementItems = await complementItemRepository.GetByIdsAsync(complementItemIds, cancellationToken);
-                var complementItemNames = complementItems.ToDictionary(i => i.Id, i => i.Name);
+                var complementItemsById = complementItems.ToDictionary(i => i.Id);
+
+                // Fase 18 (combos) — resolve a imagem dos produtos vinculados (LinkedProductId) em
+                // lote, mesmo critério de N+1 evitado em MenuComplementsBuilder.
+                var linkedProductIds = complementItems
+                    .Where(i => i.LinkedProductId.HasValue)
+                    .Select(i => i.LinkedProductId!.Value)
+                    .Distinct()
+                    .ToList();
+                var linkedProducts = linkedProductIds.Count > 0
+                    ? await productRepository.GetByIdsAsync(linkedProductIds, cancellationToken)
+                    : (IReadOnlyCollection<Product>)[];
+                var linkedProductImages = linkedProducts.ToDictionary(p => p.Id, p => p.ImageUrl);
 
                 IReadOnlyCollection<ComplementGroupResponse> response = complementGroups
                     .OrderBy(g => g.Name)
@@ -40,12 +54,22 @@ internal sealed class GetComplementGroupsQueryHandler(
                         g.IsActive,
                         g.Complements
                             .Where(c => c.IsActive)
-                            .Select(c => new ComplementResponse(
-                                c.Id,
-                                c.ComplementItemId,
-                                complementItemNames.TryGetValue(c.ComplementItemId, out var name) ? name : "?",
-                                c.ExtraPrice,
-                                c.IsActive))
+                            .Select(c =>
+                            {
+                                complementItemsById.TryGetValue(c.ComplementItemId, out var complementItem);
+                                var linkedProductId = complementItem?.LinkedProductId;
+                                var linkedImageUrl = linkedProductId.HasValue
+                                    ? linkedProductImages.GetValueOrDefault(linkedProductId.Value)
+                                    : null;
+                                return new ComplementResponse(
+                                    c.Id,
+                                    c.ComplementItemId,
+                                    complementItem?.Name ?? "?",
+                                    c.ExtraPrice,
+                                    c.IsActive,
+                                    linkedProductId,
+                                    linkedImageUrl);
+                            })
                             .ToList()))
                     .ToList();
 

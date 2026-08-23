@@ -6,6 +6,7 @@ namespace SyncBar.Domain.Entities;
 public sealed class OrderItem : Entity
 {
     private readonly List<OrderItemComplement> _complements = [];
+    private readonly List<OrderItemPizzaFlavor> _pizzaFlavors = [];
 
     public long CustomerOrderId { get; private set; }
     public long ProductId { get; private set; }
@@ -19,14 +20,22 @@ public sealed class OrderItem : Entity
     public DateTime? SentToKitchenAt { get; private set; }
     public DateTime? DeliveredAt { get; private set; }
     public long? CancelledByEmployeeId { get; private set; }
+    // Fase 17 — preenchidos só quando o Product lançado tem PizzaConfiguration (ver
+    // CustomerOrder.AddPizzaItem). PizzaCrustId/PizzaEdgeId são opcionais (nem toda pizza tem
+    // borda recheada); PizzaSizeId é obrigatório sempre que há sabores em _pizzaFlavors.
+    public long? PizzaSizeId { get; private set; }
+    public long? PizzaCrustId { get; private set; }
+    public long? PizzaEdgeId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public bool IsActive { get; private set; }
     public IReadOnlyCollection<OrderItemComplement> Complements => _complements.AsReadOnly();
+    public IReadOnlyCollection<OrderItemPizzaFlavor> PizzaFlavors => _pizzaFlavors.AsReadOnly();
 
     private OrderItem() : base(0) { }
 
-    private OrderItem(long customerOrderId, long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now) : base(0)
+    private OrderItem(long customerOrderId, long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now,
+        long? pizzaSizeId = null, long? pizzaCrustId = null, long? pizzaEdgeId = null) : base(0)
     {
         CustomerOrderId = customerOrderId;
         ProductId = productId;
@@ -34,6 +43,9 @@ public sealed class OrderItem : Entity
         Quantity = quantity;
         Notes = notes;
         EmployeeId = employeeId;
+        PizzaSizeId = pizzaSizeId;
+        PizzaCrustId = pizzaCrustId;
+        PizzaEdgeId = pizzaEdgeId;
         OrderItemStatusId = OrderItemStatusIds.Lancado;
         TotalAmount = Math.Round(unitPrice * quantity, 2);
         IsActive = true;
@@ -48,6 +60,37 @@ public sealed class OrderItem : Entity
             return Result.Failure<OrderItem>(new Error("OrderItem.InvalidUnitPrice", "Unit price cannot be negative."));
 
         return Result.Success(new OrderItem(customerOrderId, productId, unitPrice, quantity, notes, employeeId, Now));
+    }
+
+    // Fase 17 — factory de item de pizza. Diferente de Create, recebe os sabores selecionados;
+    // a pizza inteira é sempre 1 OrderItem, nunca N (o fracionamento vive em _pizzaFlavors, não
+    // na Quantity, que continua sendo "quantas dessa mesma pizza fracionada"). O preço unitário
+    // já vem calculado pelo chamador (PizzaConfiguration.CalculateUnitPrice) — este método não
+    // conhece a regra de precificação (sabor mais caro), só registra o resultado.
+    internal static Result<OrderItem> CreatePizza(
+        long customerOrderId, long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now,
+        long pizzaSizeId, long? pizzaCrustId, long? pizzaEdgeId, IReadOnlyCollection<long> pizzaFlavorIds)
+    {
+        if (quantity <= 0)
+            return Result.Failure<OrderItem>(new Error("OrderItem.InvalidQuantity", "Quantity must be greater than zero."));
+        if (unitPrice < 0)
+            return Result.Failure<OrderItem>(new Error("OrderItem.InvalidUnitPrice", "Unit price cannot be negative."));
+        if (pizzaFlavorIds.Count == 0)
+            return Result.Failure<OrderItem>(new Error("OrderItem.NoFlavorsSelected", "At least one pizza flavor must be selected."));
+
+        var item = new OrderItem(customerOrderId, productId, unitPrice, quantity, notes, employeeId, Now, pizzaSizeId, pizzaCrustId, pizzaEdgeId);
+
+        var fractionShare = Math.Round(1m / pizzaFlavorIds.Count, 4);
+        foreach (var flavorId in pizzaFlavorIds)
+        {
+            var flavor = OrderItemPizzaFlavor.Create(item.Id, flavorId, fractionShare, Now);
+            if (flavor.IsFailure)
+                return Result.Failure<OrderItem>(flavor.Error);
+
+            item._pizzaFlavors.Add(flavor.Value);
+        }
+
+        return Result.Success(item);
     }
 
     internal Result UpdateStatus(long orderItemStatusId, long? actorEmployeeId, DateTime Now)

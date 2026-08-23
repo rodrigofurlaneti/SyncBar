@@ -16,6 +16,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
     private readonly IProductStockRepository _stockRepository;
     private readonly IProductComplementGroupRepository _productComplementGroupRepository;
     private readonly IComplementGroupRepository _complementGroupRepository;
+    private readonly IComplementItemRepository _complementItemRepository;
     private readonly IPrintingService _printingService;
     private readonly TimeProvider _TimeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
@@ -27,6 +28,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         IProductStockRepository stockRepository,
         IProductComplementGroupRepository productComplementGroupRepository,
         IComplementGroupRepository complementGroupRepository,
+        IComplementItemRepository complementItemRepository,
         IPrintingService printingService,
         TimeProvider TimeProviderCustom,
         ILogTrackerRepository logRepository,
@@ -39,6 +41,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         _stockRepository = stockRepository;
         _productComplementGroupRepository = productComplementGroupRepository;
         _complementGroupRepository = complementGroupRepository;
+        _complementItemRepository = complementItemRepository;
         _printingService = printingService;
         _TimeProviderCustom = TimeProviderCustom;
         _unitOfWork = unitOfWork;
@@ -73,7 +76,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
 
                 // 5. Se houver complementos selecionados, valida contra os grupos vinculados ao
                 // produto ANTES de lançar o item — evita lançar o item e falhar depois no meio do caminho.
-                var resolvedComplements = new List<(long ComplementId, decimal ExtraPrice)>();
+                var resolvedComplements = new List<(long ComplementId, decimal ExtraPrice, long ComplementItemId)>();
                 if (request.Complements is { Count: > 0 })
                 {
                     var links = await _productComplementGroupRepository.GetByProductAsync(product.Id, cancellationToken);
@@ -93,7 +96,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
                         if (complement is null)
                             return Result.Failure(new Error("ComplementGroup.ComplementNotFound", "Complement not found in this group."));
 
-                        resolvedComplements.Add((complement.Id, complement.ExtraPrice));
+                        resolvedComplements.Add((complement.Id, complement.ExtraPrice, complement.ComplementItemId));
                     }
                 }
 
@@ -116,7 +119,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
                 if (resolvedComplements.Count > 0)
                 {
                     var primaryItemId = order.Items.ElementAt(itemCountBefore).Id;
-                    foreach (var (complementId, extraPrice) in resolvedComplements)
+                    foreach (var (complementId, extraPrice, _) in resolvedComplements)
                     {
                         var complementResult = order.AddComplement(primaryItemId, complementId, extraPrice, currentTime);
                         if (complementResult.IsFailure)
@@ -150,6 +153,70 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
                     if (movementResult.IsFailure) return Result.Failure(movementResult.Error);
 
                     _stockRepository.AddMovement(movementResult.Value);
+                }
+
+                // 7. Fase 18 (combos) — complementos cujo ComplementItem aponta pra um Product real
+                // (LinkedProductId) também baixam o estoque DAQUELE produto, na mesma quantidade do
+                // item principal (ex.: 2 combos = baixa 2 unidades do sanduíche vinculado à opção
+                // escolhida). Complementos sem LinkedProductId (a maioria — "sem cebola", "bacon
+                // extra") não têm produto próprio, então não geram movimentação aqui.
+                if (resolvedComplements.Count > 0)
+                {
+                    // Só a linha principal recebe complementos (o item bônus da promoção EmDobro
+                    // não recebe), então a baixa do produto vinculado segue a quantidade dessa
+                    // linha — nunca a soma de todas as linhas recém-lançadas.
+                    var primaryItem = order.Items.ElementAt(itemCountBefore);
+                    var primaryQuantity = primaryItem.Quantity;
+                    var complementItemIds = resolvedComplements.Select(c => c.ComplementItemId).Distinct().ToList();
+                    var complementItems = await _complementItemRepository.GetByIdsAsync(complementItemIds, cancellationToken);
+                    var linkedProductIdsByComplementItemId = complementItems
+                        .Where(ci => ci.LinkedProductId.HasValue)
+                        .ToDictionary(ci => ci.Id, ci => ci.LinkedProductId!.Value);
+
+                    // O repositório devolve um snapshot novo a cada consulta, então dois
+                    // complementos que apontam pro MESMO produto vinculado precisam compartilhar
+                    // a mesma instância — senão cada um deduz sobre o saldo original e o estoque
+                    // pode ficar negativo sem falhar a checagem de suficiência.
+                    var linkedStocksByProductId = new Dictionary<long, ProductStock?>();
+
+                    foreach (var (complementId, _, complementItemId) in resolvedComplements)
+                    {
+                        if (!linkedProductIdsByComplementItemId.TryGetValue(complementItemId, out var linkedProductId))
+                            continue;
+
+                        if (!linkedStocksByProductId.TryGetValue(linkedProductId, out var linkedStock))
+                        {
+                            linkedStock = await _stockRepository.GetByProductIdAsync(linkedProductId, cancellationToken);
+                            linkedStocksByProductId[linkedProductId] = linkedStock;
+                        }
+
+                        if (linkedStock is null)
+                            continue; // Produto vinculado não é controlado por estoque — nada a baixar.
+
+                        var linkedStockResult = linkedStock.Deduct(primaryQuantity);
+                        if (linkedStockResult.IsFailure)
+                            return Result.Failure(linkedStockResult.Error);
+
+                        var linkedMovementEmployeeId = request.EmployeeId is > 0 ? request.EmployeeId : null;
+                        var linkedMovementResult = StockMovement.Create(
+                            stockItemId: linkedStock.ProductId,
+                            stockMovementTypeId: 2, // Tipo: Venda/Saída
+                            purchaseItemId: null,
+                            orderItemId: primaryItem.Id,
+                            employeeId: linkedMovementEmployeeId,
+                            quantity: -primaryQuantity,
+                            unitCost: null,
+                            totalCost: null,
+                            documentNumber: null,
+                            movedAt: currentTime,
+                            notes: $"Baixa automática do pedido {order.Id} (combo — complemento {complementId})"
+                        );
+
+                        if (linkedMovementResult.IsFailure)
+                            return Result.Failure(linkedMovementResult.Error);
+
+                        _stockRepository.AddMovement(linkedMovementResult.Value);
+                    }
                 }
 
                 try

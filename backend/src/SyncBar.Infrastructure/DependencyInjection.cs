@@ -82,6 +82,10 @@ public static class DependencyInjection
         services.AddScoped<IProductComplementGroupRepository, ProductComplementGroupRepository>();
         services.AddScoped<IIFoodComplementGroupMappingRepository, IFoodComplementGroupMappingRepository>();
         services.AddScoped<IIFoodComplementMappingRepository, IFoodComplementMappingRepository>();
+        // Fase 17 (pizza)
+        services.AddScoped<IPizzaFlavorRepository, PizzaFlavorRepository>();
+        services.AddScoped<IPizzaConfigurationRepository, PizzaConfigurationRepository>();
+        services.AddScoped<IIFoodPizzaMappingRepository, IFoodPizzaMappingRepository>();
         services.AddScoped<IAccessLogRepository, AccessLogRepository>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
         services.AddScoped<IPurchaseRepository, PurchaseRepository>();

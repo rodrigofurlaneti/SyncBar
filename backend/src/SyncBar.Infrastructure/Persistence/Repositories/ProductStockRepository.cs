@@ -8,7 +8,6 @@ internal sealed class ProductStockRepository(AppDbContext context) : IProductSto
 {
     public async Task<ProductStock?> GetByProductIdAsync(long productId, CancellationToken cancellationToken = default)
         => await context.Set<ProductStock>()
-            .AsNoTracking()
             .FirstOrDefaultAsync(x => x.ProductId == productId, cancellationToken);
 
     public void AddMovement(StockMovement movement)
