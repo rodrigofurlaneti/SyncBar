@@ -177,6 +177,14 @@ public sealed class PizzaConfiguration : AggregateRoot
         if (pizzaFlavorIds.Count == 0)
             return Result.Failure<decimal>(new Error("PizzaConfiguration.NoFlavorsSelected", "At least one flavor must be selected."));
 
+        // Achado de review (CodeRabbit/Devin): [12, 12] passava como 2 frações do mesmo sabor —
+        // conta duplicada infla TooManyFractions e gera OrderItemPizzaFlavor repetido em
+        // OrderItem.CreatePizza. Falha explícita em vez de silenciosamente Distinct(): o cliente
+        // (front-end) tem um bug se mandar id repetido, melhor ele saber do que a gente mascarar.
+        if (pizzaFlavorIds.Distinct().Count() != pizzaFlavorIds.Count)
+            return Result.Failure<decimal>(new Error("PizzaConfiguration.DuplicateFlavorSelection",
+                "The same flavor cannot be selected more than once."));
+
         if (pizzaFlavorIds.Count > size.AcceptedFractions)
             return Result.Failure<decimal>(new Error("PizzaConfiguration.TooManyFractions",
                 $"This size accepts at most {size.AcceptedFractions} flavor(s)."));

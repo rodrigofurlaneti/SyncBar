@@ -8,6 +8,7 @@ namespace SyncBar.Application.Features.Catalog.Pizza.SetPizzaFlavorPrice;
 internal sealed class SetPizzaFlavorPriceCommandHandler(
     IPizzaConfigurationRepository pizzaConfigurationRepository,
     IProductRepository productRepository,
+    IPizzaFlavorRepository pizzaFlavorRepository,
     IIFoodCatalogSyncTrigger catalogSyncTrigger,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
@@ -30,6 +31,16 @@ internal sealed class SetPizzaFlavorPriceCommandHandler(
                 var product = await productRepository.GetByIdAsync(configuration.ProductId, cancellationToken);
                 if (product is null)
                     return Result.Failure<long>(new Error("PizzaConfiguration.NotFound", "Pizza configuration not found."));
+
+                // Achado de review (Devin): PizzaFlavorId não era checado contra o tenant do
+                // Product dono da configuração — só a FK garantia que o id existisse em algum
+                // lugar, não que fosse da mesma empresa. Sem isso um id de sabor de outra empresa
+                // passava batido (e o nome desse sabor alheio podia acabar exposto de volta pro
+                // cliente ao consultar a configuração, já que PizzaConfigurationRepository não
+                // filtra FlavorPrices por empresa).
+                var flavor = await pizzaFlavorRepository.GetByIdAsync(request.PizzaFlavorId, cancellationToken);
+                if (flavor is null || flavor.CompanyId != product.CompanyId)
+                    return Result.Failure<long>(new Error("PizzaFlavor.NotFound", "Pizza flavor not found for this company."));
 
                 var price = configuration.SetFlavorPrice(request.PizzaFlavorId, request.PizzaSizeId, request.Price);
                 if (price.IsFailure)
