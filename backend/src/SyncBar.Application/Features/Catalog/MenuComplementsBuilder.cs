@@ -16,7 +16,12 @@ internal static class MenuComplementsBuilder
         IProductComplementGroupRepository productComplementGroupRepository,
         IComplementGroupRepository complementGroupRepository,
         IComplementItemRepository complementItemRepository,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        // Fase 18 (combos) — opcional: quando informado, resolve a imagem dos produtos vinculados
+        // (ComplementItem.LinkedProductId) pra exibir no cardápio (interno/QR Code) em vez de só o
+        // nome. Omitido (null) por retrocompatibilidade com os chamadores existentes desta função
+        // (GetMenuQueryHandler/GetPublicMenuQueryHandler) — passe o repositório pra habilitar.
+        IProductRepository? productRepository = null)
     {
         if (productIds.Count == 0)
             return new Dictionary<long, IReadOnlyCollection<ComplementGroupResponse>>();
@@ -33,7 +38,22 @@ internal static class MenuComplementsBuilder
         var complementItems = complementItemIds.Count > 0
             ? await complementItemRepository.GetByIdsAsync(complementItemIds, cancellationToken)
             : [];
-        var complementItemNames = complementItems.ToDictionary(i => i.Id, i => i.Name);
+        var complementItemsById = complementItems.ToDictionary(i => i.Id);
+
+        IReadOnlyDictionary<long, string?> linkedProductImages = new Dictionary<long, string?>();
+        if (productRepository is not null)
+        {
+            var linkedProductIds = complementItems
+                .Where(i => i.LinkedProductId.HasValue)
+                .Select(i => i.LinkedProductId!.Value)
+                .Distinct()
+                .ToList();
+            if (linkedProductIds.Count > 0)
+            {
+                var linkedProducts = await productRepository.GetByIdsAsync(linkedProductIds, cancellationToken);
+                linkedProductImages = linkedProducts.ToDictionary(p => p.Id, p => p.ImageUrl);
+            }
+        }
 
         return links
             .Where(l => groupsById.ContainsKey(l.ComplementGroupId))
@@ -42,11 +62,14 @@ internal static class MenuComplementsBuilder
                 g => g.Key,
                 g => (IReadOnlyCollection<ComplementGroupResponse>)g
                     .OrderBy(l => l.DisplayOrder)
-                    .Select(l => ToResponse(groupsById[l.ComplementGroupId], complementItemNames))
+                    .Select(l => ToResponse(groupsById[l.ComplementGroupId], complementItemsById, linkedProductImages))
                     .ToList());
     }
 
-    private static ComplementGroupResponse ToResponse(ComplementGroup group, IReadOnlyDictionary<long, string> complementItemNames) =>
+    private static ComplementGroupResponse ToResponse(
+        ComplementGroup group,
+        IReadOnlyDictionary<long, ComplementItem> complementItemsById,
+        IReadOnlyDictionary<long, string?> linkedProductImages) =>
         new(
             group.Id,
             group.Name,
@@ -56,11 +79,21 @@ internal static class MenuComplementsBuilder
             group.IsActive,
             group.Complements
                 .Where(c => c.IsActive)
-                .Select(c => new ComplementResponse(
-                    c.Id,
-                    c.ComplementItemId,
-                    complementItemNames.TryGetValue(c.ComplementItemId, out var name) ? name : "?",
-                    c.ExtraPrice,
-                    c.IsActive))
+                .Select(c =>
+                {
+                    complementItemsById.TryGetValue(c.ComplementItemId, out var complementItem);
+                    var linkedProductId = complementItem?.LinkedProductId;
+                    var linkedImageUrl = linkedProductId.HasValue
+                        ? linkedProductImages.GetValueOrDefault(linkedProductId.Value)
+                        : null;
+                    return new ComplementResponse(
+                        c.Id,
+                        c.ComplementItemId,
+                        complementItem?.Name ?? "?",
+                        c.ExtraPrice,
+                        c.IsActive,
+                        linkedProductId,
+                        linkedImageUrl);
+                })
                 .ToList());
 }

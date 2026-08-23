@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Orders.AddItem;
 using SyncBar.Application.Features.Orders.AddItemComplement;
+using SyncBar.Application.Features.Orders.AddPizzaItem;
 using SyncBar.Application.Features.Orders.ApplyDiscount;
 using SyncBar.Application.Features.Orders.Cancel;
 using SyncBar.Application.Features.Orders.Close;
@@ -59,6 +60,19 @@ public sealed class OrdersController(
         {
             var result = await Mediator.Send(
                 new AddOrderItemCommand(id, request.ProductId, request.Quantity, request.Notes, request.EmployeeId, request.Complements), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    // Fase 17 — lança uma pizza no pedido. Rota separada de AddItem porque o preço não vem do
+    // Product (é calculado a partir do tamanho/borda/recheio/sabores escolhidos, ver
+    // AddPizzaOrderItemCommandHandler) e o payload é bem diferente (sem Complements).
+    [HttpPost("{id:long}/pizza-items")]
+    public Task<IActionResult> AddPizzaItem(long id, [FromBody] AddPizzaOrderItemRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(AddPizzaItem), async () =>
+        {
+            var result = await Mediator.Send(new AddPizzaOrderItemCommand(
+                id, request.ProductId, request.Quantity, request.Notes, request.EmployeeId,
+                request.PizzaSizeId, request.PizzaCrustId, request.PizzaEdgeId, request.PizzaFlavorIds), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
@@ -181,6 +195,15 @@ public sealed record AddOrderItemRequest(
     long? EmployeeId,
     IReadOnlyCollection<OrderItemComplementSelection>? Complements = null);
 public sealed record AddOrderItemComplementRequest(long ComplementGroupId, long ComplementId, long? EmployeeId);
+public sealed record AddPizzaOrderItemRequest(
+    long ProductId,
+    decimal Quantity,
+    string? Notes,
+    long? EmployeeId,
+    long PizzaSizeId,
+    long? PizzaCrustId,
+    long? PizzaEdgeId,
+    IReadOnlyCollection<long> PizzaFlavorIds);
 public sealed record RaiseCreditLimitRequest(decimal NewLimitAmount);
 public sealed record UpdateOrderItemStatusRequest(long OrderItemStatusId, long? ActorEmployeeId = null);
 public sealed record ApplyOrderDiscountRequest(decimal DiscountAmount);

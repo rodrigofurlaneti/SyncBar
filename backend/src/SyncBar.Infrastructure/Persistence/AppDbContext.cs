@@ -82,6 +82,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<AppUserFeature> AppUserFeatures => Set<AppUserFeature>();
     public DbSet<LogTracker> LogTrackers { get; set; }
 
+    // Fase 17 (pizza)
+    public DbSet<PizzaFlavor> PizzaFlavors => Set<PizzaFlavor>();
+    public DbSet<PizzaConfiguration> PizzaConfigurations => Set<PizzaConfiguration>();
+    public DbSet<PizzaSize> PizzaSizes => Set<PizzaSize>();
+    public DbSet<PizzaCrust> PizzaCrusts => Set<PizzaCrust>();
+    public DbSet<PizzaEdge> PizzaEdges => Set<PizzaEdge>();
+    public DbSet<PizzaFlavorPrice> PizzaFlavorPrices => Set<PizzaFlavorPrice>();
+    public DbSet<OrderItemPizzaFlavor> OrderItemPizzaFlavors => Set<OrderItemPizzaFlavor>();
+    public DbSet<IFoodPizzaMapping> IFoodPizzaMappings => Set<IFoodPizzaMapping>();
+    public DbSet<IFoodPizzaElementMapping> IFoodPizzaElementMappings => Set<IFoodPizzaElementMapping>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
@@ -109,6 +120,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
         modelBuilder.Entity<ComplementItem>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
         modelBuilder.Entity<ComplementGroup>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
+        // Fase 17 — PizzaFlavor tem CompanyId direto (cadastro reaproveitável entre pizzas, ver
+        // comentário na entidade), mesmo padrão de ComplementItem. As demais entidades de pizza
+        // (PizzaConfiguration e filhas, OrderItemPizzaFlavor) não têm CompanyId/BranchId próprio
+        // — são sempre acessadas via Product/OrderItem, que já carregam seus próprios filtros.
+        modelBuilder.Entity<PizzaFlavor>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
 
         // Entidades escopadas por BranchId (não por CompanyId diretamente): filtra via
@@ -147,6 +164,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
         modelBuilder.Entity<IFoodComplementGroupMapping>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<IFoodComplementMapping>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+        // Fase 17 — IFoodPizzaMapping tem BranchId direto (catálogo do iFood é por merchant/filial),
+        // mesmo padrão de IFoodComplementGroupMapping/IFoodProductMapping.
+        modelBuilder.Entity<IFoodPizzaMapping>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<ComandaSetting>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));

@@ -1,4 +1,5 @@
 using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
@@ -9,6 +10,8 @@ internal sealed class AddOrderItemComplementCommandHandler : BaseCommandHandler<
     private readonly ICustomerOrderRepository _orderRepository;
     private readonly IComplementGroupRepository _complementGroupRepository;
     private readonly IProductComplementGroupRepository _productComplementGroupRepository;
+    private readonly IComplementItemRepository _complementItemRepository;
+    private readonly IProductStockRepository _stockRepository;
     private readonly TimeProvider _TimeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -16,6 +19,8 @@ internal sealed class AddOrderItemComplementCommandHandler : BaseCommandHandler<
         ICustomerOrderRepository orderRepository,
         IComplementGroupRepository complementGroupRepository,
         IProductComplementGroupRepository productComplementGroupRepository,
+        IComplementItemRepository complementItemRepository,
+        IProductStockRepository stockRepository,
         TimeProvider TimeProviderCustom,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
@@ -24,6 +29,8 @@ internal sealed class AddOrderItemComplementCommandHandler : BaseCommandHandler<
         _orderRepository = orderRepository;
         _complementGroupRepository = complementGroupRepository;
         _productComplementGroupRepository = productComplementGroupRepository;
+        _complementItemRepository = complementItemRepository;
+        _stockRepository = stockRepository;
         _TimeProviderCustom = TimeProviderCustom;
         _unitOfWork = unitOfWork;
     }
@@ -64,6 +71,42 @@ internal sealed class AddOrderItemComplementCommandHandler : BaseCommandHandler<
                 var result = order.AddComplement(request.OrderItemId, complement.Id, complement.ExtraPrice, currentTime);
                 if (result.IsFailure)
                     return result;
+
+                // Fase 18 (combos) — mesmo critério de AddOrderItemCommandHandler: se este
+                // complemento aponta pra um Product real (LinkedProductId), baixa o estoque
+                // daquele produto também, na quantidade da linha do pedido a que o complemento foi
+                // adicionado (o item já existe — pega a Quantity dele, não é sempre 1).
+                var complementItem = await _complementItemRepository.GetByIdAsync(complement.ComplementItemId, cancellationToken);
+                if (complementItem?.LinkedProductId is { } linkedProductId)
+                {
+                    var linkedStock = await _stockRepository.GetByProductIdAsync(linkedProductId, cancellationToken);
+                    if (linkedStock is not null)
+                    {
+                        var linkedStockResult = linkedStock.Deduct(item.Quantity);
+                        if (linkedStockResult.IsFailure)
+                            return Result.Failure(linkedStockResult.Error);
+
+                        var linkedMovementEmployeeId = request.EmployeeId is > 0 ? request.EmployeeId : null;
+                        var linkedMovementResult = StockMovement.Create(
+                            stockItemId: linkedStock.ProductId,
+                            stockMovementTypeId: 2, // Tipo: Venda/Saída
+                            purchaseItemId: null,
+                            orderItemId: item.Id,
+                            employeeId: linkedMovementEmployeeId,
+                            quantity: -item.Quantity,
+                            unitCost: null,
+                            totalCost: null,
+                            documentNumber: null,
+                            movedAt: currentTime,
+                            notes: $"Baixa automática do pedido {order.Id} (combo — complemento {complement.Id})"
+                        );
+
+                        if (linkedMovementResult.IsFailure)
+                            return Result.Failure(linkedMovementResult.Error);
+
+                        _stockRepository.AddMovement(linkedMovementResult.Value);
+                    }
+                }
 
                 await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
