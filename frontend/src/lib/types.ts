@@ -58,6 +58,14 @@ export interface OrderResponse {
   creditLimitAmount: number | null;
   notes: string | null;
   items: OrderItemResponse[];
+  // Quadro de Delivery/Retirada (src/features/orders/DeliveryBoardPage.tsx): OpenOrderPayload já
+  // envia esses campos ao abrir o pedido (ver OpenDeliveryOrderDialog.tsx), mas o Response ainda
+  // não os expunha aqui. Opcionais de propósito — continuam funcionando mesmo se algum ambiente
+  // de API estiver rodando uma versão do backend anterior a essa exposição.
+  orderTypeId?: number;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  deliveryAddress?: string | null;
 }
 
 // Fase 6a (frontend): espelham SyncBar.Application.Features.Catalog.Complements — grupos de
