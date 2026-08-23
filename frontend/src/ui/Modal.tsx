@@ -46,6 +46,17 @@ export function Modal({
     onCloseRef.current = onClose;
   }, [onClose]);
 
+  // Mesma razão do onCloseRef acima: o handler de teclado é montado uma vez (deps []), então
+  // precisa ler a versão mais recente de `dismissable` via ref — senão um modal aberto como
+  // dismissable e depois trocado pra não-dismissable (ou vice-versa) manteria o comportamento
+  // de Esc da renderização inicial. Achado de revisão (web-design-guidelines): antes, o clique
+  // no fundo respeitava `dismissable` mas a tecla Esc fechava sempre, incondicionalmente —
+  // inconsistência que quebrava modais não-dismissable (ex.: fluxo com alteração não salva).
+  const dismissableRef = useRef(dismissable);
+  useEffect(() => {
+    dismissableRef.current = dismissable;
+  }, [dismissable]);
+
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const panel = panelRef.current;
@@ -60,6 +71,7 @@ export function Modal({
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (!dismissableRef.current) return;
         e.stopPropagation();
         onCloseRef.current();
         return;

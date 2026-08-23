@@ -33,6 +33,7 @@ export function Button({
   disabled,
   className = "",
   children,
+  type = "button",
   ...rest
 }: ButtonProps) {
   const classes = [
@@ -47,7 +48,13 @@ export function Button({
     .join(" ");
 
   return (
-    <button className={classes} disabled={disabled || loading} aria-busy={loading} {...rest}>
+    <button
+      type={type}
+      className={classes}
+      disabled={disabled || loading}
+      aria-busy={loading}
+      {...rest}
+    >
       {children}
     </button>
   );

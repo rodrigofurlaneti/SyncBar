@@ -410,7 +410,11 @@ export function OrderDrawer({ orderId, onClose }: Props) {
             </div>
           </div>
 
-          {actionError && <p className="error-text">{actionError}</p>}
+          {actionError && (
+            <p className="error-text" role="alert">
+              {actionError}
+            </p>
+          )}
 
           {/* Ações secundárias agrupadas — evita a pilha vertical de botões
               e deixa a ação primária (Fechar conta) livre de concorrência visual. */}
@@ -490,12 +494,18 @@ export function OrderDrawer({ orderId, onClose }: Props) {
 
           {isEditable && (
             <>
-              <button className="btn-primary" onClick={() => setMenuOpen((v) => !v)}>
+              <button
+                className="btn-primary"
+                type="button"
+                aria-expanded={menuOpen}
+                aria-controls="order-drawer-menu-panel"
+                onClick={() => setMenuOpen((v) => !v)}
+              >
                 {menuOpen ? "Fechar cardápio" : "+ Lançar item"}
               </button>
 
               {menuOpen && (
-                <div style={{ display: "grid", gap: 10 }}>
+                <div id="order-drawer-menu-panel" style={{ display: "grid", gap: 10 }}>
                   <input
                     placeholder="Buscar no cardápio…"
                     value={search}
@@ -552,7 +562,8 @@ export function OrderDrawer({ orderId, onClose }: Props) {
 
               <div style={{ display: "flex", gap: 10 }}>
                 <input
-                  placeholder="Desconto (R$)"
+                  placeholder="Desconto (R$)…"
+                  aria-label="Desconto em reais"
                   inputMode="decimal"
                   value={discount}
                   onChange={(e) => setDiscount(e.target.value)}

@@ -38,6 +38,12 @@ export function AppShell() {
 
   return (
     <>
+      {/* Achado de revisão (web-design-guidelines): sem skip link, quem navega só por teclado
+          precisa tabular pelo menu inteiro do topbar toda vez que troca de tela. Primeiro
+          elemento focável da página — invisível até receber foco. */}
+      <a href="#main-content" className="skip-link">
+        Pular para o conteúdo
+      </a>
       <header className="topbar">
         <button
           type="button"
@@ -127,7 +133,7 @@ export function AppShell() {
           Filial {branchId}
         </span>
         {canSee("Caixa") && (
-          <button className="btn-ghost" onClick={() => setCashOpen(true)}>
+          <button type="button" className="btn-ghost" onClick={() => setCashOpen(true)}>
             Caixa
           </button>
         )}
@@ -145,6 +151,7 @@ export function AppShell() {
           {userName}
         </span>
         <button
+          type="button"
           className="btn-ghost"
           onClick={() => {
             queryClient.clear();
@@ -157,13 +164,18 @@ export function AppShell() {
       </header>
 
       {featuresQuery.isError && (
-        <p className="error-text" style={{ padding: "10px 22px", margin: 0 }}>
+        <p className="error-text" role="alert" style={{ padding: "10px 22px", margin: 0 }}>
           Falha ao carregar seus acessos — a API está atualizada e rodando? (Reinicie-a
           se acabou de aplicar a funcionalidade de acessos.)
         </p>
       )}
 
-      <Outlet />
+      {/* tabIndex=-1: alvo do skip link acima — várias telas já têm seu próprio <main>
+          (ex.: ProductsPage), então este é um div focável simples em vez de outro <main>
+          aninhado (landmark duplicado seria inválido). */}
+      <div id="main-content" tabIndex={-1}>
+        <Outlet />
+      </div>
 
       {cashOpen && <CashDrawer onClose={() => setCashOpen(false)} />}
     </>
