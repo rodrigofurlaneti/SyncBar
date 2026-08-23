@@ -1,4 +1,4 @@
-import { api } from "../../lib/apiClient";
+﻿import { api } from "../../lib/apiClient";
 
 // Credenciais do app iFood — por EMPRESA (o app é "centralizado": um client_id/client_secret
 // dá acesso a vários merchants). ClientId volta em texto puro (não é segredo); ClientSecret

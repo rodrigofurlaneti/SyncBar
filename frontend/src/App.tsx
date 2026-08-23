@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuthStore } from "./stores/authStore";
 import { AppShell } from "./components/AppShell";
@@ -28,9 +28,11 @@ import { IFoodOrdersPage } from "./features/integrations/IFoodOrdersPage";
 import { IFoodShippingPage } from "./features/integrations/IFoodShippingPage";
 import { IFoodLogisticsPage } from "./features/integrations/IFoodLogisticsPage";
 import { IFoodCatalogPage } from "./features/integrations/IFoodCatalogPage";
-import { IFoodReviewsPage } from "./features/integrations/IFoodReviewsPage";
-import { IFoodAnalyticsPage } from "./features/integrations/IFoodAnalyticsPage";
 import { IFoodFinancialReportsPage } from "./features/integrations/IFoodFinancialReportsPage";
+import { IFoodDashboardPage } from "./features/integrations/IFoodDashboardPage";
+import { IFoodStatusDetailedPage } from "./features/integrations/IFoodStatusDetailedPage";
+import { IFoodReviewsDetailedPage } from "./features/integrations/IFoodReviewsDetailedPage";
+import { IFoodAnalyticsEnhancedPage } from "./features/integrations/IFoodAnalyticsEnhancedPage";
 import { FeatureGate, NoAccessPage } from "./features/access/FeatureGate";
 import { useMyFeatures } from "./features/access/hooks";
 
@@ -79,12 +81,14 @@ export default function App() {
         <Route path="/acessos" element={<ManagerGate><AccessPage /></ManagerGate>} />
         <Route path="/configuracoes" element={<ManagerGate><SettingsPage /></ManagerGate>} />
         <Route path="/integracoes/ifood" element={<ManagerGate><IFoodIntegrationPage /></ManagerGate>} />
+        <Route path="/integracoes/ifood/dashboard" element={<ManagerGate><IFoodDashboardPage /></ManagerGate>} />
+        <Route path="/integracoes/ifood/status" element={<ManagerGate><IFoodStatusDetailedPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/pedidos" element={<ManagerGate><IFoodOrdersPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/shipping" element={<ManagerGate><IFoodShippingPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/logistica" element={<ManagerGate><IFoodLogisticsPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/catalogo" element={<ManagerGate><IFoodCatalogPage /></ManagerGate>} />
-        <Route path="/integracoes/ifood/avaliacoes" element={<ManagerGate><IFoodReviewsPage /></ManagerGate>} />
-        <Route path="/integracoes/ifood/indicadores" element={<ManagerGate><IFoodAnalyticsPage /></ManagerGate>} />
+        <Route path="/integracoes/ifood/avaliacoes" element={<ManagerGate><IFoodReviewsDetailedPage /></ManagerGate>} />
+        <Route path="/integracoes/ifood/indicadores" element={<ManagerGate><IFoodAnalyticsEnhancedPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/financeiro/relatorios" element={<ManagerGate><IFoodFinancialReportsPage /></ManagerGate>} />
         <Route path="/sem-acesso" element={<NoAccessPage />} />
       </Route>

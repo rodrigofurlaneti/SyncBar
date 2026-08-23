@@ -20,6 +20,9 @@ internal sealed class SaveIFoodOpeningHoursCommandHandler(
     IUnitOfWork unitOfWork)
     : BaseCommandHandler<SaveIFoodOpeningHoursCommand>(logRepository, unitOfWork)
 {
+    // Campo explícito: capturar o parâmetro primário que também vai para a base dispara CS9107.
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+
     public override async Task<Result> Handle(SaveIFoodOpeningHoursCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -63,7 +66,7 @@ internal sealed class SaveIFoodOpeningHoursCommandHandler(
                     existing.Deactivate();
 
                 await openingHoursRepository.AddRangeAsync(domainShifts, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success();
             });
