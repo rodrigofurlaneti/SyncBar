@@ -18,6 +18,9 @@ internal sealed class SetIFoodPreparationTimeCommandHandler(
     IUnitOfWork unitOfWork)
     : BaseCommandHandler<SetIFoodPreparationTimeCommand>(logRepository, unitOfWork)
 {
+    // Campo explícito: capturar o parâmetro primário que também vai para a base dispara CS9107.
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+
     public override async Task<Result> Handle(SetIFoodPreparationTimeCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -58,7 +61,7 @@ internal sealed class SetIFoodPreparationTimeCommandHandler(
                 if (set.IsFailure)
                     return set;
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }
