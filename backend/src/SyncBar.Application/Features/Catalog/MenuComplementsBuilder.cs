@@ -17,11 +17,9 @@ internal static class MenuComplementsBuilder
         IComplementGroupRepository complementGroupRepository,
         IComplementItemRepository complementItemRepository,
         CancellationToken cancellationToken,
-        // Fase 18 (combos) — opcional: quando informado, resolve a imagem dos produtos vinculados
-        // (ComplementItem.LinkedProductId) pra exibir no cardápio (interno/QR Code) em vez de só o
-        // nome. Omitido (null) por retrocompatibilidade com os chamadores existentes desta função
-        // (GetMenuQueryHandler/GetPublicMenuQueryHandler) — passe o repositório pra habilitar.
-        IProductRepository? productRepository = null)
+        // Fase 18 (combos) — resolve a imagem dos produtos vinculados
+        // (ComplementItem.LinkedProductId) pra exibir no cardápio (interno/QR Code) em vez de só o nome.
+        IProductRepository productRepository)
     {
         if (productIds.Count == 0)
             return new Dictionary<long, IReadOnlyCollection<ComplementGroupResponse>>();
@@ -41,18 +39,15 @@ internal static class MenuComplementsBuilder
         var complementItemsById = complementItems.ToDictionary(i => i.Id);
 
         IReadOnlyDictionary<long, string?> linkedProductImages = new Dictionary<long, string?>();
-        if (productRepository is not null)
+        var linkedProductIds = complementItems
+            .Where(i => i.LinkedProductId.HasValue)
+            .Select(i => i.LinkedProductId!.Value)
+            .Distinct()
+            .ToList();
+        if (linkedProductIds.Count > 0)
         {
-            var linkedProductIds = complementItems
-                .Where(i => i.LinkedProductId.HasValue)
-                .Select(i => i.LinkedProductId!.Value)
-                .Distinct()
-                .ToList();
-            if (linkedProductIds.Count > 0)
-            {
-                var linkedProducts = await productRepository.GetByIdsAsync(linkedProductIds, cancellationToken);
-                linkedProductImages = linkedProducts.ToDictionary(p => p.Id, p => p.ImageUrl);
-            }
+            var linkedProducts = await productRepository.GetByIdsAsync(linkedProductIds, cancellationToken);
+            linkedProductImages = linkedProducts.ToDictionary(p => p.Id, p => p.ImageUrl);
         }
 
         return links

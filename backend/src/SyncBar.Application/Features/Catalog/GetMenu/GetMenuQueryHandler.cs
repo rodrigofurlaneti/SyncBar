@@ -27,7 +27,8 @@ internal sealed class GetMenuQueryHandler(
                 // Fase 6a (extensão): grupos de complemento por produto, resolvidos em lote pra
                 // não gerar 1 query por produto — ver MenuComplementsBuilder.
                 var complementsByProduct = await MenuComplementsBuilder.BuildAsync(
-                    productIds, productComplementGroupRepository, complementGroupRepository, complementItemRepository, cancellationToken);
+                    productIds, productComplementGroupRepository, complementGroupRepository, complementItemRepository, cancellationToken,
+                    productRepository);
 
                 // Ordenacao em C# — nunca ORDER BY em SqlQuery.
                 IReadOnlyCollection<MenuItemResponse> response = products

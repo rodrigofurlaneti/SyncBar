@@ -42,7 +42,8 @@ internal sealed class GetPublicMenuQueryHandler(
                 // Fase 6a (extensão): mesmo cálculo em lote usado no cardápio interno — o cliente
                 // no QR Code precisa ver os mesmos grupos de complemento pra escolher ao lançar o item.
                 var complementsByProduct = await MenuComplementsBuilder.BuildAsync(
-                    productIds, productComplementGroupRepository, complementGroupRepository, complementItemRepository, cancellationToken);
+                    productIds, productComplementGroupRepository, complementGroupRepository, complementItemRepository, cancellationToken,
+                    productRepository);
 
                 var items = products
                     .OrderBy(p => p.CategoryId).ThenBy(p => p.Name)

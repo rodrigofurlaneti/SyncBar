@@ -10,6 +10,9 @@ internal sealed class AddPizzaCrustCommandHandler(
     IUnitOfWork unitOfWork)
     : BaseCommandHandler<AddPizzaCrustCommand, long>(logRepository, unitOfWork)
 {
+    // Campo explícito: capturar o parâmetro primário que também vai para a base dispara CS9107.
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+
     public override Task<Result<long>> Handle(AddPizzaCrustCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(
             nameof(AddPizzaCrustCommandHandler),
@@ -25,7 +28,7 @@ internal sealed class AddPizzaCrustCommandHandler(
                 if (crust.IsFailure)
                     return Result.Failure<long>(crust.Error);
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success(crust.Value.Id);
             });
 }

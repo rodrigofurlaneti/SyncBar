@@ -13,6 +13,9 @@ internal sealed class SetPizzaFlavorPriceCommandHandler(
     IUnitOfWork unitOfWork)
     : BaseCommandHandler<SetPizzaFlavorPriceCommand, long>(logRepository, unitOfWork)
 {
+    // Campo explícito: capturar o parâmetro primário que também vai para a base dispara CS9107.
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+
     public override Task<Result<long>> Handle(SetPizzaFlavorPriceCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(
             nameof(SetPizzaFlavorPriceCommandHandler),
@@ -28,7 +31,7 @@ internal sealed class SetPizzaFlavorPriceCommandHandler(
                 if (price.IsFailure)
                     return Result.Failure<long>(price.Error);
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Diferente de AddSize/AddCrust/AddEdge: é ESTE passo que pode tornar a pizza
                 // vendável pela primeira vez (1º tamanho + 1º preço de sabor) — dispara a

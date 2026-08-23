@@ -11,6 +11,9 @@ internal sealed class CreatePizzaFlavorCommandHandler(
     IUnitOfWork unitOfWork)
     : BaseCommandHandler<CreatePizzaFlavorCommand, long>(logRepository, unitOfWork)
 {
+    // Campo explícito: capturar o parâmetro primário que também vai para a base dispara CS9107.
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+
     public override Task<Result<long>> Handle(CreatePizzaFlavorCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(
             nameof(CreatePizzaFlavorCommandHandler),
@@ -23,7 +26,7 @@ internal sealed class CreatePizzaFlavorCommandHandler(
                     return Result.Failure<long>(flavor.Error);
 
                 await pizzaFlavorRepository.AddAsync(flavor.Value, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Sem TriggerCompanySync aqui: um sabor sozinho (sem preço em nenhuma
                 // PizzaConfiguration) não afeta o catálogo do iFood ainda — mesmo critério de

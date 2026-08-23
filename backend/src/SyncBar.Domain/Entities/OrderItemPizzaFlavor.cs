@@ -5,9 +5,10 @@ namespace SyncBar.Domain.Entities;
 // Fase 17 — um sabor efetivamente escolhido dentro de um OrderItem de pizza (ex.: metade
 // Calabresa, metade Frango Catupiry) — filha de OrderItem, mesmo padrão de OrderItemComplement.
 // FractionShare é a fração da pizza ocupada por esse sabor (1 = pizza inteira, 0.5 = metade,
-// 0.3334 ≈ um terço) — a soma das frações de um mesmo OrderItem deve fechar em ~1 (validado no
-// handler, não aqui, mesma divisão de responsabilidade usada pra frações no domínio x totais no
-// application). UnitPriceCharged aqui é sempre 0: o preço da pizza fracionada já foi decidido de
+// 0.3334 ≈ um terço) — o valor não vem do cliente: OrderItem.CreatePizza divide 1 pelo número de
+// sabores escolhidos, então a soma fecha em ~1 por construção (o arredondamento pra 4 casas pode
+// deixar diferença de centésimos de milésimo, sem efeito porque a fração é informativa, não
+// entra em preço). UnitPriceCharged aqui é sempre 0: o preço da pizza fracionada já foi decidido de
 // uma vez (o sabor mais caro, ver PizzaConfiguration.CalculateUnitPrice) e está congelado em
 // OrderItem.UnitPrice — este registro existe só para saber QUAIS sabores foram pedidos.
 public sealed class OrderItemPizzaFlavor : Entity

@@ -18,6 +18,9 @@ internal sealed class AddPizzaOrderItemCommandHandler(
     IUnitOfWork unitOfWork)
     : BaseCommandHandler<AddPizzaOrderItemCommand>(logRepository, unitOfWork)
 {
+    // Campo explícito: capturar o parâmetro primário que também vai para a base dispara CS9107.
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+
     public override async Task<Result> Handle(AddPizzaOrderItemCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -88,7 +91,7 @@ internal sealed class AddPizzaOrderItemCommandHandler(
 
                 try
                 {
-                    await unitOfWork.CommitAsync(cancellationToken);
+                    await _unitOfWork.CommitAsync(cancellationToken);
                 }
                 catch (ConcurrencyException)
                 {

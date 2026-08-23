@@ -1,5 +1,6 @@
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
+using SyncBar.Domain.Exceptions;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
@@ -108,7 +109,16 @@ internal sealed class AddOrderItemComplementCommandHandler : BaseCommandHandler<
                     }
                 }
 
-                await _unitOfWork.CommitAsync(cancellationToken);
+                try
+                {
+                    await _unitOfWork.CommitAsync(cancellationToken);
+                }
+                catch (ConcurrencyException)
+                {
+                    return Result.Failure(new Error("Stock.Concurrency",
+                        "O estoque deste produto foi alterado por outro pedido neste momento. Por favor, tente novamente."));
+                }
+
                 return Result.Success();
             });
     }

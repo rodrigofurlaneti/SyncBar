@@ -162,19 +162,34 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
                 // extra") não têm produto próprio, então não geram movimentação aqui.
                 if (resolvedComplements.Count > 0)
                 {
-                    var primaryQuantity = order.Items.Skip(itemCountBefore).Sum(i => i.Quantity);
+                    // Só a linha principal recebe complementos (o item bônus da promoção EmDobro
+                    // não recebe), então a baixa do produto vinculado segue a quantidade dessa
+                    // linha — nunca a soma de todas as linhas recém-lançadas.
+                    var primaryItem = order.Items.ElementAt(itemCountBefore);
+                    var primaryQuantity = primaryItem.Quantity;
                     var complementItemIds = resolvedComplements.Select(c => c.ComplementItemId).Distinct().ToList();
                     var complementItems = await _complementItemRepository.GetByIdsAsync(complementItemIds, cancellationToken);
                     var linkedProductIdsByComplementItemId = complementItems
                         .Where(ci => ci.LinkedProductId.HasValue)
                         .ToDictionary(ci => ci.Id, ci => ci.LinkedProductId!.Value);
 
+                    // O repositório devolve um snapshot novo a cada consulta, então dois
+                    // complementos que apontam pro MESMO produto vinculado precisam compartilhar
+                    // a mesma instância — senão cada um deduz sobre o saldo original e o estoque
+                    // pode ficar negativo sem falhar a checagem de suficiência.
+                    var linkedStocksByProductId = new Dictionary<long, ProductStock?>();
+
                     foreach (var (complementId, _, complementItemId) in resolvedComplements)
                     {
                         if (!linkedProductIdsByComplementItemId.TryGetValue(complementItemId, out var linkedProductId))
                             continue;
 
-                        var linkedStock = await _stockRepository.GetByProductIdAsync(linkedProductId, cancellationToken);
+                        if (!linkedStocksByProductId.TryGetValue(linkedProductId, out var linkedStock))
+                        {
+                            linkedStock = await _stockRepository.GetByProductIdAsync(linkedProductId, cancellationToken);
+                            linkedStocksByProductId[linkedProductId] = linkedStock;
+                        }
+
                         if (linkedStock is null)
                             continue; // Produto vinculado não é controlado por estoque — nada a baixar.
 
@@ -187,7 +202,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
                             stockItemId: linkedStock.ProductId,
                             stockMovementTypeId: 2, // Tipo: Venda/Saída
                             purchaseItemId: null,
-                            orderItemId: order.Items.Last().Id,
+                            orderItemId: primaryItem.Id,
                             employeeId: linkedMovementEmployeeId,
                             quantity: -primaryQuantity,
                             unitCost: null,

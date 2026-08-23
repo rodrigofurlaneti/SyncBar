@@ -22,6 +22,9 @@ internal sealed class SyncIFoodPizzaCommandHandler(
     IUnitOfWork unitOfWork)
     : BaseCommandHandler<SyncIFoodPizzaCommand, SyncIFoodPizzaResult>(logRepository, unitOfWork)
 {
+    // Campo explícito: capturar o parâmetro primário que também vai para a base dispara CS9107.
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+
     // Prefixos usados no externalCode de cada elemento — é assim que casamos a resposta do iFood
     // (que devolve os elementos sem garantia de ordem) de volta com o id local que os gerou, já
     // que a API não deixa a gente propor o id do elemento no create (só o externalCode).
@@ -156,7 +159,7 @@ internal sealed class SyncIFoodPizzaCommandHandler(
                 ExtractElements(root, "edges", EdgePrefix, IFoodPizzaElementKind.Edge, mapping);
                 ExtractElements(root, "toppings", ToppingPrefix, IFoodPizzaElementKind.Topping, mapping);
 
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success(new SyncIFoodPizzaResult(ifoodPizzaId));
             });
