@@ -48,34 +48,41 @@ public abstract class BaseCommandHandler<TRequest, TResponse>(
         {
             stopwatch.Stop();
 
-            // Executa o log de forma isolada para não afetar o fluxo principal e evitar locks
-            _ = Task.Run(async () =>
+            // Achado de revisão: isto rodava em um `Task.Run(...)` "fire-and-forget" usando o
+            // MESMO IUnitOfWork/AppDbContext com escopo de requisição (logRepository/unitOfWork
+            // acima). Como a task não era aguardada, o handler retornava e o pipeline HTTP podia
+            // finalizar (e descartar o escopo de DI/DbContext) ENQUANTO essa task ainda rodava em
+            // paralelo tentando salvar o log no MESMO DbContext — DbContext não é thread-safe e
+            // não sobrevive ao fim do escopo. Essa corrida é a causa mais provável do
+            // NullReferenceException relatado em ChangeDetector.DetectChanges/CommitAsync ao
+            // "Fechar conta" (e, por estar aqui na base compartilhada, podia afetar qualquer
+            // comando). Awaiting aqui garante que o log é escrito com o DbContext ainda válido,
+            // dentro do mesmo escopo da requisição — o try/catch abaixo garante que uma falha ao
+            // gravar o log nunca mascara o resultado real do comando nem derruba a requisição.
+            try
             {
-                try
+                var log = new LogTracker(0)
                 {
-                    var log = new LogTracker(0)
-                    {
-                        AppUserId = userIdBox.Value,
-                        DirectoryName = "Application/Features",
-                        ClassName = className,
-                        MethodName = methodName,
-                        IsSuccess = isSuccess,
-                        ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
-                        ErrorMessage = errorMessage,
-                        StackTrace = stackTrace,
-                        IpAddress = ipAddress,
-                        CreatedAt = DateTime.Now,
-                        IsActive = true
-                    };
+                    AppUserId = userIdBox.Value,
+                    DirectoryName = "Application/Features",
+                    ClassName = className,
+                    MethodName = methodName,
+                    IsSuccess = isSuccess,
+                    ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
+                    ErrorMessage = errorMessage,
+                    StackTrace = stackTrace,
+                    IpAddress = ipAddress,
+                    CreatedAt = DateTime.Now,
+                    IsActive = true
+                };
 
-                    await logRepository.AddAsync(log);
-                    await unitOfWork.CommitAsync();
-                }
-                catch
-                {
-                    // Falhas de log nunca devem propagar exceções para background tasks
-                }
-            });
+                await logRepository.AddAsync(log);
+                await unitOfWork.CommitAsync();
+            }
+            catch
+            {
+                // Falhas de log nunca devem propagar exceções nem mascarar o resultado do comando.
+            }
         }
     }
 
@@ -128,33 +135,37 @@ public abstract class BaseCommandHandler<TRequest>(
         {
             stopwatch.Stop();
 
-            _ = Task.Run(async () =>
+            // Mesmo achado do outro overload acima: era um Task.Run fire-and-forget reusando o
+            // AppDbContext/IUnitOfWork de escopo de requisição, que corre risco de ser descartado
+            // pelo pipeline antes da task terminar — causa mais provável do
+            // NullReferenceException em ChangeDetector.DetectChanges relatado ao "Fechar conta"
+            // (CloseOrderCommandHandler usa exatamente este overload, de único parâmetro).
+            // Awaiting inline elimina a corrida; o try/catch evita que falha de log derrube o
+            // resultado real do comando.
+            try
             {
-                try
+                var log = new LogTracker(0)
                 {
-                    var log = new LogTracker(0)
-                    {
-                        AppUserId = userIdBox.Value,
-                        DirectoryName = "Application/Features",
-                        ClassName = className,
-                        MethodName = methodName,
-                        IsSuccess = isSuccess,
-                        ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
-                        ErrorMessage = errorMessage,
-                        StackTrace = stackTrace,
-                        IpAddress = ipAddress,
-                        CreatedAt = DateTime.Now,
-                        IsActive = true
-                    };
+                    AppUserId = userIdBox.Value,
+                    DirectoryName = "Application/Features",
+                    ClassName = className,
+                    MethodName = methodName,
+                    IsSuccess = isSuccess,
+                    ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
+                    ErrorMessage = errorMessage,
+                    StackTrace = stackTrace,
+                    IpAddress = ipAddress,
+                    CreatedAt = DateTime.Now,
+                    IsActive = true
+                };
 
-                    await logRepository.AddAsync(log);
-                    await unitOfWork.CommitAsync();
-                }
-                catch
-                {
-                    // Evita falhas de log
-                }
-            });
+                await logRepository.AddAsync(log);
+                await unitOfWork.CommitAsync();
+            }
+            catch
+            {
+                // Evita falhas de log
+            }
         }
     }
 

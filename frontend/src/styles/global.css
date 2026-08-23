@@ -357,6 +357,99 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
 
 .error-text { color: var(--danger); font-size: 0.9rem; }
 
+/* ============================================================
+   Quadro Kanban de Delivery (DeliveryBoardPage) — achado: o componente
+   já usava estas classes, mas o CSS nunca tinha sido escrito, então a
+   tela renderizava como texto empilhado sem nenhum estilo de coluna/cartão.
+   ============================================================ */
+.kanban-board {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+.kanban-column {
+  flex: 1 0 260px;
+  min-width: 260px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  max-height: calc(100vh - 260px);
+}
+.kanban-column.is-placeholder { opacity: 0.55; }
+.kanban-column-head {
+  padding: 14px 16px 10px;
+  border-bottom: 1px dashed var(--line);
+}
+.kanban-column-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.kanban-column-title {
+  font-family: var(--font-cond);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+.kanban-column-count {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--amber);
+}
+.kanban-column-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}
+.kanban-column-body {
+  flex: 1;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  overflow-y: auto;
+  min-height: 80px;
+}
+.kanban-card-empty {
+  padding: 16px 10px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 0.85rem;
+}
+.kanban-card {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--bg-press);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+}
+.kanban-card:hover { border-color: var(--ink-faint); transform: translateY(-1px); }
+.kanban-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kanban-card { transition: none; }
+}
+
 /* KDS: item com tempo estourado pulsa */
 @keyframes kds-pulse {
   0%, 100% { background: transparent; }
