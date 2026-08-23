@@ -118,14 +118,23 @@ public abstract class ApiController(IMediator mediator) : ControllerBase
     }
 
     // --- SOBRECARGA 2: Resolve os repositórios via DI automaticamente (3 argumentos) ---
+    //
+    // Achado de revisão: isto criava um escopo de DI FILHO novo (`HttpContext.RequestServices
+    // .CreateScope()`), o que resolve um `AppDbContext`/`IUnitOfWork` DIFERENTE do que o resto da
+    // requisição usa (o mediator/handlers chamados por `action()` usam o `AppDbContext` do escopo
+    // raiz da requisição). Isso não é a mesma corrida do bug do `BaseCommandHandler.cs` (cada
+    // `AppDbContext` aqui é uma instância própria, não compartilhada entre threads), mas abre uma
+    // segunda conexão MySQL por requisição só para gravar o log — desnecessário, já que
+    // `HttpContext.RequestServices` já É o próprio escopo da requisição e resolve os mesmos
+    // `ILogTrackerRepository`/`IUnitOfWork` (mesmo `AppDbContext`) usados pelo resto do fluxo, sem
+    // precisar criar um escopo filho. Trocado para resolver direto do escopo da requisição.
     protected async Task<IActionResult> ExecuteWithLogAsync(
         string className,
         string methodName,
         Func<Task<IActionResult>> action)
     {
-        using var scope = HttpContext.RequestServices.CreateScope();
-        var logRepo = scope.ServiceProvider.GetRequiredService<ILogTrackerRepository>();
-        var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var logRepo = HttpContext.RequestServices.GetRequiredService<ILogTrackerRepository>();
+        var uow = HttpContext.RequestServices.GetRequiredService<IUnitOfWork>();
 
         return await ExecuteWithLogAsync(logRepo, uow, className, methodName, action);
     }
