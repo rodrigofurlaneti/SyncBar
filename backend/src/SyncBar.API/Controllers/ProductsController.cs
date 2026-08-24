@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.IO;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -82,13 +83,15 @@ public sealed class ProductsController(
         });
 }
 
+// Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor para
+// evitar under-posting.
 public sealed record UpdateProductRequest(
-    long CategoryId,
-    long UnitOfMeasureId,
+    [property: JsonRequired] long CategoryId,
+    [property: JsonRequired] long UnitOfMeasureId,
     string Name,
     string? Description,
     string? Barcode,
-    decimal SalePrice,
+    [property: JsonRequired] decimal SalePrice,
     decimal? CostPrice,
-    bool IsStockControlled,
+    [property: JsonRequired] bool IsStockControlled,
     int? PreparationTimeMinutes);

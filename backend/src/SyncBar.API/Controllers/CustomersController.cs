@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -40,4 +41,4 @@ public sealed class CustomersController(
         });
 }
 
-public sealed record AddLoyaltyPointsRequest(int Points);
+public sealed record AddLoyaltyPointsRequest([property: JsonRequired] int Points);

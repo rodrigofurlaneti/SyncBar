@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -60,4 +61,4 @@ public sealed class StockController(
         });
 }
 
-public sealed record SetStockLimitsRequest(decimal MinimumQuantity, decimal? MaximumQuantity);
+public sealed record SetStockLimitsRequest([property: JsonRequired] decimal MinimumQuantity, decimal? MaximumQuantity);

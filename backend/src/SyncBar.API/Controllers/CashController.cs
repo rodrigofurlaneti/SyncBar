@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -81,5 +82,14 @@ public sealed class CashController(
 }
 
 // Requests separados dos commands quando ha parametro de rota.
-public sealed record CloseCashSessionRequest(long ClosedByEmployeeId, decimal ClosingAmount);
-public sealed record RegisterCashMovementRequest(long CashMovementTypeId, long EmployeeId, decimal Amount, string? Description);
+// Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor para
+// evitar under-posting (deserializacao silenciosa com o default do tipo quando o campo nao
+// vem no JSON) — ver GetIFoodMerchantStatusQueryHandler.cs para o padrao analogo em queries.
+public sealed record CloseCashSessionRequest(
+    [property: JsonRequired] long ClosedByEmployeeId,
+    [property: JsonRequired] decimal ClosingAmount);
+public sealed record RegisterCashMovementRequest(
+    [property: JsonRequired] long CashMovementTypeId,
+    [property: JsonRequired] long EmployeeId,
+    [property: JsonRequired] decimal Amount,
+    string? Description);

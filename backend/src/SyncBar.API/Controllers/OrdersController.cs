@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -188,23 +189,31 @@ public sealed class OrdersController(
 }
 
 // Requests separados dos commands quando ha parametro de rota.
+// Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor sem
+// default para evitar under-posting (campos com default, como CloseOrderRequest.ServiceFeeRate
+// e UpdateOrderItemStatusRequest.ActorEmployeeId, ja tratam ausencia do campo corretamente e
+// nao foram sinalizados pelo Sonar).
 public sealed record AddOrderItemRequest(
-    long ProductId,
-    decimal Quantity,
+    [property: JsonRequired] long ProductId,
+    [property: JsonRequired] decimal Quantity,
     string? Notes,
     long? EmployeeId,
     IReadOnlyCollection<OrderItemComplementSelection>? Complements = null);
-public sealed record AddOrderItemComplementRequest(long ComplementGroupId, long ComplementId, long? EmployeeId);
+public sealed record AddOrderItemComplementRequest(
+    [property: JsonRequired] long ComplementGroupId,
+    [property: JsonRequired] long ComplementId,
+    long? EmployeeId);
 public sealed record AddPizzaOrderItemRequest(
-    long ProductId,
-    decimal Quantity,
+    [property: JsonRequired] long ProductId,
+    [property: JsonRequired] decimal Quantity,
     string? Notes,
     long? EmployeeId,
-    long PizzaSizeId,
+    [property: JsonRequired] long PizzaSizeId,
     long? PizzaCrustId,
     long? PizzaEdgeId,
     IReadOnlyCollection<long> PizzaFlavorIds);
-public sealed record RaiseCreditLimitRequest(decimal NewLimitAmount);
-public sealed record UpdateOrderItemStatusRequest(long OrderItemStatusId, long? ActorEmployeeId = null);
-public sealed record ApplyOrderDiscountRequest(decimal DiscountAmount);
+public sealed record RaiseCreditLimitRequest([property: JsonRequired] decimal NewLimitAmount);
+public sealed record UpdateOrderItemStatusRequest(
+    [property: JsonRequired] long OrderItemStatusId, long? ActorEmployeeId = null);
+public sealed record ApplyOrderDiscountRequest([property: JsonRequired] decimal DiscountAmount);
 public sealed record CloseOrderRequest(decimal ServiceFeeRate = 0.10m);

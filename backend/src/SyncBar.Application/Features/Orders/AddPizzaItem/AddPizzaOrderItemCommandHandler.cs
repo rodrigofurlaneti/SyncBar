@@ -35,51 +35,68 @@ internal sealed class AddPizzaOrderItemCommandHandler(
                 if (flavorsValidation.IsFailure)
                     return flavorsValidation;
 
-                var orderResult = await LoadActiveOrderAsync(request.CustomerOrderId, cancellationToken);
-                if (orderResult.IsFailure)
-                    return Result.Failure(orderResult.Error);
-                var order = orderResult.Value;
+                var contextResult = await LoadContextAsync(request, cancellationToken);
+                if (contextResult.IsFailure)
+                    return Result.Failure(contextResult.Error);
+                var (order, product, configuration) = contextResult.Value;
 
-                var productResult = await LoadActiveProductAsync(request.ProductId, cancellationToken);
-                if (productResult.IsFailure)
-                    return Result.Failure(productResult.Error);
-                var product = productResult.Value;
-
-                var configurationResult = await LoadPizzaConfigurationAsync(request.ProductId, cancellationToken);
-                if (configurationResult.IsFailure)
-                    return Result.Failure(configurationResult.Error);
-
-                var priceResult = CalculatePizzaUnitPrice(configurationResult.Value, request);
+                var priceResult = CalculatePizzaUnitPrice(configuration, request);
                 if (priceResult.IsFailure)
                     return Result.Failure(priceResult.Error);
 
-                var stockSnapshot = await stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
-
-                var itemCountBefore = order.Items.Count;
-                var currentTime = timeProviderCustom.GetLocalNow().DateTime;
-
-                var addItemResult = order.AddPizzaItem(
-                    product.Id, priceResult.Value, request.Quantity, request.Notes, request.EmployeeId, currentTime,
-                    request.PizzaSizeId, request.PizzaCrustId, request.PizzaEdgeId, request.PizzaFlavorIds);
-                if (addItemResult.IsFailure)
-                    return addItemResult;
-
-                if (stockSnapshot is not null)
-                {
-                    var stockDeductionResult = DeductStockForPizza(
-                        stockSnapshot, order, itemCountBefore, request.EmployeeId, currentTime);
-                    if (stockDeductionResult.IsFailure)
-                        return stockDeductionResult;
-                }
-
-                var commitResult = await CommitOrderAsync(cancellationToken);
-                if (commitResult.IsFailure)
-                    return commitResult;
-
-                PrintNewItems(order, itemCountBefore);
-
-                return Result.Success();
+                return await ApplyPizzaItemAsync(order, product, priceResult.Value, request, cancellationToken);
             });
+    }
+
+    // Fase Sonar HIGH (2026-08-24): extraído do Handle para reduzir Cognitive Complexity de
+    // 19 para o limite de 15 — mesma sequência de passos, sem mudança de comportamento.
+    private async Task<Result<(CustomerOrder Order, Product Product, PizzaConfiguration Configuration)>> LoadContextAsync(
+        AddPizzaOrderItemCommand request, CancellationToken cancellationToken)
+    {
+        var orderResult = await LoadActiveOrderAsync(request.CustomerOrderId, cancellationToken);
+        if (orderResult.IsFailure)
+            return Result.Failure<(CustomerOrder, Product, PizzaConfiguration)>(orderResult.Error);
+
+        var productResult = await LoadActiveProductAsync(request.ProductId, cancellationToken);
+        if (productResult.IsFailure)
+            return Result.Failure<(CustomerOrder, Product, PizzaConfiguration)>(productResult.Error);
+
+        var configurationResult = await LoadPizzaConfigurationAsync(request.ProductId, cancellationToken);
+        if (configurationResult.IsFailure)
+            return Result.Failure<(CustomerOrder, Product, PizzaConfiguration)>(configurationResult.Error);
+
+        return Result.Success((orderResult.Value, productResult.Value, configurationResult.Value));
+    }
+
+    private async Task<Result> ApplyPizzaItemAsync(
+        CustomerOrder order, Product product, decimal unitPrice, AddPizzaOrderItemCommand request, CancellationToken cancellationToken)
+    {
+        var stockSnapshot = await stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
+
+        var itemCountBefore = order.Items.Count;
+        var currentTime = timeProviderCustom.GetLocalNow().DateTime;
+
+        var addItemResult = order.AddPizzaItem(
+            product.Id, unitPrice, request.Quantity, request.Notes, request.EmployeeId, currentTime,
+            request.PizzaSizeId, request.PizzaCrustId, request.PizzaEdgeId, request.PizzaFlavorIds);
+        if (addItemResult.IsFailure)
+            return addItemResult;
+
+        if (stockSnapshot is not null)
+        {
+            var stockDeductionResult = DeductStockForPizza(
+                stockSnapshot, order, itemCountBefore, request.EmployeeId, currentTime);
+            if (stockDeductionResult.IsFailure)
+                return stockDeductionResult;
+        }
+
+        var commitResult = await CommitOrderAsync(cancellationToken);
+        if (commitResult.IsFailure)
+            return commitResult;
+
+        PrintNewItems(order, itemCountBefore);
+
+        return Result.Success();
     }
 
     private static Result ValidateFlavorsSelected(AddPizzaOrderItemCommand request)

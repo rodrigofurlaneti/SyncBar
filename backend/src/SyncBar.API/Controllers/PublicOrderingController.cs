@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -42,7 +43,7 @@ public sealed class PublicOrderingController(
 }
 
 public sealed record AddPublicOrderItemRequest(
-    long ProductId,
-    decimal Quantity,
+    [property: JsonRequired] long ProductId,
+    [property: JsonRequired] decimal Quantity,
     string? Notes,
     IReadOnlyCollection<OrderItemComplementSelection>? Complements = null);

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -86,8 +87,18 @@ public sealed class PizzaController(
 }
 
 // Requests separados dos commands quando há parâmetro de rota.
-public sealed record AddPizzaSizeRequest(string Name, int? Slices, int AcceptedFractions, int DisplayOrder);
-public sealed record AddPizzaCrustRequest(string Name, decimal ExtraPrice, int DisplayOrder);
-public sealed record AddPizzaEdgeRequest(string Name, decimal ExtraPrice, int DisplayOrder);
-public sealed record SetPizzaFlavorPriceRequest(long PizzaFlavorId, long PizzaSizeId, decimal Price);
-public sealed record SyncIFoodPizzaRequest(long BranchId);
+// Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor para
+// evitar under-posting.
+public sealed record AddPizzaSizeRequest(
+    string Name, int? Slices,
+    [property: JsonRequired] int AcceptedFractions,
+    [property: JsonRequired] int DisplayOrder);
+public sealed record AddPizzaCrustRequest(
+    string Name, [property: JsonRequired] decimal ExtraPrice, [property: JsonRequired] int DisplayOrder);
+public sealed record AddPizzaEdgeRequest(
+    string Name, [property: JsonRequired] decimal ExtraPrice, [property: JsonRequired] int DisplayOrder);
+public sealed record SetPizzaFlavorPriceRequest(
+    [property: JsonRequired] long PizzaFlavorId,
+    [property: JsonRequired] long PizzaSizeId,
+    [property: JsonRequired] decimal Price);
+public sealed record SyncIFoodPizzaRequest([property: JsonRequired] long BranchId);

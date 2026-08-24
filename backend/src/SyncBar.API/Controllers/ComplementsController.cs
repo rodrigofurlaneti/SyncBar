@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -151,8 +152,18 @@ public sealed class ComplementsController(
 }
 
 // Requests separados dos commands quando há parâmetro de rota.
+// Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor para
+// evitar under-posting.
 public sealed record UpdateComplementItemRequest(string Name);
-public sealed record UpdateComplementGroupRequest(string Name, long ComplementGroupTypeId, int MinSelection, int MaxSelection);
-public sealed record AddComplementRequest(long ComplementItemId, decimal ExtraPrice);
-public sealed record UpdateComplementPriceRequest(decimal ExtraPrice);
-public sealed record LinkProductComplementGroupRequest(long ComplementGroupId, int DisplayOrder);
+public sealed record UpdateComplementGroupRequest(
+    string Name,
+    [property: JsonRequired] long ComplementGroupTypeId,
+    [property: JsonRequired] int MinSelection,
+    [property: JsonRequired] int MaxSelection);
+public sealed record AddComplementRequest(
+    [property: JsonRequired] long ComplementItemId,
+    [property: JsonRequired] decimal ExtraPrice);
+public sealed record UpdateComplementPriceRequest([property: JsonRequired] decimal ExtraPrice);
+public sealed record LinkProductComplementGroupRequest(
+    [property: JsonRequired] long ComplementGroupId,
+    [property: JsonRequired] int DisplayOrder);
