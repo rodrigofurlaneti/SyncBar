@@ -12,6 +12,7 @@ internal sealed class PizzaConfigurationRepository(AppDbContext context) : IPizz
             .Include(x => x.Crusts)
             .Include(x => x.Edges)
             .Include(x => x.FlavorPrices)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
     // Tracked, com filhos — para AddSize/AddCrust/AddEdge/SetFlavorPrice/RemoveFlavor.
@@ -21,6 +22,7 @@ internal sealed class PizzaConfigurationRepository(AppDbContext context) : IPizz
             .Include(x => x.Crusts)
             .Include(x => x.Edges)
             .Include(x => x.FlavorPrices)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
     public async Task<PizzaConfiguration?> GetByProductIdAsync(long productId, CancellationToken cancellationToken = default)
@@ -29,6 +31,7 @@ internal sealed class PizzaConfigurationRepository(AppDbContext context) : IPizz
             .Include(x => x.Crusts)
             .Include(x => x.Edges)
             .Include(x => x.FlavorPrices)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(x => x.ProductId == productId && x.IsActive, cancellationToken);
 
     public async Task<PizzaConfiguration?> GetByProductIdForUpdateAsync(long productId, CancellationToken cancellationToken = default)
@@ -37,6 +40,7 @@ internal sealed class PizzaConfigurationRepository(AppDbContext context) : IPizz
             .Include(x => x.Crusts)
             .Include(x => x.Edges)
             .Include(x => x.FlavorPrices)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(x => x.ProductId == productId && x.IsActive, cancellationToken);
 
     public async Task<IReadOnlyCollection<PizzaConfiguration>> GetByCompanyAsync(long companyId, CancellationToken cancellationToken = default)
@@ -45,6 +49,7 @@ internal sealed class PizzaConfigurationRepository(AppDbContext context) : IPizz
             .Include(x => x.Crusts)
             .Include(x => x.Edges)
             .Include(x => x.FlavorPrices)
+            .AsSplitQuery()
             .Where(x => x.IsActive && context.Products.Any(p => p.Id == x.ProductId && p.CompanyId == companyId))
             .ToListAsync(cancellationToken);
 

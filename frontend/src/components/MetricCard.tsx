@@ -33,6 +33,18 @@ export function MetricCard({
   return (
     <div
       onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
       style={{
         padding: 16,
         borderRadius: 8,
@@ -51,7 +63,7 @@ export function MetricCard({
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "var(--surface-2)";
-        e.currentTarget.style.borderColor = "transparent";
+        e.currentTarget.style.borderColor = onClick ? "var(--border)" : "transparent";
       }}
     >
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start", justifyContent: "space-between" }}>
