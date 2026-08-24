@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Roda com: dotnet test --settings coverage.runsettings --collect:"XPlat Code Coverage"
+  (a partir da pasta backend/, com o SyncBar.sln). Gera um Cobertura XML por projeto de teste em
+  test/*/TestResults/<guid>/coverage.cobertura.xml. Para ver o % agregado em HTML, instale o
+  ReportGenerator uma vez (dotnet tool install -g dotnet-reportgenerator-globaltool) e rode:
+    reportgenerator -reports:"test/**/coverage.cobertura.xml" -targetdir:coveragereport -reporttypes:Html
+  Depois abra coveragereport/index.html.
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <!-- Infra pura (EF Core configs/migrations, clients HTTP) fica fora da meta de 80%
+               nesta fase — o alvo é regra de negócio (Domain + Application). Ajuste conforme os
+               módulos forem sendo cobertos. -->
+          <Exclude>[SyncBar.Infrastructure]SyncBar.Infrastructure.Persistence.Migrations.*</Exclude>
+          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
