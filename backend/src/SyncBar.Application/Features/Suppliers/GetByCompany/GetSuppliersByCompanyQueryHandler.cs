@@ -20,7 +20,6 @@ internal sealed class GetSuppliersByCompanyQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gestor consultando a lista, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var suppliers = await supplierRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
 

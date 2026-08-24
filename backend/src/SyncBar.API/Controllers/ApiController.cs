@@ -36,60 +36,12 @@ public abstract class ApiController(IMediator mediator) : ControllerBase
         Func<Task<IActionResult>> action)
     {
         var stopwatch = Stopwatch.StartNew();
-
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        long? appUserId = long.TryParse(userIdClaim, out var id) ? id : null;
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-
-        var log = new LogTracker(0)
-        {
-            AppUserId = appUserId,
-            DirectoryName = "Controllers",
-            ClassName = className,
-            MethodName = methodName,
-            IpAddress = ipAddress,
-            CreatedAt = DateTime.Now,
-            IsActive = true
-        };
+        var log = CreateLogEntry(className, methodName);
 
         try
         {
             var result = await action();
-
-            if (result is OkObjectResult or NoContentResult or CreatedAtActionResult)
-            {
-                log.IsSuccess = true;
-                log.Message = "Executado com sucesso.";
-            }
-            else
-            {
-                log.IsSuccess = false;
-                log.Message = "Falha na regra de negócio.";
-
-                if (result is ObjectResult objResult && objResult.Value != null)
-                {
-                    if (objResult.Value is ProblemDetails problemDetails)
-                    {
-                        log.ErrorMessage = !string.IsNullOrEmpty(problemDetails.Detail)
-                            ? $"{problemDetails.Title}: {problemDetails.Detail}"
-                            : problemDetails.Title;
-                    }
-                    else
-                    {
-                        var valueType = objResult.Value.GetType();
-                        var detailProp = valueType.GetProperty("Detail") ?? valueType.GetProperty("detail");
-                        var titleProp = valueType.GetProperty("Title") ?? valueType.GetProperty("title");
-
-                        var detailValue = detailProp?.GetValue(objResult.Value)?.ToString();
-                        var titleValue = titleProp?.GetValue(objResult.Value)?.ToString();
-
-                        log.ErrorMessage = !string.IsNullOrEmpty(detailValue)
-                            ? $"{titleValue}: {detailValue}"
-                            : (titleValue ?? objResult.Value.ToString()!);
-                    }
-                }
-            }
-
+            UpdateLogFromResult(log, result);
             return result;
         }
         catch (Exception ex)
@@ -104,16 +56,80 @@ public abstract class ApiController(IMediator mediator) : ControllerBase
         {
             stopwatch.Stop();
             log.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
+            await PersistLogSafeAsync(logRepository, unitOfWork, log);
+        }
+    }
 
-            try
-            {
-                await logRepository.AddAsync(log);
-                await unitOfWork.CommitAsync();
-            }
-            catch
-            {
-                // Evita que falhas na auditoria quebrem o fluxo principal da resposta HTTP
-            }
+    private LogTracker CreateLogEntry(string className, string methodName)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        long? appUserId = long.TryParse(userIdClaim, out var id) ? id : null;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        return new LogTracker(0)
+        {
+            AppUserId = appUserId,
+            DirectoryName = "Controllers",
+            ClassName = className,
+            MethodName = methodName,
+            IpAddress = ipAddress,
+            CreatedAt = DateTime.Now,
+            IsActive = true
+        };
+    }
+
+    private static void UpdateLogFromResult(LogTracker log, IActionResult result)
+    {
+        if (result is OkObjectResult or NoContentResult or CreatedAtActionResult)
+        {
+            log.IsSuccess = true;
+            log.Message = "Executado com sucesso.";
+            return;
+        }
+
+        log.IsSuccess = false;
+        log.Message = "Falha na regra de negócio.";
+
+        if (result is ObjectResult { Value: not null } objResult)
+        {
+            log.ErrorMessage = ExtractErrorMessage(objResult.Value);
+        }
+    }
+
+    private static string? ExtractErrorMessage(object value)
+    {
+        if (value is ProblemDetails problemDetails)
+        {
+            return !string.IsNullOrEmpty(problemDetails.Detail)
+                ? $"{problemDetails.Title}: {problemDetails.Detail}"
+                : problemDetails.Title;
+        }
+
+        var valueType = value.GetType();
+        var detailProp = valueType.GetProperty("Detail") ?? valueType.GetProperty("detail");
+        var titleProp = valueType.GetProperty("Title") ?? valueType.GetProperty("title");
+
+        var detailValue = detailProp?.GetValue(value)?.ToString();
+        var titleValue = titleProp?.GetValue(value)?.ToString();
+
+        return !string.IsNullOrEmpty(detailValue)
+            ? $"{titleValue}: {detailValue}"
+            : (titleValue ?? value.ToString()!);
+    }
+
+    private static async Task PersistLogSafeAsync(
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork,
+        LogTracker log)
+    {
+        try
+        {
+            await logRepository.AddAsync(log);
+            await unitOfWork.CommitAsync();
+        }
+        catch
+        {
+            // Evita que falhas na auditoria quebrem o fluxo principal da resposta HTTP
         }
     }
 

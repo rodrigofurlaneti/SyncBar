@@ -29,7 +29,6 @@ internal sealed class CreatePrinterCommandHandler : BaseCommandHandler<CreatePri
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário que está cadastrando a impressora, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var printer = Printer.Create(
                     request.BranchId, request.Name.Trim(), request.ConnectionType,

@@ -17,8 +17,11 @@ internal sealed class CancelIFoodOrderCommandHandler : BaseCommandHandler<Cancel
     private readonly IBranchRepository _branchRepository;
     private readonly IIFoodTokenProvider _tokenProvider;
     private readonly IIFoodOrderClient _orderClient;
-    private readonly IUnitOfWork _unitOfWork;
 
+    // IUnitOfWork não vira campo: só é repassado ao BaseCommandHandler (necessário para persistir
+    // o LogTracker do ExecuteWithLogAsync). Este handler só DISPARA o pedido de cancelamento
+    // assíncrono no iFood (202 Accepted) e não altera nenhum estado local aqui — ver comentário
+    // no topo do arquivo. Mesmo padrão de CancelIFoodOrderDriverRequestCommandHandler.
     public CancelIFoodOrderCommandHandler(
         IIFoodOrderRepository ifoodOrderRepository,
         IBranchRepository branchRepository,
@@ -32,7 +35,6 @@ internal sealed class CancelIFoodOrderCommandHandler : BaseCommandHandler<Cancel
         _branchRepository = branchRepository;
         _tokenProvider = tokenProvider;
         _orderClient = orderClient;
-        _unitOfWork = unitOfWork;
     }
 
     public override async Task<Result> Handle(CancelIFoodOrderCommand request, CancellationToken cancellationToken)

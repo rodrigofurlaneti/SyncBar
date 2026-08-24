@@ -26,7 +26,6 @@ internal sealed class GetPublicMenuQueryHandler(
             {
                 // Como este é um endpoint de acesso público via QR Code, não temos um
                 // usuário autenticado fazendo a consulta.
-                // userIdBox.Value = null;
 
                 var table = await diningTableRepository.GetByQrTokenAsync(request.Token, cancellationToken);
                 if (table is null)

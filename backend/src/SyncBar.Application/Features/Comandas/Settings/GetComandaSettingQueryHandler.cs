@@ -20,7 +20,6 @@ internal sealed class GetComandaSettingQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário, associe-o aqui:
-                // userIdBox.Value = request.UserId;
 
                 var setting = await settingRepository.GetByBranchAsync(request.BranchId, cancellationToken);
 

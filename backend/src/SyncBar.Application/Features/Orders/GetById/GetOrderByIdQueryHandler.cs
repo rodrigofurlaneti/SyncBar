@@ -20,7 +20,6 @@ internal sealed class GetOrderByIdQueryHandler(
             async (userIdBox) =>
             {
                 // Se houver o ID do usuário que fez a requisição, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var order = await orderRepository.GetByIdAsync(request.CustomerOrderId, cancellationToken);
                 if (order is null || !order.IsActive)

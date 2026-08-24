@@ -28,7 +28,6 @@ internal sealed class DeactivateOperatingCostCommandHandler : BaseCommandHandler
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário que está executando a ação, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var cost = await _costRepository.GetByIdForUpdateAsync(request.OperatingCostId, cancellationToken);
                 if (cost is null || !cost.IsActive)

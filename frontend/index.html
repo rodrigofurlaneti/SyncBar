@@ -11,9 +11,9 @@
         try {
           var raw = localStorage.getItem("syncbar-theme");
           var theme = raw ? JSON.parse(raw).state.theme : "dark";
-          document.documentElement.setAttribute("data-theme", theme === "light" ? "light" : "dark");
+          document.documentElement.dataset.theme = theme === "light" ? "light" : "dark";
         } catch (e) {
-          document.documentElement.setAttribute("data-theme", "dark");
+          document.documentElement.dataset.theme = "dark";
         }
       })();
     </script>

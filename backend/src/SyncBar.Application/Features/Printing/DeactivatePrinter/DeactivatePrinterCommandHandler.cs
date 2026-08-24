@@ -28,7 +28,6 @@ internal sealed class DeactivatePrinterCommandHandler : BaseCommandHandler<Deact
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário responsável pela desativação, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var printer = await _printerRepository.GetByIdForUpdateAsync(request.PrinterId, cancellationToken);
                 if (printer is null || !printer.IsActive)

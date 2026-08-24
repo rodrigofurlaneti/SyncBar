@@ -151,6 +151,7 @@ export function PaymentPanel({ order, onPaid }: Props) {
         />
         {error && <p className="error-text">{error}</p>}
         <button
+          type="button"
           className="btn-primary"
           disabled={openSessionMutation.isPending}
           onClick={() => openSessionMutation.mutate()}
@@ -205,6 +206,7 @@ export function PaymentPanel({ order, onPaid }: Props) {
             onChange={(e) => setRow(index, { amount: e.target.value })}
           />
           <button
+            type="button"
             className="btn-ghost btn-icon"
             aria-label="Remover forma de pagamento"
             title="Remover forma de pagamento"
@@ -225,6 +227,7 @@ export function PaymentPanel({ order, onPaid }: Props) {
       ))}
 
       <button
+        type="button"
         className="btn-ghost"
         onClick={() =>
           setRows((current) => [
@@ -261,6 +264,7 @@ export function PaymentPanel({ order, onPaid }: Props) {
       {error && <p className="error-text">{error}</p>}
 
       <button
+        type="button"
         className="btn-primary"
         disabled={!canConfirm || payMutation.isPending}
         onClick={() => payMutation.mutate()}

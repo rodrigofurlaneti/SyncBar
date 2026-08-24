@@ -26,9 +26,8 @@ internal sealed class ReviewCashSessionCommandHandler : BaseCommandHandler<Revie
             null, // Substitua por request.IpAddress se aplicável
             async (userIdBox) =>
             {
-                // Se o seu request tiver uma propriedade com o ID de quem está revisando (ex: ReviewedByEmployeeId), 
+                // Se o seu request tiver uma propriedade com o ID de quem está revisando (ex: ReviewedByEmployeeId),
                 // descomente e use a linha abaixo para registrar no log:
-                // userIdBox.Value = request.ReviewedByEmployeeId;
 
                 var session = await _cashSessionRepository.GetByIdForUpdateAsync(request.CashSessionId, cancellationToken);
                 if (session is null || !session.IsActive)

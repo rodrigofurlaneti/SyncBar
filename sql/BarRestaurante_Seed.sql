@@ -11,6 +11,8 @@ USE BarRestauranteDb;
 GO
 
 /* ============================ UnitOfMeasure ============================ */
+DECLARE @UnitNameCaixa NVARCHAR(50) = N'Caixa';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.UnitOfMeasure)
 BEGIN
     DBCC CHECKIDENT ('dbo.UnitOfMeasure', RESEED, 0);
@@ -26,7 +28,7 @@ BEGIN
         (7, N'Porção',     'PC'),
         (8, N'Garrafa',    'GF'),
         (9, N'Lata',       'LT'),
-        (10, N'Caixa',     'CX');
+        (10, @UnitNameCaixa, 'CX');
 
     BEGIN TRY SET IDENTITY_INSERT dbo.UnitOfMeasure OFF END TRY BEGIN CATCH END CATCH;
 END;
@@ -174,6 +176,11 @@ END;
 GO
 
 /* ============================ Permission ============================ */
+DECLARE @ModuleNamePedidos NVARCHAR(50) = N'Pedidos';
+DECLARE @ModuleNameCaixa NVARCHAR(50) = N'Caixa';
+DECLARE @ModuleNameFaturamento NVARCHAR(50) = N'Faturamento';
+DECLARE @ModuleNameEstoque NVARCHAR(50) = N'Estoque';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.Permission)
 BEGIN
     DBCC CHECKIDENT ('dbo.Permission', RESEED, 0);
@@ -184,20 +191,20 @@ BEGIN
         (2,  'Auth.ManageRoles',       N'Gerenciar perfis e permissões', N'Autenticação'),
         (3,  'Employee.Read',          N'Consultar funcionários',        N'Funcionários'),
         (4,  'Employee.Manage',        N'Gerenciar funcionários',        N'Funcionários'),
-        (5,  'Order.Create',           N'Abrir pedido (mesa/comanda)',   N'Pedidos'),
-        (6,  'Order.AddItem',          N'Lançar itens no pedido',        N'Pedidos'),
-        (7,  'Order.Cancel',           N'Cancelar pedido/item',          N'Pedidos'),
-        (8,  'Order.ApplyDiscount',    N'Aplicar desconto',              N'Pedidos'),
-        (9,  'Cash.OpenSession',       N'Abrir caixa',                   N'Caixa'),
-        (10, 'Cash.CloseSession',      N'Fechar caixa',                  N'Caixa'),
-        (11, 'Cash.Movement',          N'Sangria e suprimento',          N'Caixa'),
-        (12, 'Sale.Register',          N'Registrar venda/pagamento',     N'Faturamento'),
-        (13, 'Sale.Refund',            N'Estornar venda',                N'Faturamento'),
-        (14, 'Billing.Reports',        N'Relatórios de faturamento',     N'Faturamento'),
-        (15, 'Stock.Read',             N'Consultar estoque',             N'Estoque'),
-        (16, 'Stock.Movement',         N'Lançar entrada/saída',          N'Estoque'),
-        (17, 'Stock.Purchase',         N'Registrar compras',             N'Estoque'),
-        (18, 'Stock.Adjust',           N'Ajustar/inventariar estoque',   N'Estoque');
+        (5,  'Order.Create',           N'Abrir pedido (mesa/comanda)',   @ModuleNamePedidos),
+        (6,  'Order.AddItem',          N'Lançar itens no pedido',        @ModuleNamePedidos),
+        (7,  'Order.Cancel',           N'Cancelar pedido/item',          @ModuleNamePedidos),
+        (8,  'Order.ApplyDiscount',    N'Aplicar desconto',              @ModuleNamePedidos),
+        (9,  'Cash.OpenSession',       N'Abrir caixa',                   @ModuleNameCaixa),
+        (10, 'Cash.CloseSession',      N'Fechar caixa',                  @ModuleNameCaixa),
+        (11, 'Cash.Movement',          N'Sangria e suprimento',          @ModuleNameCaixa),
+        (12, 'Sale.Register',          N'Registrar venda/pagamento',     @ModuleNameFaturamento),
+        (13, 'Sale.Refund',            N'Estornar venda',                @ModuleNameFaturamento),
+        (14, 'Billing.Reports',        N'Relatórios de faturamento',     @ModuleNameFaturamento),
+        (15, 'Stock.Read',             N'Consultar estoque',             @ModuleNameEstoque),
+        (16, 'Stock.Movement',         N'Lançar entrada/saída',          @ModuleNameEstoque),
+        (17, 'Stock.Purchase',         N'Registrar compras',             @ModuleNameEstoque),
+        (18, 'Stock.Adjust',           N'Ajustar/inventariar estoque',   @ModuleNameEstoque);
 
     BEGIN TRY SET IDENTITY_INSERT dbo.Permission OFF END TRY BEGIN CATCH END CATCH;
 END;
@@ -259,6 +266,8 @@ END;
 GO
 
 /* ============================ Role / AppUser ============================ */
+DECLARE @RoleNameCaixa NVARCHAR(50) = N'Caixa';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.Role)
 BEGIN
     DBCC CHECKIDENT ('dbo.Role', RESEED, 0);
@@ -268,7 +277,7 @@ BEGIN
         (1, 1, N'Administrador', N'Acesso total ao sistema'),
         (2, 1, N'Gerente',       N'Gestão operacional da filial'),
         (3, 1, N'Garçom',        N'Lançamento de pedidos em mesa e comanda'),
-        (4, 1, N'Caixa',         N'Operação de caixa e recebimentos'),
+        (4, 1, @RoleNameCaixa,   N'Operação de caixa e recebimentos'),
         (5, 1, N'Estoquista',    N'Controle de estoque e compras');
 
     BEGIN TRY SET IDENTITY_INSERT dbo.Role OFF END TRY BEGIN CATCH END CATCH;
@@ -289,6 +298,8 @@ END;
 GO
 
 /* Perfil Administrador recebe todas as permissões (sem IDENTITY_INSERT — Ids livres) */
+DECLARE @ModuleNameEstoque NVARCHAR(50) = N'Estoque';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.RolePermission)
 BEGIN
     INSERT INTO dbo.RolePermission (RoleId, PermissionId)
@@ -304,7 +315,7 @@ BEGIN
 
     /* Estoquista */
     INSERT INTO dbo.RolePermission (RoleId, PermissionId)
-    SELECT 5, P.Id FROM dbo.Permission AS P WHERE P.ModuleName = N'Estoque';
+    SELECT 5, P.Id FROM dbo.Permission AS P WHERE P.ModuleName = @ModuleNameEstoque;
 END;
 GO
 

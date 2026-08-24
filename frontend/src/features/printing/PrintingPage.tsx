@@ -119,7 +119,7 @@ export function PrintingPage() {
       <div className="rise" style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 16 }}>
         <h2 className="display" style={{ fontSize: "1.7rem" }}>Impressão</h2>
         <span style={{ flex: 1 }} />
-        <button className="btn-primary" onClick={() => { setError(null); setCreating(true); }}>
+        <button type="button" className="btn-primary" onClick={() => { setError(null); setCreating(true); }}>
           + Nova impressora
         </button>
       </div>
@@ -166,6 +166,7 @@ export function PrintingPage() {
             </div>
             <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
               <button
+                type="button"
                 className="btn-ghost"
                 style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                 disabled={testMutation.isPending}
@@ -174,6 +175,7 @@ export function PrintingPage() {
                 Testar
               </button>
               <button
+                type="button"
                 className="btn-danger"
                 style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                 onClick={async () => {
@@ -250,6 +252,7 @@ export function PrintingPage() {
           </div>
           {error && <p className="error-text">{error}</p>}
           <button
+            type="button"
             className="btn-primary"
             disabled={
               form.name.trim() === "" ||

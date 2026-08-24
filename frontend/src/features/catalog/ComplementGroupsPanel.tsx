@@ -129,7 +129,7 @@ export function ComplementGroupsPanel() {
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <div className="rise" style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button className="btn-primary" onClick={() => openEditor("new")}>
+        <button type="button" className="btn-primary" onClick={() => openEditor("new")}>
           + Novo grupo
         </button>
       </div>
@@ -143,7 +143,7 @@ export function ComplementGroupsPanel() {
           title="Nenhum grupo de complementos"
           description='Crie um grupo (ex.: "Escolha uma bebida") e depois vincule opções da aba Itens a ele.'
           action={
-            <button className="btn-primary" onClick={() => openEditor("new")}>
+            <button type="button" className="btn-primary" onClick={() => openEditor("new")}>
               + Novo grupo
             </button>
           }
@@ -329,10 +329,10 @@ function GroupCard({ group, expanded, onToggle, onEdit, onDeactivate, activeItem
       {expanded && (
         <div id={`complement-group-panel-${group.id}`} style={{ padding: "0 16px 14px", display: "grid", gap: 10 }}>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button className="btn-ghost" style={{ minHeight: 40, padding: "0 12px", fontSize: "0.85rem" }} onClick={onEdit}>
+            <button type="button" className="btn-ghost" style={{ minHeight: 40, padding: "0 12px", fontSize: "0.85rem" }} onClick={onEdit}>
               Editar grupo
             </button>
-            <button className="btn-danger" style={{ minHeight: 40, padding: "0 12px", fontSize: "0.85rem" }} onClick={onDeactivate}>
+            <button type="button" className="btn-danger" style={{ minHeight: 40, padding: "0 12px", fontSize: "0.85rem" }} onClick={onDeactivate}>
               Desativar grupo
             </button>
           </div>
@@ -376,6 +376,7 @@ function GroupCard({ group, expanded, onToggle, onEdit, onDeactivate, activeItem
                       {c.extraPrice > 0 ? `+ ${formatBRL(c.extraPrice)}` : "sem custo"}
                     </span>
                     <button
+                      type="button"
                       className="btn-ghost"
                       style={{ minHeight: 36, padding: "0 10px", fontSize: "0.8rem" }}
                       onClick={() => {
@@ -386,6 +387,7 @@ function GroupCard({ group, expanded, onToggle, onEdit, onDeactivate, activeItem
                       Preço
                     </button>
                     <button
+                      type="button"
                       className="btn-danger"
                       style={{ minHeight: 36, padding: "0 10px", fontSize: "0.8rem" }}
                       onClick={async () => {

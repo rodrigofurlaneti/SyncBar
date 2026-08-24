@@ -38,8 +38,8 @@ CREATE INDEX IX_IFoodProductMapping_ProductId_BranchId ON IFoodProductMapping (P
 CREATE INDEX IX_IFoodProductMapping_BranchId ON IFoodProductMapping (BranchId);
 
 -- Verificação
-SELECT * FROM IFoodCategoryMapping;
-SELECT * FROM IFoodProductMapping;
+SELECT Id, CategoryId, BranchId, IFoodCategoryId, CreatedAt, UpdatedAt, IsActive FROM IFoodCategoryMapping;
+SELECT Id, ProductId, BranchId, IFoodItemId, IFoodProductId, CreatedAt, UpdatedAt, IsActive FROM IFoodProductMapping;
 
 -- Nota operacional: a sincronização (criação de categorias/itens no iFood) só roda pra filiais
 -- que já têm MerchantId configurado em IFoodMerchantMapping E integração habilitada em

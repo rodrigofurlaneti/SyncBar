@@ -15,7 +15,12 @@ interface FieldWrapProps {
 /** Rótulo persistente + erro/hint acessíveis (htmlFor/aria-describedby). */
 export function Field({ label, hint, error, children }: FieldWrapProps) {
   const id = useId();
-  const describedBy = error ? `${id}-err` : hint ? `${id}-hint` : undefined;
+  let describedBy: string | undefined;
+  if (error) {
+    describedBy = `${id}-err`;
+  } else if (hint) {
+    describedBy = `${id}-hint`;
+  }
   return (
     <div className="field">
       <label className="field-label" htmlFor={id}>

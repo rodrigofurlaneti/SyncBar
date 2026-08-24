@@ -914,6 +914,8 @@ USE BarRestauranteDb;
 GO
 
 /* ============================ UnitOfMeasure ============================ */
+DECLARE @UnitOfMeasureBoxName NVARCHAR(50) = N'Caixa';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.UnitOfMeasure)
 BEGIN
     DBCC CHECKIDENT ('dbo.UnitOfMeasure', RESEED, 0);
@@ -929,7 +931,7 @@ BEGIN
         (7, N'Porção',     'PC'),
         (8, N'Garrafa',    'GF'),
         (9, N'Lata',       'LT'),
-        (10, N'Caixa',     'CX');
+        (10, @UnitOfMeasureBoxName, 'CX');
 
     BEGIN TRY SET IDENTITY_INSERT dbo.UnitOfMeasure OFF END TRY BEGIN CATCH END CATCH;
 END;
@@ -1077,6 +1079,11 @@ END;
 GO
 
 /* ============================ Permission ============================ */
+DECLARE @OrderModuleName   NVARCHAR(50) = N'Pedidos';
+DECLARE @CashModuleName    NVARCHAR(50) = N'Caixa';
+DECLARE @BillingModuleName NVARCHAR(50) = N'Faturamento';
+DECLARE @StockModuleName   NVARCHAR(50) = N'Estoque';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.Permission)
 BEGIN
     DBCC CHECKIDENT ('dbo.Permission', RESEED, 0);
@@ -1087,20 +1094,20 @@ BEGIN
         (2,  'Auth.ManageRoles',       N'Gerenciar perfis e permissões', N'Autenticação'),
         (3,  'Employee.Read',          N'Consultar funcionários',        N'Funcionários'),
         (4,  'Employee.Manage',        N'Gerenciar funcionários',        N'Funcionários'),
-        (5,  'Order.Create',           N'Abrir pedido (mesa/comanda)',   N'Pedidos'),
-        (6,  'Order.AddItem',          N'Lançar itens no pedido',        N'Pedidos'),
-        (7,  'Order.Cancel',           N'Cancelar pedido/item',          N'Pedidos'),
-        (8,  'Order.ApplyDiscount',    N'Aplicar desconto',              N'Pedidos'),
-        (9,  'Cash.OpenSession',       N'Abrir caixa',                   N'Caixa'),
-        (10, 'Cash.CloseSession',      N'Fechar caixa',                  N'Caixa'),
-        (11, 'Cash.Movement',          N'Sangria e suprimento',          N'Caixa'),
-        (12, 'Sale.Register',          N'Registrar venda/pagamento',     N'Faturamento'),
-        (13, 'Sale.Refund',            N'Estornar venda',                N'Faturamento'),
-        (14, 'Billing.Reports',        N'Relatórios de faturamento',     N'Faturamento'),
-        (15, 'Stock.Read',             N'Consultar estoque',             N'Estoque'),
-        (16, 'Stock.Movement',         N'Lançar entrada/saída',          N'Estoque'),
-        (17, 'Stock.Purchase',         N'Registrar compras',             N'Estoque'),
-        (18, 'Stock.Adjust',           N'Ajustar/inventariar estoque',   N'Estoque');
+        (5,  'Order.Create',           N'Abrir pedido (mesa/comanda)',   @OrderModuleName),
+        (6,  'Order.AddItem',          N'Lançar itens no pedido',        @OrderModuleName),
+        (7,  'Order.Cancel',           N'Cancelar pedido/item',          @OrderModuleName),
+        (8,  'Order.ApplyDiscount',    N'Aplicar desconto',              @OrderModuleName),
+        (9,  'Cash.OpenSession',       N'Abrir caixa',                   @CashModuleName),
+        (10, 'Cash.CloseSession',      N'Fechar caixa',                  @CashModuleName),
+        (11, 'Cash.Movement',          N'Sangria e suprimento',          @CashModuleName),
+        (12, 'Sale.Register',          N'Registrar venda/pagamento',     @BillingModuleName),
+        (13, 'Sale.Refund',            N'Estornar venda',                @BillingModuleName),
+        (14, 'Billing.Reports',        N'Relatórios de faturamento',     @BillingModuleName),
+        (15, 'Stock.Read',             N'Consultar estoque',             @StockModuleName),
+        (16, 'Stock.Movement',         N'Lançar entrada/saída',          @StockModuleName),
+        (17, 'Stock.Purchase',         N'Registrar compras',             @StockModuleName),
+        (18, 'Stock.Adjust',           N'Ajustar/inventariar estoque',   @StockModuleName);
 
     BEGIN TRY SET IDENTITY_INSERT dbo.Permission OFF END TRY BEGIN CATCH END CATCH;
 END;
@@ -1132,6 +1139,12 @@ END;
 GO
 
 /* ============================ JobTitle / Employee ============================ */
+DECLARE @WaiterJobTitleName     NVARCHAR(100) = N'Garçom';
+DECLARE @CashierJobTitleName    NVARCHAR(100) = N'Operador de Caixa';
+DECLARE @CookJobTitleName       NVARCHAR(100) = N'Cozinheiro';
+DECLARE @BarmanJobTitleName     NVARCHAR(100) = N'Barman';
+DECLARE @StockClerkJobTitleName NVARCHAR(100) = N'Estoquista';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.JobTitle)
 BEGIN
     DBCC CHECKIDENT ('dbo.JobTitle', RESEED, 0);
@@ -1139,11 +1152,11 @@ BEGIN
 
     INSERT INTO dbo.JobTitle (Id, CompanyId, Name) VALUES
         (1, 1, N'Gerente'),
-        (2, 1, N'Garçom'),
-        (3, 1, N'Operador de Caixa'),
-        (4, 1, N'Cozinheiro'),
-        (5, 1, N'Barman'),
-        (6, 1, N'Estoquista');
+        (2, 1, @WaiterJobTitleName),
+        (3, 1, @CashierJobTitleName),
+        (4, 1, @CookJobTitleName),
+        (5, 1, @BarmanJobTitleName),
+        (6, 1, @StockClerkJobTitleName);
 
     BEGIN TRY SET IDENTITY_INSERT dbo.JobTitle OFF END TRY BEGIN CATCH END CATCH;
 END;
@@ -1162,6 +1175,10 @@ END;
 GO
 
 /* ============================ Role / AppUser ============================ */
+DECLARE @WaiterRoleName     NVARCHAR(100) = N'Garçom';
+DECLARE @CashierRoleName    NVARCHAR(100) = N'Caixa';
+DECLARE @StockClerkRoleName NVARCHAR(100) = N'Estoquista';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.Role)
 BEGIN
     DBCC CHECKIDENT ('dbo.Role', RESEED, 0);
@@ -1170,9 +1187,9 @@ BEGIN
     INSERT INTO dbo.Role (Id, CompanyId, Name, Description) VALUES
         (1, 1, N'Administrador', N'Acesso total ao sistema'),
         (2, 1, N'Gerente',       N'Gestão operacional da filial'),
-        (3, 1, N'Garçom',        N'Lançamento de pedidos em mesa e comanda'),
-        (4, 1, N'Caixa',         N'Operação de caixa e recebimentos'),
-        (5, 1, N'Estoquista',    N'Controle de estoque e compras');
+        (3, 1, @WaiterRoleName,  N'Lançamento de pedidos em mesa e comanda'),
+        (4, 1, @CashierRoleName, N'Operação de caixa e recebimentos'),
+        (5, 1, @StockClerkRoleName, N'Controle de estoque e compras');
 
     BEGIN TRY SET IDENTITY_INSERT dbo.Role OFF END TRY BEGIN CATCH END CATCH;
 END;
@@ -1192,6 +1209,8 @@ END;
 GO
 
 /* Perfil Administrador recebe todas as permissões (sem IDENTITY_INSERT — Ids livres) */
+DECLARE @StockModuleName NVARCHAR(50) = N'Estoque';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.RolePermission)
 BEGIN
     INSERT INTO dbo.RolePermission (RoleId, PermissionId)
@@ -1207,7 +1226,7 @@ BEGIN
 
     /* Estoquista */
     INSERT INTO dbo.RolePermission (RoleId, PermissionId)
-    SELECT 5, P.Id FROM dbo.Permission AS P WHERE P.ModuleName = N'Estoque';
+    SELECT 5, P.Id FROM dbo.Permission AS P WHERE P.ModuleName = @StockModuleName;
 END;
 GO
 
@@ -1269,6 +1288,8 @@ BEGIN
 END;
 GO
 
+DECLARE @CaipirinhaProductName NVARCHAR(100) = N'Caipirinha de Limão';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.Product)
 BEGIN
     DBCC CHECKIDENT ('dbo.Product', RESEED, 0);
@@ -1277,7 +1298,7 @@ BEGIN
     INSERT INTO dbo.Product (Id, CompanyId, CategoryId, UnitOfMeasureId, Name, Description, SalePrice, CostPrice, IsStockControlled, PreparationTimeMinutes) VALUES
         (1, 1, 1, 8, N'Cerveja Pilsen 600ml',      N'Garrafa 600ml',                14.90,  6.50, 1, NULL),
         (2, 1, 1, 9, N'Cerveja Lata 350ml',        N'Lata 350ml',                    8.90,  3.80, 1, NULL),
-        (3, 1, 2, 6, N'Caipirinha de Limão',       N'Cachaça, limão e açúcar',      22.00,  7.00, 0, 8),
+        (3, 1, 2, 6, @CaipirinhaProductName,       N'Cachaça, limão e açúcar',      22.00,  7.00, 0, 8),
         (4, 1, 3, 9, N'Refrigerante Lata',         N'Lata 350ml',                    7.50,  3.00, 1, NULL),
         (5, 1, 3, 8, N'Água Mineral 500ml',        N'Com ou sem gás',                5.00,  1.50, 1, NULL),
         (6, 1, 4, 7, N'Porção de Batata Frita',    N'400g, serve 2 pessoas',        32.00, 10.00, 0, 20),
@@ -1412,15 +1433,19 @@ GO
 
 /* ============================ Seed: telas ============================ */
 
+DECLARE @SalaoFeatureCode VARCHAR(50)  = 'Salao';
+DECLARE @CardapioFeatureCode VARCHAR(50) = 'Cardapio';
+DECLARE @StockModuleName NVARCHAR(50)  = N'Estoque';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.AppFeature)
 BEGIN
     DBCC CHECKIDENT ('dbo.AppFeature', RESEED, 0);
     SET IDENTITY_INSERT dbo.AppFeature ON;
 
     INSERT INTO dbo.AppFeature (Id, Code, Name) VALUES
-        (1, 'Salao',    N'Salao (mesas e pedidos)'),
-        (2, 'Cardapio', N'Cardapio (produtos)'),
-        (3, 'Estoque',  N'Estoque'),
+        (1, @SalaoFeatureCode,    N'Salao (mesas e pedidos)'),
+        (2, @CardapioFeatureCode, N'Cardapio (produtos)'),
+        (3, 'Estoque',  @StockModuleName),
         (4, 'Equipe',   N'Equipe (funcionarios)'),
         (5, 'Usuarios', N'Usuarios e perfis'),
         (6, 'Caixa',    N'Caixa (sessao e pagamentos)');
@@ -1431,18 +1456,26 @@ GO
 
 /* ============================ Seed: grants padrao por cargo ============================ */
 
+DECLARE @WaiterJobTitleName NVARCHAR(100)     = N'Garçom';
+DECLARE @CashierJobTitleName NVARCHAR(100)    = N'Operador de Caixa';
+DECLARE @CookJobTitleName NVARCHAR(100)       = N'Cozinheiro';
+DECLARE @BarmanJobTitleName NVARCHAR(100)     = N'Barman';
+DECLARE @StockClerkJobTitleName NVARCHAR(100) = N'Estoquista';
+DECLARE @SalaoFeatureCode VARCHAR(50)         = 'Salao';
+DECLARE @CardapioFeatureCode VARCHAR(50)      = 'Cardapio';
+
 INSERT INTO dbo.JobTitleFeature (JobTitleId, AppFeatureId)
 SELECT J.Id, F.Id
 FROM (VALUES
-    (N'Garçom',            'Salao'),
-    (N'Garçom',            'Cardapio'),
-    (N'Operador de Caixa',  'Salao'),
-    (N'Operador de Caixa',  'Caixa'),
-    (N'Cozinheiro',         'Salao'),
-    (N'Barman',             'Salao'),
-    (N'Barman',             'Cardapio'),
-    (N'Estoquista',         'Estoque'),
-    (N'Estoquista',         'Cardapio')) AS G (JobTitleName, FeatureCode)
+    (@WaiterJobTitleName,        @SalaoFeatureCode),
+    (@WaiterJobTitleName,        @CardapioFeatureCode),
+    (@CashierJobTitleName,       @SalaoFeatureCode),
+    (@CashierJobTitleName,       'Caixa'),
+    (@CookJobTitleName,          @SalaoFeatureCode),
+    (@BarmanJobTitleName,        @SalaoFeatureCode),
+    (@BarmanJobTitleName,        @CardapioFeatureCode),
+    (@StockClerkJobTitleName,    'Estoque'),
+    (@StockClerkJobTitleName,    @CardapioFeatureCode)) AS G (JobTitleName, FeatureCode)
 JOIN dbo.JobTitle   AS J ON J.Name = G.JobTitleName AND J.IsActive = 1
 JOIN dbo.AppFeature AS F ON F.Code = G.FeatureCode  AND F.IsActive = 1
 WHERE NOT EXISTS (
@@ -1588,16 +1621,22 @@ GO
 USE BarRestauranteDb;
 GO
 
+DECLARE @PreparoFeatureCode VARCHAR(50) = 'Preparo';
+
 INSERT INTO dbo.AppFeature (Code, Name)
-SELECT 'Preparo', N'Preparo (painel cozinha/bar)'
-WHERE NOT EXISTS (SELECT 1 FROM dbo.AppFeature WHERE Code = 'Preparo' AND IsActive = 1);
+SELECT @PreparoFeatureCode, N'Preparo (painel cozinha/bar)'
+WHERE NOT EXISTS (SELECT 1 FROM dbo.AppFeature WHERE Code = @PreparoFeatureCode AND IsActive = 1);
 GO
+
+DECLARE @CookJobTitleName NVARCHAR(100) = N'Cozinheiro';
+DECLARE @BarmanJobTitleName NVARCHAR(100) = N'Barman';
+DECLARE @PreparoFeatureCode VARCHAR(50) = 'Preparo';
 
 INSERT INTO dbo.JobTitleFeature (JobTitleId, AppFeatureId)
 SELECT J.Id, F.Id
-FROM (VALUES (N'Cozinheiro'), (N'Barman')) AS G (JobTitleName)
+FROM (VALUES (@CookJobTitleName), (@BarmanJobTitleName)) AS G (JobTitleName)
 JOIN dbo.JobTitle   AS J ON J.Name = G.JobTitleName AND J.IsActive = 1
-JOIN dbo.AppFeature AS F ON F.Code = 'Preparo' AND F.IsActive = 1
+JOIN dbo.AppFeature AS F ON F.Code = @PreparoFeatureCode AND F.IsActive = 1
 WHERE NOT EXISTS (
     SELECT 1 FROM dbo.JobTitleFeature X
     WHERE X.JobTitleId = J.Id AND X.AppFeatureId = F.Id AND X.IsActive = 1);
@@ -1711,15 +1750,16 @@ GO
 /* ============================ Seed: semana exemplo ============================ */
 
 DECLARE @BranchId BIGINT = (SELECT TOP 1 Id FROM dbo.Branch WHERE IsActive = 1);
+DECLARE @CaipirinhaProductName NVARCHAR(100) = N'Caipirinha de Limão';
 
 INSERT INTO dbo.Promotion (BranchId, ProductId, Name, DayOfWeek, StartMinuteOfDay, EndMinuteOfDay)
 SELECT @BranchId, P.Id, S.PromoName, S.Day, S.StartMin, S.EndMin
 FROM (VALUES
-    (N'Caipirinha de Limão',       N'Quarta da caipirinha em dobro', 3,  960, 1200),
+    (@CaipirinhaProductName,       N'Quarta da caipirinha em dobro', 3,  960, 1200),
     (N'Cerveja Pilsen 600ml',      N'Quinta da cerveja em dobro',    4,  960, 1200),
     (N'Cerveja Lata 350ml',        N'Quinta da cerveja em dobro',    4,  960, 1200),
     (N'Porção de Batata Frita',    N'Sexta da batata em dobro',      5, 1080, 1200),
-    (N'Caipirinha de Limão',       N'Sábado da caipirinha em dobro', 6,  960, 1200)
+    (@CaipirinhaProductName,       N'Sábado da caipirinha em dobro', 6,  960, 1200)
 ) AS S (ProductName, PromoName, Day, StartMin, EndMin)
 JOIN dbo.Product AS P ON P.Name = S.ProductName AND P.IsActive = 1
 WHERE NOT EXISTS (

@@ -98,69 +98,95 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
             null,
             async (userIdBox) =>
             {
-                var setting = await _settingRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
-                if (setting is null || !setting.Enabled || setting.ClientId is null)
+                var context = await TryBuildPollingContextAsync(request.CompanyId, cancellationToken);
+                if (context is null)
                     return Result.Success();
 
-                var token = await _tokenProvider.GetAccessTokenAsync(request.CompanyId, cancellationToken);
-                if (token is null)
-                    return Result.Success(); // sem token válido — tenta de novo no próximo ciclo
-
-                // Mappings primeiro: precisa dos MerchantIds ativos da empresa pra montar o
-                // header x-polling-merchants exigido pelo módulo Events (fase 2.1).
-                var mappings = await _merchantMappingRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
-                var merchantIds = mappings.Values
-                    .Where(m => m.IsActive && !string.IsNullOrWhiteSpace(m.MerchantId))
-                    .Select(m => m.MerchantId!)
-                    .Distinct()
-                    .ToList();
-
-                if (merchantIds.Count == 0)
-                    return Result.Success(); // nenhuma loja mapeada ainda — nada pra fazer polling
-
-                var events = await _orderClient.PollEventsAsync(token, merchantIds, cancellationToken);
+                var events = await _orderClient.PollEventsAsync(context.Token, context.MerchantIds, cancellationToken);
                 if (events.Count == 0)
                     return Result.Success();
 
                 var now = _timeProviderCustom.GetLocalNow().DateTime;
-                var acknowledgeIds = new List<string>();
-
-                // Ordena por CreatedAt (a API pode entregar fora de ordem) antes de processar.
-                foreach (var evt in events.OrderBy(e => e.CreatedAt))
-                {
-                    bool shouldAcknowledge;
-
-                    if (IsDuplicateEvent(evt.Id))
-                    {
-                        // Reentrega de um evento já processado num ciclo anterior — confirma de
-                        // novo (ACK sempre enviado) sem repetir a ação.
-                        shouldAcknowledge = true;
-                    }
-                    else
-                    {
-                        try
-                        {
-                            shouldAcknowledge = await ProcessEventAsync(evt, request.CompanyId, token, mappings, now, cancellationToken);
-                            if (shouldAcknowledge)
-                                MarkEventProcessed(evt.Id);
-                        }
-                        catch
-                        {
-                            // Qualquer falha inesperada num evento não derruba o ciclo inteiro — os
-                            // outros eventos deste lote continuam sendo processados normalmente.
-                            shouldAcknowledge = false;
-                        }
-                    }
-
-                    if (shouldAcknowledge)
-                        acknowledgeIds.Add(evt.Id);
-                }
+                var acknowledgeIds = await ProcessEventsAsync(events, request.CompanyId, context.Token, context.Mappings, now, cancellationToken);
 
                 if (acknowledgeIds.Count > 0)
-                    await _orderClient.AcknowledgeEventsAsync(token, acknowledgeIds, cancellationToken);
+                    await _orderClient.AcknowledgeEventsAsync(context.Token, acknowledgeIds, cancellationToken);
 
                 return Result.Success();
             });
+    }
+
+    // Contexto necessário pro polling: token válido + merchants ativos mapeados. null em
+    // qualquer um dos pré-requisitos ausentes (integração desabilitada, sem token, sem loja
+    // mapeada) — Handle trata isso como "nada a fazer neste ciclo".
+    private sealed record PollingContext(string Token, IReadOnlyDictionary<long, IFoodMerchantMapping> Mappings, List<string> MerchantIds);
+
+    private async Task<PollingContext?> TryBuildPollingContextAsync(long companyId, CancellationToken cancellationToken)
+    {
+        var setting = await _settingRepository.GetByCompanyAsync(companyId, cancellationToken);
+        if (setting is null || !setting.Enabled || setting.ClientId is null)
+            return null;
+
+        var token = await _tokenProvider.GetAccessTokenAsync(companyId, cancellationToken);
+        if (token is null)
+            return null; // sem token válido — tenta de novo no próximo ciclo
+
+        // Mappings primeiro: precisa dos MerchantIds ativos da empresa pra montar o
+        // header x-polling-merchants exigido pelo módulo Events (fase 2.1).
+        var mappings = await _merchantMappingRepository.GetByCompanyAsync(companyId, cancellationToken);
+        var merchantIds = mappings.Values
+            .Where(m => m.IsActive && !string.IsNullOrWhiteSpace(m.MerchantId))
+            .Select(m => m.MerchantId!)
+            .Distinct()
+            .ToList();
+
+        if (merchantIds.Count == 0)
+            return null; // nenhuma loja mapeada ainda — nada pra fazer polling
+
+        return new PollingContext(token, mappings, merchantIds);
+    }
+
+    // Ordena por CreatedAt (a API pode entregar fora de ordem) antes de processar, e devolve os
+    // Ids que devem ser confirmados (acknowledgment) ao final do ciclo.
+    private async Task<List<string>> ProcessEventsAsync(
+        IReadOnlyCollection<IFoodPollingEvent> events, long companyId, string token,
+        IReadOnlyDictionary<long, IFoodMerchantMapping> mappingsByBranch, DateTime now, CancellationToken cancellationToken)
+    {
+        var acknowledgeIds = new List<string>();
+
+        foreach (var evt in events.OrderBy(e => e.CreatedAt))
+        {
+            var shouldAcknowledge = await ProcessSingleEventAsync(evt, companyId, token, mappingsByBranch, now, cancellationToken);
+            if (shouldAcknowledge)
+                acknowledgeIds.Add(evt.Id);
+        }
+
+        return acknowledgeIds;
+    }
+
+    // Retorna true se o evento deve ser confirmado (acknowledgment). Reentregas de eventos já
+    // processados num ciclo anterior confirmam de novo sem repetir a ação; falhas inesperadas
+    // num evento não derrubam o ciclo inteiro — os outros eventos do lote continuam sendo
+    // processados normalmente.
+    private async Task<bool> ProcessSingleEventAsync(
+        IFoodPollingEvent evt, long companyId, string token, IReadOnlyDictionary<long, IFoodMerchantMapping> mappingsByBranch,
+        DateTime now, CancellationToken cancellationToken)
+    {
+        if (IsDuplicateEvent(evt.Id))
+            return true;
+
+        try
+        {
+            var shouldAcknowledge = await ProcessEventAsync(evt, companyId, token, mappingsByBranch, now, cancellationToken);
+            if (shouldAcknowledge)
+                MarkEventProcessed(evt.Id);
+
+            return shouldAcknowledge;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     // Dedup por Id do evento — mesmo padrão de cache do IFoodTokenProvider (chave
@@ -204,18 +230,59 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
         if (details is null)
             return false; // 404 — detalhes ainda não disponíveis, tenta de novo no próximo ciclo (30s)
 
+        var assignment = await ResolveBranchAssignmentAsync(details, mappingsByBranch, cancellationToken);
+        if (assignment is null)
+            return false; // loja não mapeada, ou filial sem "funcionário de autoatendimento" configurado
+
+        var orderResult = CreateCustomerOrderFromIFoodDetails(details, evt.OrderId, assignment.Value, now);
+        if (orderResult.IsFailure)
+            return false;
+
+        var customerOrder = orderResult.Value;
+        var hasUnmappedItems = await AddItemsToOrderAsync(
+            customerOrder, details.Items, companyId, assignment.Value.BranchId, assignment.Value.EmployeeId, now, cancellationToken);
+
+        await _customerOrderRepository.AddAsync(customerOrder, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken); // precisa do Id gerado do CustomerOrder antes de criar o IFoodOrder
+
+        var ifoodOrderResult = IFoodOrder.Create(
+            customerOrder.Id, assignment.Value.BranchId, evt.OrderId, details.DisplayId, details.MerchantId,
+            details.OrderType, details.DeliveredBy, details.OrderTiming, details.PreparationStartDateTime,
+            now, hasUnmappedItems);
+
+        if (ifoodOrderResult.IsFailure)
+            return true; // pedido já foi salvo no SyncBar — melhor ter o pedido sem o link do que perdê-lo
+
+        await _ifoodOrderRepository.AddAsync(ifoodOrderResult.Value, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken);
+
+        await ConfirmIfoodOrderWithinSlaAsync(token, evt.OrderId, ifoodOrderResult.Value.Id, now, cancellationToken);
+
+        return true;
+    }
+
+    // BranchId da filial mapeada pro merchant do pedido + EmployeeId do "funcionário de
+    // autoatendimento" configurado nela (Config > Filiais) — ambos exigidos antes de aceitar um
+    // pedido iFood.
+    private readonly record struct BranchAssignment(long BranchId, long EmployeeId);
+
+    private async Task<BranchAssignment?> ResolveBranchAssignmentAsync(
+        IFoodOrderDetailsDto details, IReadOnlyDictionary<long, IFoodMerchantMapping> mappingsByBranch, CancellationToken cancellationToken)
+    {
         var branchEntry = mappingsByBranch.FirstOrDefault(m => m.Value.MerchantId == details.MerchantId);
         if (branchEntry.Value is null)
-            return false; // loja não mapeada ainda em "Lojas (merchants)" — espera o usuário mapear
+            return null; // loja não mapeada ainda em "Lojas (merchants)" — espera o usuário mapear
 
-        var branchId = branchEntry.Key;
-
-        var branch = await _branchRepository.GetByIdAsync(branchId, cancellationToken);
+        var branch = await _branchRepository.GetByIdAsync(branchEntry.Key, cancellationToken);
         if (branch?.SelfServiceEmployeeId is null)
-            return false; // filial precisa de um "funcionário de autoatendimento" configurado (Config > Filiais) antes de aceitar pedidos iFood
+            return null; // filial precisa de um "funcionário de autoatendimento" configurado (Config > Filiais) antes de aceitar pedidos iFood
 
-        var employeeId = branch.SelfServiceEmployeeId.Value;
+        return new BranchAssignment(branchEntry.Key, branch.SelfServiceEmployeeId.Value);
+    }
 
+    private static Result<CustomerOrder> CreateCustomerOrderFromIFoodDetails(
+        IFoodOrderDetailsDto details, string ifoodOrderId, BranchAssignment assignment, DateTime now)
+    {
         var orderTypeId = details.OrderType switch
         {
             "DELIVERY" => OrderTypeIds.Delivery,
@@ -224,25 +291,25 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
 
         var customerName = string.IsNullOrWhiteSpace(details.CustomerName) ? "Cliente iFood" : details.CustomerName;
 
-        var orderResult = CustomerOrder.Create(
-            branchId, null, null, employeeId, null,
-            $"Pedido iFood #{details.DisplayId ?? evt.OrderId}", now, null, orderTypeId,
+        return CustomerOrder.Create(
+            assignment.BranchId, null, null, assignment.EmployeeId, null,
+            $"Pedido iFood #{details.DisplayId ?? ifoodOrderId}", now, null, orderTypeId,
             customerName, details.CustomerPhone,
             orderTypeId == OrderTypeIds.Delivery ? (details.DeliveryAddressFormatted ?? "Endereço não informado") : null);
+    }
 
-        if (orderResult.IsFailure)
-            return false;
-
-        var customerOrder = orderResult.Value;
+    // Fase 6a (extensão): só busca os complementos ativos da empresa se algum item do pedido
+    // realmente trouxer options — evita a query extra no caminho comum (pedido sem
+    // complementos). Complement não é consultável isoladamente por Id (é filho de
+    // ComplementGroup no domínio), então resolve por empresa inteira e indexa por Id uma vez.
+    private async Task<bool> AddItemsToOrderAsync(
+        CustomerOrder customerOrder, IReadOnlyCollection<IFoodOrderItemDto> items, long companyId, long branchId, long employeeId,
+        DateTime now, CancellationToken cancellationToken)
+    {
         var hasUnmappedItems = false;
-
-        // Fase 6a (extensão): só busca os complementos ativos da empresa se algum item do pedido
-        // realmente trouxer options — evita a query extra no caminho comum (pedido sem
-        // complementos). Complement não é consultável isoladamente por Id (é filho de
-        // ComplementGroup no domínio), então resolve por empresa inteira e indexa por Id uma vez.
         Dictionary<long, (Complement Complement, long ComplementGroupId)>? complementsById = null;
 
-        foreach (var item in details.Items)
+        foreach (var item in items)
         {
             Domain.Entities.Product? product = null;
             if (!string.IsNullOrWhiteSpace(item.Ean))
@@ -259,54 +326,50 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
             if (customerOrder.Items.Count == itemCountBefore)
                 continue; // AddItem falhou (quantidade inválida etc.) — item já teria virado hasUnmappedItems se fosse o caso
 
-            var orderItemId = customerOrder.Items.ElementAt(itemCountBefore).Id;
-
             if (item.Options.Count == 0)
                 continue;
 
+            var orderItemId = customerOrder.Items.ElementAt(itemCountBefore).Id;
             complementsById ??= await BuildComplementsByIdAsync(companyId, cancellationToken);
 
-            foreach (var option in item.Options)
-            {
-                if (!Guid.TryParse(option.Id, out var ifoodOptionId))
-                    continue;
-
-                var complementMapping = await _complementMappingRepository.GetByIFoodOptionIdAndBranchAsync(ifoodOptionId, branchId, cancellationToken);
-                if (complementMapping is null)
-                    continue; // opção não mapeada (ou mapeada em outra filial) — não bloqueia o pedido
-
-                if (!complementsById.TryGetValue(complementMapping.ComplementId, out var resolved))
-                    continue; // Complement foi removido/desativado depois do mapeamento ser criado
-
-                customerOrder.AddComplement(orderItemId, resolved.Complement.Id, resolved.Complement.ExtraPrice, now);
-            }
+            await AddComplementsToOrderItemAsync(customerOrder, orderItemId, item.Options, branchId, complementsById, now, cancellationToken);
         }
 
-        await _customerOrderRepository.AddAsync(customerOrder, cancellationToken);
-        await _unitOfWork.CommitAsync(cancellationToken); // precisa do Id gerado do CustomerOrder antes de criar o IFoodOrder
+        return hasUnmappedItems;
+    }
 
-        var ifoodOrderResult = IFoodOrder.Create(
-            customerOrder.Id, branchId, evt.OrderId, details.DisplayId, details.MerchantId,
-            details.OrderType, details.DeliveredBy, details.OrderTiming, details.PreparationStartDateTime,
-            now, hasUnmappedItems);
-
-        if (ifoodOrderResult.IsFailure)
-            return true; // pedido já foi salvo no SyncBar — melhor ter o pedido sem o link do que perdê-lo
-
-        await _ifoodOrderRepository.AddAsync(ifoodOrderResult.Value, cancellationToken);
-        await _unitOfWork.CommitAsync(cancellationToken);
-
-        // Confirma dentro do SLA de 8 minutos — fluxo essencial confirma automaticamente assim
-        // que o pedido é criado no SyncBar (a equipe já vê ele na tela normal de pedidos).
-        var confirmResult = await _orderClient.ConfirmOrderAsync(token, evt.OrderId, cancellationToken);
-        if (confirmResult.Success)
+    private async Task AddComplementsToOrderItemAsync(
+        CustomerOrder customerOrder, long orderItemId, IReadOnlyCollection<IFoodOrderItemOptionDto> options, long branchId,
+        Dictionary<long, (Complement Complement, long ComplementGroupId)> complementsById, DateTime now, CancellationToken cancellationToken)
+    {
+        foreach (var option in options)
         {
-            var tracked = await _ifoodOrderRepository.GetByIdForUpdateAsync(ifoodOrderResult.Value.Id, cancellationToken);
-            tracked?.MarkConfirmed(now);
-            await _unitOfWork.CommitAsync(cancellationToken);
-        }
+            if (!Guid.TryParse(option.Id, out var ifoodOptionId))
+                continue;
 
-        return true;
+            var complementMapping = await _complementMappingRepository.GetByIFoodOptionIdAndBranchAsync(ifoodOptionId, branchId, cancellationToken);
+            if (complementMapping is null)
+                continue; // opção não mapeada (ou mapeada em outra filial) — não bloqueia o pedido
+
+            if (!complementsById.TryGetValue(complementMapping.ComplementId, out var resolved))
+                continue; // Complement foi removido/desativado depois do mapeamento ser criado
+
+            customerOrder.AddComplement(orderItemId, resolved.Complement.Id, resolved.Complement.ExtraPrice, now);
+        }
+    }
+
+    // Confirma dentro do SLA de 8 minutos — fluxo essencial confirma automaticamente assim que o
+    // pedido é criado no SyncBar (a equipe já vê ele na tela normal de pedidos).
+    private async Task ConfirmIfoodOrderWithinSlaAsync(
+        string token, string ifoodOrderId, long trackedIfoodOrderId, DateTime now, CancellationToken cancellationToken)
+    {
+        var confirmResult = await _orderClient.ConfirmOrderAsync(token, ifoodOrderId, cancellationToken);
+        if (!confirmResult.Success)
+            return;
+
+        var tracked = await _ifoodOrderRepository.GetByIdForUpdateAsync(trackedIfoodOrderId, cancellationToken);
+        tracked?.MarkConfirmed(now);
+        await _unitOfWork.CommitAsync(cancellationToken);
     }
 
     // Fase 6a (extensão): Complement é Entity filha de ComplementGroup (sem repositório próprio

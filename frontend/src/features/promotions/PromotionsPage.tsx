@@ -94,7 +94,7 @@ export function PromotionsPage() {
           em dobro: o cliente paga 1 e leva 2 — vale só para pedidos dentro da janela
         </span>
         <span style={{ flex: 1 }} />
-        <button className="btn-primary" onClick={() => { setError(null); setCreating(true); }}>
+        <button type="button" className="btn-primary" onClick={() => { setError(null); setCreating(true); }}>
           + Nova promoção
         </button>
       </div>
@@ -141,6 +141,7 @@ export function PromotionsPage() {
                     </span>
                   </div>
                   <button
+                    type="button"
                     className="btn-danger"
                     style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                     disabled={removeMutation.isPending}
@@ -225,6 +226,7 @@ export function PromotionsPage() {
           )}
           {error && <p className="error-text">{error}</p>}
           <button
+            type="button"
             className="btn-primary"
             disabled={name.trim() === "" || productId === "" || !windowValid || !discountValid || createMutation.isPending}
             onClick={() => createMutation.mutate()}

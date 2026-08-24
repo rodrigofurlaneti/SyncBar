@@ -45,6 +45,14 @@ const nextItemStatus: Record<number, number> = {
   [OrderItemStatus.Pronto]: OrderItemStatus.Entregue,
 };
 
+// Cor do valor consumido vs. limite da comanda: vermelho ao estourar, âmbar perto do limite
+// (>= 80%), verde caso contrário.
+function creditLimitColor(totalAmount: number, creditLimitAmount: number): string {
+  if (totalAmount >= creditLimitAmount) return "var(--danger)";
+  if (totalAmount >= creditLimitAmount * 0.8) return "var(--busy)";
+  return "var(--ok)";
+}
+
 export function OrderDrawer({ orderId, onClose }: Props) {
   const queryClient = useQueryClient();
   const dialog = useDialog();
@@ -271,12 +279,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                 <strong
                   className="mono-num"
                   style={{
-                    color:
-                      order.totalAmount >= order.creditLimitAmount
-                        ? "var(--danger)"
-                        : order.totalAmount >= order.creditLimitAmount * 0.8
-                          ? "var(--busy)"
-                          : "var(--ok)",
+                    color: creditLimitColor(order.totalAmount, order.creditLimitAmount),
                   }}
                 >
                   {formatBRL(order.totalAmount)} / {formatBRL(order.creditLimitAmount)}
@@ -285,6 +288,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
               {featuresQuery.data?.canManageAccess && (
                 <button
                   className="btn-ghost"
+                  type="button"
                   style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                   disabled={raiseLimitMutation.isPending}
                   onClick={async () => {
@@ -352,6 +356,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                     <div style={{ display: "flex", gap: 6 }}>
                       <button
                         className="btn-ghost"
+                        type="button"
                         style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                         onClick={() => advanceItem.mutate({ itemId: item.id, statusId: next })}
                       >
@@ -359,6 +364,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                       </button>
                       <button
                         className="btn-danger"
+                        type="button"
                         aria-label={`Cancelar item ${productNameById.get(item.productId) ?? ""}`.trim()}
                         title="Cancelar item"
                         style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
@@ -426,7 +432,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
             <div className="ui-row ui-row-wrap" style={{ gap: 8 }}>
               {isOpen && order.diningTableId !== null && canUseCash &&
                 order.totalAmount - order.partialPaidAmount > 0 && (
-                <button className="btn-ghost" onClick={() => setPartialOpen(true)}>
+                <button className="btn-ghost" type="button" onClick={() => setPartialOpen(true)}>
                   💸 Pagamento parcial (cliente saindo)
                 </button>
               )}
@@ -434,6 +440,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
               {awaitingPayment && (
                 <button
                   className="btn-ghost"
+                  type="button"
                   disabled={reopenMutation.isPending}
                   onClick={async () => {
                     if (
@@ -454,6 +461,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
               {awaitingPayment && order.serviceFeeAmount > 0 && featuresQuery.data?.canManageAccess && (
                 <button
                   className="btn-ghost"
+                  type="button"
                   disabled={removeFeeMutation.isPending}
                   onClick={async () => {
                     if (
@@ -473,6 +481,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
               {awaitingPayment && printSettingsQuery.data?.printBillsEnabled && (
                 <button
                   className="btn-ghost"
+                  type="button"
                   disabled={printBillMutation.isPending}
                   onClick={() => printBillMutation.mutate()}
                 >
@@ -520,6 +529,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                       <button
                         key={item.id}
                         className="btn-ghost"
+                        type="button"
                         style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 14px", minHeight: 56 }}
                         disabled={addItem.isPending}
                         onClick={() => handlePickItem(item)}
@@ -571,6 +581,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                 />
                 <button
                   className="btn-ghost"
+                  type="button"
                   disabled={discount.trim() === "" || discountMutation.isPending}
                   onClick={() => discountMutation.mutate()}
                 >
@@ -583,6 +594,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
               <div className="drawer-actionbar">
                 <button
                   className="btn-danger"
+                  type="button"
                   style={{ flex: 1 }}
                   disabled={cancelMutation.isPending}
                   onClick={async () => {
@@ -602,6 +614,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                 </button>
                 <button
                   className="btn-primary"
+                  type="button"
                   style={{ flex: 2 }}
                   disabled={order.items.length === 0 || closeMutation.isPending}
                   onClick={() => closeMutation.mutate()}

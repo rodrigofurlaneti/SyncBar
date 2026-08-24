@@ -46,6 +46,7 @@ export function OpenDeliveryOrderDialog({ onClose, onOpened }: Props) {
     <Overlay onClose={onClose} title="Novo pedido — retirada / delivery">
       <div style={{ display: "flex", gap: 8 }}>
         <button
+          type="button"
           className={orderTypeId === OrderType.Retirada ? "btn-primary" : "btn-ghost"}
           style={{ flex: 1 }}
           onClick={() => setOrderTypeId(OrderType.Retirada)}
@@ -53,6 +54,7 @@ export function OpenDeliveryOrderDialog({ onClose, onOpened }: Props) {
           Retirada
         </button>
         <button
+          type="button"
           className={isDelivery ? "btn-primary" : "btn-ghost"}
           style={{ flex: 1 }}
           onClick={() => setOrderTypeId(OrderType.Delivery)}
@@ -85,10 +87,15 @@ export function OpenDeliveryOrderDialog({ onClose, onOpened }: Props) {
       )}
 
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        <button className="btn-ghost" onClick={onClose}>
+        <button type="button" className="btn-ghost" onClick={onClose}>
           Voltar
         </button>
-        <button className="btn-primary" disabled={!canSubmit || mutation.isPending} onClick={() => mutation.mutate()}>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={!canSubmit || mutation.isPending}
+          onClick={() => mutation.mutate()}
+        >
           {mutation.isPending ? "Abrindo…" : "Abrir pedido"}
         </button>
       </div>

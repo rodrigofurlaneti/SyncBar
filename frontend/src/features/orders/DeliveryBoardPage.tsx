@@ -41,6 +41,12 @@ const VIEW_MODE_KEY = "syncbar:delivery-view-mode";
 const ON_ROUTE_KEY = "syncbar:delivery-on-route";
 const GHOST_LIMIT = 40;
 
+const CHANNEL_FILTER_LABELS: Record<ChannelFilter, string> = {
+  todos: "Todos",
+  delivery: "Delivery",
+  retirada: "Retirada",
+};
+
 function loadViewMode(): ViewMode {
   try {
     const stored = localStorage.getItem(VIEW_MODE_KEY);
@@ -185,27 +191,28 @@ function OrderCard({
       </div>
 
       {stage === "novo" && (
-        <button className="btn-primary btn-sm" disabled={busy} onClick={stop(onSendToKitchen)}>
+        <button type="button" className="btn-primary btn-sm" disabled={busy} onClick={stop(onSendToKitchen)}>
           {busy ? "Enviando…" : "Enviar p/ cozinha"}
         </button>
       )}
       {stage === "cozinha" && (
-        <button className="btn-primary btn-sm" disabled={busy} onClick={stop(onMarkReady)}>
+        <button type="button" className="btn-primary btn-sm" disabled={busy} onClick={stop(onMarkReady)}>
           {busy ? "Atualizando…" : "Pronto p/ saída"}
         </button>
       )}
       {stage === "aguardando" && (
-        <button className="btn-primary btn-sm" disabled={busy} onClick={stop(onMarkOnRoute)}>
+        <button type="button" className="btn-primary btn-sm" disabled={busy} onClick={stop(onMarkOnRoute)}>
           Saiu para entrega
         </button>
       )}
       {stage === "rota" && (
-        <button className="btn-primary btn-sm" disabled={busy} onClick={stop(onOpen)}>
+        <button type="button" className="btn-primary btn-sm" disabled={busy} onClick={stop(onOpen)}>
           Confirmar entrega
         </button>
       )}
       {(stage === "novo" || stage === "cozinha" || stage === "aguardando") && (
         <button
+          type="button"
           className="btn-danger btn-sm"
           disabled={busy}
           onClick={stop(onCancel)}
@@ -415,19 +422,21 @@ export function DeliveryBoardPage() {
           <span className="ui-spacer" />
           <div style={{ display: "flex", gap: 6 }}>
             <button
+              type="button"
               className={viewMode === "simples" ? "btn-primary btn-sm" : "btn-ghost btn-sm"}
               onClick={() => setViewMode("simples")}
             >
               Simples
             </button>
             <button
+              type="button"
               className={viewMode === "completo" ? "btn-primary btn-sm" : "btn-ghost btn-sm"}
               onClick={() => setViewMode("completo")}
             >
               Completo
             </button>
           </div>
-          <button className="btn-primary" onClick={() => setOpeningNew(true)}>
+          <button type="button" className="btn-primary" onClick={() => setOpeningNew(true)}>
             + Novo pedido
           </button>
         </div>
@@ -438,10 +447,11 @@ export function DeliveryBoardPage() {
               {(["todos", "delivery", "retirada"] as ChannelFilter[]).map((c) => (
                 <button
                   key={c}
+                  type="button"
                   className={channelFilter === c ? "btn-primary btn-sm" : "btn-ghost btn-sm"}
                   onClick={() => setChannelFilter(c)}
                 >
-                  {c === "todos" ? "Todos" : c === "delivery" ? "Delivery" : "Retirada"}
+                  {CHANNEL_FILTER_LABELS[c]}
                 </button>
               ))}
             </div>
@@ -453,6 +463,7 @@ export function DeliveryBoardPage() {
             />
             <span className="ui-spacer" />
             <button
+              type="button"
               className="btn-ghost btn-sm"
               disabled
               title="Otimização de rotas ainda não implementada — próxima fase de Logística."

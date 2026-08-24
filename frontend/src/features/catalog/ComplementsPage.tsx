@@ -20,12 +20,14 @@ export function ComplementsPage() {
 
       <div className="rise rise-1" style={{ display: "flex", gap: 8, marginBottom: 18 }}>
         <button
+          type="button"
           className={tab === "groups" ? "btn-primary" : "btn-ghost"}
           onClick={() => setTab("groups")}
         >
           Grupos
         </button>
         <button
+          type="button"
           className={tab === "items" ? "btn-primary" : "btn-ghost"}
           onClick={() => setTab("items")}
         >

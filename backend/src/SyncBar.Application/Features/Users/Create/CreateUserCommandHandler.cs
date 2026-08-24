@@ -39,7 +39,6 @@ internal sealed class CreateUserCommandHandler : BaseCommandHandler<CreateUserCo
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do administrador que está criando o usuário, preencha:
-                // userIdBox.Value = request.CreatedByUserId;
 
                 if (await _userRepository.ExistsAsync(request.UserName, request.Email, cancellationToken))
                     return Result.Failure<long>(new Error("AppUser.AlreadyExists", "User name or e-mail already in use."));

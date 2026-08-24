@@ -29,7 +29,6 @@ internal sealed class SetPrintSettingsCommandHandler : BaseCommandHandler<SetPri
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário ou administrador executando a ação, preencha:
-                // userIdBox.Value = request.UserId;
 
                 // Upsert por filial (espelha UQ_PrinterSetting_BranchId filtrado).
                 var settings = await _settingRepository.GetByBranchForUpdateAsync(request.BranchId, cancellationToken);

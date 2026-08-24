@@ -20,7 +20,6 @@ internal sealed class GetRolesQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do administrador consultando os perfis, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var roles = await roleRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
 

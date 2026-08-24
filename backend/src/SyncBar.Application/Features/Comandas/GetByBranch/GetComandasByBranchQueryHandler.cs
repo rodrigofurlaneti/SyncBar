@@ -20,7 +20,6 @@ internal sealed class GetComandasByBranchQueryHandler(
             async (userIdBox) =>
             {
                 // Se houver um UserId no request, você pode associá-lo aqui:
-                // userIdBox.Value = request.UserId;
 
                 var comandas = await comandaRepository.GetByBranchAsync(request.BranchId, cancellationToken);
 

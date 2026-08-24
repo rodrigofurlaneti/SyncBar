@@ -32,7 +32,6 @@ internal sealed class ConfirmReservationCommandHandler : BaseCommandHandler<Conf
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário (ex: recepcionista) confirmando a reserva, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var reservation = await _reservationRepository.GetByIdForUpdateAsync(request.ReservationId, cancellationToken);
                 if (reservation is null || !reservation.IsActive)

@@ -32,7 +32,6 @@ internal sealed class CancelReservationCommandHandler : BaseCommandHandler<Cance
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário ou cliente cancelando a reserva, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var reservation = await _reservationRepository.GetByIdForUpdateAsync(request.ReservationId, cancellationToken);
                 if (reservation is null || !reservation.IsActive)

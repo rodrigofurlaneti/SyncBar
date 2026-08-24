@@ -9,6 +9,8 @@ USE BarRestauranteDb;
 GO
 
 /* ============================ UnitOfMeasure ============================ */
+DECLARE @UnitOfMeasureCaixaName NVARCHAR(50) = N'Caixa';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.UnitOfMeasure)
 BEGIN
     DBCC CHECKIDENT ('dbo.UnitOfMeasure', RESEED, 0);
@@ -24,7 +26,7 @@ BEGIN
         (7, N'Porção',     'PC'),
         (8, N'Garrafa',    'GF'),
         (9, N'Lata',       'LT'),
-        (10, N'Caixa',     'CX');
+        (10, @UnitOfMeasureCaixaName, 'CX');
 
     BEGIN TRY SET IDENTITY_INSERT dbo.UnitOfMeasure OFF END TRY BEGIN CATCH END CATCH;
 END;
@@ -181,6 +183,11 @@ GO
 
 
 /* ============================ Permission ============================ */
+DECLARE @PermissionModulePedidos NVARCHAR(50) = N'Pedidos';
+DECLARE @PermissionModuleCaixa NVARCHAR(50) = N'Caixa';
+DECLARE @PermissionModuleFaturamento NVARCHAR(50) = N'Faturamento';
+DECLARE @PermissionModuleEstoque NVARCHAR(50) = N'Estoque';
+
 IF NOT EXISTS (SELECT 1 FROM dbo.Permission)
 BEGIN
     DBCC CHECKIDENT ('dbo.Permission', RESEED, 0);
@@ -191,20 +198,20 @@ BEGIN
         (2,  'Auth.ManageRoles',       N'Gerenciar perfis e permissões', N'Autenticação'),
         (3,  'Employee.Read',          N'Consultar funcionários',        N'Funcionários'),
         (4,  'Employee.Manage',        N'Gerenciar funcionários',        N'Funcionários'),
-        (5,  'Order.Create',           N'Abrir pedido (mesa/comanda)',   N'Pedidos'),
-        (6,  'Order.AddItem',          N'Lançar itens no pedido',        N'Pedidos'),
-        (7,  'Order.Cancel',           N'Cancelar pedido/item',          N'Pedidos'),
-        (8,  'Order.ApplyDiscount',    N'Aplicar desconto',              N'Pedidos'),
-        (9,  'Cash.OpenSession',       N'Abrir caixa',                   N'Caixa'),
-        (10, 'Cash.CloseSession',      N'Fechar caixa',                  N'Caixa'),
-        (11, 'Cash.Movement',          N'Sangria e suprimento',          N'Caixa'),
-        (12, 'Sale.Register',          N'Registrar venda/pagamento',     N'Faturamento'),
-        (13, 'Sale.Refund',            N'Estornar venda',                N'Faturamento'),
-        (14, 'Billing.Reports',        N'Relatórios de faturamento',     N'Faturamento'),
-        (15, 'Stock.Read',             N'Consultar estoque',             N'Estoque'),
-        (16, 'Stock.Movement',         N'Lançar entrada/saída',          N'Estoque'),
-        (17, 'Stock.Purchase',         N'Registrar compras',             N'Estoque'),
-        (18, 'Stock.Adjust',           N'Ajustar/inventariar estoque',   N'Estoque');
+        (5,  'Order.Create',           N'Abrir pedido (mesa/comanda)',   @PermissionModulePedidos),
+        (6,  'Order.AddItem',          N'Lançar itens no pedido',        @PermissionModulePedidos),
+        (7,  'Order.Cancel',           N'Cancelar pedido/item',          @PermissionModulePedidos),
+        (8,  'Order.ApplyDiscount',    N'Aplicar desconto',              @PermissionModulePedidos),
+        (9,  'Cash.OpenSession',       N'Abrir caixa',                   @PermissionModuleCaixa),
+        (10, 'Cash.CloseSession',      N'Fechar caixa',                  @PermissionModuleCaixa),
+        (11, 'Cash.Movement',          N'Sangria e suprimento',          @PermissionModuleCaixa),
+        (12, 'Sale.Register',          N'Registrar venda/pagamento',     @PermissionModuleFaturamento),
+        (13, 'Sale.Refund',            N'Estornar venda',                @PermissionModuleFaturamento),
+        (14, 'Billing.Reports',        N'Relatórios de faturamento',     @PermissionModuleFaturamento),
+        (15, 'Stock.Read',             N'Consultar estoque',             @PermissionModuleEstoque),
+        (16, 'Stock.Movement',         N'Lançar entrada/saída',          @PermissionModuleEstoque),
+        (17, 'Stock.Purchase',         N'Registrar compras',             @PermissionModuleEstoque),
+        (18, 'Stock.Adjust',           N'Ajustar/inventariar estoque',   @PermissionModuleEstoque);
 
     BEGIN TRY SET IDENTITY_INSERT dbo.Permission OFF END TRY BEGIN CATCH END CATCH;
 END;
@@ -301,19 +308,22 @@ GO
 
 /* ============================ Perfis operacionais (por nome) ============================ */
 DECLARE @CompanyId BIGINT = (SELECT TOP 1 Id FROM dbo.Company WHERE IsActive = 1);
+DECLARE @RoleNameCaixa NVARCHAR(50) = N'Caixa';
 
 INSERT INTO dbo.Role (CompanyId, Name, Description)
 SELECT @CompanyId, R.Name, R.Description
 FROM (VALUES
-    (N'Gerente',    N'Gestão operacional da filial'),
-    (N'Garçom',     N'Lançamento de pedidos em mesa e comanda'),
-    (N'Caixa',      N'Operação de caixa e recebimentos'),
-    (N'Estoquista', N'Controle de estoque e compras')) AS R (Name, Description)
+    (N'Gerente',      N'Gestão operacional da filial'),
+    (N'Garçom',       N'Lançamento de pedidos em mesa e comanda'),
+    (@RoleNameCaixa,  N'Operação de caixa e recebimentos'),
+    (N'Estoquista',   N'Controle de estoque e compras')) AS R (Name, Description)
 WHERE NOT EXISTS (SELECT 1 FROM dbo.Role X WHERE X.CompanyId = @CompanyId AND X.Name = R.Name AND X.IsActive = 1);
 GO
 
 /* ============================ Permissões por perfil (por nome) ============================ */
 DECLARE @CompanyId BIGINT = (SELECT TOP 1 Id FROM dbo.Company WHERE IsActive = 1);
+DECLARE @RoleNameCaixa NVARCHAR(50) = N'Caixa';
+DECLARE @PermissionModuleEstoque NVARCHAR(50) = N'Estoque';
 
 /* Administrador: todas */
 INSERT INTO dbo.RolePermission (RoleId, PermissionId)
@@ -336,14 +346,14 @@ INSERT INTO dbo.RolePermission (RoleId, PermissionId)
 SELECT R.Id, P.Id
 FROM dbo.Role AS R
 JOIN dbo.Permission AS P ON P.Code IN ('Cash.OpenSession', 'Cash.CloseSession', 'Cash.Movement', 'Sale.Register') AND P.IsActive = 1
-WHERE R.CompanyId = @CompanyId AND R.Name = N'Caixa' AND R.IsActive = 1
+WHERE R.CompanyId = @CompanyId AND R.Name = @RoleNameCaixa AND R.IsActive = 1
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission X WHERE X.RoleId = R.Id AND X.PermissionId = P.Id AND X.IsActive = 1);
 
 /* Estoquista */
 INSERT INTO dbo.RolePermission (RoleId, PermissionId)
 SELECT R.Id, P.Id
 FROM dbo.Role AS R
-JOIN dbo.Permission AS P ON P.ModuleName = N'Estoque' AND P.IsActive = 1
+JOIN dbo.Permission AS P ON P.ModuleName = @PermissionModuleEstoque AND P.IsActive = 1
 WHERE R.CompanyId = @CompanyId AND R.Name = N'Estoquista' AND R.IsActive = 1
   AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission X WHERE X.RoleId = R.Id AND X.PermissionId = P.Id AND X.IsActive = 1);
 GO

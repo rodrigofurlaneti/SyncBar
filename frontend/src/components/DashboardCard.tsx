@@ -1,5 +1,11 @@
 ﻿import type { ReactNode } from "react";
 
+const TREND_META: Record<"up" | "down" | "neutral", { color: string; arrow: string }> = {
+  up: { color: "#4caf50", arrow: "↑" },
+  down: { color: "#f44336", arrow: "↓" },
+  neutral: { color: "#999", arrow: "→" },
+};
+
 interface DashboardCardProps {
   title: string;
   value?: ReactNode;
@@ -109,10 +115,10 @@ export function DashboardCard({
               <span
                 style={{
                   fontSize: "0.85rem",
-                  color: trend.direction === "up" ? "#4caf50" : trend.direction === "down" ? "#f44336" : "#999",
+                  color: TREND_META[trend.direction].color,
                 }}
               >
-                {trend.direction === "up" ? "↑" : trend.direction === "down" ? "↓" : "→"}
+                {TREND_META[trend.direction].arrow}
                 {trend.percentage.toFixed(1)}%
               </span>
             </div>

@@ -59,7 +59,7 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- Verificação:
-SELECT * FROM IFoodOpeningHours;
+SELECT Id, BranchId, DayOfWeek, Start, DurationMinutes, CreatedAt, UpdatedAt, IsActive FROM IFoodOpeningHours;
 SELECT Id, BranchId, MerchantId, PreparationTimeMinutes FROM IFoodMerchantMapping;
 SELECT Id, CompanyId, ClientId, IFoodCustomerId FROM IFoodIntegrationSetting;
 

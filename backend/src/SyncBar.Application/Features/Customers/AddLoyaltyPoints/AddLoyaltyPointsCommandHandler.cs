@@ -27,9 +27,6 @@ internal sealed class AddLoyaltyPointsCommandHandler : BaseCommandHandler<AddLoy
             null, // Substitua pelo IP presente no request, caso aplicável
             async (userIdBox) =>
             {
-                // Se o seu request possuir o Id do usuário que está executando a ação, preencha:
-                // userIdBox.Value = request.UserId;
-
                 var customer = await _customerRepository.GetByIdForUpdateAsync(request.CustomerId, cancellationToken);
                 if (customer is null || !customer.IsActive)
                     return Result.Failure(new Error("Customer.NotFound", "Customer not found."));

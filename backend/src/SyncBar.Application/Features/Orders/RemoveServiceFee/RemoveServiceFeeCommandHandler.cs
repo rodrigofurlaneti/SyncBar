@@ -31,7 +31,6 @@ internal sealed class RemoveServiceFeeCommandHandler : BaseCommandHandler<Remove
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gerente responsável por remover a taxa, preencha:
-                // userIdBox.Value = request.UserId; 
 
                 var order = await _orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
                 if (order is null || !order.IsActive)

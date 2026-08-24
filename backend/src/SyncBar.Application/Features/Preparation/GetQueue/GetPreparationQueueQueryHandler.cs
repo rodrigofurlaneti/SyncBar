@@ -37,7 +37,6 @@ internal sealed class GetPreparationQueueQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/painel (KDS) consultando a fila, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var orders = await orderRepository.GetOpenByBranchAsync(request.BranchId, cancellationToken);
                 var tables = await diningTableRepository.GetByBranchAsync(request.BranchId, cancellationToken);

@@ -50,7 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
             A tela travou por um erro inesperado. Recarregar a página costuma resolver — se
             persistir, avise o suporte.
           </p>
-          <button className="btn-primary" onClick={() => window.location.reload()}>
+          <button type="button" className="btn-primary" onClick={() => window.location.reload()}>
             Recarregar
           </button>
         </div>

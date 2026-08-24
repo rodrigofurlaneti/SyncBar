@@ -20,7 +20,6 @@ internal sealed class GetPurchasesByBranchQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gerente que está consultando, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var purchases = await purchaseRepository.GetByBranchAsync(request.BranchId, cancellationToken);
 

@@ -105,6 +105,7 @@ export function IFoodCatalogPage() {
         {TABS.map((tab) => (
           <button
             key={tab.key}
+            type="button"
             onClick={() => setActiveTab(tab.key)}
             style={{
               padding: "12px 18px",

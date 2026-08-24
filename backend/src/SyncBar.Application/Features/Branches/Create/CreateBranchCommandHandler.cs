@@ -27,9 +27,6 @@ internal sealed class CreateBranchCommandHandler : BaseCommandHandler<CreateBran
             null,
             async (userIdBox) =>
             {
-                // Dica: Se você tiver o ID do usuário logado via request ou interface (UserContext), 
-                // você pode atribuí-lo aqui: userIdBox.Value = request.UserId;
-
                 var branch = Branch.Create(
                     request.CompanyId, request.Name, request.Cnpj, request.Phone,
                     request.AddressStreet, request.AddressNumber, request.AddressDistrict,

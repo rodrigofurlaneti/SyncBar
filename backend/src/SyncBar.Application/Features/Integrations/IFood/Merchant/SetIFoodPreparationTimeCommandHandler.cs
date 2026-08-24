@@ -29,40 +29,67 @@ internal sealed class SetIFoodPreparationTimeCommandHandler(
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
-                    request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
-                if (resolved.IsFailure)
-                    return Result.Failure(resolved.Error);
+                var context = await ResolveMerchantContextAsync(request.BranchId, cancellationToken);
+                if (context.IsFailure)
+                    return Result.Failure(context.Error);
 
-                var (_, merchantId, token, ifoodCustomerId) = resolved.Value;
-                if (string.IsNullOrWhiteSpace(ifoodCustomerId))
-                    return Result.Failure(new Error(
-                        "IFoodMerchant.MissingCustomerId",
-                        "Configure o iFood Customer ID nas credenciais do app antes de definir o tempo de preparo."));
+                var (merchantId, token, ifoodCustomerId) = context.Value;
 
-                if (request.Minutes is null)
-                {
-                    var deleteResult = await merchantClient.DeletePreparationTimeAsync(token, merchantId, ifoodCustomerId, cancellationToken);
-                    if (!deleteResult.Success)
-                        return Result.Failure(new Error("IFoodMerchant.DeletePreparationTimeFailed", deleteResult.ErrorMessage ?? "Failed to reset preparation time on iFood."));
-                }
-                else
-                {
-                    var upsertResult = await merchantClient.UpsertPreparationTimeAsync(token, merchantId, ifoodCustomerId, request.Minutes.Value, cancellationToken);
-                    if (!upsertResult.Success)
-                        return Result.Failure(new Error("IFoodMerchant.SetPreparationTimeFailed", upsertResult.ErrorMessage ?? "Failed to set preparation time on iFood."));
-                }
+                var syncResult = await SyncPreparationTimeOnIFoodAsync(
+                    token, merchantId, ifoodCustomerId, request.Minutes, cancellationToken);
+                if (syncResult.IsFailure)
+                    return syncResult;
 
-                var mapping = await mappingRepository.GetByBranchForUpdateAsync(request.BranchId, cancellationToken);
-                if (mapping is null)
-                    return Result.Failure(new Error("IFoodMerchant.NoMerchantId", "This branch has no iFood Merchant ID configured."));
-
-                var set = mapping.SetPreparationTime(request.Minutes);
-                if (set.IsFailure)
-                    return set;
+                var mappingResult = await UpdateMappingPreparationTimeAsync(request.BranchId, request.Minutes, cancellationToken);
+                if (mappingResult.IsFailure)
+                    return mappingResult;
 
                 await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
+    }
+
+    private async Task<Result<(string MerchantId, string Token, string IFoodCustomerId)>> ResolveMerchantContextAsync(
+        long branchId, CancellationToken cancellationToken)
+    {
+        var resolved = await IFoodMerchantResolution.ResolveAsync(
+            branchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
+        if (resolved.IsFailure)
+            return Result.Failure<(string MerchantId, string Token, string IFoodCustomerId)>(resolved.Error);
+
+        var (_, merchantId, token, ifoodCustomerId) = resolved.Value;
+        if (string.IsNullOrWhiteSpace(ifoodCustomerId))
+            return Result.Failure<(string MerchantId, string Token, string IFoodCustomerId)>(new Error(
+                "IFoodMerchant.MissingCustomerId",
+                "Configure o iFood Customer ID nas credenciais do app antes de definir o tempo de preparo."));
+
+        (string MerchantId, string Token, string IFoodCustomerId) value = (merchantId, token, ifoodCustomerId);
+        return Result.Success(value);
+    }
+
+    private async Task<Result> SyncPreparationTimeOnIFoodAsync(
+        string token, string merchantId, string ifoodCustomerId, int? minutes, CancellationToken cancellationToken)
+    {
+        if (minutes is null)
+        {
+            var deleteResult = await merchantClient.DeletePreparationTimeAsync(token, merchantId, ifoodCustomerId, cancellationToken);
+            return deleteResult.Success
+                ? Result.Success()
+                : Result.Failure(new Error("IFoodMerchant.DeletePreparationTimeFailed", deleteResult.ErrorMessage ?? "Failed to reset preparation time on iFood."));
+        }
+
+        var upsertResult = await merchantClient.UpsertPreparationTimeAsync(token, merchantId, ifoodCustomerId, minutes.Value, cancellationToken);
+        return upsertResult.Success
+            ? Result.Success()
+            : Result.Failure(new Error("IFoodMerchant.SetPreparationTimeFailed", upsertResult.ErrorMessage ?? "Failed to set preparation time on iFood."));
+    }
+
+    private async Task<Result> UpdateMappingPreparationTimeAsync(long branchId, int? minutes, CancellationToken cancellationToken)
+    {
+        var mapping = await mappingRepository.GetByBranchForUpdateAsync(branchId, cancellationToken);
+        if (mapping is null)
+            return Result.Failure(new Error("IFoodMerchant.NoMerchantId", "This branch has no iFood Merchant ID configured."));
+
+        return mapping.SetPreparationTime(minutes);
     }
 }

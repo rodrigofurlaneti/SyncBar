@@ -74,7 +74,7 @@ export function InventoryOverlay({ items, productName, onClose, onDone }: Props)
             ))}
           </div>
         )}
-        <button className="btn-primary" onClick={onClose}>Fechar</button>
+        <button type="button" className="btn-primary" onClick={onClose}>Fechar</button>
       </Overlay>
     );
 
@@ -115,6 +115,7 @@ export function InventoryOverlay({ items, productName, onClose, onDone }: Props)
       {error && <p className="error-text">{error}</p>}
 
       <button
+        type="button"
         className="btn-primary"
         disabled={filled.length === 0 || mutation.isPending}
         onClick={() => mutation.mutate()}

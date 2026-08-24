@@ -20,7 +20,6 @@ internal sealed class ChargePaymentCommandHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário ou cliente responsável pela transação, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var charge = await gateway.ChargeAsync(
                     new PaymentChargeRequest(request.SaleId, request.Amount, request.Method, request.CustomerDocument),

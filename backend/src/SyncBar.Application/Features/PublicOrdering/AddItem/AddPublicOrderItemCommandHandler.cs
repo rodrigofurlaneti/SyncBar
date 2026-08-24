@@ -51,103 +51,179 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
             null, // Substitua pelo IP do cliente lido no request, caso aplicável
             async (userIdBox) =>
             {
-                var table = await _diningTableRepository.GetByQrTokenAsync(request.Token, cancellationToken);
-                if (table is null || !table.IsActive)
-                    return Result.Failure<long>(new Error("DiningTable.InvalidToken", "Invalid or expired QR code."));
+                var tableResult = await ValidateTableAsync(request.Token, cancellationToken);
+                if (tableResult.IsFailure)
+                    return Result.Failure<long>(tableResult.Error);
+                var table = tableResult.Value;
 
-                var branch = await _branchRepository.GetByIdAsync(table.BranchId, cancellationToken);
-                if (branch is null || !branch.IsActive)
-                    return Result.Failure<long>(new Error("Branch.NotFound", "Branch not found."));
-                if (!branch.SelfServiceEmployeeId.HasValue)
-                    return Result.Failure<long>(new Error("Branch.SelfServiceDisabled",
-                        "Self-service ordering is not enabled for this branch. Ask the manager to configure it."));
+                var branchResult = await ValidateBranchAsync(table.BranchId, cancellationToken);
+                if (branchResult.IsFailure)
+                    return Result.Failure<long>(branchResult.Error);
+                var branch = branchResult.Value;
 
                 // Associa a ação no log ao funcionário "virtual" de autoatendimento configurado na filial
-                userIdBox.Value = branch.SelfServiceEmployeeId.Value;
+                // (GetValueOrDefault em vez de .Value: HasValue já foi validado em ValidateBranchAsync,
+                // mas o compilador não rastreia essa garantia entre métodos — CS8629 com -warnaserror)
+                userIdBox.Value = branch.SelfServiceEmployeeId.GetValueOrDefault();
 
-                var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
-                if (product is null || !product.IsActive || product.CompanyId != branch.CompanyId)
-                    return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
+                var productResult = await ValidateProductAsync(request.ProductId, branch.CompanyId, cancellationToken);
+                if (productResult.IsFailure)
+                    return Result.Failure<long>(productResult.Error);
+                var product = productResult.Value;
 
-                // Mesma validação de AddOrderItemCommandHandler: resolve e valida os complementos
-                // ANTES de tocar no pedido, pra não deixar o item lançado se um complemento for inválido.
-                var resolvedComplements = new List<(long ComplementId, decimal ExtraPrice)>();
-                if (request.Complements is { Count: > 0 })
-                {
-                    var links = await _productComplementGroupRepository.GetByProductAsync(product.Id, cancellationToken);
-                    var allowedGroupIds = links.Select(l => l.ComplementGroupId).ToHashSet();
-
-                    foreach (var selection in request.Complements)
-                    {
-                        if (!allowedGroupIds.Contains(selection.ComplementGroupId))
-                            return Result.Failure<long>(new Error("OrderItem.ComplementGroupNotAvailable",
-                                $"Complement group {selection.ComplementGroupId} is not available for this product."));
-
-                        var group = await _complementGroupRepository.GetByIdAsync(selection.ComplementGroupId, cancellationToken);
-                        if (group is null || !group.IsActive)
-                            return Result.Failure<long>(new Error("ComplementGroup.NotFound", "Complement group not found."));
-
-                        var complement = group.Complements.FirstOrDefault(c => c.Id == selection.ComplementId && c.IsActive);
-                        if (complement is null)
-                            return Result.Failure<long>(new Error("ComplementGroup.ComplementNotFound", "Complement not found in this group."));
-
-                        resolvedComplements.Add((complement.Id, complement.ExtraPrice));
-                    }
-                }
+                var complementsResult = await ResolveComplementsAsync(product, request, cancellationToken);
+                if (complementsResult.IsFailure)
+                    return Result.Failure<long>(complementsResult.Error);
+                var resolvedComplements = complementsResult.Value;
 
                 var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
 
-                var order = await _orderRepository.GetOpenByTableForUpdateAsync(table.Id, cancellationToken);
-                var isNewOrder = order is null;
-                if (order is null)
-                {
-                    // Passando o currentTime para o Create
-                    var created = CustomerOrder.Create(
-                        table.BranchId, table.Id, null, branch.SelfServiceEmployeeId.Value,
-                        null, "Pedido via QR Code", currentTime, null, OrderTypeIds.Mesa);
-
-                    if (created.IsFailure)
-                        return Result.Failure<long>(created.Error);
-
-                    order = created.Value;
-                    await _orderRepository.AddAsync(order, cancellationToken);
-                    await _unitOfWork.CommitAsync(cancellationToken);
-                }
+                var orderResult = await GetOrCreateOrderAsync(table, branch, currentTime, cancellationToken);
+                if (orderResult.IsFailure)
+                    return Result.Failure<long>(orderResult.Error);
+                var (order, isNewOrder) = orderResult.Value;
 
                 if (isNewOrder)
                     table.ChangeStatus(TableStatusIds.Ocupada);
 
-                var itemCountBefore = order.Items.Count;
-
-                // Passando o currentTime para o AddItem
-                var added = order.AddItem(product.Id, product.SalePrice, request.Quantity, request.Notes, null, currentTime);
-                if (added.IsFailure)
-                    return Result.Failure<long>(added.Error);
-
-                if (resolvedComplements.Count > 0)
-                {
-                    var primaryItemId = order.Items.ElementAt(itemCountBefore).Id;
-                    foreach (var (complementId, extraPrice) in resolvedComplements)
-                    {
-                        var complementResult = order.AddComplement(primaryItemId, complementId, extraPrice, currentTime);
-                        if (complementResult.IsFailure)
-                            return Result.Failure<long>(complementResult.Error);
-                    }
-                }
+                var addItemResult = AddItemWithComplements(order, product, request, resolvedComplements, currentTime);
+                if (addItemResult.IsFailure)
+                    return Result.Failure<long>(addItemResult.Error);
+                var itemCountBefore = addItemResult.Value;
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 var newItemIds = order.Items.Skip(itemCountBefore).Select(i => i.Id).ToList();
-                try
-                {
-                    await _printingService.PrintOrderItemsAsync(order.Id, newItemIds, cancellationToken);
-                }
-                catch
-                {
-                    // silencioso
-                }
+                await PrintNewItemsAsync(order.Id, newItemIds, cancellationToken);
 
                 return Result.Success(order.Id);
             });
+    }
+
+    private async Task<Result<DiningTable>> ValidateTableAsync(Guid token, CancellationToken cancellationToken)
+    {
+        var table = await _diningTableRepository.GetByQrTokenAsync(token, cancellationToken);
+        if (table is null || !table.IsActive)
+            return Result.Failure<DiningTable>(new Error("DiningTable.InvalidToken", "Invalid or expired QR code."));
+
+        return Result.Success(table);
+    }
+
+    private async Task<Result<Branch>> ValidateBranchAsync(long branchId, CancellationToken cancellationToken)
+    {
+        var branch = await _branchRepository.GetByIdAsync(branchId, cancellationToken);
+        if (branch is null || !branch.IsActive)
+            return Result.Failure<Branch>(new Error("Branch.NotFound", "Branch not found."));
+
+        if (!branch.SelfServiceEmployeeId.HasValue)
+            return Result.Failure<Branch>(new Error("Branch.SelfServiceDisabled",
+                "Self-service ordering is not enabled for this branch. Ask the manager to configure it."));
+
+        return Result.Success(branch);
+    }
+
+    private async Task<Result<Product>> ValidateProductAsync(long productId, long companyId, CancellationToken cancellationToken)
+    {
+        var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
+        if (product is null || !product.IsActive || product.CompanyId != companyId)
+            return Result.Failure<Product>(new Error("Product.NotFound", "Product not found."));
+
+        return Result.Success(product);
+    }
+
+    // Mesma validação de AddOrderItemCommandHandler: resolve e valida os complementos
+    // ANTES de tocar no pedido, pra não deixar o item lançado se um complemento for inválido.
+    private async Task<Result<List<(long ComplementId, decimal ExtraPrice)>>> ResolveComplementsAsync(
+        Product product, AddPublicOrderItemCommand request, CancellationToken cancellationToken)
+    {
+        var resolvedComplements = new List<(long ComplementId, decimal ExtraPrice)>();
+        if (request.Complements is not { Count: > 0 })
+            return Result.Success(resolvedComplements);
+
+        var links = await _productComplementGroupRepository.GetByProductAsync(product.Id, cancellationToken);
+        var allowedGroupIds = links.Select(l => l.ComplementGroupId).ToHashSet();
+
+        foreach (var selection in request.Complements)
+        {
+            if (!allowedGroupIds.Contains(selection.ComplementGroupId))
+                return Result.Failure<List<(long ComplementId, decimal ExtraPrice)>>(new Error("OrderItem.ComplementGroupNotAvailable",
+                    $"Complement group {selection.ComplementGroupId} is not available for this product."));
+
+            var group = await _complementGroupRepository.GetByIdAsync(selection.ComplementGroupId, cancellationToken);
+            if (group is null || !group.IsActive)
+                return Result.Failure<List<(long ComplementId, decimal ExtraPrice)>>(new Error("ComplementGroup.NotFound", "Complement group not found."));
+
+            var complement = group.Complements.FirstOrDefault(c => c.Id == selection.ComplementId && c.IsActive);
+            if (complement is null)
+                return Result.Failure<List<(long ComplementId, decimal ExtraPrice)>>(new Error("ComplementGroup.ComplementNotFound", "Complement not found in this group."));
+
+            resolvedComplements.Add((complement.Id, complement.ExtraPrice));
+        }
+
+        return Result.Success(resolvedComplements);
+    }
+
+    private async Task<Result<(CustomerOrder Order, bool IsNewOrder)>> GetOrCreateOrderAsync(
+        DiningTable table, Branch branch, DateTime currentTime, CancellationToken cancellationToken)
+    {
+        var order = await _orderRepository.GetOpenByTableForUpdateAsync(table.Id, cancellationToken);
+        if (order is not null)
+            return Result.Success((order, false));
+
+        // Passando o currentTime para o Create
+        // GetValueOrDefault em vez de .Value: HasValue já foi validado em ValidateBranchAsync,
+        // mas o compilador não rastreia essa garantia entre métodos — CS8629 com -warnaserror
+        var created = CustomerOrder.Create(
+            table.BranchId, table.Id, null, branch.SelfServiceEmployeeId.GetValueOrDefault(),
+            null, "Pedido via QR Code", currentTime, null, OrderTypeIds.Mesa);
+
+        if (created.IsFailure)
+            return Result.Failure<(CustomerOrder, bool)>(created.Error);
+
+        order = created.Value;
+        await _orderRepository.AddAsync(order, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken);
+
+        return Result.Success((order, true));
+    }
+
+    private static Result<int> AddItemWithComplements(
+        CustomerOrder order,
+        Product product,
+        AddPublicOrderItemCommand request,
+        List<(long ComplementId, decimal ExtraPrice)> resolvedComplements,
+        DateTime currentTime)
+    {
+        var itemCountBefore = order.Items.Count;
+
+        // Passando o currentTime para o AddItem
+        var added = order.AddItem(product.Id, product.SalePrice, request.Quantity, request.Notes, null, currentTime);
+        if (added.IsFailure)
+            return Result.Failure<int>(added.Error);
+
+        if (resolvedComplements.Count == 0)
+            return Result.Success(itemCountBefore);
+
+        var primaryItemId = order.Items.ElementAt(itemCountBefore).Id;
+        foreach (var (complementId, extraPrice) in resolvedComplements)
+        {
+            var complementResult = order.AddComplement(primaryItemId, complementId, extraPrice, currentTime);
+            if (complementResult.IsFailure)
+                return Result.Failure<int>(complementResult.Error);
+        }
+
+        return Result.Success(itemCountBefore);
+    }
+
+    private async Task PrintNewItemsAsync(long orderId, List<long> newItemIds, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _printingService.PrintOrderItemsAsync(orderId, newItemIds, cancellationToken);
+        }
+        catch
+        {
+            // silencioso
+        }
     }
 }

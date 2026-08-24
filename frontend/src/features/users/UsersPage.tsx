@@ -116,6 +116,7 @@ export function UsersPage() {
         <h2 className="display" style={{ fontSize: "1.7rem" }}>Usuários e perfis</h2>
         <span style={{ flex: 1 }} />
         <button
+          type="button"
           className="btn-primary"
           onClick={() => {
             setError(null);
@@ -140,6 +141,7 @@ export function UsersPage() {
           description="Crie o primeiro usuário para dar acesso ao sistema à equipe."
           action={
             <button
+              type="button"
               className="btn-primary"
               onClick={() => {
                 setError(null);
@@ -173,6 +175,7 @@ export function UsersPage() {
             {user.isActive && (
               <div style={{ display: "flex", gap: 8 }}>
                 <button
+                  type="button"
                   className="btn-ghost"
                   style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                   onClick={() => {
@@ -184,6 +187,7 @@ export function UsersPage() {
                   Perfis
                 </button>
                 <button
+                  type="button"
                   className="btn-danger"
                   style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                   onClick={async () => {
@@ -233,6 +237,7 @@ export function UsersPage() {
           {roleChecklist}
           {error && <p className="error-text">{error}</p>}
           <button
+            type="button"
             className="btn-primary"
             disabled={
               userName.trim() === "" || email.trim() === "" || password.length < 8 ||
@@ -250,6 +255,7 @@ export function UsersPage() {
           {roleChecklist}
           {error && <p className="error-text">{error}</p>}
           <button
+            type="button"
             className="btn-primary"
             disabled={selectedRoles.length === 0 || rolesMutation.isPending}
             onClick={() => rolesMutation.mutate()}

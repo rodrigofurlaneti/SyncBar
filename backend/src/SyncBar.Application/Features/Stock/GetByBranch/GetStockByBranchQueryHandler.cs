@@ -20,7 +20,6 @@ internal sealed class GetStockByBranchQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gerente que está consultando o estoque, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var items = await stockItemRepository.GetByBranchAsync(request.BranchId, cancellationToken);
 

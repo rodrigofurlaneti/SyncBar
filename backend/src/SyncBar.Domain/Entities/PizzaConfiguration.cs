@@ -174,21 +174,51 @@ public sealed class PizzaConfiguration : AggregateRoot
         if (size is null)
             return Result.Failure<decimal>(new Error("PizzaConfiguration.SizeNotFound", "Size not found."));
 
+        var flavorSelectionValidation = ValidateFlavorSelection(size, pizzaFlavorIds);
+        if (flavorSelectionValidation.IsFailure)
+            return Result.Failure<decimal>(flavorSelectionValidation.Error);
+
+        var maxFlavorPriceResult = FindMaxFlavorPrice(pizzaSizeId, pizzaFlavorIds);
+        if (maxFlavorPriceResult.IsFailure)
+            return Result.Failure<decimal>(maxFlavorPriceResult.Error);
+
+        var crustPriceResult = FindCrustExtraPrice(pizzaCrustId);
+        if (crustPriceResult.IsFailure)
+            return Result.Failure<decimal>(crustPriceResult.Error);
+
+        var edgePriceResult = FindEdgeExtraPrice(pizzaEdgeId);
+        if (edgePriceResult.IsFailure)
+            return Result.Failure<decimal>(edgePriceResult.Error);
+
+        return Result.Success(maxFlavorPriceResult.Value + crustPriceResult.Value + edgePriceResult.Value);
+    }
+
+    // Checa cardinalidade/duplicidade da seleção de sabores antes de precificar — ver comentário
+    // de CalculateUnitPrice sobre a decisão de falhar em vez de aplicar Distinct() silenciosamente.
+    private static Result ValidateFlavorSelection(PizzaSize size, IReadOnlyCollection<long> pizzaFlavorIds)
+    {
         if (pizzaFlavorIds.Count == 0)
-            return Result.Failure<decimal>(new Error("PizzaConfiguration.NoFlavorsSelected", "At least one flavor must be selected."));
+            return Result.Failure(new Error("PizzaConfiguration.NoFlavorsSelected", "At least one flavor must be selected."));
 
         // Achado de review (CodeRabbit/Devin): [12, 12] passava como 2 frações do mesmo sabor —
         // conta duplicada infla TooManyFractions e gera OrderItemPizzaFlavor repetido em
         // OrderItem.CreatePizza. Falha explícita em vez de silenciosamente Distinct(): o cliente
         // (front-end) tem um bug se mandar id repetido, melhor ele saber do que a gente mascarar.
         if (pizzaFlavorIds.Distinct().Count() != pizzaFlavorIds.Count)
-            return Result.Failure<decimal>(new Error("PizzaConfiguration.DuplicateFlavorSelection",
+            return Result.Failure(new Error("PizzaConfiguration.DuplicateFlavorSelection",
                 "The same flavor cannot be selected more than once."));
 
         if (pizzaFlavorIds.Count > size.AcceptedFractions)
-            return Result.Failure<decimal>(new Error("PizzaConfiguration.TooManyFractions",
+            return Result.Failure(new Error("PizzaConfiguration.TooManyFractions",
                 $"This size accepts at most {size.AcceptedFractions} flavor(s)."));
 
+        return Result.Success();
+    }
+
+    // Regra de negócio: preço da pizza fracionada é o do sabor MAIS CARO entre os escolhidos
+    // (ver comentário acima de CalculateUnitPrice).
+    private Result<decimal> FindMaxFlavorPrice(long pizzaSizeId, IReadOnlyCollection<long> pizzaFlavorIds)
+    {
         decimal maxFlavorPrice = 0;
         foreach (var flavorId in pizzaFlavorIds)
         {
@@ -201,25 +231,29 @@ public sealed class PizzaConfiguration : AggregateRoot
                 maxFlavorPrice = price.Price;
         }
 
-        decimal crustPrice = 0;
-        if (pizzaCrustId.HasValue)
-        {
-            var crust = _crusts.FirstOrDefault(c => c.Id == pizzaCrustId.Value && c.IsActive);
-            if (crust is null)
-                return Result.Failure<decimal>(new Error("PizzaConfiguration.CrustNotFound", "Crust not found."));
-            crustPrice = crust.ExtraPrice;
-        }
+        return Result.Success(maxFlavorPrice);
+    }
 
-        decimal edgePrice = 0;
-        if (pizzaEdgeId.HasValue)
-        {
-            var edge = _edges.FirstOrDefault(e => e.Id == pizzaEdgeId.Value && e.IsActive);
-            if (edge is null)
-                return Result.Failure<decimal>(new Error("PizzaConfiguration.EdgeNotFound", "Edge not found."));
-            edgePrice = edge.ExtraPrice;
-        }
+    private Result<decimal> FindCrustExtraPrice(long? pizzaCrustId)
+    {
+        if (!pizzaCrustId.HasValue)
+            return Result.Success(0m);
 
-        return Result.Success(maxFlavorPrice + crustPrice + edgePrice);
+        var crust = _crusts.FirstOrDefault(c => c.Id == pizzaCrustId.Value && c.IsActive);
+        return crust is null
+            ? Result.Failure<decimal>(new Error("PizzaConfiguration.CrustNotFound", "Crust not found."))
+            : Result.Success(crust.ExtraPrice);
+    }
+
+    private Result<decimal> FindEdgeExtraPrice(long? pizzaEdgeId)
+    {
+        if (!pizzaEdgeId.HasValue)
+            return Result.Success(0m);
+
+        var edge = _edges.FirstOrDefault(e => e.Id == pizzaEdgeId.Value && e.IsActive);
+        return edge is null
+            ? Result.Failure<decimal>(new Error("PizzaConfiguration.EdgeNotFound", "Edge not found."))
+            : Result.Success(edge.ExtraPrice);
     }
 
     public void Deactivate()

@@ -10,7 +10,7 @@ interface ThemeState {
 }
 
 function applyTheme(theme: Theme) {
-  document.documentElement.setAttribute("data-theme", theme);
+  document.documentElement.dataset.theme = theme;
 }
 
 export const useThemeStore = create<ThemeState>()(

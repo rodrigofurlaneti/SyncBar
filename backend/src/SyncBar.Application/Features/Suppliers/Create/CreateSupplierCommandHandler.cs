@@ -29,7 +29,6 @@ internal sealed class CreateSupplierCommandHandler : BaseCommandHandler<CreateSu
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gestor criando o fornecedor, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var supplier = Supplier.Create(
                     request.CompanyId, request.LegalName, request.TradeName, request.Cnpj, request.Email, request.Phone);

@@ -19,9 +19,6 @@ internal sealed class GetJobTitlesQueryHandler(
             null, // Substitua pelo IP presente no request, caso aplicável
             async (userIdBox) =>
             {
-                // Se o seu request possuir o Id do usuário que está executando a ação, preencha:
-                // userIdBox.Value = request.UserId;
-
                 var jobTitles = await jobTitleRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
 
                 IReadOnlyCollection<JobTitleResponse> response = jobTitles

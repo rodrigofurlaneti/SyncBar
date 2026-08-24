@@ -43,6 +43,7 @@ export function Alert({ variant, title, message, action, onClose }: AlertProps) 
           <div style={{ fontSize: "0.9rem" }}>{message}</div>
           {action && (
             <button
+              type="button"
               onClick={action.onClick}
               style={{
                 background: "transparent",
@@ -63,6 +64,7 @@ export function Alert({ variant, title, message, action, onClose }: AlertProps) 
 
       {onClose && (
         <button
+          type="button"
           onClick={onClose}
           style={{
             background: "transparent",

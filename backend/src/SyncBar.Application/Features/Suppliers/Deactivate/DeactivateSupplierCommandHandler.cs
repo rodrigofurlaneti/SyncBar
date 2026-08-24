@@ -28,7 +28,6 @@ internal sealed class DeactivateSupplierCommandHandler : BaseCommandHandler<Deac
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gestor desativando o fornecedor, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var supplier = await _supplierRepository.GetByIdForUpdateAsync(request.SupplierId, cancellationToken);
                 if (supplier is null || !supplier.IsActive)

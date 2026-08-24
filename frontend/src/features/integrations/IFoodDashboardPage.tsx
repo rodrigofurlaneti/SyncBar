@@ -18,6 +18,11 @@ import {
 
 const REVIEWS_PAGE_SIZE = 50;
 
+const ORDER_TYPE_LABELS: Record<string, string> = {
+  DELIVERY: "🚗 Delivery",
+  TAKEOUT: "🛍️ Retirada",
+};
+
 export function IFoodDashboardPage() {
   const { branchId } = useAuthStore();
 
@@ -66,7 +71,8 @@ export function IFoodDashboardPage() {
       : "—";
   const respondedReviews = reviews.filter((r) => !!r.reply).length;
 
-  const errorMessage = isError ? (statusQuery.isError ? statusQuery.error : ordersQuery.error) : null;
+  const primaryError = statusQuery.isError ? statusQuery.error : ordersQuery.error;
+  const errorMessage = isError ? primaryError : null;
 
   return (
     <main style={{ padding: 22, maxWidth: 1400, margin: "0 auto" }}>
@@ -282,11 +288,7 @@ export function IFoodDashboardPage() {
                             </span>
                           </td>
                           <td style={{ padding: 12, fontSize: "0.9rem" }}>
-                            {order.ifoodOrderType === "DELIVERY"
-                              ? "🚗 Delivery"
-                              : order.ifoodOrderType === "TAKEOUT"
-                                ? "🛍️ Retirada"
-                                : "🍽️ Local"}
+                            {ORDER_TYPE_LABELS[order.ifoodOrderType] ?? "🍽️ Local"}
                           </td>
                           <td style={{ padding: 12, textAlign: "right", fontSize: "0.9rem", fontWeight: 600 }}>
                             {formatCurrency(order.totalAmount)}

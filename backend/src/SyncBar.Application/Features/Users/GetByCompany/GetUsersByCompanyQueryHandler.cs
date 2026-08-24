@@ -21,7 +21,6 @@ internal sealed class GetUsersByCompanyQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do administrador consultando a lista, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var users = await userRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
                 var userIds = users.Select(u => u.Id).ToList();

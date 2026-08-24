@@ -187,7 +187,7 @@ export function ProductsPage() {
             <div className="rise" style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 16 }}>
                 <h2 className="display" style={{ fontSize: "1.7rem" }}>Cardápio</h2>
                 <span style={{ flex: 1 }} />
-                <button className="btn-primary" onClick={() => openEditor("new")}>+ Novo produto</button>
+                <button type="button" className="btn-primary" onClick={() => openEditor("new")}>+ Novo produto</button>
             </div>
 
             <div className="rise rise-1" style={{ display: "flex", gap: 8, marginBottom: 18, maxWidth: 460 }}>
@@ -197,6 +197,7 @@ export function ProductsPage() {
                     onChange={(e) => setNewCategory(e.target.value)}
                 />
                 <button
+                    type="button"
                     className="btn-ghost"
                     disabled={newCategory.trim() === "" || categoryMutation.isPending}
                     onClick={() => categoryMutation.mutate()}
@@ -221,7 +222,7 @@ export function ProductsPage() {
                     title="Nenhum produto cadastrado"
                     description="Adicione o primeiro item do cardápio para começar a montar pedidos."
                     action={
-                        <button className="btn-primary" onClick={() => openEditor("new")}>
+                        <button type="button" className="btn-primary" onClick={() => openEditor("new")}>
                             + Novo produto
                         </button>
                     }
@@ -261,6 +262,7 @@ export function ProductsPage() {
                                 {formatBRL(product.salePrice)}
                             </span>
                             <button
+                                type="button"
                                 className="btn-ghost"
                                 style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                                 onClick={() => openEditor(product)}
@@ -268,6 +270,7 @@ export function ProductsPage() {
                                 Editar
                             </button>
                             <button
+                                type="button"
                                 className="btn-danger"
                                 style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                                 onClick={async () => {

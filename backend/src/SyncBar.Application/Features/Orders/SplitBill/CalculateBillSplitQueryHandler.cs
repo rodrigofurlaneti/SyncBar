@@ -19,7 +19,6 @@ internal sealed class CalculateBillSplitQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário ou garçom solicitando a divisão, preencha:
-                // userIdBox.Value = request.UserId;
 
                 if (request.PeopleCount <= 0)
                     return Result.Failure<BillSplitResponse>(

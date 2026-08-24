@@ -102,11 +102,11 @@ CREATE INDEX IX_OrderItemComplement_OrderItemId ON OrderItemComplement (OrderIte
 CREATE INDEX IX_OrderItemComplement_ComplementId ON OrderItemComplement (ComplementId);
 
 -- Verificação
-SELECT * FROM ComplementItem;
-SELECT * FROM ComplementGroup;
-SELECT * FROM Complement;
-SELECT * FROM ProductComplementGroup;
-SELECT * FROM OrderItemComplement;
+SELECT Id, CompanyId, Name, CreatedAt, UpdatedAt, IsActive FROM ComplementItem;
+SELECT Id, CompanyId, Name, ComplementGroupTypeId, MinSelection, MaxSelection, CreatedAt, UpdatedAt, IsActive FROM ComplementGroup;
+SELECT Id, ComplementGroupId, ComplementItemId, ExtraPrice, CreatedAt, UpdatedAt, IsActive FROM Complement;
+SELECT Id, ProductId, ComplementGroupId, DisplayOrder, CreatedAt, UpdatedAt, IsActive FROM ProductComplementGroup;
+SELECT Id, OrderItemId, ComplementId, UnitPriceCharged, CreatedAt, UpdatedAt, IsActive FROM OrderItemComplement;
 
 -- Nota: rodar ANTES de sql/BarRestaurante_IFoodComplementos.sql (que referencia ComplementGroup
 -- e Complement por FK).

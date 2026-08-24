@@ -24,7 +24,6 @@ internal sealed class GetBillingSummaryQueryHandler(
             async (userIdBox) =>
             {
                 // Se houver o ID do usuário que solicitou o dashboard, preencha:
-                // userIdBox.Value = request.UserId;
 
                 if (request.ReferenceMonth is < 1 or > 12)
                     return Result.Failure<BillingSummaryResponse>(

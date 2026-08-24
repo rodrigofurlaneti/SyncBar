@@ -20,7 +20,6 @@ internal sealed class GetOpenOrdersByBranchQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário que está executando a ação, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var orders = await orderRepository.GetOpenByBranchAsync(request.BranchId, cancellationToken);
 

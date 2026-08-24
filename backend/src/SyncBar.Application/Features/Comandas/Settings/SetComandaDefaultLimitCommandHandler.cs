@@ -28,9 +28,6 @@ internal sealed class SetComandaDefaultLimitCommandHandler : BaseCommandHandler<
             null, // Substitua pelo IP do request, se houver
             async (userIdBox) =>
             {
-                // Se o seu request possuir o Id do usuário responsável pela ação:
-                // userIdBox.Value = request.UserId;
-
                 // Upsert por filial (espelha UQ_ComandaSetting_BranchId filtrado).
                 var setting = await _settingRepository.GetByBranchForUpdateAsync(request.BranchId, cancellationToken);
                 if (setting is null)

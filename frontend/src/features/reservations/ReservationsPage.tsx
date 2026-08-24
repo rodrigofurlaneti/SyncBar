@@ -110,7 +110,7 @@ export function ReservationsPage() {
                 <h2 className="display" style={{ fontSize: "1.7rem" }}>Reservas de mesa</h2>
                 <span style={{ color: "var(--ink-faint)", fontSize: "0.9rem" }}>próximos 14 dias</span>
                 <span style={{ flex: 1 }} />
-                <button className="btn-primary" onClick={() => { setError(null); setCreating(true); }}>
+                <button className="btn-primary" type="button" onClick={() => { setError(null); setCreating(true); }}>
                     + Nova reserva
                 </button>
             </div>
@@ -126,7 +126,7 @@ export function ReservationsPage() {
                     title="Nenhuma reserva nos próximos 14 dias"
                     description="Crie uma reserva para reservar uma mesa com antecedência."
                     action={
-                        <button className="btn-primary" onClick={() => { setError(null); setCreating(true); }}>
+                        <button className="btn-primary" type="button" onClick={() => { setError(null); setCreating(true); }}>
                             + Nova reserva
                         </button>
                     }
@@ -156,6 +156,7 @@ export function ReservationsPage() {
                                 <div style={{ display: "flex", gap: 8 }}>
                                     <button
                                         className="btn-ghost"
+                                        type="button"
                                         style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                                         onClick={() => { setError(null); setConfirmingId(r.id); }}
                                     >
@@ -163,6 +164,7 @@ export function ReservationsPage() {
                                     </button>
                                     <button
                                         className="btn-danger"
+                                        type="button"
                                         style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                                         onClick={async () => {
                                             if (await dialog.confirm({ title: "Cancelar reserva", message: `Cancelar a reserva de ${r.customerName}?`, confirmLabel: "Cancelar reserva", danger: true }))
@@ -176,6 +178,7 @@ export function ReservationsPage() {
                             {r.reservationStatusId === ReservationStatus.Confirmed && (
                                 <button
                                     className="btn-danger"
+                                    type="button"
                                     style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                                     onClick={async () => {
                                         if (await dialog.confirm({ title: "Cancelar reserva", message: `Cancelar a reserva de ${r.customerName}?`, confirmLabel: "Cancelar reserva", danger: true }))

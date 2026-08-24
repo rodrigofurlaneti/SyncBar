@@ -128,16 +128,19 @@ export function IFoodAnalyticsEnhancedPage() {
           gap: 12,
           marginBottom: 24,
         }}>
-          {kpis.map((kpi, idx) => (
-            <DashboardCard
-              key={idx}
-              title={kpi.label}
-              value={kpi.value}
-              icon="📊"
-              status="info"
-              trend={kpi.trend ? { direction: kpi.trend > 0 ? "up" : "down", percentage: Math.abs(kpi.trend) } : undefined}
-            />
-          ))}
+          {kpis.map((kpi, idx) => {
+            const trendDirection = kpi.trend && kpi.trend > 0 ? "up" : "down";
+            return (
+              <DashboardCard
+                key={idx}
+                title={kpi.label}
+                value={kpi.value}
+                icon="📊"
+                status="info"
+                trend={kpi.trend ? { direction: trendDirection, percentage: Math.abs(kpi.trend) } : undefined}
+              />
+            );
+          })}
         </div>
       ) : (
         <EmptyState

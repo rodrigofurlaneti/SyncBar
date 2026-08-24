@@ -76,12 +76,10 @@ export async function apiUpload<T>(path: string, formData: FormData, retry = tru
   return (await response.json()) as T;
 }
 
-export async function api<T>(path: string, init?: RequestInit, retry = true): Promise<T> {
-  const { accessToken } = useAuthStore.getState();
-
-  let response: Response;
+// Faz o fetch autenticado (JSON) e traduz falha de rede em ApiError.
+async function fetchJson(path: string, init: RequestInit | undefined, accessToken: string | null): Promise<Response> {
   try {
-    response = await fetch(path, {
+    return await fetch(path, {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -92,37 +90,47 @@ export async function api<T>(path: string, init?: RequestInit, retry = true): Pr
   } catch {
     throw new ApiError(0, "Network.Unreachable", "Não foi possível conectar à API — ela está rodando?");
   }
+}
+
+// Extrai title/detail do corpo de erro (ProblemDetails), agregando ValidationProblemDetails quando presente.
+async function parseErrorBody(response: Response): Promise<{ title?: string; detail?: string }> {
+  try {
+    const body = (await response.json()) as ApiProblem & { errors?: Record<string, string[]> };
+    const detail = body.detail ?? (body.errors ? Object.values(body.errors).flat().join(" ") : undefined);
+    return { title: body.title, detail };
+  } catch {
+    // corpo vazio ou nao-JSON (ex.: 403 da policy de feature)
+    return {};
+  }
+}
+
+// Mensagem padrão quando a API não retorna um "detail" utilizável.
+function getFallbackMessage(status: number): string {
+  if (status === 403) return "Você não tem acesso a esta funcionalidade — peça ao gerente na tela Acessos.";
+  if (status === 404) return "Recurso não encontrado — a API está atualizada (reiniciada após a última alteração)?";
+  if (status >= 500) return "Erro interno na API — veja o console dela para detalhes.";
+  return "Falha ao comunicar com a API.";
+}
+
+// Tenta renovar o token e refazer a chamada original; caso contrário, sinaliza sessão expirada.
+async function handleUnauthorized<T>(retryFn: () => Promise<T>): Promise<T> {
+  const renewed = await tryRefresh();
+  if (renewed) return retryFn();
+  throw new ApiError(401, "Auth.SessionExpired", "Sessão expirada. Entre novamente.");
+}
+
+export async function api<T>(path: string, init?: RequestInit, retry = true): Promise<T> {
+  const { accessToken } = useAuthStore.getState();
+
+  const response = await fetchJson(path, init, accessToken);
 
   if (response.status === 401 && retry) {
-    const renewed = await tryRefresh();
-    if (renewed) return api<T>(path, init, false);
-    throw new ApiError(401, "Auth.SessionExpired", "Sessão expirada. Entre novamente.");
+    return handleUnauthorized(() => api<T>(path, init, false));
   }
 
   if (!response.ok) {
-    let title: string | undefined;
-    let detail: string | undefined;
-    try {
-      const body = (await response.json()) as ApiProblem & { errors?: Record<string, string[]> };
-      title = body.title;
-      detail = body.detail;
-      // ValidationProblemDetails (FluentValidation): agrega as mensagens de campo.
-      if (!detail && body.errors)
-        detail = Object.values(body.errors).flat().join(" ");
-    } catch {
-      // corpo vazio ou nao-JSON (ex.: 403 da policy de feature)
-    }
-
-    const fallback =
-      response.status === 403
-        ? "Você não tem acesso a esta funcionalidade — peça ao gerente na tela Acessos."
-        : response.status === 404
-          ? "Recurso não encontrado — a API está atualizada (reiniciada após a última alteração)?"
-          : response.status >= 500
-            ? "Erro interno na API — veja o console dela para detalhes."
-            : "Falha ao comunicar com a API.";
-
-    throw new ApiError(response.status, title ?? `Http.${response.status}`, detail ?? fallback);
+    const { title, detail } = await parseErrorBody(response);
+    throw new ApiError(response.status, title ?? `Http.${response.status}`, detail ?? getFallbackMessage(response.status));
   }
 
   if (response.status === 204) return undefined as T;

@@ -20,7 +20,6 @@ internal sealed class GetServiceFeeSettingQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/funcionário consultando a configuração, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var setting = await settingRepository.GetByBranchAsync(request.BranchId, cancellationToken);
                 // Sem configuracao: taxa LIGADA por padrao (cobra os 10%).

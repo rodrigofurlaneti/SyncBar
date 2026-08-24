@@ -29,7 +29,6 @@ internal sealed class CreateReservationCommandHandler : BaseCommandHandler<Creat
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário (ex: cliente via app ou recepcionista) criando a reserva, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var reservation = TableReservation.Create(
                     request.BranchId, null, request.CustomerName, request.CustomerPhone,

@@ -20,7 +20,6 @@ internal sealed class GetPrintersQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário que está consultando, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var printers = await printerRepository.GetByBranchAsync(request.BranchId, cancellationToken);
 

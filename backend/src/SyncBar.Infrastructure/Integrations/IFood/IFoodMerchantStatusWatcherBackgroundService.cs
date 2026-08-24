@@ -210,27 +210,34 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
 
         foreach (var shift in shifts)
         {
-            var end = shift.Start + TimeSpan.FromMinutes(shift.DurationMinutes);
-
-            if (end <= TimeSpan.FromDays(1))
-            {
-                if (shift.DayOfWeek == nowDayOfWeek && nowTimeOfDay >= shift.Start && nowTimeOfDay < end)
-                    return true;
-            }
-            else
-            {
-                // Turno cruza a meia-noite: cobre o restante do dia em que começa e o início do
-                // dia seguinte até a hora de término (já normalizada pra menos de 24h).
-                var endDayOfWeek = (shift.DayOfWeek + 1) % 7;
-                var endTimeOfDayNextDay = end - TimeSpan.FromDays(1);
-
-                if (shift.DayOfWeek == nowDayOfWeek && nowTimeOfDay >= shift.Start)
-                    return true;
-                if (endDayOfWeek == nowDayOfWeek && nowTimeOfDay < endTimeOfDayNextDay)
-                    return true;
-            }
+            if (ShiftCoversMoment(shift, nowDayOfWeek, nowTimeOfDay))
+                return true;
         }
 
         return false;
+    }
+
+    private static bool ShiftCoversMoment(IFoodOpeningHours shift, int nowDayOfWeek, TimeSpan nowTimeOfDay)
+    {
+        var end = shift.Start + TimeSpan.FromMinutes(shift.DurationMinutes);
+
+        return end <= TimeSpan.FromDays(1)
+            ? CoversSameDayShift(shift, end, nowDayOfWeek, nowTimeOfDay)
+            : CoversOvernightShift(shift, end, nowDayOfWeek, nowTimeOfDay);
+    }
+
+    private static bool CoversSameDayShift(IFoodOpeningHours shift, TimeSpan end, int nowDayOfWeek, TimeSpan nowTimeOfDay)
+        => shift.DayOfWeek == nowDayOfWeek && nowTimeOfDay >= shift.Start && nowTimeOfDay < end;
+
+    // Turno cruza a meia-noite: cobre o restante do dia em que começa e o início do dia
+    // seguinte até a hora de término (já normalizada pra menos de 24h).
+    private static bool CoversOvernightShift(IFoodOpeningHours shift, TimeSpan end, int nowDayOfWeek, TimeSpan nowTimeOfDay)
+    {
+        if (shift.DayOfWeek == nowDayOfWeek && nowTimeOfDay >= shift.Start)
+            return true;
+
+        var endDayOfWeek = (shift.DayOfWeek + 1) % 7;
+        var endTimeOfDayNextDay = end - TimeSpan.FromDays(1);
+        return endDayOfWeek == nowDayOfWeek && nowTimeOfDay < endTimeOfDayNextDay;
     }
 }

@@ -140,6 +140,7 @@ export function SettingsPage() {
               style={{ width: 130 }}
             />
             <button
+              type="button"
               className="btn-ghost"
               disabled={limitMutation.isPending || limitInput.trim() === ""}
               onClick={() => {
@@ -176,6 +177,7 @@ export function SettingsPage() {
               ))}
             </select>
             <button
+              type="button"
               className="btn-ghost"
               disabled={selfServiceEmployeeId === "" || selfServiceMutation.isPending}
               onClick={() => selfServiceMutation.mutate(Number(selfServiceEmployeeId))}

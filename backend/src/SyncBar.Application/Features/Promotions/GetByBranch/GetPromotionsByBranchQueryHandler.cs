@@ -20,7 +20,6 @@ internal sealed class GetPromotionsByBranchQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gerente consultando a lista, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var promotions = await promotionRepository.GetByBranchAsync(request.BranchId, cancellationToken);
 

@@ -20,7 +20,6 @@ internal sealed class GetStockLedgerQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gerente que está consultando o extrato, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var movements = await stockMovementRepository.GetByStockItemAsync(request.StockItemId, cancellationToken);
 

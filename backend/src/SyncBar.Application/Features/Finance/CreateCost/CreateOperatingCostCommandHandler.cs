@@ -29,7 +29,6 @@ internal sealed class CreateOperatingCostCommandHandler : BaseCommandHandler<Cre
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário responsável pela ação, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var cost = OperatingCost.Create(
                     request.BranchId, request.CostTypeId, request.Description.Trim(),
