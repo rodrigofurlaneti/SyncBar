@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using System.Text.Json.Serialization;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Employees.Create;
@@ -88,5 +89,6 @@ public sealed class EmployeesController(
         });
 }
 
-public sealed record UpdateEmployeeRequest(long JobTitleId, string Name, string? Email, string? Phone, decimal? Salary);
+public sealed record UpdateEmployeeRequest(
+    [property: JsonRequired] long JobTitleId, string Name, string? Email, string? Phone, decimal? Salary);
 public sealed record SetCommissionRequest(decimal? CommissionPercent);

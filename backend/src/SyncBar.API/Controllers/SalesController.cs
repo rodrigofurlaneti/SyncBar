@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -53,4 +54,4 @@ public sealed class SalesController(
 }
 
 // Request separado do command quando ha parametro de rota.
-public sealed record RefundSaleRequest(long EmployeeId, string? Reason);
+public sealed record RefundSaleRequest([property: JsonRequired] long EmployeeId, string? Reason);

@@ -72,50 +72,74 @@ internal sealed class RegisterCompanyCommandHandler : BaseCommandHandler<Registe
                 if (uniquenessResult.IsFailure)
                     return Result.Failure<RegisterCompanyResponse>(uniquenessResult.Error);
 
-                var companyResult = await CreateCompanyAsync(request, cancellationToken);
-                if (companyResult.IsFailure)
-                    return Result.Failure<RegisterCompanyResponse>(companyResult.Error);
-                var company = companyResult.Value;
+                var structureResult = await SetupCompanyStructureAsync(request, cancellationToken);
+                if (structureResult.IsFailure)
+                    return Result.Failure<RegisterCompanyResponse>(structureResult.Error);
+                var (company, branch) = structureResult.Value;
 
-                await CreateDefaultCategoriesAsync(company.Id, cancellationToken);
-
-                var branchResult = await CreateBranchAsync(request, company.Id, cancellationToken);
-                if (branchResult.IsFailure)
-                    return Result.Failure<RegisterCompanyResponse>(branchResult.Error);
-                var branch = branchResult.Value;
-
-                await CreateDefaultDiningTablesAsync(branch.Id, cancellationToken);
-                await CreateDefaultComandasAsync(branch.Id, cancellationToken);
-
-                var jobTitleResult = await CreateAdminJobTitleAsync(company.Id, cancellationToken);
-                if (jobTitleResult.IsFailure)
-                    return Result.Failure<RegisterCompanyResponse>(jobTitleResult.Error);
-                var jobTitle = jobTitleResult.Value;
-
-                var employeeResult = await CreateAdminEmployeeAsync(request, branch.Id, jobTitle.Id, cancellationToken);
-                if (employeeResult.IsFailure)
-                    return Result.Failure<RegisterCompanyResponse>(employeeResult.Error);
-                var employee = employeeResult.Value;
-
-                var roleResult = await CreateAdminRoleAsync(company.Id, cancellationToken);
-                if (roleResult.IsFailure)
-                    return Result.Failure<RegisterCompanyResponse>(roleResult.Error);
-                var role = roleResult.Value;
-
-                var userResult = await CreateAdminUserAsync(request, company.Id, employee.Id, cancellationToken);
-                if (userResult.IsFailure)
-                    return Result.Failure<RegisterCompanyResponse>(userResult.Error);
-                var user = userResult.Value;
-
-                var linkResult = await LinkUserToRoleAsync(company.Id, user.Id, role.Id, cancellationToken);
-                if (linkResult.IsFailure)
-                    return Result.Failure<RegisterCompanyResponse>(linkResult.Error);
+                var adminResult = await SetupAdminAccountAsync(request, company.Id, branch.Id, cancellationToken);
+                if (adminResult.IsFailure)
+                    return Result.Failure<RegisterCompanyResponse>(adminResult.Error);
+                var user = adminResult.Value;
 
                 // Adiciona o Id do usuário recém-criado ao log de auditoria
                 userIdBox.Value = user.Id;
 
                 return Result.Success(new RegisterCompanyResponse(company.Id, branch.Id, user.Id));
             });
+    }
+
+    // Fase Sonar HIGH (2026-08-24): extraído do Handle para reduzir Cognitive Complexity de
+    // 16 para o limite de 15 — mesma sequência de passos, sem mudança de comportamento.
+    private async Task<Result<(Company Company, Branch Branch)>> SetupCompanyStructureAsync(
+        RegisterCompanyCommand request, CancellationToken cancellationToken)
+    {
+        var companyResult = await CreateCompanyAsync(request, cancellationToken);
+        if (companyResult.IsFailure)
+            return Result.Failure<(Company, Branch)>(companyResult.Error);
+        var company = companyResult.Value;
+
+        await CreateDefaultCategoriesAsync(company.Id, cancellationToken);
+
+        var branchResult = await CreateBranchAsync(request, company.Id, cancellationToken);
+        if (branchResult.IsFailure)
+            return Result.Failure<(Company, Branch)>(branchResult.Error);
+        var branch = branchResult.Value;
+
+        await CreateDefaultDiningTablesAsync(branch.Id, cancellationToken);
+        await CreateDefaultComandasAsync(branch.Id, cancellationToken);
+
+        return Result.Success((company, branch));
+    }
+
+    private async Task<Result<AppUser>> SetupAdminAccountAsync(
+        RegisterCompanyCommand request, long companyId, long branchId, CancellationToken cancellationToken)
+    {
+        var jobTitleResult = await CreateAdminJobTitleAsync(companyId, cancellationToken);
+        if (jobTitleResult.IsFailure)
+            return Result.Failure<AppUser>(jobTitleResult.Error);
+        var jobTitle = jobTitleResult.Value;
+
+        var employeeResult = await CreateAdminEmployeeAsync(request, branchId, jobTitle.Id, cancellationToken);
+        if (employeeResult.IsFailure)
+            return Result.Failure<AppUser>(employeeResult.Error);
+        var employee = employeeResult.Value;
+
+        var roleResult = await CreateAdminRoleAsync(companyId, cancellationToken);
+        if (roleResult.IsFailure)
+            return Result.Failure<AppUser>(roleResult.Error);
+        var role = roleResult.Value;
+
+        var userResult = await CreateAdminUserAsync(request, companyId, employee.Id, cancellationToken);
+        if (userResult.IsFailure)
+            return Result.Failure<AppUser>(userResult.Error);
+        var user = userResult.Value;
+
+        var linkResult = await LinkUserToRoleAsync(companyId, user.Id, role.Id, cancellationToken);
+        if (linkResult.IsFailure)
+            return Result.Failure<AppUser>(linkResult.Error);
+
+        return Result.Success(user);
     }
 
     private async Task<Result> ValidateUniquenessAsync(RegisterCompanyCommand request, CancellationToken cancellationToken)

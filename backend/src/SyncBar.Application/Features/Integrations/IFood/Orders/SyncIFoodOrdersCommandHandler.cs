@@ -131,17 +131,27 @@ internal sealed class SyncIFoodOrdersCommandHandler : BaseCommandHandler<SyncIFo
         if (token is null)
             return null; // sem token válido — tenta de novo no próximo ciclo
 
-        // Mappings primeiro: precisa dos MerchantIds ativos da empresa pra montar o
+        // Mappings primeiro: precisa dos Merchant UUIDs ativos da empresa pra montar o
         // header x-polling-merchants exigido pelo módulo Events (fase 2.1).
+        //
+        // Fase 20 (2026-08-24): corrigido de MerchantId (numérico, ex. "4049623" — o "ID da
+        // Loja" usado no módulo Merchant/status) para MerchantUuid. O módulo Events identifica
+        // merchants por UUID — confirmado pelo schema de erro 403 da própria doc oficial
+        // (unauthorizedMerchants retorna uma lista de UUIDs) e pelo mesmo requisito já
+        // documentado no módulo Catalog v2 ("Merchant UUID", obrigatório). Enviar o MerchantId
+        // numérico nesse header (bug anterior) explica o 400 "Bad Request. One or more request
+        // parameters were not valid." visto em produção — não é um problema de permissão/
+        // credencial como o 403 do módulo Merchant (Fase 19), é a própria loja não sendo
+        // reconhecida no formato esperado. Ver claude/ifood-integration-status.md, Fase 20.
         var mappings = await _merchantMappingRepository.GetByCompanyAsync(companyId, cancellationToken);
         var merchantIds = mappings.Values
-            .Where(m => m.IsActive && !string.IsNullOrWhiteSpace(m.MerchantId))
-            .Select(m => m.MerchantId!)
+            .Where(m => m.IsActive && !string.IsNullOrWhiteSpace(m.MerchantUuid))
+            .Select(m => m.MerchantUuid!)
             .Distinct()
             .ToList();
 
         if (merchantIds.Count == 0)
-            return null; // nenhuma loja mapeada ainda — nada pra fazer polling
+            return null; // nenhuma loja com Merchant UUID mapeado ainda — nada pra fazer polling
 
         return new PollingContext(token, mappings, merchantIds);
     }

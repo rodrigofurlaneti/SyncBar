@@ -97,18 +97,24 @@ GO
 
 /* ============================ Seed: grants padrao por cargo ============================ */
 
+-- Fase Sonar HIGH (2026-08-24): literais 'Salao' (4x) e 'Cardapio' (3x) extraidos para
+-- variaveis - novo batch (apos o GO acima), entao as @Feature... declaradas la em cima
+-- (bloco de seed das telas) nao estao mais no escopo aqui.
+DECLARE @FeatureCodeSalaoGrant    VARCHAR(50) = 'Salao';
+DECLARE @FeatureCodeCardapioGrant VARCHAR(50) = 'Cardapio';
+
 INSERT INTO dbo.JobTitleFeature (JobTitleId, AppFeatureId)
 SELECT J.Id, F.Id
 FROM (VALUES
-    (N'Garçom',            'Salao'),
-    (N'Garçom',            'Cardapio'),
-    (N'Operador de Caixa',  'Salao'),
+    (N'Garçom',            @FeatureCodeSalaoGrant),
+    (N'Garçom',            @FeatureCodeCardapioGrant),
+    (N'Operador de Caixa',  @FeatureCodeSalaoGrant),
     (N'Operador de Caixa',  'Caixa'),
-    (N'Cozinheiro',         'Salao'),
-    (N'Barman',             'Salao'),
-    (N'Barman',             'Cardapio'),
+    (N'Cozinheiro',         @FeatureCodeSalaoGrant),
+    (N'Barman',             @FeatureCodeSalaoGrant),
+    (N'Barman',             @FeatureCodeCardapioGrant),
     (N'Estoquista',         'Estoque'),
-    (N'Estoquista',         'Cardapio')) AS G (JobTitleName, FeatureCode)
+    (N'Estoquista',         @FeatureCodeCardapioGrant)) AS G (JobTitleName, FeatureCode)
 JOIN dbo.JobTitle   AS J ON J.Name = G.JobTitleName AND J.IsActive = 1
 JOIN dbo.AppFeature AS F ON F.Code = G.FeatureCode  AND F.IsActive = 1
 WHERE NOT EXISTS (

@@ -579,6 +579,9 @@ function MerchantOperationsSection({ branchId, companyId }: { branchId: number; 
   const statusQuery = useQuery({
     queryKey: ["integrations", "ifood", "merchant", "status", branchId],
     queryFn: () => getIFoodMerchantStatus(branchId),
+    // Fase 20 (2026-08-24): evita rajada de retries reais contra o iFood quando o status
+    // falha (ex.: 403 de permissão, ver Fase 19) — mesmo ajuste em IFoodDashboardPage.tsx.
+    retry: false,
   });
 
   // Fase 9c — fecha os gaps restantes do módulo Merchant da auditoria de 2026-08-20/21: listar
@@ -604,6 +607,7 @@ function MerchantOperationsSection({ branchId, companyId }: { branchId: number; 
     queryKey: ["integrations", "ifood", "merchant", "status-by-operation", branchId, operationLookup],
     queryFn: () => getIFoodMerchantStatusByOperation(branchId, operationLookup ?? ""),
     enabled: !!operationLookup,
+    retry: false,
   });
 
   const interruptionsQuery = useQuery({

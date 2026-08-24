@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -52,4 +53,4 @@ public sealed class ReservationsController(
         });
 }
 
-public sealed record ConfirmReservationRequest(long DiningTableId);
+public sealed record ConfirmReservationRequest([property: JsonRequired] long DiningTableId);

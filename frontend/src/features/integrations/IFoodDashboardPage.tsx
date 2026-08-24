@@ -31,6 +31,10 @@ export function IFoodDashboardPage() {
     queryKey: ["integrations", "ifood", "dashboard", "status", branchId],
     queryFn: () => getIFoodMerchantStatus(branchId),
     refetchInterval: 30000,
+    // Fase 20 (2026-08-24): sem isso, o retry padrão do TanStack Query (3 tentativas com
+    // backoff) transformava uma única falha em várias chamadas reais ao iFood em rajada —
+    // o próximo poll de 30s já tenta de novo, não precisa de retry automático aqui.
+    retry: false,
   });
 
   const ordersQuery = useQuery({

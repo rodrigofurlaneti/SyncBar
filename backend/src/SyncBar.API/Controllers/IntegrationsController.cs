@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -941,27 +942,30 @@ public sealed class IntegrationsController(
         });
 }
 
-public sealed record SyncIFoodCatalogRequest(long CompanyId);
+// Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor para
+// evitar under-posting.
+public sealed record SyncIFoodCatalogRequest([property: JsonRequired] long CompanyId);
 
 public sealed record CancelIFoodOrderRequest(string ReasonCode);
 
 public sealed record ValidateIFoodPickupCodeRequest(string Code);
 
-public sealed record IFoodDisputeActionRequest(long BranchId);
+public sealed record IFoodDisputeActionRequest([property: JsonRequired] long BranchId);
 
-public sealed record RejectIFoodDisputeRequest(long BranchId, string Reason);
+public sealed record RejectIFoodDisputeRequest([property: JsonRequired] long BranchId, string Reason);
 
-public sealed record RequestIFoodDisputeAlternativeRequest(long BranchId, string AlternativeType, decimal? Amount, string? Currency);
+public sealed record RequestIFoodDisputeAlternativeRequest(
+    [property: JsonRequired] long BranchId, string AlternativeType, decimal? Amount, string? Currency);
 
 public sealed record VerifyIFoodOrderDeliveryCodeRequest(string Code);
 
-public sealed record SyncIFoodFinancialRequest(long CompanyId);
+public sealed record SyncIFoodFinancialRequest([property: JsonRequired] long CompanyId);
 
 public sealed record AssignIFoodDriverRequest(string DriverName, string DriverPhone, string DriverVehicleType);
 
 public sealed record VerifyIFoodDeliveryCodeRequest(string Code);
 
-public sealed record CancelIFoodShippingDeliveryRequest(string Reason, int CancellationCode);
+public sealed record CancelIFoodShippingDeliveryRequest(string Reason, [property: JsonRequired] int CancellationCode);
 
 public sealed record RequestIFoodOrderShippingDriverRequest(string QuoteId);
 
@@ -990,19 +994,21 @@ public sealed record BatchUpdateIFoodProductStatusesRequest(IReadOnlyCollection<
 
 public sealed record BatchUpdateIFoodProductPricesRequest(IReadOnlyCollection<IFoodBatchProductPriceInput> Items, string? CatalogContext);
 
-public sealed record SetIFoodItemPriceRequest(decimal Value, decimal? OriginalValue, IReadOnlyCollection<IFoodItemPriceByCatalogInput>? PriceByCatalog);
+public sealed record SetIFoodItemPriceRequest(
+    [property: JsonRequired] decimal Value, decimal? OriginalValue, IReadOnlyCollection<IFoodItemPriceByCatalogInput>? PriceByCatalog);
 
 public sealed record SetIFoodItemExternalCodeRequest(string? ExternalCode, IReadOnlyCollection<IFoodItemExternalCodeByCatalogInput>? ByCatalog);
 
 public sealed record UpdateIFoodOptionGroupRequest(string Name);
 
-public sealed record UpdateIFoodOptionGroupStatusRequest(bool Available);
+public sealed record UpdateIFoodOptionGroupStatusRequest([property: JsonRequired] bool Available);
 
-public sealed record SetIFoodOptionPriceRequest(decimal Value, decimal? OriginalValue, string? ParentCustomizationOptionId);
+public sealed record SetIFoodOptionPriceRequest(
+    [property: JsonRequired] decimal Value, decimal? OriginalValue, string? ParentCustomizationOptionId);
 
 public sealed record SetIFoodOptionExternalCodeRequest(string ExternalCode, string? ParentCustomizationOptionId);
 
-public sealed record SetIFoodOptionStatusRequest(bool Available, string? ParentCustomizationOptionId);
+public sealed record SetIFoodOptionStatusRequest([property: JsonRequired] bool Available, string? ParentCustomizationOptionId);
 
 public sealed record DeleteIFoodInventoryBatchRequest(IReadOnlyCollection<Guid> ProductIds);
 
@@ -1011,6 +1017,7 @@ public sealed record UpgradeIFoodCatalogVersionRequest(bool? CleanMigration);
 public sealed record UploadIFoodImageRequest(string JsonBody);
 
 public sealed record InvokeIFoodCatalogV1OperationRequest(
-    IFoodCatalogV1Operation Operation, Dictionary<string, string>? RouteParams, Dictionary<string, string>? QueryParams, string? JsonBody);
+    [property: JsonRequired] IFoodCatalogV1Operation Operation,
+    Dictionary<string, string>? RouteParams, Dictionary<string, string>? QueryParams, string? JsonBody);
 
 public sealed record ReplyIFoodReviewRequest(string Text);
