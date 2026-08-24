@@ -1,5 +1,7 @@
 ﻿using SyncBar.Domain.Primitives;
 
+namespace SyncBar.Domain.Entities;
+
 public sealed class UserRole : Entity
 {
     public long CompanyId { get; private set; }

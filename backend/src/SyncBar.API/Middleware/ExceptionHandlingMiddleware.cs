@@ -37,7 +37,7 @@ public sealed class ExceptionHandlingMiddleware(
                     : "Ocorreu um erro inesperado. Tente novamente ou contate o suporte."
             };
 
-            await context.Response.WriteAsJsonAsync(problem);
+            await context.Response.WriteAsJsonAsync(problem, context.RequestAborted);
         }
     }
 }

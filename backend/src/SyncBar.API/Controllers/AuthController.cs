@@ -30,6 +30,9 @@ public sealed class AuthController(
 
         var result = await Mediator.Send(enriched, ct);
 
+        // Fire-and-forget: registra o log de auditoria depois de responder ao cliente.
+        // Usa CancellationToken.None de propósito — o 'ct' da requisição pode já estar
+        // cancelado quando esta continuação roda, o que mataria o log silenciosamente.
         _ = Task.Run(async () => {
             stopwatch.Stop();
             var log = new LogTracker(0)
@@ -42,9 +45,9 @@ public sealed class AuthController(
                 IpAddress = enriched.IpAddress,
                 CreatedAt = DateTime.Now
             };
-            await logRepository.AddAsync(log);
-            await unitOfWork.CommitAsync();
-        });
+            await logRepository.AddAsync(log, CancellationToken.None);
+            await unitOfWork.CommitAsync(CancellationToken.None);
+        }, CancellationToken.None);
 
         return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
     }
