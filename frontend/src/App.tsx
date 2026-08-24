@@ -6,6 +6,7 @@ import { LoginPage } from "./features/auth/LoginPage";
 import { SignupPage } from "./features/auth/SignupPage";
 import { OrdersPage } from "./features/orders/OrdersPage";
 import { DeliveryBoardPage } from "./features/orders/DeliveryBoardPage";
+import { WaiterDashboardPage } from "./features/waiter/WaiterDashboardPage";
 import { ProductsPage } from "./features/catalog/ProductsPage";
 import { ComplementsPage } from "./features/catalog/ComplementsPage";
 import { StockPage } from "./features/stock/StockPage";
@@ -64,6 +65,7 @@ export default function App() {
         }
       >
         <Route path="/" element={<FeatureGate code="Salao"><OrdersPage /></FeatureGate>} />
+        <Route path="/garcom" element={<FeatureGate code="Salao"><WaiterDashboardPage /></FeatureGate>} />
         <Route path="/delivery" element={<FeatureGate code="Salao"><DeliveryBoardPage /></FeatureGate>} />
         <Route path="/produtos" element={<FeatureGate code="Cardapio"><ProductsPage /></FeatureGate>} />
         <Route path="/complementos" element={<FeatureGate code="Cardapio"><ComplementsPage /></FeatureGate>} />
