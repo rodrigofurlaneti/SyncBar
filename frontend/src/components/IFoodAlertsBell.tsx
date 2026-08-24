@@ -15,6 +15,12 @@ const SEVERITY_COLOR: Record<IFoodOperationalAlert["severity"], string> = {
   Critical: "var(--danger, #dc2626)",
 };
 
+const SEVERITY_ICON: Record<IFoodOperationalAlert["severity"], string> = {
+  Info: "🔵",
+  Warning: "🟠",
+  Critical: "🔴",
+};
+
 // Mesma técnica de aviso sonoro da Fase 12 (IFoodOrdersPage — pedido novo), mas com um único tom
 // grave pra não ser confundido com "chegou pedido novo": alerta operacional (loja caiu do iFood)
 // é outra categoria de urgência. Sem depender de arquivo de áudio externo; falha silenciosamente
@@ -100,7 +106,7 @@ export function IFoodAlertsBell({ companyId }: { companyId: number | null }) {
 
     playAlertChime();
     for (const alert of newAlerts) {
-      const icon = alert.severity === "Critical" ? "🔴" : alert.severity === "Warning" ? "🟠" : "🔵";
+      const icon = SEVERITY_ICON[alert.severity];
       toast.info(`${icon} ${alert.title} — ${alert.branchName}`);
     }
   }, [alertsQuery.data, toast, companyId]);

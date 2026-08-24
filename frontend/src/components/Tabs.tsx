@@ -27,6 +27,7 @@ export function Tabs({ tabs, activeTab, onTabChange, children }: TabsProps) {
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            type="button"
             role="tab"
             aria-selected={activeTab === tab.id}
             aria-controls={`panel-${tab.id}`}

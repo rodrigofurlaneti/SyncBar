@@ -12,6 +12,12 @@ function currentMonthValue(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function totalDiffColor(totalDiff: number): string {
+  if (totalDiff === 0) return "var(--ok)";
+  if (totalDiff > 0) return "var(--busy)";
+  return "var(--danger)";
+}
+
 function differenceBadge(session: CashSessionHistoryResponse) {
   if (session.cashSessionStatusId === CashSessionStatus.Aberto)
     return { label: "Em aberto", color: "var(--reserved)" };
@@ -66,7 +72,7 @@ export function CashHistoryPage() {
         <p className="rise" style={{ color: "var(--ink-dim)", fontSize: "0.9rem", marginTop: 0 }}>
           {closed.length} fechamentos no mês · {divergent === 0 ? "todos bateram" : `${divergent} com divergência`} ·
           saldo das diferenças:{" "}
-          <span className="mono-num" style={{ color: totalDiff === 0 ? "var(--ok)" : totalDiff > 0 ? "var(--busy)" : "var(--danger)", fontWeight: 700 }}>
+          <span className="mono-num" style={{ color: totalDiffColor(totalDiff), fontWeight: 700 }}>
             {totalDiff > 0 ? "+" : ""}{formatBRL(totalDiff)}
           </span>
         </p>
@@ -108,6 +114,7 @@ export function CashHistoryPage() {
                 </span>
                 {session.cashSessionStatusId === CashSessionStatus.Fechado && (
                   <button
+                    type="button"
                     className="btn-ghost"
                     style={{ minHeight: 38, padding: "0 12px", fontSize: "0.85rem" }}
                     disabled={reviewMutation.isPending}

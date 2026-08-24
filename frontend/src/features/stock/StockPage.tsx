@@ -111,10 +111,10 @@ export function StockPage() {
                     saldo por produto · linhas em vermelho estão abaixo do mínimo
                 </span>
                 <span style={{ flex: 1 }} />
-                <button className="btn-ghost" onClick={() => setInventoryOpen(true)}>
+                <button type="button" className="btn-ghost" onClick={() => setInventoryOpen(true)}>
                     Inventário
                 </button>
-                <button className="btn-primary" onClick={() => { setError(null); setMovementOpen(true); }}>
+                <button type="button" className="btn-primary" onClick={() => { setError(null); setMovementOpen(true); }}>
                     + Lançar movimento
                 </button>
             </div>
@@ -131,7 +131,7 @@ export function StockPage() {
                     title="Nenhum item de estoque"
                     description="Lance uma entrada (compra, ajuste ou inventário) para começar a controlar o saldo."
                     action={
-                        <button className="btn-primary" onClick={() => { setError(null); setMovementOpen(true); }}>
+                        <button type="button" className="btn-primary" onClick={() => { setError(null); setMovementOpen(true); }}>
                             + Lançar movimento
                         </button>
                     }
@@ -158,6 +158,7 @@ export function StockPage() {
                                     {item.currentQuantity}
                                 </span>
                                 <button
+                                    type="button"
                                     className="btn-ghost"
                                     style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                                     onClick={() => setLedgerItem(item)}
@@ -165,6 +166,7 @@ export function StockPage() {
                                     Extrato
                                 </button>
                                 <button
+                                    type="button"
                                     className="btn-ghost"
                                     style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                                     onClick={() => {

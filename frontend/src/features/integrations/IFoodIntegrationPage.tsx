@@ -29,6 +29,21 @@ import { Button } from "../../ui/Button";
 import { Switch } from "../../ui/Switch";
 import { QueryError } from "../../components/QueryError";
 
+// Extraído do ternário aninhado que decidia label + cor do status de conexão a partir do
+// último teste (true/false/null) — mesmo padrão de lookup usado em outras telas (ex.: mapas
+// tipo TREND_META/SEVERITY_ICON).
+const CONNECTION_STATUS_META: Record<"connected" | "failed" | "untested", { label: string; dot: string }> = {
+  connected: { label: "Conectado", dot: "var(--ok)" },
+  failed: { label: "Falhou no último teste", dot: "var(--danger)" },
+  untested: { label: "Nunca testado", dot: "var(--ink-faint)" },
+};
+
+function getConnectionStatusKey(lastTest: boolean | null | undefined): "connected" | "failed" | "untested" {
+  if (lastTest === true) return "connected";
+  if (lastTest === false) return "failed";
+  return "untested";
+}
+
 export function IFoodIntegrationPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -126,9 +141,9 @@ export function IFoodIntegrationPage() {
   });
 
   const lastTest = settingsQuery.data?.lastConnectionTestSucceeded;
-  const statusLabel =
-    lastTest === true ? "Conectado" : lastTest === false ? "Falhou no último teste" : "Nunca testado";
-  const statusDot = lastTest === true ? "var(--ok)" : lastTest === false ? "var(--danger)" : "var(--ink-faint)";
+  const connectionStatus = CONNECTION_STATUS_META[getConnectionStatusKey(lastTest)];
+  const statusLabel = connectionStatus.label;
+  const statusDot = connectionStatus.dot;
 
   return (
     <main style={{ padding: 22, maxWidth: 900, margin: "0 auto" }}>

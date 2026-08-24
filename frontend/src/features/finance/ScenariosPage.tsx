@@ -166,6 +166,7 @@ export function ScenariosPage() {
                     )}
                   </div>
                   <button
+                    type="button"
                     className="btn-ghost"
                     style={{ minHeight: 40 }}
                     disabled={targetMutation.isPending}

@@ -123,11 +123,12 @@ export function OrdersPage() {
               toque numa mesa livre para abrir um pedido
             </span>
             <span className="ui-spacer" />
-            <button className="btn-ghost" onClick={() => setOpeningDelivery(true)}>
+            <button className="btn-ghost" type="button" onClick={() => setOpeningDelivery(true)}>
               + Retirada / Delivery
             </button>
             <button
               className="btn-ghost"
+              type="button"
               disabled={(tablesQuery.data ?? []).length === 0}
               onClick={() => { setQrUrl(null); setQrTable(tablesQuery.data?.[0] ?? null); }}
             >
@@ -147,6 +148,7 @@ export function OrdersPage() {
                 <button
                   key={table.id}
                   className="table-tile"
+                  type="button"
                   style={{ "--status": color } as CSSProperties}
                   onClick={() => {
                     if (order) setSelectedOrderId(order.id);
@@ -213,6 +215,7 @@ export function OrdersPage() {
               return (
                 <button
                   key={comanda.id}
+                  type="button"
                   onClick={() => {
                     if (order) setSelectedOrderId(order.id);
                     else if (comanda.comandaStatusId === ComandaStatus.Disponivel)
@@ -331,7 +334,7 @@ export function OrdersPage() {
               <input readOnly value={qrUrl} onFocus={(e) => e.target.select()} style={{ width: "100%" }} />
             </div>
           ) : (
-            <button className="btn-primary" disabled={qrMutation.isPending} onClick={() => qrMutation.mutate(qrTable.id)}>
+            <button className="btn-primary" type="button" disabled={qrMutation.isPending} onClick={() => qrMutation.mutate(qrTable.id)}>
               {qrMutation.isPending ? "Gerando…" : "Gerar QR Code"}
             </button>
           )}

@@ -135,6 +135,7 @@ export function ComplementItemsPanel() {
                 <span>{item.name}</span>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
+                    type="button"
                     className="btn-ghost"
                     style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                     onClick={() => {
@@ -145,6 +146,7 @@ export function ComplementItemsPanel() {
                     Editar
                   </button>
                   <button
+                    type="button"
                     className="btn-danger"
                     style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                     onClick={async () => {

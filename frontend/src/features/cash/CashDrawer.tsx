@@ -31,6 +31,17 @@ const parseAmount = (raw: string): number => {
   return Number.isFinite(value) ? value : 0;
 };
 
+interface DifferenceState {
+  label: string;
+  color: string;
+}
+
+const getDifferenceState = (differenceAmount: number): DifferenceState => {
+  if (differenceAmount === 0) return { label: "Conferido — sem diferença", color: "var(--ok)" };
+  if (differenceAmount > 0) return { label: "Sobra", color: "var(--amber)" };
+  return { label: "Falta", color: "var(--danger)" };
+};
+
 export function CashDrawer({ onClose }: Props) {
   const queryClient = useQueryClient();
   const dialog = useDialog();
@@ -138,6 +149,7 @@ export function CashDrawer({ onClose }: Props) {
   });
 
   const summary = summaryQuery.data;
+  const differenceState = getDifferenceState(closeResult?.differenceAmount ?? 0);
 
   return (
     <Overlay title="Caixa 01" onClose={onClose} wide>
@@ -159,25 +171,15 @@ export function CashDrawer({ onClose }: Props) {
               display: "flex",
               justifyContent: "space-between",
               fontWeight: 700,
-              color:
-                closeResult.differenceAmount === 0
-                  ? "var(--ok)"
-                  : closeResult.differenceAmount > 0
-                    ? "var(--amber)"
-                    : "var(--danger)",
+              color: differenceState.color,
             }}
           >
-            <span>
-              {closeResult.differenceAmount === 0
-                ? "Conferido — sem diferença"
-                : closeResult.differenceAmount > 0
-                  ? "Sobra"
-                  : "Falta"}
-            </span>
+            <span>{differenceState.label}</span>
             <span className="mono-num">{formatBRL(Math.abs(closeResult.differenceAmount))}</span>
           </div>
           {printSettingsQuery.data?.printBillsEnabled && (
             <button
+              type="button"
               className="btn-primary"
               disabled={printClosingMutation.isPending}
               onClick={() => printClosingMutation.mutate(closeResult.cashSessionId)}
@@ -199,6 +201,7 @@ export function CashDrawer({ onClose }: Props) {
           />
           {error && <p className="error-text">{error}</p>}
           <button
+            type="button"
             className="btn-primary"
             disabled={openMutation.isPending}
             onClick={() => openMutation.mutate()}
@@ -284,6 +287,7 @@ export function CashDrawer({ onClose }: Props) {
                   </div>
                   {featuresQuery.data?.canManageAccess && (
                     <button
+                      type="button"
                       className="btn-danger"
                       style={{ minHeight: 44, padding: "0 10px", fontSize: "0.82rem" }}
                       disabled={refundMutation.isPending}
@@ -327,6 +331,7 @@ export function CashDrawer({ onClose }: Props) {
               onChange={(e) => setMovementDescription(e.target.value)}
             />
             <button
+              type="button"
               className="btn-ghost"
               disabled={parseAmount(movementAmount) <= 0 || movementMutation.isPending}
               onClick={() => movementMutation.mutate()}
@@ -345,6 +350,7 @@ export function CashDrawer({ onClose }: Props) {
             />
             {error && <p className="error-text">{error}</p>}
             <button
+              type="button"
               className="btn-danger"
               disabled={countedAmount.trim() === "" || closeMutation.isPending}
               onClick={async () => {

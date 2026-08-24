@@ -115,6 +115,7 @@ export function PartialPaymentDialog({ order, onClose, onRegistered }: Props) {
       {error && <p className="error-text">{error}</p>}
 
       <button
+        type="button"
         className="btn-primary"
         disabled={value === null || value > remaining || noSession || sessionQuery.isLoading || mutation.isPending}
         onClick={() => mutation.mutate()}

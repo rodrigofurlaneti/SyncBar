@@ -156,10 +156,10 @@ export function PurchasingPage() {
             <div className="rise" style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 6, flexWrap: "wrap" }}>
                 <h2 className="display" style={{ fontSize: "1.7rem" }}>Fornecedores e Compras</h2>
                 <span style={{ flex: 1 }} />
-                <button className="btn-ghost" onClick={() => { setError(null); setCreatingSupplier(true); }}>
+                <button className="btn-ghost" type="button" onClick={() => { setError(null); setCreatingSupplier(true); }}>
                     + Fornecedor
                 </button>
-                <button className="btn-primary" onClick={() => { setError(null); setRegisteringPurchase(true); }}>
+                <button className="btn-primary" type="button" onClick={() => { setError(null); setRegisteringPurchase(true); }}>
                     + Registrar compra
                 </button>
             </div>
@@ -177,7 +177,7 @@ export function PurchasingPage() {
                         title="Nenhum fornecedor cadastrado"
                         description="Cadastre um fornecedor para poder registrar compras."
                         action={
-                            <button className="btn-primary" onClick={() => { setError(null); setCreatingSupplier(true); }}>
+                            <button className="btn-primary" type="button" onClick={() => { setError(null); setCreatingSupplier(true); }}>
                                 + Fornecedor
                             </button>
                         }
@@ -196,6 +196,7 @@ export function PurchasingPage() {
                                 {s.isActive && (
                                     <button
                                         className="btn-danger"
+                                        type="button"
                                         style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                                         onClick={async () => {
                                             if (await dialog.confirm({ title: "Desativar fornecedor", message: `Desativar "${s.legalName}"?`, confirmLabel: "Desativar", danger: true }))
@@ -220,7 +221,7 @@ export function PurchasingPage() {
                         title="Nenhuma compra registrada"
                         description="Registre uma compra para dar entrada no estoque."
                         action={
-                            <button className="btn-primary" onClick={() => { setError(null); setRegisteringPurchase(true); }}>
+                            <button className="btn-primary" type="button" onClick={() => { setError(null); setRegisteringPurchase(true); }}>
                                 + Registrar compra
                             </button>
                         }

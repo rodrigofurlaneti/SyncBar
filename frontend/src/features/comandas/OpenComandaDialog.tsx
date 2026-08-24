@@ -48,10 +48,15 @@ export function OpenComandaDialog({ comanda, onClose, onOpened }: Props) {
       )}
 
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        <button className="btn-ghost" onClick={onClose}>
+        <button type="button" className="btn-ghost" onClick={onClose}>
           Voltar
         </button>
-        <button className="btn-primary" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending}
+        >
           {mutation.isPending ? "Abrindo…" : "Abrir comanda"}
         </button>
       </div>

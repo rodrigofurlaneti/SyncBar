@@ -21,14 +21,11 @@ export function MetricCard({
   onClick,
   loading,
 }: MetricCardProps) {
-  const trendColor =
-    trend === "up"
-      ? "var(--success)"
-      : trend === "down"
-        ? "var(--error)"
-        : "var(--ink-faint)";
+  const trendColorFallback = trend === "down" ? "var(--error)" : "var(--ink-faint)";
+  const trendColor = trend === "up" ? "var(--success)" : trendColorFallback;
 
-  const trendSymbol = trend === "up" ? "↑" : trend === "down" ? "↓" : "–";
+  const trendSymbolFallback = trend === "down" ? "↓" : "–";
+  const trendSymbol = trend === "up" ? "↑" : trendSymbolFallback;
 
   return (
     <div

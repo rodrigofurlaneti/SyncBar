@@ -92,12 +92,14 @@ export function AccessPage() {
 
       <div className="rise rise-1" style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         <button
+          type="button"
           className={mode === "cargo" ? "btn-primary" : "btn-ghost"}
           onClick={() => switchMode("cargo")}
         >
           Por cargo
         </button>
         <button
+          type="button"
           className={mode === "pessoa" ? "btn-primary" : "btn-ghost"}
           onClick={() => switchMode("pessoa")}
         >
@@ -145,6 +147,7 @@ export function AccessPage() {
             {error && <p className="error-text">{error}</p>}
             {saved && <p style={{ color: "var(--ok)", margin: 0 }}>Acessos salvos.</p>}
             <button
+              type="button"
               className="btn-primary"
               disabled={saveMutation.isPending || grantsQuery.isLoading}
               onClick={() => saveMutation.mutate()}

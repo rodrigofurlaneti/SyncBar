@@ -196,6 +196,7 @@ export function FinancePage() {
                 onChange={(e) => setTargetInput(e.target.value)}
               />
               <button
+                type="button"
                 className="btn-ghost"
                 disabled={parseNum(targetInput) === null || targetMutation.isPending}
                 onClick={() => targetMutation.mutate()}
@@ -250,6 +251,7 @@ export function FinancePage() {
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <span className="mono-num">{formatBRL(cost.amount)}</span>
                   <button
+                    type="button"
                     className="btn-danger"
                     aria-label={`Remover custo ${cost.description}`}
                     title="Remover custo"
@@ -301,6 +303,7 @@ export function FinancePage() {
                 onChange={(e) => setAmount(e.target.value)}
               />
               <button
+                type="button"
                 className="btn-primary"
                 disabled={description.trim() === "" || parseNum(amount) === null || costMutation.isPending}
                 onClick={() => costMutation.mutate()}

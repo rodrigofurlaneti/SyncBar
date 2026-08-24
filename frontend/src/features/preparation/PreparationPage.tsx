@@ -123,6 +123,7 @@ function ItemRow({
                 </span>
                 {next && (
                     <button
+                        type="button"
                         className="btn-primary"
                         style={{ minHeight: 40, padding: "0 16px", fontSize: "0.9rem" }}
                         disabled={isPending}
@@ -202,6 +203,12 @@ export function PreparationPage() {
                         }),
                     );
                     const headColor = timeColor(worstRatio);
+                    const comandaOrCustomerLabel = ticket.comandaCode !== null
+                        ? `Comanda ${ticket.comandaCode}`
+                        : ticket.customerName?.trim() || `Pedido #${ticket.customerOrderId}`;
+                    const ticketTitle = ticket.tableNumber !== null
+                        ? `Mesa ${ticket.tableNumber}`
+                        : comandaOrCustomerLabel;
                     return (
                         <div
                             key={ticket.customerOrderId}
@@ -214,11 +221,7 @@ export function PreparationPage() {
                             >
                                 <div style={{ display: "grid", gap: 4 }}>
                                     <span className="display" style={{ fontSize: "1.35rem" }}>
-                                        {ticket.tableNumber !== null
-                                            ? `Mesa ${ticket.tableNumber}`
-                                            : ticket.comandaCode !== null
-                                              ? `Comanda ${ticket.comandaCode}`
-                                              : ticket.customerName?.trim() || `Pedido #${ticket.customerOrderId}`}
+                                        {ticketTitle}
                                     </span>
                                     {/* Pedido sem mesa/comanda = Retirada ou Delivery (OpenDeliveryOrderDialog) —
                                         sem esse selo a cozinha via só "Comanda ?" e não tinha como saber que

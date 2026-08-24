@@ -62,7 +62,9 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
                 var branch = branchResult.Value;
 
                 // Associa a ação no log ao funcionário "virtual" de autoatendimento configurado na filial
-                userIdBox.Value = branch.SelfServiceEmployeeId.Value;
+                // (GetValueOrDefault em vez de .Value: HasValue já foi validado em ValidateBranchAsync,
+                // mas o compilador não rastreia essa garantia entre métodos — CS8629 com -warnaserror)
+                userIdBox.Value = branch.SelfServiceEmployeeId.GetValueOrDefault();
 
                 var productResult = await ValidateProductAsync(request.ProductId, branch.CompanyId, cancellationToken);
                 if (productResult.IsFailure)
@@ -169,8 +171,10 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
             return Result.Success((order, false));
 
         // Passando o currentTime para o Create
+        // GetValueOrDefault em vez de .Value: HasValue já foi validado em ValidateBranchAsync,
+        // mas o compilador não rastreia essa garantia entre métodos — CS8629 com -warnaserror
         var created = CustomerOrder.Create(
-            table.BranchId, table.Id, null, branch.SelfServiceEmployeeId.Value,
+            table.BranchId, table.Id, null, branch.SelfServiceEmployeeId.GetValueOrDefault(),
             null, "Pedido via QR Code", currentTime, null, OrderTypeIds.Mesa);
 
         if (created.IsFailure)
