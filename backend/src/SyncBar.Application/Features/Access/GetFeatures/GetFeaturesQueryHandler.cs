@@ -1,4 +1,5 @@
 ﻿using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
@@ -29,22 +30,7 @@ internal sealed class GetMyFeaturesQueryHandler(
             if (user is null || !user.IsActive)
                 return Result.Failure<MyFeaturesResponse>(new Error("AppUser.NotFound", "User not found."));
 
-            var featureIds = new HashSet<long>();
-
-            if (user.EmployeeId.HasValue)
-            {
-                var employee = await employeeRepository.GetByIdAsync(user.EmployeeId.Value, cancellationToken);
-                if (employee is not null)
-                {
-                    var byJobTitle = await jobTitleFeatureRepository.GetByJobTitleAsync(employee.JobTitleId, cancellationToken);
-                    foreach (var link in byJobTitle)
-                        featureIds.Add(link.AppFeatureId);
-                }
-            }
-
-            var byUser = await userFeatureRepository.GetByUserAsync(user.Id, cancellationToken);
-            foreach (var link in byUser)
-                featureIds.Add(link.AppFeatureId);
+            var featureIds = await GetFeatureIdsForUserAsync(user, cancellationToken);
 
             var codes = allFeatures
                 .Where(f => featureIds.Contains(f.Id))
@@ -53,4 +39,31 @@ internal sealed class GetMyFeaturesQueryHandler(
 
             return Result.Success(new MyFeaturesResponse(false, codes));
         });
+
+    private async Task<HashSet<long>> GetFeatureIdsForUserAsync(AppUser user, CancellationToken cancellationToken)
+    {
+        var featureIds = new HashSet<long>();
+
+        await AddJobTitleFeatureIdsAsync(user, featureIds, cancellationToken);
+
+        var byUser = await userFeatureRepository.GetByUserAsync(user.Id, cancellationToken);
+        foreach (var link in byUser)
+            featureIds.Add(link.AppFeatureId);
+
+        return featureIds;
+    }
+
+    private async Task AddJobTitleFeatureIdsAsync(AppUser user, HashSet<long> featureIds, CancellationToken cancellationToken)
+    {
+        if (!user.EmployeeId.HasValue)
+            return;
+
+        var employee = await employeeRepository.GetByIdAsync(user.EmployeeId.Value, cancellationToken);
+        if (employee is null)
+            return;
+
+        var byJobTitle = await jobTitleFeatureRepository.GetByJobTitleAsync(employee.JobTitleId, cancellationToken);
+        foreach (var link in byJobTitle)
+            featureIds.Add(link.AppFeatureId);
+    }
 }

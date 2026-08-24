@@ -7,25 +7,24 @@
 USE BarRestauranteDb;
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.CustomerOrder') AND name = 'OrderTypeId')
+DECLARE @CustomerOrderTableName SYSNAME = 'dbo.CustomerOrder';
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(@CustomerOrderTableName) AND name = 'OrderTypeId')
 BEGIN
     ALTER TABLE dbo.CustomerOrder ADD OrderTypeId TINYINT NOT NULL CONSTRAINT DF_CustomerOrder_OrderTypeId DEFAULT (1);
 END;
-GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.CustomerOrder') AND name = 'CustomerName')
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(@CustomerOrderTableName) AND name = 'CustomerName')
 BEGIN
     ALTER TABLE dbo.CustomerOrder ADD CustomerName NVARCHAR(150) NULL;
 END;
-GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.CustomerOrder') AND name = 'CustomerPhone')
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(@CustomerOrderTableName) AND name = 'CustomerPhone')
 BEGIN
     ALTER TABLE dbo.CustomerOrder ADD CustomerPhone VARCHAR(20) NULL;
 END;
-GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.CustomerOrder') AND name = 'DeliveryAddress')
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(@CustomerOrderTableName) AND name = 'DeliveryAddress')
 BEGIN
     ALTER TABLE dbo.CustomerOrder ADD DeliveryAddress NVARCHAR(300) NULL;
 END;

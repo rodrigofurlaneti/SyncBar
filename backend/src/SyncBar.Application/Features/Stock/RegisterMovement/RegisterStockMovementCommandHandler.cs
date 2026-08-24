@@ -46,61 +46,103 @@ internal sealed class RegisterStockMovementCommandHandler : BaseCommandHandler<R
         return await ExecuteWithLogAsync(
             nameof(RegisterStockMovementCommandHandler),
             nameof(Handle),
-            null, 
+            null,
             async (userIdBox) =>
             {
-                if (_currentUser.EmployeeId is not { } employeeId)
-                    return Result.Failure<long>(new Error(
-                        "Employee.NotFound",
-                        "O usuário logado não possui um funcionário vinculado."));
+                var employeeResult = await ValidateEmployeeAsync(cancellationToken);
+                if (employeeResult.IsFailure)
+                    return Result.Failure<long>(employeeResult.Error);
 
-                var employee = await _employeeRepository.GetByIdAsync(employeeId, cancellationToken);
-                if (employee is null || !employee.IsActive)
-                    return Result.Failure<long>(new Error(
-                        "Employee.NotFound",
-                        "Funcionário vinculado ao usuário logado não está ativo."));
-
+                var employee = employeeResult.Value;
                 userIdBox.Value = employee.Id;
 
-                var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
-                if (product is null || !product.IsActive)
-                    return Result.Failure<long>(new Error("Product.NotFound", "Product not found."));
+                var productResult = await ValidateProductAsync(request.ProductId, cancellationToken);
+                if (productResult.IsFailure)
+                    return Result.Failure<long>(productResult.Error);
 
-                var stockItem = await _stockItemRepository.GetByBranchAndProductForUpdateAsync(
-                    request.BranchId, request.ProductId, cancellationToken);
-                if (stockItem is null)
-                {
-                    var created = StockItem.Create(request.BranchId, request.ProductId, 0, null);
-                    if (created.IsFailure)
-                        return Result.Failure<long>(created.Error);
+                var stockItemResult = await GetOrCreateStockItemAsync(request, cancellationToken);
+                if (stockItemResult.IsFailure)
+                    return Result.Failure<long>(stockItemResult.Error);
 
-                    stockItem = created.Value;
-                    await _stockItemRepository.AddAsync(stockItem, cancellationToken);
-                    await _unitOfWork.CommitAsync(cancellationToken);
-                }
+                var stockItem = stockItemResult.Value;
 
-                var isInflow = InflowTypes.Contains(request.StockMovementTypeId);
-                var balance = isInflow ? stockItem.Increase(request.Quantity) : stockItem.Decrease(request.Quantity);
-                if (balance.IsFailure)
-                    return Result.Failure<long>(balance.Error);
+                var balanceResult = ApplyMovementToStock(stockItem, request);
+                if (balanceResult.IsFailure)
+                    return Result.Failure<long>(balanceResult.Error);
 
-                var movement = StockMovement.Create(
-                    stockItem.Id,
-                    request.StockMovementTypeId,
-                    null,
-                    null,
-                    employee.Id,
-                    request.Quantity, request.UnitCost,
-                    request.UnitCost is null ? null : Math.Round(request.UnitCost.Value * request.Quantity, 2),
-                    request.DocumentNumber, DateTime.Now, request.Notes);
+                var movementResult = CreateStockMovement(stockItem.Id, employee.Id, request);
+                if (movementResult.IsFailure)
+                    return Result.Failure<long>(movementResult.Error);
 
-                if (movement.IsFailure)
-                    return Result.Failure<long>(movement.Error);
-
-                await _stockMovementRepository.AddAsync(movement.Value, cancellationToken);
+                await _stockMovementRepository.AddAsync(movementResult.Value, cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
 
-                return Result.Success(movement.Value.Id);
+                return Result.Success(movementResult.Value.Id);
             });
+    }
+
+    private async Task<Result<Employee>> ValidateEmployeeAsync(CancellationToken cancellationToken)
+    {
+        if (_currentUser.EmployeeId is not { } employeeId)
+            return Result.Failure<Employee>(new Error(
+                "Employee.NotFound",
+                "O usuário logado não possui um funcionário vinculado."));
+
+        var employee = await _employeeRepository.GetByIdAsync(employeeId, cancellationToken);
+        if (employee is null || !employee.IsActive)
+            return Result.Failure<Employee>(new Error(
+                "Employee.NotFound",
+                "Funcionário vinculado ao usuário logado não está ativo."));
+
+        return Result.Success(employee);
+    }
+
+    private async Task<Result<Product>> ValidateProductAsync(long productId, CancellationToken cancellationToken)
+    {
+        var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
+        if (product is null || !product.IsActive)
+            return Result.Failure<Product>(new Error("Product.NotFound", "Product not found."));
+
+        return Result.Success(product);
+    }
+
+    private async Task<Result<StockItem>> GetOrCreateStockItemAsync(
+        RegisterStockMovementCommand request, CancellationToken cancellationToken)
+    {
+        var stockItem = await _stockItemRepository.GetByBranchAndProductForUpdateAsync(
+            request.BranchId, request.ProductId, cancellationToken);
+
+        if (stockItem is not null)
+            return Result.Success(stockItem);
+
+        var created = StockItem.Create(request.BranchId, request.ProductId, 0, null);
+        if (created.IsFailure)
+            return Result.Failure<StockItem>(created.Error);
+
+        stockItem = created.Value;
+        await _stockItemRepository.AddAsync(stockItem, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken);
+
+        return Result.Success(stockItem);
+    }
+
+    private Result ApplyMovementToStock(StockItem stockItem, RegisterStockMovementCommand request)
+    {
+        var isInflow = InflowTypes.Contains(request.StockMovementTypeId);
+        return isInflow ? stockItem.Increase(request.Quantity) : stockItem.Decrease(request.Quantity);
+    }
+
+    private static Result<StockMovement> CreateStockMovement(
+        long stockItemId, long employeeId, RegisterStockMovementCommand request)
+    {
+        return StockMovement.Create(
+            stockItemId,
+            request.StockMovementTypeId,
+            null,
+            null,
+            employeeId,
+            request.Quantity, request.UnitCost,
+            request.UnitCost is null ? null : Math.Round(request.UnitCost.Value * request.Quantity, 2),
+            request.DocumentNumber, DateTime.Now, request.Notes);
     }
 }

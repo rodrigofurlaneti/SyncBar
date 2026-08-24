@@ -35,35 +35,48 @@ internal sealed class SaveIFoodSettingsCommandHandler : BaseCommandHandler<SaveI
             null, // Substitua pelo IP presente no request, caso aplicável
             async (userIdBox) =>
             {
-                var encryptedSecret = string.IsNullOrWhiteSpace(request.ClientSecret)
-                    ? null
-                    : _secretProtector.Protect(ProtectorPurpose, request.ClientSecret);
-                var ifoodCustomerId = string.IsNullOrWhiteSpace(request.IFoodCustomerId) ? null : request.IFoodCustomerId.Trim();
+                var encryptedSecret = EncryptClientSecret(request.ClientSecret);
+                var ifoodCustomerId = NormalizeCustomerId(request.IFoodCustomerId);
 
-                // Upsert por empresa — mesmo padrão do ServiceFeeSetting/ComandaSetting, só que
-                // por CompanyId em vez de BranchId (o app do iFood é centralizado por empresa).
-                var setting = await _settingRepository.GetByCompanyForUpdateAsync(request.CompanyId, cancellationToken);
-                if (setting is null)
-                {
-                    var created = DomainIFoodSetting.Create(request.CompanyId);
-                    if (created.IsFailure)
-                        return Result.Failure(created.Error);
-
-                    var saved = created.Value.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled, ifoodCustomerId);
-                    if (saved.IsFailure)
-                        return saved;
-
-                    await _settingRepository.AddAsync(created.Value, cancellationToken);
-                }
-                else
-                {
-                    var saved = setting.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled, ifoodCustomerId);
-                    if (saved.IsFailure)
-                        return saved;
-                }
+                var upsertResult = await UpsertSettingAsync(request, encryptedSecret, ifoodCustomerId, cancellationToken);
+                if (upsertResult.IsFailure)
+                    return upsertResult;
 
                 await _unitOfWork.CommitAsync(cancellationToken);
                 return Result.Success();
             });
     }
+
+    // Upsert por empresa — mesmo padrão do ServiceFeeSetting/ComandaSetting, só que
+    // por CompanyId em vez de BranchId (o app do iFood é centralizado por empresa).
+    private async Task<Result> UpsertSettingAsync(
+        SaveIFoodSettingsCommand request,
+        string? encryptedSecret,
+        string? ifoodCustomerId,
+        CancellationToken cancellationToken)
+    {
+        var setting = await _settingRepository.GetByCompanyForUpdateAsync(request.CompanyId, cancellationToken);
+
+        if (setting is not null)
+            return setting.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled, ifoodCustomerId);
+
+        var created = DomainIFoodSetting.Create(request.CompanyId);
+        if (created.IsFailure)
+            return Result.Failure(created.Error);
+
+        var saved = created.Value.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled, ifoodCustomerId);
+        if (saved.IsFailure)
+            return saved;
+
+        await _settingRepository.AddAsync(created.Value, cancellationToken);
+        return Result.Success();
+    }
+
+    private string? EncryptClientSecret(string? clientSecret)
+        => string.IsNullOrWhiteSpace(clientSecret)
+            ? null
+            : _secretProtector.Protect(ProtectorPurpose, clientSecret);
+
+    private static string? NormalizeCustomerId(string? ifoodCustomerId)
+        => string.IsNullOrWhiteSpace(ifoodCustomerId) ? null : ifoodCustomerId.Trim();
 }

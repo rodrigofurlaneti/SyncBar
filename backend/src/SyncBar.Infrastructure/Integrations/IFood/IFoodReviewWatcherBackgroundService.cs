@@ -123,19 +123,7 @@ internal sealed class IFoodReviewWatcherBackgroundService(
         if (reviewsWithDate.Count == 0)
             return;
 
-        var maxCreatedAt = reviewsWithDate.Max(r => r.CreatedAt!.Value);
-
-        if (!_lastSeenReviewCreatedAt.TryGetValue(branchId, out var lastSeen))
-        {
-            // Primeiro ciclo desde o boot — só grava a baseline, não alerta sobre avaliações que
-            // já existiam antes do SyncBar subir.
-            _lastSeenReviewCreatedAt[branchId] = maxCreatedAt;
-            return;
-        }
-
-        var newReviews = reviewsWithDate.Where(r => r.CreatedAt!.Value > lastSeen).ToList();
-        _lastSeenReviewCreatedAt[branchId] = maxCreatedAt > lastSeen ? maxCreatedAt : lastSeen;
-
+        var newReviews = UpdateBaselineAndFilterNew(branchId, reviewsWithDate, r => r.CreatedAt!.Value);
         if (newReviews.Count == 0)
             return;
 
@@ -143,21 +131,52 @@ internal sealed class IFoodReviewWatcherBackgroundService(
         var branchName = branch?.Name ?? $"Filial {branchId}";
 
         foreach (var review in newReviews)
-        {
-            var isLowScore = review.Score.HasValue && review.Score.Value <= LowScoreThreshold;
-            var scoreText = review.Score.HasValue ? $"nota {review.Score.Value:0.#}" : "sem nota";
-            var comment = review.Comment ?? string.Empty;
-            var commentPreview = string.IsNullOrWhiteSpace(comment)
-                ? "sem comentário"
-                : (comment.Length > 140 ? comment[..140] + "…" : comment);
+            RaiseReviewAlert(companyId, branchId, branchName, review.Score, review.Comment, alertStore);
+    }
 
-            alertStore.Raise(
-                companyId,
-                branchId,
-                branchName,
-                isLowScore ? "Avaliação nova com nota baixa no iFood" : "Avaliação nova no iFood",
-                $"{branchName} recebeu uma avaliação nova ({scoreText}): \"{commentPreview}\" — veja e responda em Integrações > iFood > Avaliações.",
-                isLowScore ? IFoodOperationalAlertSeverity.Warning : IFoodOperationalAlertSeverity.Info);
+    // Primeiro ciclo desde o boot pra essa filial: só grava a baseline (maior CreatedAt visto) e
+    // não alerta sobre avaliações que já existiam antes do SyncBar subir. Nos ciclos seguintes,
+    // devolve só as avaliações mais novas que a última vista e avança a baseline.
+    // Genérico em TReview só pra não amarrar este helper ao tipo concreto de review do client.
+    private List<TReview> UpdateBaselineAndFilterNew<TReview>(
+        long branchId,
+        List<TReview> reviewsWithDate,
+        Func<TReview, DateTime> getCreatedAt)
+    {
+        var maxCreatedAt = reviewsWithDate.Max(getCreatedAt);
+
+        if (!_lastSeenReviewCreatedAt.TryGetValue(branchId, out var lastSeen))
+        {
+            _lastSeenReviewCreatedAt[branchId] = maxCreatedAt;
+            return [];
         }
+
+        var newReviews = reviewsWithDate.Where(r => getCreatedAt(r) > lastSeen).ToList();
+        _lastSeenReviewCreatedAt[branchId] = maxCreatedAt > lastSeen ? maxCreatedAt : lastSeen;
+        return newReviews;
+    }
+
+    private static void RaiseReviewAlert(
+        long companyId,
+        long branchId,
+        string branchName,
+        double? score,
+        string? comment,
+        IIFoodOperationalAlertStore alertStore)
+    {
+        var isLowScore = score.HasValue && score.Value <= LowScoreThreshold;
+        var scoreText = score.HasValue ? $"nota {score.Value:0.#}" : "sem nota";
+        var text = comment ?? string.Empty;
+        var commentPreview = string.IsNullOrWhiteSpace(text)
+            ? "sem comentário"
+            : (text.Length > 140 ? text[..140] + "…" : text);
+
+        alertStore.Raise(
+            companyId,
+            branchId,
+            branchName,
+            isLowScore ? "Avaliação nova com nota baixa no iFood" : "Avaliação nova no iFood",
+            $"{branchName} recebeu uma avaliação nova ({scoreText}): \"{commentPreview}\" — veja e responda em Integrações > iFood > Avaliações.",
+            isLowScore ? IFoodOperationalAlertSeverity.Warning : IFoodOperationalAlertSeverity.Info);
     }
 }

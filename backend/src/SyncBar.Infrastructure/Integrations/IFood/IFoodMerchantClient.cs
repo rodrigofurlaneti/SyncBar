@@ -46,10 +46,7 @@ internal sealed class IFoodMerchantClient(HttpClient httpClient) : IIFoodMerchan
             // Fase 13 — a mesma resposta traz um "available: boolean" por operação (confirmado
             // contra a coleção Postman oficial do módulo Merchant), até então descartado por este
             // método. Extraído com o mesmo parsing defensivo já usado em GetStatusByOperationAsync.
-            var available = statusElement.ValueKind == JsonValueKind.Object &&
-                             statusElement.TryGetProperty("available", out var availableEl) &&
-                             (availableEl.ValueKind == JsonValueKind.True || availableEl.ValueKind == JsonValueKind.False) &&
-                             availableEl.GetBoolean();
+            var available = GetBool(statusElement, "available");
 
             var validations = new List<IFoodMerchantValidation>();
             if (statusElement.ValueKind == JsonValueKind.Object &&
@@ -331,28 +328,9 @@ internal sealed class IFoodMerchantClient(HttpClient httpClient) : IIFoodMerchan
 
             var operationName = GetString(root, "operation");
             var salesChannel = GetString(root, "salesChannel");
-            var available = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("available", out var availableEl) &&
-                             (availableEl.ValueKind == JsonValueKind.True || availableEl.ValueKind == JsonValueKind.False) && availableEl.GetBoolean();
+            var available = GetBool(root, "available");
             var state = GetString(root, "state");
-
-            var validations = new List<IFoodMerchantValidation>();
-            if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("validations", out var validationsArray) &&
-                validationsArray.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var v in validationsArray.EnumerateArray())
-                {
-                    var id = GetString(v, "id", "code") ?? "UNKNOWN";
-                    var vState = GetString(v, "state", "status") ?? "UNKNOWN";
-                    string? message = null;
-                    if (v.TryGetProperty("message", out var messageEl))
-                    {
-                        message = messageEl.ValueKind == JsonValueKind.Object
-                            ? GetString(messageEl, "description", "subtitle", "title")
-                            : (messageEl.ValueKind == JsonValueKind.String ? messageEl.GetString() : null);
-                    }
-                    validations.Add(new IFoodMerchantValidation(id, vState, message));
-                }
-            }
+            var validations = ParseValidations(root);
 
             return new IFoodMerchantStatusByOperationResult(true, operationName, salesChannel, available, state, validations, null);
         }
@@ -481,5 +459,48 @@ internal sealed class IFoodMerchantClient(HttpClient httpClient) : IIFoodMerchan
                 return parsed;
         }
         return null;
+    }
+
+    private static bool GetBool(JsonElement element, string propertyName)
+        => element.ValueKind == JsonValueKind.Object &&
+           element.TryGetProperty(propertyName, out var value) &&
+           (value.ValueKind == JsonValueKind.True || value.ValueKind == JsonValueKind.False) &&
+           value.GetBoolean();
+
+    // Extraído de GetStatusByOperationAsync (reduz Cognitive Complexity — issue Sonar) e reaproveitado
+    // por GetStatusAsync: parsing defensivo do array "validations" presente em ambas as respostas.
+    private static List<IFoodMerchantValidation> ParseValidations(JsonElement root)
+    {
+        var validations = new List<IFoodMerchantValidation>();
+        if (root.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty("validations", out var validationsArray) ||
+            validationsArray.ValueKind != JsonValueKind.Array)
+            return validations;
+
+        foreach (var v in validationsArray.EnumerateArray())
+            validations.Add(ParseValidation(v));
+
+        return validations;
+    }
+
+    private static IFoodMerchantValidation ParseValidation(JsonElement v)
+    {
+        var id = GetString(v, "id", "code") ?? "UNKNOWN";
+        var state = GetString(v, "state", "status") ?? "UNKNOWN";
+        var message = ExtractValidationMessage(v);
+        return new IFoodMerchantValidation(id, state, message);
+    }
+
+    private static string? ExtractValidationMessage(JsonElement v)
+    {
+        if (!v.TryGetProperty("message", out var messageEl))
+            return null;
+
+        return messageEl.ValueKind switch
+        {
+            JsonValueKind.Object => GetString(messageEl, "description", "subtitle", "title"),
+            JsonValueKind.String => messageEl.GetString(),
+            _ => null,
+        };
     }
 }

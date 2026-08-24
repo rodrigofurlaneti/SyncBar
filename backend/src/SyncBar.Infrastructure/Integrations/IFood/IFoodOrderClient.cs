@@ -281,54 +281,68 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
             if (!response.IsSuccessStatusCode)
                 return new IFoodVirtualBagResult(false, null, null, null, null, null, null, [], null, null, null, $"iFood retornou {(int)response.StatusCode}: {Truncate(rawBody)}");
 
-            // Resposta profundamente aninhada e não confirmada campo-a-campo (ver ressalva na
-            // interface) — parsing defensivo com JsonDocument em vez de um record tipado rígido,
-            // pra não quebrar a leitura inteira se um sub-objeto vier faltando ou com nome diferente.
-            using var document = JsonDocument.Parse(rawBody);
-            var root = document.RootElement;
-
-            var id = GetJsonString(root, "id");
-            var shortCode = GetJsonString(root, "shortCode");
-            var status = GetJsonString(root, "status");
-            DateTime? createdAt = GetJsonString(root, "createdAt") is { } createdAtStr && DateTime.TryParse(createdAtStr, out var parsedCreatedAt) ? parsedCreatedAt : null;
-
-            string? merchantName = null;
-            if (root.TryGetProperty("merchant", out var merchantEl) && merchantEl.ValueKind == JsonValueKind.Object)
-                merchantName = GetJsonString(merchantEl, "name");
-
-            string? customerName = null;
-            if (root.TryGetProperty("customer", out var customerEl) && customerEl.ValueKind == JsonValueKind.Object)
-                customerName = GetJsonString(customerEl, "name");
-
-            var items = new List<IFoodVirtualBagItemDto>();
-            string? grossValueAmount = null;
-            string? grossValueCurrency = null;
-            if (root.TryGetProperty("bag", out var bagEl) && bagEl.ValueKind == JsonValueKind.Object)
-            {
-                if (bagEl.TryGetProperty("items", out var itemsEl) && itemsEl.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var item in itemsEl.EnumerateArray())
-                    {
-                        var quantity = item.TryGetProperty("quantity", out var qtyEl) && qtyEl.ValueKind == JsonValueKind.Number && qtyEl.TryGetInt32(out var qty) ? qty : 0;
-                        items.Add(new IFoodVirtualBagItemDto(GetJsonString(item, "uniqueId"), GetJsonString(item, "name"), quantity, GetJsonString(item, "ean")));
-                    }
-                }
-
-                if (bagEl.TryGetProperty("prices", out var pricesEl) && pricesEl.ValueKind == JsonValueKind.Object &&
-                    pricesEl.TryGetProperty("grossValue", out var grossEl) && grossEl.ValueKind == JsonValueKind.Object)
-                {
-                    grossValueAmount = GetJsonString(grossEl, "value");
-                    grossValueCurrency = GetJsonString(grossEl, "currency");
-                }
-            }
-
-            return new IFoodVirtualBagResult(true, id, shortCode, status, createdAt, merchantName, customerName, items, grossValueAmount, grossValueCurrency, rawBody, null);
+            return ParseVirtualBagResponse(rawBody);
         }
         catch (Exception ex)
         {
             return new IFoodVirtualBagResult(false, null, null, null, null, null, null, [], null, null, null, ex.Message);
         }
     }
+
+    // Resposta profundamente aninhada e não confirmada campo-a-campo (ver ressalva na
+    // interface) — parsing defensivo com JsonDocument em vez de um record tipado rígido,
+    // pra não quebrar a leitura inteira se um sub-objeto vier faltando ou com nome diferente.
+    // Extraído de GetVirtualBagAsync (junto com ParseVirtualBagItems/ParseVirtualBagPrices) só
+    // pra reduzir a complexidade cognitiva apontada pelo SonarCloud — mesmo comportamento.
+    private static IFoodVirtualBagResult ParseVirtualBagResponse(string rawBody)
+    {
+        using var document = JsonDocument.Parse(rawBody);
+        var root = document.RootElement;
+
+        var id = GetJsonString(root, "id");
+        var shortCode = GetJsonString(root, "shortCode");
+        var status = GetJsonString(root, "status");
+        DateTime? createdAt = GetJsonString(root, "createdAt") is { } createdAtStr && DateTime.TryParse(createdAtStr, out var parsedCreatedAt) ? parsedCreatedAt : null;
+
+        var merchantName = GetNestedJsonString(root, "merchant", "name");
+        var customerName = GetNestedJsonString(root, "customer", "name");
+
+        var items = new List<IFoodVirtualBagItemDto>();
+        string? grossValueAmount = null;
+        string? grossValueCurrency = null;
+        if (root.TryGetProperty("bag", out var bagEl) && bagEl.ValueKind == JsonValueKind.Object)
+        {
+            if (bagEl.TryGetProperty("items", out var itemsEl) && itemsEl.ValueKind == JsonValueKind.Array)
+                items.AddRange(ParseVirtualBagItems(itemsEl));
+
+            (grossValueAmount, grossValueCurrency) = ParseVirtualBagGrossValue(bagEl);
+        }
+
+        return new IFoodVirtualBagResult(true, id, shortCode, status, createdAt, merchantName, customerName, items, grossValueAmount, grossValueCurrency, rawBody, null);
+    }
+
+    private static IEnumerable<IFoodVirtualBagItemDto> ParseVirtualBagItems(JsonElement itemsEl)
+    {
+        foreach (var item in itemsEl.EnumerateArray())
+        {
+            var quantity = item.TryGetProperty("quantity", out var qtyEl) && qtyEl.ValueKind == JsonValueKind.Number && qtyEl.TryGetInt32(out var qty) ? qty : 0;
+            yield return new IFoodVirtualBagItemDto(GetJsonString(item, "uniqueId"), GetJsonString(item, "name"), quantity, GetJsonString(item, "ean"));
+        }
+    }
+
+    private static (string? Amount, string? Currency) ParseVirtualBagGrossValue(JsonElement bagEl)
+    {
+        if (bagEl.TryGetProperty("prices", out var pricesEl) && pricesEl.ValueKind == JsonValueKind.Object &&
+            pricesEl.TryGetProperty("grossValue", out var grossEl) && grossEl.ValueKind == JsonValueKind.Object)
+            return (GetJsonString(grossEl, "value"), GetJsonString(grossEl, "currency"));
+
+        return (null, null);
+    }
+
+    private static string? GetNestedJsonString(JsonElement root, string objectPropertyName, string valuePropertyName)
+        => root.TryGetProperty(objectPropertyName, out var nestedEl) && nestedEl.ValueKind == JsonValueKind.Object
+            ? GetJsonString(nestedEl, valuePropertyName)
+            : null;
 
     public Task<IFoodOrderActionResult> RequestOrderDriverAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
         => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/requestDriver", accessToken, cancellationToken);

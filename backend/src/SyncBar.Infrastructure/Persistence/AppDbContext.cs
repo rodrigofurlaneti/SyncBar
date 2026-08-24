@@ -99,9 +99,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
         // --- Isolamento multi-tenant (SaaS) ---
-        // Entidades que carregam CompanyId diretamente: filtradas por igualdade simples.
-        // Quando _currentTenant é null (sem HTTP context) ou CompanyId é null (sem usuário autenticado),
-        // o filtro vira "true" e não restringe — use IgnoreQueryFilters() conscientemente em jobs internos.
+        // Cada bloco abaixo aplica HasQueryFilter para um grupo de entidades. Extraído em métodos
+        // menores apenas para reduzir a complexidade cognitiva do método (SonarCloud) — o filtro
+        // resultante em cada entidade é idêntico ao original, mesma expressão, mesma ordem.
+        ConfigureCompanyScopedTenantFilters(modelBuilder);
+        ConfigureBranchScopedTenantFilters(modelBuilder);
+    }
+
+    // Entidades que carregam CompanyId diretamente: filtradas por igualdade simples.
+    // Quando _currentTenant é null (sem HTTP context) ou CompanyId é null (sem usuário autenticado),
+    // o filtro vira "true" e não restringe — use IgnoreQueryFilters() conscientemente em jobs internos.
+    private void ConfigureCompanyScopedTenantFilters(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<Branch>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
         modelBuilder.Entity<AppUser>().HasQueryFilter(e =>
@@ -128,10 +137,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
         // — são sempre acessadas via Product/OrderItem, que já carregam seus próprios filtros.
         modelBuilder.Entity<PizzaFlavor>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
+    }
 
-        // Entidades escopadas por BranchId (não por CompanyId diretamente): filtra via
-        // subquery em Branchs (que já tem seu próprio filtro por CompanyId — EF compõe os dois
-        // como AND, redundante mas correto). Cobre as 16 entidades com BranchId direto.
+    // Entidades escopadas por BranchId (não por CompanyId diretamente): filtra via
+    // subquery em Branchs (que já tem seu próprio filtro por CompanyId — EF compõe os dois
+    // como AND, redundante mas correto). Cobre as 28 entidades com BranchId direto, divididas em
+    // métodos menores apenas para manter a complexidade cognitiva de cada um sob controle.
+    private void ConfigureBranchScopedTenantFilters(ModelBuilder modelBuilder)
+    {
+        ConfigureBranchScopedTenantFiltersPart1(modelBuilder);
+        ConfigureBranchScopedTenantFiltersPart2(modelBuilder);
+        ConfigureBranchScopedTenantFiltersPart3(modelBuilder);
+        ConfigureBranchScopedTenantFiltersPart4(modelBuilder);
+    }
+
+    private void ConfigureBranchScopedTenantFiltersPart1(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<DiningTable>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<CustomerOrder>().HasQueryFilter(e =>
@@ -146,6 +167,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<IFoodMerchantMapping>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+    }
+
+    private void ConfigureBranchScopedTenantFiltersPart2(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<IFoodOrder>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<IFoodLogisticsDelivery>().HasQueryFilter(e =>
@@ -160,6 +185,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<IFoodSettlement>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+    }
+
+    private void ConfigureBranchScopedTenantFiltersPart3(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<IFoodOpeningHours>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<IFoodComplementGroupMapping>().HasQueryFilter(e =>
@@ -176,6 +205,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<Printer>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+    }
+
+    private void ConfigureBranchScopedTenantFiltersPart4(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<PrinterSetting>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<Promotion>().HasQueryFilter(e =>

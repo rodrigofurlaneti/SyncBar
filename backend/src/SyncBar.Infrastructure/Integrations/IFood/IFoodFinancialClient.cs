@@ -61,45 +61,51 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
 
-        var settlements = new List<IFoodSettlementDto>();
-        var root = document.RootElement;
+        return ParseSettlements(document.RootElement);
+    }
 
-        // Corrigido em 2026-08-20: a resposta real é um objeto único {beginDate, endDate, balance,
-        // merchantId, settlements: [{startDateCalculation, endDateCalculation, closingItems: [...]}],
-        // consolidatedMerchants} — dois níveis mais fundo do que o catálogo genérico de relatórios
-        // (v2.0/v2.1) assume (que espera uma lista plana já na raiz ou numa chave conhecida). Os
-        // lançamentos de fato (id/type/amount/...) estão em settlements[].closingItems[], não em
-        // settlements[] diretamente — sem este achatamento, cada "período" virava 1 registro
-        // falso com id aleatório e amount=0 (nenhum campo batia).
+    // Corrigido em 2026-08-20: a resposta real é um objeto único {beginDate, endDate, balance,
+    // merchantId, settlements: [{startDateCalculation, endDateCalculation, closingItems: [...]}],
+    // consolidatedMerchants} — dois níveis mais fundo do que o catálogo genérico de relatórios
+    // (v2.0/v2.1) assume (que espera uma lista plana já na raiz ou numa chave conhecida). Os
+    // lançamentos de fato (id/type/amount/...) estão em settlements[].closingItems[], não em
+    // settlements[] diretamente — sem este achatamento, cada "período" virava 1 registro
+    // falso com id aleatório e amount=0 (nenhum campo batia).
+    private static List<IFoodSettlementDto> ParseSettlements(JsonElement root)
+    {
         if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("settlements", out var periods) && periods.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var period in periods.EnumerateArray())
-            {
-                if (!period.TryGetProperty("closingItems", out var closingItems) || closingItems.ValueKind != JsonValueKind.Array)
-                    continue;
+            return ParseSettlementsFromPeriods(periods);
 
-                foreach (var item in closingItems.EnumerateArray())
-                {
-                    var dto = TryParseSettlement(item);
-                    if (dto is not null)
-                        settlements.Add(dto);
-                }
-            }
-        }
-        else
+        // Formato inesperado/mudou de novo — tenta o caminho antigo (lista plana) como
+        // fallback em vez de simplesmente devolver vazio.
+        var fallbackRoot = ResolveArrayRoot(root);
+        return fallbackRoot.ValueKind == JsonValueKind.Array
+            ? ParseSettlementItems(fallbackRoot)
+            : [];
+    }
+
+    private static List<IFoodSettlementDto> ParseSettlementsFromPeriods(JsonElement periods)
+    {
+        var settlements = new List<IFoodSettlementDto>();
+        foreach (var period in periods.EnumerateArray())
         {
-            // Formato inesperado/mudou de novo — tenta o caminho antigo (lista plana) como
-            // fallback em vez de simplesmente devolver vazio.
-            var fallbackRoot = ResolveArrayRoot(root);
-            if (fallbackRoot.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var item in fallbackRoot.EnumerateArray())
-                {
-                    var dto = TryParseSettlement(item);
-                    if (dto is not null)
-                        settlements.Add(dto);
-                }
-            }
+            if (!period.TryGetProperty("closingItems", out var closingItems) || closingItems.ValueKind != JsonValueKind.Array)
+                continue;
+
+            settlements.AddRange(ParseSettlementItems(closingItems));
+        }
+
+        return settlements;
+    }
+
+    private static List<IFoodSettlementDto> ParseSettlementItems(JsonElement items)
+    {
+        var settlements = new List<IFoodSettlementDto>();
+        foreach (var item in items.EnumerateArray())
+        {
+            var dto = TryParseSettlement(item);
+            if (dto is not null)
+                settlements.Add(dto);
         }
 
         return settlements;

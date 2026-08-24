@@ -40,50 +40,13 @@ internal sealed class AdjustInventoryCommandHandler : BaseCommandHandler<AdjustI
 
                 foreach (var count in request.Counts)
                 {
-                    // Item ainda sem saldo entra no inventario com saldo zero.
-                    var stockItem = await _stockItemRepository.GetByBranchAndProductForUpdateAsync(
-                        request.BranchId, count.ProductId, cancellationToken);
-                    if (stockItem is null)
-                    {
-                        var created = StockItem.Create(request.BranchId, count.ProductId, 0, null);
-                        if (created.IsFailure)
-                            return Result.Failure<IReadOnlyCollection<InventoryAdjustmentResponse>>(created.Error);
+                    var adjustmentResult = await ProcessCountAsync(
+                        request.BranchId, request.EmployeeId, count.ProductId, count.CountedQuantity, cancellationToken);
+                    if (adjustmentResult.IsFailure)
+                        return Result.Failure<IReadOnlyCollection<InventoryAdjustmentResponse>>(adjustmentResult.Error);
 
-                        stockItem = created.Value;
-                        await _stockItemRepository.AddAsync(stockItem, cancellationToken);
-                        await _unitOfWork.CommitAsync(cancellationToken);
-                    }
-
-                    var previous = stockItem.CurrentQuantity;
-                    var difference = count.CountedQuantity - previous;
-                    if (difference == 0)
-                        continue; // contagem bateu — nada a ajustar
-
-                    // Toda correcao passa pelo livro-razao: AjusteEntrada (sobra) / AjusteSaida (falta).
-                    var balance = difference > 0
-                        ? stockItem.Increase(difference)
-                        : stockItem.Decrease(-difference);
-                    if (balance.IsFailure)
-                        return Result.Failure<IReadOnlyCollection<InventoryAdjustmentResponse>>(balance.Error);
-
-                    var movement = StockMovement.Create(
-                        stockItem.Id,
-                        difference > 0 ? StockMovementTypeIds.AjusteEntrada : StockMovementTypeIds.AjusteSaida,
-                        null,
-                        null,
-                        request.EmployeeId,
-                        Math.Abs(difference),
-                        null,
-                        null,
-                        null,
-                        DateTime.Now, "Inventário");
-
-                    if (movement.IsFailure)
-                        return Result.Failure<IReadOnlyCollection<InventoryAdjustmentResponse>>(movement.Error);
-
-                    await _stockMovementRepository.AddAsync(movement.Value, cancellationToken);
-                    adjustments.Add(new InventoryAdjustmentResponse(
-                        count.ProductId, previous, count.CountedQuantity, difference));
+                    if (adjustmentResult.Value is not null)
+                        adjustments.Add(adjustmentResult.Value);
                 }
 
                 await _unitOfWork.CommitAsync(cancellationToken);
@@ -91,4 +54,73 @@ internal sealed class AdjustInventoryCommandHandler : BaseCommandHandler<AdjustI
                 return Result.Success<IReadOnlyCollection<InventoryAdjustmentResponse>>(adjustments);
             });
     }
+
+    // Processa uma linha de contagem: garante o StockItem, calcula a diferença e,
+    // quando houver divergência, aplica o ajuste de saldo e gera o StockMovement correspondente.
+    // Retorna null (sucesso sem ajuste) quando a contagem bate com o saldo atual.
+    private async Task<Result<InventoryAdjustmentResponse?>> ProcessCountAsync(
+        long branchId, long employeeId, long productId, decimal countedQuantity, CancellationToken cancellationToken)
+    {
+        var stockItemResult = await GetOrCreateStockItemAsync(branchId, productId, cancellationToken);
+        if (stockItemResult.IsFailure)
+            return Result.Failure<InventoryAdjustmentResponse?>(stockItemResult.Error);
+
+        var stockItem = stockItemResult.Value;
+        var previous = stockItem.CurrentQuantity;
+        var difference = countedQuantity - previous;
+        if (difference == 0)
+            return Result.Success<InventoryAdjustmentResponse?>(null); // contagem bateu — nada a ajustar
+
+        var balanceResult = ApplyBalanceAdjustment(stockItem, difference);
+        if (balanceResult.IsFailure)
+            return Result.Failure<InventoryAdjustmentResponse?>(balanceResult.Error);
+
+        var movementResult = CreateAdjustmentMovement(stockItem.Id, employeeId, difference);
+        if (movementResult.IsFailure)
+            return Result.Failure<InventoryAdjustmentResponse?>(movementResult.Error);
+
+        await _stockMovementRepository.AddAsync(movementResult.Value, cancellationToken);
+
+        return Result.Success<InventoryAdjustmentResponse?>(
+            new InventoryAdjustmentResponse(productId, previous, countedQuantity, difference));
+    }
+
+    // Item ainda sem saldo entra no inventário com saldo zero.
+    private async Task<Result<StockItem>> GetOrCreateStockItemAsync(
+        long branchId, long productId, CancellationToken cancellationToken)
+    {
+        var stockItem = await _stockItemRepository.GetByBranchAndProductForUpdateAsync(
+            branchId, productId, cancellationToken);
+        if (stockItem is not null)
+            return Result.Success(stockItem);
+
+        var created = StockItem.Create(branchId, productId, 0, null);
+        if (created.IsFailure)
+            return Result.Failure<StockItem>(created.Error);
+
+        stockItem = created.Value;
+        await _stockItemRepository.AddAsync(stockItem, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken);
+
+        return Result.Success(stockItem);
+    }
+
+    // Toda correção passa pelo livro-razão: AjusteEntrada (sobra) / AjusteSaida (falta).
+    private static Result ApplyBalanceAdjustment(StockItem stockItem, decimal difference)
+        => difference > 0
+            ? stockItem.Increase(difference)
+            : stockItem.Decrease(-difference);
+
+    private static Result<StockMovement> CreateAdjustmentMovement(long stockItemId, long employeeId, decimal difference)
+        => StockMovement.Create(
+            stockItemId,
+            difference > 0 ? StockMovementTypeIds.AjusteEntrada : StockMovementTypeIds.AjusteSaida,
+            null,
+            null,
+            employeeId,
+            Math.Abs(difference),
+            null,
+            null,
+            null,
+            DateTime.Now, "Inventário");
 }

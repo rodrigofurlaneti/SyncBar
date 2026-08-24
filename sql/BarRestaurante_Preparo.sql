@@ -7,16 +7,20 @@
 USE BarRestauranteDb;
 GO
 
+DECLARE @FeatureCode VARCHAR(50) = 'Preparo';
+
 INSERT INTO dbo.AppFeature (Code, Name)
-SELECT 'Preparo', N'Preparo (painel cozinha/bar)'
-WHERE NOT EXISTS (SELECT 1 FROM dbo.AppFeature WHERE Code = 'Preparo' AND IsActive = 1);
+SELECT @FeatureCode, N'Preparo (painel cozinha/bar)'
+WHERE NOT EXISTS (SELECT 1 FROM dbo.AppFeature WHERE Code = @FeatureCode AND IsActive = 1);
 GO
+
+DECLARE @FeatureCode VARCHAR(50) = 'Preparo';
 
 INSERT INTO dbo.JobTitleFeature (JobTitleId, AppFeatureId)
 SELECT J.Id, F.Id
 FROM (VALUES (N'Cozinheiro'), (N'Barman')) AS G (JobTitleName)
 JOIN dbo.JobTitle   AS J ON J.Name = G.JobTitleName AND J.IsActive = 1
-JOIN dbo.AppFeature AS F ON F.Code = 'Preparo' AND F.IsActive = 1
+JOIN dbo.AppFeature AS F ON F.Code = @FeatureCode AND F.IsActive = 1
 WHERE NOT EXISTS (
     SELECT 1 FROM dbo.JobTitleFeature X
     WHERE X.JobTitleId = J.Id AND X.AppFeatureId = F.Id AND X.IsActive = 1);

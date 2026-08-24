@@ -65,109 +65,196 @@ internal sealed class RegisterCompanyCommandHandler : BaseCommandHandler<Registe
         return await ExecuteWithLogAsync(
             nameof(RegisterCompanyCommandHandler),
             nameof(Handle),
-            null, 
+            null,
             async (userIdBox) =>
             {
-                if (await _companyRepository.ExistsByCnpjAsync(request.Cnpj, cancellationToken))
-                    return Result.Failure<RegisterCompanyResponse>(
-                        new Error("Company.AlreadyExists", "A company with this CNPJ is already registered."));
+                var uniquenessResult = await ValidateUniquenessAsync(request, cancellationToken);
+                if (uniquenessResult.IsFailure)
+                    return Result.Failure<RegisterCompanyResponse>(uniquenessResult.Error);
 
-                if (await _userRepository.ExistsAsync(request.AdminUserName, request.AdminEmail, cancellationToken))
-                    return Result.Failure<RegisterCompanyResponse>(
-                        new Error("AppUser.AlreadyExists", "User name or e-mail already in use."));
-
-                if (await _employeeRepository.ExistsByCpfAsync(request.AdminCpf, cancellationToken))
-                    return Result.Failure<RegisterCompanyResponse>(
-                        new Error("Employee.AlreadyExists", "A employee with this CPF is already registered."));
-
-                var companyResult = Company.Create(
-                    request.LegalName, request.TradeName, request.Cnpj, request.CompanyEmail, request.CompanyPhone);
+                var companyResult = await CreateCompanyAsync(request, cancellationToken);
                 if (companyResult.IsFailure)
                     return Result.Failure<RegisterCompanyResponse>(companyResult.Error);
-
                 var company = companyResult.Value;
-                await _companyRepository.AddAsync(company, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken); 
 
-                var displayOrder = 0;
-                foreach (var categoryName in DefaultCategoryNames)
-                {
-                    var categoryResult = Category.Create(company.Id, categoryName, displayOrder++);
-                    if (categoryResult.IsSuccess)
-                        await _categoryRepository.AddAsync(categoryResult.Value, cancellationToken);
-                }
+                await CreateDefaultCategoriesAsync(company.Id, cancellationToken);
 
-                var branchResult = Branch.Create(
-                    company.Id, request.BranchName, request.BranchCnpj, request.CompanyPhone,
-                    request.AddressStreet, request.AddressNumber, request.AddressDistrict,
-                    request.AddressCity, request.AddressState, request.AddressZipCode);
+                var branchResult = await CreateBranchAsync(request, company.Id, cancellationToken);
                 if (branchResult.IsFailure)
                     return Result.Failure<RegisterCompanyResponse>(branchResult.Error);
-
                 var branch = branchResult.Value;
-                await _branchRepository.AddAsync(branch, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken); // precisa do Branch.Id para mesas/comandas/funcionário
 
-                for (var number = 1; number <= 5; number++)
-                {
-                    var tableResult = DiningTable.Create(branch.Id, tableStatusId: 1, number: number, capacity: 4);
-                    if (tableResult.IsSuccess)
-                        await _diningTableRepository.AddAsync(tableResult.Value, cancellationToken);
-                }
+                await CreateDefaultDiningTablesAsync(branch.Id, cancellationToken);
+                await CreateDefaultComandasAsync(branch.Id, cancellationToken);
 
-                for (var number = 1; number <= 5; number++)
-                {
-                    var comandaResult = Comanda.Create(branch.Id, comandaStatusId: 1, code: number.ToString("D3"));
-                    if (comandaResult.IsSuccess)
-                        await _comandaRepository.AddAsync(comandaResult.Value, cancellationToken);
-                }
-
-                var jobTitleResult = JobTitle.Create(company.Id, "Administrador");
+                var jobTitleResult = await CreateAdminJobTitleAsync(company.Id, cancellationToken);
                 if (jobTitleResult.IsFailure)
                     return Result.Failure<RegisterCompanyResponse>(jobTitleResult.Error);
-
                 var jobTitle = jobTitleResult.Value;
-                await _jobTitleRepository.AddAsync(jobTitle, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken); 
 
-                var employeeResult = Employee.Create(
-                    branch.Id, jobTitle.Id, request.AdminName, request.AdminCpf,
-                    request.AdminEmail, request.CompanyPhone, DateTime.Now, null, null);
+                var employeeResult = await CreateAdminEmployeeAsync(request, branch.Id, jobTitle.Id, cancellationToken);
                 if (employeeResult.IsFailure)
                     return Result.Failure<RegisterCompanyResponse>(employeeResult.Error);
-
                 var employee = employeeResult.Value;
-                await _employeeRepository.AddAsync(employee, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken); 
 
-                var roleResult = Role.Create(company.Id, "Administrador", "Acesso total — criado no onboarding.");
+                var roleResult = await CreateAdminRoleAsync(company.Id, cancellationToken);
                 if (roleResult.IsFailure)
                     return Result.Failure<RegisterCompanyResponse>(roleResult.Error);
-
                 var role = roleResult.Value;
-                await _roleRepository.AddAsync(role, cancellationToken);
 
-                var passwordHash = _passwordHasher.Hash(request.AdminPassword);
-                var userResult = AppUser.Create(
-                    company.Id, employee.Id, request.AdminUserName, request.AdminEmail, passwordHash);
+                var userResult = await CreateAdminUserAsync(request, company.Id, employee.Id, cancellationToken);
                 if (userResult.IsFailure)
                     return Result.Failure<RegisterCompanyResponse>(userResult.Error);
-
                 var user = userResult.Value;
-                await _userRepository.AddAsync(user, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken); // precisa dos Ids de Role/AppUser para o vínculo
 
-                var linkResult = UserRole.Create(company.Id, user.Id, role.Id);
+                var linkResult = await LinkUserToRoleAsync(company.Id, user.Id, role.Id, cancellationToken);
                 if (linkResult.IsFailure)
                     return Result.Failure<RegisterCompanyResponse>(linkResult.Error);
-
-                await _userRoleRepository.AddAsync(linkResult.Value, cancellationToken);
-                await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Adiciona o Id do usuário recém-criado ao log de auditoria
                 userIdBox.Value = user.Id;
 
                 return Result.Success(new RegisterCompanyResponse(company.Id, branch.Id, user.Id));
             });
+    }
+
+    private async Task<Result> ValidateUniquenessAsync(RegisterCompanyCommand request, CancellationToken cancellationToken)
+    {
+        if (await _companyRepository.ExistsByCnpjAsync(request.Cnpj, cancellationToken))
+            return Result.Failure(
+                new Error("Company.AlreadyExists", "A company with this CNPJ is already registered."));
+
+        if (await _userRepository.ExistsAsync(request.AdminUserName, request.AdminEmail, cancellationToken))
+            return Result.Failure(
+                new Error("AppUser.AlreadyExists", "User name or e-mail already in use."));
+
+        if (await _employeeRepository.ExistsByCpfAsync(request.AdminCpf, cancellationToken))
+            return Result.Failure(
+                new Error("Employee.AlreadyExists", "A employee with this CPF is already registered."));
+
+        return Result.Success();
+    }
+
+    private async Task<Result<Company>> CreateCompanyAsync(RegisterCompanyCommand request, CancellationToken cancellationToken)
+    {
+        var companyResult = Company.Create(
+            request.LegalName, request.TradeName, request.Cnpj, request.CompanyEmail, request.CompanyPhone);
+        if (companyResult.IsFailure)
+            return companyResult;
+
+        await _companyRepository.AddAsync(companyResult.Value, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken);
+
+        return companyResult;
+    }
+
+    private async Task CreateDefaultCategoriesAsync(long companyId, CancellationToken cancellationToken)
+    {
+        var displayOrder = 0;
+        foreach (var categoryName in DefaultCategoryNames)
+        {
+            var categoryResult = Category.Create(companyId, categoryName, displayOrder++);
+            if (categoryResult.IsSuccess)
+                await _categoryRepository.AddAsync(categoryResult.Value, cancellationToken);
+        }
+    }
+
+    private async Task<Result<Branch>> CreateBranchAsync(RegisterCompanyCommand request, long companyId, CancellationToken cancellationToken)
+    {
+        var branchResult = Branch.Create(
+            companyId, request.BranchName, request.BranchCnpj, request.CompanyPhone,
+            request.AddressStreet, request.AddressNumber, request.AddressDistrict,
+            request.AddressCity, request.AddressState, request.AddressZipCode);
+        if (branchResult.IsFailure)
+            return branchResult;
+
+        await _branchRepository.AddAsync(branchResult.Value, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken); // precisa do Branch.Id para mesas/comandas/funcionário
+
+        return branchResult;
+    }
+
+    private async Task CreateDefaultDiningTablesAsync(long branchId, CancellationToken cancellationToken)
+    {
+        for (var number = 1; number <= 5; number++)
+        {
+            var tableResult = DiningTable.Create(branchId, tableStatusId: 1, number: number, capacity: 4);
+            if (tableResult.IsSuccess)
+                await _diningTableRepository.AddAsync(tableResult.Value, cancellationToken);
+        }
+    }
+
+    private async Task CreateDefaultComandasAsync(long branchId, CancellationToken cancellationToken)
+    {
+        for (var number = 1; number <= 5; number++)
+        {
+            var comandaResult = Comanda.Create(branchId, comandaStatusId: 1, code: number.ToString("D3"));
+            if (comandaResult.IsSuccess)
+                await _comandaRepository.AddAsync(comandaResult.Value, cancellationToken);
+        }
+    }
+
+    private async Task<Result<JobTitle>> CreateAdminJobTitleAsync(long companyId, CancellationToken cancellationToken)
+    {
+        var jobTitleResult = JobTitle.Create(companyId, "Administrador");
+        if (jobTitleResult.IsFailure)
+            return jobTitleResult;
+
+        await _jobTitleRepository.AddAsync(jobTitleResult.Value, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken);
+
+        return jobTitleResult;
+    }
+
+    private async Task<Result<Employee>> CreateAdminEmployeeAsync(
+        RegisterCompanyCommand request, long branchId, long jobTitleId, CancellationToken cancellationToken)
+    {
+        var employeeResult = Employee.Create(
+            branchId, jobTitleId, request.AdminName, request.AdminCpf,
+            request.AdminEmail, request.CompanyPhone, DateTime.Now, null, null);
+        if (employeeResult.IsFailure)
+            return employeeResult;
+
+        await _employeeRepository.AddAsync(employeeResult.Value, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken);
+
+        return employeeResult;
+    }
+
+    private async Task<Result<Role>> CreateAdminRoleAsync(long companyId, CancellationToken cancellationToken)
+    {
+        var roleResult = Role.Create(companyId, "Administrador", "Acesso total — criado no onboarding.");
+        if (roleResult.IsFailure)
+            return roleResult;
+
+        await _roleRepository.AddAsync(roleResult.Value, cancellationToken);
+
+        return roleResult;
+    }
+
+    private async Task<Result<AppUser>> CreateAdminUserAsync(
+        RegisterCompanyCommand request, long companyId, long employeeId, CancellationToken cancellationToken)
+    {
+        var passwordHash = _passwordHasher.Hash(request.AdminPassword);
+        var userResult = AppUser.Create(companyId, employeeId, request.AdminUserName, request.AdminEmail, passwordHash);
+        if (userResult.IsFailure)
+            return userResult;
+
+        await _userRepository.AddAsync(userResult.Value, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken); // precisa dos Ids de Role/AppUser para o vínculo
+
+        return userResult;
+    }
+
+    private async Task<Result> LinkUserToRoleAsync(long companyId, long userId, long roleId, CancellationToken cancellationToken)
+    {
+        var linkResult = UserRole.Create(companyId, userId, roleId);
+        if (linkResult.IsFailure)
+            return Result.Failure(linkResult.Error);
+
+        await _userRoleRepository.AddAsync(linkResult.Value, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken);
+
+        return Result.Success();
     }
 }

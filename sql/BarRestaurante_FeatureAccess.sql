@@ -77,12 +77,15 @@ GO
 
 IF NOT EXISTS (SELECT 1 FROM dbo.AppFeature)
 BEGIN
+    DECLARE @FeatureCodeSalao    VARCHAR(50) = 'Salao';
+    DECLARE @FeatureCodeCardapio VARCHAR(50) = 'Cardapio';
+
     DBCC CHECKIDENT ('dbo.AppFeature', RESEED, 0);
     SET IDENTITY_INSERT dbo.AppFeature ON;
 
     INSERT INTO dbo.AppFeature (Id, Code, Name) VALUES
-        (1, 'Salao',    N'Salao (mesas e pedidos)'),
-        (2, 'Cardapio', N'Cardapio (produtos)'),
+        (1, @FeatureCodeSalao,    N'Salao (mesas e pedidos)'),
+        (2, @FeatureCodeCardapio, N'Cardapio (produtos)'),
         (3, 'Estoque',  N'Estoque'),
         (4, 'Equipe',   N'Equipe (funcionarios)'),
         (5, 'Usuarios', N'Usuarios e perfis'),

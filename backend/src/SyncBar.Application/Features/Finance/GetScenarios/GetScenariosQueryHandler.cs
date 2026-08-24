@@ -1,4 +1,4 @@
-﻿using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -30,13 +30,9 @@ internal sealed class GetScenariosQueryHandler(
                 // Se o seu request possuir o Id do usuário, associe-o aqui:
                 // userIdBox.Value = request.UserId;
 
-                if (request.ReferenceMonth is < 1 or > 12)
-                    return Result.Failure<ScenariosResponse>(
-                        new Error("Scenarios.InvalidMonth", "Reference month must be between 1 and 12."));
-
-                if (request.DesiredProfit < 0)
-                    return Result.Failure<ScenariosResponse>(
-                        new Error("Scenarios.InvalidProfit", "Desired profit cannot be negative."));
+                var validationError = ValidateRequest(request);
+                if (validationError is not null)
+                    return Result.Failure<ScenariosResponse>(validationError);
 
                 var from = new DateTime(request.ReferenceYear, request.ReferenceMonth, 1, 0, 0, 0, DateTimeKind.Utc);
                 var to = from.AddMonths(1);
@@ -54,15 +50,8 @@ internal sealed class GetScenariosQueryHandler(
                 var variableCosts = costs.Where(c => c.CostTypeId == CostTypeIds.Variavel).Sum(c => c.Amount);
                 var revenue = sales.Sum(s => s.TotalAmount);
 
-                // Margem de contribuicao real do mes: 1 - (CMV% + variaveis%).
-                decimal? historicalMargin = null;
-                decimal? averageTicket = null;
-                if (revenue > 0)
-                {
-                    historicalMargin = Clamp(1 - (costOfGoodsSold + variableCosts) / revenue);
-                    if (sales.Count > 0)
-                        averageTicket = Math.Round(revenue / sales.Count, 2);
-                }
+                var (historicalMargin, averageTicket) = CalculateHistoricalMetrics(
+                    revenue, sales.Count, costOfGoodsSold, variableCosts);
 
                 var normalMargin = Clamp(request.NormalMargin ?? historicalMargin ?? DefaultMargin);
                 var pessimisticMargin = Clamp(request.PessimisticMargin ?? Math.Round(normalMargin * 0.8m, 4));
@@ -79,46 +68,20 @@ internal sealed class GetScenariosQueryHandler(
                         Product = products.FirstOrDefault(p => p.Id == q.ProductId),
                     })
                     .Where(x => x.Product is not null)
-                    .Select(x => new { x.ProductId, x.Quantity, x.Product!.Name, x.Product.SalePrice, Revenue = x.Quantity * x.Product.SalePrice })
+                    .Select(x => new MixRevenueItem(
+                        x.ProductId, x.Product!.Name, x.Product.SalePrice, x.Quantity, x.Quantity * x.Product.SalePrice))
                     .ToList();
                 var mixTotal = mixRevenue.Sum(x => x.Revenue);
 
-                var scenarios = new List<ScenarioResponse>();
-                foreach (var (name, margin) in new[]
-                {
-                    ("Pessimista", pessimisticMargin),
-                    ("Normal", normalMargin),
-                    ("Otimista", optimisticMargin),
-                })
-                {
-                    var breakEven = Math.Round(fixedCosts / margin, 2);
-                    var target = Math.Round((fixedCosts + request.DesiredProfit) / margin, 2);
+                // Saldo atual por produto, para calcular a necessidade de compra no plano de estoque.
+                var currentStockByProduct = stockItems
+                    .GroupBy(i => i.ProductId)
+                    .ToDictionary(g => g.Key, g => g.First().CurrentQuantity);
 
-                    // Plano de estoque: distribui o alvo pelo mix real e converte em unidades.
-                    IReadOnlyCollection<StockPlanItemResponse> stockPlan = mixTotal <= 0
-                        ? []
-                        : mixRevenue
-                            .OrderByDescending(x => x.Revenue)
-                            .Select(x =>
-                            {
-                                var share = x.Revenue / mixTotal;
-                                var units = x.SalePrice <= 0 ? 0 : Math.Ceiling(target * share / x.SalePrice);
-                                var current = stockItems.FirstOrDefault(i => i.ProductId == x.ProductId)?.CurrentQuantity ?? 0;
-                                return new StockPlanItemResponse(
-                                    x.ProductId, x.Name, Math.Round(share, 4), units, current,
-                                    Math.Max(0, units - current));
-                            })
-                            .ToList();
-
-                    scenarios.Add(new ScenarioResponse(
-                        name,
-                        margin,
-                        breakEven,
-                        target,
-                        Math.Round(target / daysInMonth, 2),
-                        averageTicket is null or 0 ? null : Math.Ceiling(target / averageTicket.Value),
-                        stockPlan));
-                }
+                var scenarios = BuildScenarios(
+                    request.DesiredProfit, fixedCosts, daysInMonth, averageTicket,
+                    mixRevenue, mixTotal, currentStockByProduct,
+                    pessimisticMargin, normalMargin, optimisticMargin);
 
                 return Result.Success(new ScenariosResponse(
                     request.ReferenceYear,
@@ -133,6 +96,92 @@ internal sealed class GetScenariosQueryHandler(
             });
     }
 
+    private static Error? ValidateRequest(GetScenariosQuery request)
+    {
+        if (request.ReferenceMonth is < 1 or > 12)
+            return new Error("Scenarios.InvalidMonth", "Reference month must be between 1 and 12.");
+
+        if (request.DesiredProfit < 0)
+            return new Error("Scenarios.InvalidProfit", "Desired profit cannot be negative.");
+
+        return null;
+    }
+
+    // Margem de contribuicao real do mes: 1 - (CMV% + variaveis%).
+    private static (decimal? HistoricalMargin, decimal? AverageTicket) CalculateHistoricalMetrics(
+        decimal revenue, int salesCount, decimal costOfGoodsSold, decimal variableCosts)
+    {
+        if (revenue <= 0)
+            return (null, null);
+
+        var historicalMargin = Clamp(1 - (costOfGoodsSold + variableCosts) / revenue);
+        var averageTicket = salesCount > 0 ? Math.Round(revenue / salesCount, 2) : (decimal?)null;
+        return (historicalMargin, averageTicket);
+    }
+
+    private static List<ScenarioResponse> BuildScenarios(
+        decimal desiredProfit,
+        decimal fixedCosts,
+        int daysInMonth,
+        decimal? averageTicket,
+        IReadOnlyCollection<MixRevenueItem> mixRevenue,
+        decimal mixTotal,
+        IReadOnlyDictionary<long, decimal> currentStockByProduct,
+        decimal pessimisticMargin,
+        decimal normalMargin,
+        decimal optimisticMargin)
+    {
+        var scenarios = new List<ScenarioResponse>();
+        foreach (var (name, margin) in new[]
+        {
+            ("Pessimista", pessimisticMargin),
+            ("Normal", normalMargin),
+            ("Otimista", optimisticMargin),
+        })
+        {
+            var breakEven = Math.Round(fixedCosts / margin, 2);
+            var target = Math.Round((fixedCosts + desiredProfit) / margin, 2);
+            var stockPlan = BuildStockPlan(target, mixTotal, mixRevenue, currentStockByProduct);
+
+            scenarios.Add(new ScenarioResponse(
+                name,
+                margin,
+                breakEven,
+                target,
+                Math.Round(target / daysInMonth, 2),
+                averageTicket is null or 0 ? null : Math.Ceiling(target / averageTicket.Value),
+                stockPlan));
+        }
+
+        return scenarios;
+    }
+
+    // Plano de estoque: distribui o alvo pelo mix real e converte em unidades.
+    private static IReadOnlyCollection<StockPlanItemResponse> BuildStockPlan(
+        decimal target,
+        decimal mixTotal,
+        IReadOnlyCollection<MixRevenueItem> mixRevenue,
+        IReadOnlyDictionary<long, decimal> currentStockByProduct)
+    {
+        if (mixTotal <= 0)
+            return [];
+
+        return mixRevenue
+            .OrderByDescending(x => x.Revenue)
+            .Select(x =>
+            {
+                var share = x.Revenue / mixTotal;
+                var units = x.SalePrice <= 0 ? 0 : Math.Ceiling(target * share / x.SalePrice);
+                var current = currentStockByProduct.GetValueOrDefault(x.ProductId);
+                return new StockPlanItemResponse(
+                    x.ProductId, x.Name, Math.Round(share, 4), units, current,
+                    Math.Max(0, units - current));
+            })
+            .ToList();
+    }
+
     private static decimal Clamp(decimal margin)
         => Math.Min(MaxMargin, Math.Max(MinMargin, margin));
+
+    private sealed record MixRevenueItem(long ProductId, string Name, decimal SalePrice, decimal Quantity, decimal Revenue);
 }
