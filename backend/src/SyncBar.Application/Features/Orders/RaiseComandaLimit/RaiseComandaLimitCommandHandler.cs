@@ -31,7 +31,6 @@ internal sealed class RaiseComandaLimitCommandHandler : BaseCommandHandler<Raise
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gerente responsável pela liberação do limite, preencha:
-                // userIdBox.Value = request.UserId; 
 
                 var order = await _orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
                 if (order is null || !order.IsActive)

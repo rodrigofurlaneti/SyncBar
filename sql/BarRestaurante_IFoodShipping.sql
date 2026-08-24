@@ -56,7 +56,7 @@ CREATE INDEX IX_IFoodShippingDelivery_BranchId ON IFoodShippingDelivery (BranchI
 CREATE UNIQUE INDEX UQ_IFoodShippingDelivery_IFoodDeliveryId ON IFoodShippingDelivery (IFoodDeliveryId);
 
 -- Verificação:
-SELECT * FROM IFoodShippingDelivery;
+SELECT Id, BranchId, OrderReference, CustomerName, CustomerPhoneAreaCode, CustomerPhoneNumber, PostalCode, StreetName, StreetNumber, Complement, Neighborhood, City, State, Country, Reference, Latitude, Longitude, MerchantFee, QuoteId, IFoodDeliveryId, TrackingUrl, Status, RequestedAt, CancelledAt, CancellationReason, CreatedAt, UpdatedAt, IsActive FROM IFoodShippingDelivery;
 
 /* Nota operacional: assim como o módulo Logistics (fase 7), cada passo é acionado manualmente
    pela equipe (cotar → pedir motorista → acompanhar/cancelar) — sem sincronização automática de

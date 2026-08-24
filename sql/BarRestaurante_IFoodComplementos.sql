@@ -43,8 +43,8 @@ CREATE INDEX IX_IFoodComplementMapping_BranchId ON IFoodComplementMapping (Branc
 CREATE INDEX IX_IFoodComplementMapping_IFoodOptionId ON IFoodComplementMapping (IFoodOptionId);
 
 -- Verificação
-SELECT * FROM IFoodComplementGroupMapping;
-SELECT * FROM IFoodComplementMapping;
+SELECT Id, ComplementGroupId, BranchId, IFoodOptionGroupId, CreatedAt, UpdatedAt, IsActive FROM IFoodComplementGroupMapping;
+SELECT Id, ComplementId, BranchId, IFoodOptionId, IFoodProductId, CreatedAt, UpdatedAt, IsActive FROM IFoodComplementMapping;
 
 -- Nota operacional: mesma regra das fases anteriores — a sincronização de optionGroups/options só
 -- roda pra filiais que já têm MerchantId configurado em IFoodMerchantMapping E integração

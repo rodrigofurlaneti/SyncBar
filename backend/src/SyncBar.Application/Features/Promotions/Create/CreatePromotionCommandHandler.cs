@@ -32,7 +32,6 @@ internal sealed class CreatePromotionCommandHandler : BaseCommandHandler<CreateP
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gerente que está criando a promoção, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var product = await _productRepository.GetByIdAsync(request.ProductId, cancellationToken);
                 if (product is null || !product.IsActive)

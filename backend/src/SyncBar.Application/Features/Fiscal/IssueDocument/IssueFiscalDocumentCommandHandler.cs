@@ -20,7 +20,6 @@ internal sealed class IssueFiscalDocumentCommandHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário responsável pela ação, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var items = request.Items
                     .Select(i => new FiscalDocumentItem(i.Description, i.Quantity, i.UnitPrice, i.NcmCode))

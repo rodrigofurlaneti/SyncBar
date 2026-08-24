@@ -149,12 +149,12 @@ CREATE TABLE IF NOT EXISTS OrderItemPizzaFlavor (
 CREATE INDEX IX_OrderItemPizzaFlavor_PizzaFlavorId ON OrderItemPizzaFlavor (PizzaFlavorId);
 
 -- Verificação
-SELECT * FROM PizzaFlavor;
-SELECT * FROM PizzaConfiguration;
-SELECT * FROM PizzaSize;
-SELECT * FROM PizzaCrust;
-SELECT * FROM PizzaEdge;
-SELECT * FROM PizzaFlavorPrice;
-SELECT * FROM OrderItemPizzaFlavor;
+SELECT Id, CompanyId, Name, Description, ImageUrl, CreatedAt, UpdatedAt, IsActive FROM PizzaFlavor;
+SELECT Id, ProductId, CreatedAt, UpdatedAt, IsActive FROM PizzaConfiguration;
+SELECT Id, PizzaConfigurationId, Name, Slices, AcceptedFractions, DisplayOrder, CreatedAt, UpdatedAt, IsActive FROM PizzaSize;
+SELECT Id, PizzaConfigurationId, Name, ExtraPrice, DisplayOrder, CreatedAt, UpdatedAt, IsActive FROM PizzaCrust;
+SELECT Id, PizzaConfigurationId, Name, ExtraPrice, DisplayOrder, CreatedAt, UpdatedAt, IsActive FROM PizzaEdge;
+SELECT Id, PizzaConfigurationId, PizzaFlavorId, PizzaSizeId, Price, CreatedAt, UpdatedAt, IsActive FROM PizzaFlavorPrice;
+SELECT Id, OrderItemId, PizzaFlavorId, FractionShare, CreatedAt, IsActive FROM OrderItemPizzaFlavor;
 
 -- Nota: rodar ANTES de sql/BarRestaurante_IFoodPizza.sql (que referencia PizzaConfiguration por FK).

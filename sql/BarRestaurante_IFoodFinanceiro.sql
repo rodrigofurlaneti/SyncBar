@@ -69,8 +69,8 @@ CREATE INDEX IX_IFoodSettlement_BranchId_IFoodSettlementId ON IFoodSettlement (B
 CREATE INDEX IX_IFoodSettlement_BranchId_PaymentDate ON IFoodSettlement (BranchId, PaymentDate);
 
 -- Verificação:
-SELECT * FROM IFoodFinancialEvent;
-SELECT * FROM IFoodSettlement;
+SELECT Id, BranchId, IFoodEventId, Name, Description, `Trigger`, Amount, HasTransferImpact, CompetenceDate, PeriodStart, PeriodEnd, SettlementExpectedDate, ReferenceType, ReferenceId, RawPayload, CreatedAt, UpdatedAt, IsActive FROM IFoodFinancialEvent;
+SELECT Id, BranchId, IFoodSettlementId, Type, Product, Amount, Status, PaymentDate, BankCode, BankAgency, BankAccount, RawPayload, CreatedAt, UpdatedAt, IsActive FROM IFoodSettlement;
 
 /* Nota operacional: assim como cardápio e pedidos, a sincronização financeira só roda pra
    filiais que já têm MerchantId configurado em IFoodMerchantMapping E integração habilitada em

@@ -36,7 +36,6 @@ internal sealed class UpdateUserRolesCommandHandler : BaseCommandHandler<UpdateU
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do administrador que está alterando as roles, preencha:
-                // userIdBox.Value = request.AdminUserId;
 
                 var user = await _userRepository.GetByIdAsync(request.AppUserId, cancellationToken);
                 if (user is null || !user.IsActive)

@@ -28,7 +28,6 @@ internal sealed class GenerateTableQrTokenCommandHandler : BaseCommandHandler<Ge
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gerente gerando o novo token, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var table = await _diningTableRepository.GetByIdForUpdateAsync(request.DiningTableId, cancellationToken);
                 if (table is null || !table.IsActive)

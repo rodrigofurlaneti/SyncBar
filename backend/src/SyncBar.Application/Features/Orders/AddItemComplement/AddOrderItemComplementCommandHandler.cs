@@ -141,7 +141,7 @@ internal sealed class AddOrderItemComplementCommandHandler : BaseCommandHandler<
         Complement complement,
         CustomerOrder order,
         OrderItem item,
-        long employeeId,
+        long? employeeId,
         DateTime currentTime,
         CancellationToken cancellationToken)
     {

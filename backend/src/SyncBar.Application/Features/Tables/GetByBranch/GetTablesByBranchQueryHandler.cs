@@ -20,7 +20,6 @@ internal sealed class GetTablesByBranchQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/sistema consultando, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var tables = await diningTableRepository.GetByBranchAsync(request.BranchId, cancellationToken);
 

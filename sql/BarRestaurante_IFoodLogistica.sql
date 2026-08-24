@@ -63,7 +63,7 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- Verificação:
-SELECT * FROM IFoodLogisticsDelivery;
+SELECT Id, IFoodOrderId, BranchId, DriverName, DriverPhone, DriverVehicleType, Status, AssignedAt, GoingToOriginAt, ArrivedAtOriginAt, DispatchedAt, ArrivedAtDestinationAt, DeliveryCodeVerifiedAt, CreatedAt, UpdatedAt, IsActive FROM IFoodLogisticsDelivery;
 SELECT Id, IFoodOrderId, IFoodOrderType, DeliveredBy, Status FROM IFoodOrder ORDER BY Id DESC LIMIT 20;
 
 /* Nota operacional: assim como as demais ações do módulo Order/Logistics, cada passo desta tela

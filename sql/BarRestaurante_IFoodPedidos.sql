@@ -43,7 +43,7 @@ CREATE INDEX IX_IFoodOrder_BranchId ON IFoodOrder (BranchId);
 CREATE INDEX IX_IFoodOrder_CustomerOrderId ON IFoodOrder (CustomerOrderId);
 
 -- Verificação:
-SELECT * FROM IFoodOrder;
+SELECT Id, CustomerOrderId, BranchId, IFoodOrderId, DisplayId, MerchantId, IFoodOrderType, Status, ConfirmDeadlineAt, ConfirmedAt, HasUnmappedItems, CreatedAt, UpdatedAt, IsActive FROM IFoodOrder;
 
 /* IMPORTANTE — pré-requisito operacional (não é SQL, é configuração):
    pedidos do iFood são criados no SyncBar em nome do "funcionário de autoatendimento" da

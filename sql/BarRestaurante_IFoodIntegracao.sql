@@ -63,5 +63,5 @@ CREATE TABLE IF NOT EXISTS IFoodMerchantMapping (
 CREATE INDEX IX_IFoodMerchantMapping_BranchId ON IFoodMerchantMapping (BranchId);
 
 -- Verificação:
-SELECT * FROM IFoodIntegrationSetting;
-SELECT * FROM IFoodMerchantMapping;
+SELECT Id, CompanyId, ClientId, ClientSecretEncrypted, Enabled, LastConnectionTestAt, LastConnectionTestSucceeded, CreatedAt, UpdatedAt, IsActive FROM IFoodIntegrationSetting;
+SELECT Id, BranchId, MerchantId, MerchantUuid, CreatedAt, UpdatedAt, IsActive FROM IFoodMerchantMapping;

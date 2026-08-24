@@ -28,7 +28,6 @@ internal sealed class DeactivateUserCommandHandler : BaseCommandHandler<Deactiva
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do administrador que está desativando o usuário, preencha:
-                // userIdBox.Value = request.AdminUserId;
 
                 var user = await _userRepository.GetByIdForUpdateAsync(request.AppUserId, cancellationToken);
                 if (user is null || !user.IsActive)

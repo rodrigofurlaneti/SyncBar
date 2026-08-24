@@ -19,9 +19,6 @@ internal sealed class GetCustomersByCompanyQueryHandler(
             null, // Substitua por request.IpAddress caso exista essa propriedade na sua query
             async (userIdBox) =>
             {
-                // Se houver o Id do usuário no request, preencha:
-                // userIdBox.Value = request.UserId;
-
                 var customers = string.IsNullOrWhiteSpace(request.Search)
                     ? await customerRepository.GetByCompanyAsync(request.CompanyId, cancellationToken)
                     : await customerRepository.SearchAsync(request.CompanyId, request.Search.Trim(), cancellationToken);

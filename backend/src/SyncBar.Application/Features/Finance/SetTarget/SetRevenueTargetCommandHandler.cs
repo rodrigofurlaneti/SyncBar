@@ -29,7 +29,6 @@ internal sealed class SetRevenueTargetCommandHandler : BaseCommandHandler<SetRev
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário que está executando a ação, preencha:
-                // userIdBox.Value = request.UserId;
 
                 // Upsert: uma meta ativa por filial/mes (espelha UQ_RevenueTarget filtrado).
                 var existing = await _targetRepository.GetByBranchAndMonthForUpdateAsync(

@@ -20,7 +20,6 @@ internal sealed class GetReservationsByBranchAndDateQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário (ex: recepcionista) consultando as reservas, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var reservations = await reservationRepository.GetByBranchAndDateAsync(
                     request.BranchId, request.From, request.To, cancellationToken);

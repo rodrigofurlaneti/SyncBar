@@ -28,7 +28,6 @@ internal sealed class SetStockLimitsCommandHandler : BaseCommandHandler<SetStock
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário ou gerente definindo os limites, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var stockItem = await _stockItemRepository.GetByIdForUpdateAsync(request.StockItemId, cancellationToken);
                 if (stockItem is null || !stockItem.IsActive)

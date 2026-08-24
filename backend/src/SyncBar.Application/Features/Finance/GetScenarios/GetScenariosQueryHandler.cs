@@ -28,7 +28,6 @@ internal sealed class GetScenariosQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário, associe-o aqui:
-                // userIdBox.Value = request.UserId;
 
                 var validationError = ValidateRequest(request);
                 if (validationError is not null)

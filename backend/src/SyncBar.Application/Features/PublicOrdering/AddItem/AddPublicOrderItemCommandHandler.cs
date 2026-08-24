@@ -98,7 +98,7 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
             });
     }
 
-    private async Task<Result<DiningTable>> ValidateTableAsync(string token, CancellationToken cancellationToken)
+    private async Task<Result<DiningTable>> ValidateTableAsync(Guid token, CancellationToken cancellationToken)
     {
         var table = await _diningTableRepository.GetByQrTokenAsync(token, cancellationToken);
         if (table is null || !table.IsActive)

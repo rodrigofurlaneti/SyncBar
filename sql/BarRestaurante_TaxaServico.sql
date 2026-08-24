@@ -41,5 +41,5 @@ IF @BranchId IS NOT NULL
 GO
 
 -- Verificação (roda em lote separado, depois da criação):
-SELECT * FROM dbo.ServiceFeeSetting;
+SELECT Id, BranchId, Enabled, CreatedAt, UpdatedAt, IsActive FROM dbo.ServiceFeeSetting;
 GO

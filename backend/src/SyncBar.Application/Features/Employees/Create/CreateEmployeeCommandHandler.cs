@@ -31,9 +31,6 @@ internal sealed class CreateEmployeeCommandHandler : BaseCommandHandler<CreateEm
             null, // Substitua pelo IP presente no request, caso aplicável
             async (userIdBox) =>
             {
-                // Se o seu request possuir o Id do usuário que está executando a ação, preencha:
-                // userIdBox.Value = request.UserId;
-
                 // CPF unico entre ativos (espelha UQ_Employee_Cpf filtrado).
                 if (await _employeeRepository.ExistsByCpfAsync(request.Cpf, cancellationToken))
                     return Result.Failure<long>(new Error("Employee.CpfAlreadyExists", "An active employee with this CPF already exists."));

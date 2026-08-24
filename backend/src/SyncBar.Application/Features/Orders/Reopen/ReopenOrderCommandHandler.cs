@@ -35,7 +35,6 @@ internal sealed class ReopenOrderCommandHandler : BaseCommandHandler<ReopenOrder
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gerente responsável pela reabertura, preencha:
-                // userIdBox.Value = request.UserId; 
 
                 var order = await _orderRepository.GetByIdForUpdateAsync(request.CustomerOrderId, cancellationToken);
                 if (order is null || !order.IsActive)

@@ -20,7 +20,6 @@ internal sealed class GetPrintSettingsQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/sistema que está consultando, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var settings = await settingRepository.GetByBranchAsync(request.BranchId, cancellationToken);
 

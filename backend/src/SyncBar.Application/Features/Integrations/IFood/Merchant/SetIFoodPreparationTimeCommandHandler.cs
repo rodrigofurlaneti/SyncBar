@@ -50,7 +50,7 @@ internal sealed class SetIFoodPreparationTimeCommandHandler(
     }
 
     private async Task<Result<(string MerchantId, string Token, string IFoodCustomerId)>> ResolveMerchantContextAsync(
-        Guid branchId, CancellationToken cancellationToken)
+        long branchId, CancellationToken cancellationToken)
     {
         var resolved = await IFoodMerchantResolution.ResolveAsync(
             branchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
@@ -84,7 +84,7 @@ internal sealed class SetIFoodPreparationTimeCommandHandler(
             : Result.Failure(new Error("IFoodMerchant.SetPreparationTimeFailed", upsertResult.ErrorMessage ?? "Failed to set preparation time on iFood."));
     }
 
-    private async Task<Result> UpdateMappingPreparationTimeAsync(Guid branchId, int? minutes, CancellationToken cancellationToken)
+    private async Task<Result> UpdateMappingPreparationTimeAsync(long branchId, int? minutes, CancellationToken cancellationToken)
     {
         var mapping = await mappingRepository.GetByBranchForUpdateAsync(branchId, cancellationToken);
         if (mapping is null)

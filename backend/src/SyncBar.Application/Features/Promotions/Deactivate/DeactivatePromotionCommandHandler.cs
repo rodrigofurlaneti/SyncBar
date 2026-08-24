@@ -28,7 +28,6 @@ internal sealed class DeactivatePromotionCommandHandler : BaseCommandHandler<Dea
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário/gerente responsável pela desativação, preencha:
-                // userIdBox.Value = request.UserId;
 
                 var promotion = await _promotionRepository.GetByIdForUpdateAsync(request.PromotionId, cancellationToken);
                 if (promotion is null || !promotion.IsActive)

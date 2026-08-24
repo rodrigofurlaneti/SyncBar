@@ -43,8 +43,8 @@ CREATE TABLE IF NOT EXISTS IFoodPizzaElementMapping (
 CREATE INDEX IX_IFoodPizzaElementMapping_MappingId_Kind_LocalId ON IFoodPizzaElementMapping (IFoodPizzaMappingId, Kind, LocalId);
 
 -- Verificação
-SELECT * FROM IFoodPizzaMapping;
-SELECT * FROM IFoodPizzaElementMapping;
+SELECT Id, PizzaConfigurationId, BranchId, IFoodPizzaId, CreatedAt, UpdatedAt, IsActive FROM IFoodPizzaMapping;
+SELECT Id, IFoodPizzaMappingId, Kind, LocalId, IFoodElementId, CreatedAt, UpdatedAt, IsActive FROM IFoodPizzaElementMapping;
 
 -- Nota operacional: mesma regra das fases anteriores — a sincronização de pizza só roda pra
 -- filiais que já têm MerchantId configurado em IFoodMerchantMapping E integração habilitada em

@@ -30,9 +30,6 @@ internal sealed class UpdateEmployeeCommandHandler : BaseCommandHandler<UpdateEm
             null, // Substitua pelo IP presente no request, caso aplicável
             async (userIdBox) =>
             {
-                // Se o seu request possuir o Id do usuário que está executando a ação, preencha:
-                // userIdBox.Value = request.UserId;
-
                 var employee = await _employeeRepository.GetByIdForUpdateAsync(request.EmployeeId, cancellationToken);
                 if (employee is null || !employee.IsActive)
                     return Result.Failure(new Error("Employee.NotFound", "Employee not found."));

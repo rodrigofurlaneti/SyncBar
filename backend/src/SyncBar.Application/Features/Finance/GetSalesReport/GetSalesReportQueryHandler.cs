@@ -23,7 +23,6 @@ internal sealed class GetSalesReportQueryHandler(
             async (userIdBox) =>
             {
                 // Se o seu request possuir o Id do usuário que está executando a ação, preencha:
-                // userIdBox.Value = request.UserId;
 
                 if (request.ReferenceMonth is < 1 or > 12)
                     return Result.Failure<SalesReportResponse>(
