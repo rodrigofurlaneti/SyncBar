@@ -63,7 +63,7 @@ export function MetricCard({
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "var(--surface-2)";
-        e.currentTarget.style.borderColor = "transparent";
+        e.currentTarget.style.borderColor = onClick ? "var(--border)" : "transparent";
       }}
     >
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start", justifyContent: "space-between" }}>

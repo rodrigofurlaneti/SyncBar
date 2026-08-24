@@ -37,7 +37,14 @@ public sealed class ExceptionHandlingMiddleware(
                     : "Ocorreu um erro inesperado. Tente novamente ou contate o suporte."
             };
 
-            await context.Response.WriteAsJsonAsync(problem, context.RequestAborted);
+            try
+            {
+                await context.Response.WriteAsJsonAsync(problem, context.RequestAborted);
+            }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+            {
+                // Cliente desconectou antes da resposta de erro ser escrita.
+            }
         }
     }
 }

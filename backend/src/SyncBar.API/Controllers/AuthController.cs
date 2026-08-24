@@ -15,7 +15,8 @@ namespace SyncBar.API.Controllers;
 public sealed class AuthController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork) : ApiController(mediator)
+    IUnitOfWork unitOfWork,
+    ILogger<AuthController> logger) : ApiController(mediator)
 {
     [AllowAnonymous]
     [HttpPost("login")]
@@ -30,24 +31,32 @@ public sealed class AuthController(
 
         var result = await Mediator.Send(enriched, ct);
 
-        // Fire-and-forget: registra o log de auditoria depois de responder ao cliente.
-        // Usa CancellationToken.None de propósito — o 'ct' da requisição pode já estar
-        // cancelado quando esta continuação roda, o que mataria o log silenciosamente.
-        _ = Task.Run(async () => {
-            stopwatch.Stop();
-            var log = new LogTracker(0)
-            {
-                DirectoryName = "Controllers",
-                ClassName = nameof(AuthController),
-                MethodName = nameof(Login),
-                IsSuccess = !result.IsFailure,
-                ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
-                IpAddress = enriched.IpAddress,
-                CreatedAt = DateTime.Now
-            };
+        // O log de auditoria é gravado dentro do escopo da requisição: o repositório e o
+        // IUnitOfWork são scoped, então gravá-los em background (Task.Run) usaria um
+        // AppDbContext já descartado. Usa CancellationToken.None para que o log ainda seja
+        // persistido quando o cliente cancela a requisição.
+        stopwatch.Stop();
+        var log = new LogTracker(0)
+        {
+            DirectoryName = "Controllers",
+            ClassName = nameof(AuthController),
+            MethodName = nameof(Login),
+            IsSuccess = !result.IsFailure,
+            ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
+            IpAddress = enriched.IpAddress,
+            CreatedAt = DateTime.Now
+        };
+
+        try
+        {
             await logRepository.AddAsync(log, CancellationToken.None);
             await unitOfWork.CommitAsync(CancellationToken.None);
-        }, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            // Falha na auditoria não deve quebrar a resposta de login.
+            logger.LogError(ex, "Falha ao gravar log de auditoria de login.");
+        }
 
         return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
     }
