@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SyncBar.Domain.Entities;
 namespace SyncBar.Infrastructure.Persistence.Configurations
 {
-    public sealed class TableItemTransferConfiguration : IEntityTypeConfiguration<TableItemTransfer>
+    internal sealed class TableItemTransferConfiguration : IEntityTypeConfiguration<TableItemTransfer>
     {
         public void Configure(EntityTypeBuilder<TableItemTransfer> builder)
         {

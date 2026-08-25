@@ -9,9 +9,6 @@ namespace SyncBar.Infrastructure.Persistence;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenantService? currentTenant = null)
     : DbContext(options), IUnitOfWork
 {
-    // ICurrentTenantService é opcional para não quebrar cenários sem DI (design-time/migrations).
-    // Fora de uma requisição HTTP autenticada, CompanyId é null e os filtros abaixo não restringem nada —
-    // é responsabilidade de quem chama fora do pipeline HTTP (jobs, seeds) ter certeza do escopo.
     private readonly ICurrentTenantService? _currentTenant = currentTenant;
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<Branch> Branchs => Set<Branch>();
@@ -52,7 +49,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<SalePayment> SalePayments => Set<SalePayment>();
     public DbSet<CashMovement> CashMovements => Set<CashMovement>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
-
     public DbSet<AppFeature> AppFeatures => Set<AppFeature>();
     public DbSet<CostType> CostTypes => Set<CostType>();
     public DbSet<OperatingCost> OperatingCosts => Set<OperatingCost>();
@@ -82,8 +78,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<JobTitleFeature> JobTitleFeatures => Set<JobTitleFeature>();
     public DbSet<AppUserFeature> AppUserFeatures => Set<AppUserFeature>();
     public DbSet<LogTracker> LogTrackers { get; set; }
-
-    // Fase 17 (pizza)
     public DbSet<PizzaFlavor> PizzaFlavors => Set<PizzaFlavor>();
     public DbSet<PizzaConfiguration> PizzaConfigurations => Set<PizzaConfiguration>();
     public DbSet<PizzaSize> PizzaSizes => Set<PizzaSize>();
@@ -97,18 +91,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-
-        // --- Isolamento multi-tenant (SaaS) ---
-        // Cada bloco abaixo aplica HasQueryFilter para um grupo de entidades. Extraído em métodos
-        // menores apenas para reduzir a complexidade cognitiva do método (SonarCloud) — o filtro
-        // resultante em cada entidade é idêntico ao original, mesma expressão, mesma ordem.
         ConfigureCompanyScopedTenantFilters(modelBuilder);
         ConfigureBranchScopedTenantFilters(modelBuilder);
     }
 
-    // Entidades que carregam CompanyId diretamente: filtradas por igualdade simples.
-    // Quando _currentTenant é null (sem HTTP context) ou CompanyId é null (sem usuário autenticado),
-    // o filtro vira "true" e não restringe — use IgnoreQueryFilters() conscientemente em jobs internos.
     private void ConfigureCompanyScopedTenantFilters(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Branch>().HasQueryFilter(e =>
@@ -131,18 +117,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
         modelBuilder.Entity<ComplementGroup>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
-        // Fase 17 — PizzaFlavor tem CompanyId direto (cadastro reaproveitável entre pizzas, ver
-        // comentário na entidade), mesmo padrão de ComplementItem. As demais entidades de pizza
-        // (PizzaConfiguration e filhas, OrderItemPizzaFlavor) não têm CompanyId/BranchId próprio
-        // — são sempre acessadas via Product/OrderItem, que já carregam seus próprios filtros.
         modelBuilder.Entity<PizzaFlavor>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
     }
 
-    // Entidades escopadas por BranchId (não por CompanyId diretamente): filtra via
-    // subquery em Branchs (que já tem seu próprio filtro por CompanyId — EF compõe os dois
-    // como AND, redundante mas correto). Cobre as 28 entidades com BranchId direto, divididas em
-    // métodos menores apenas para manter a complexidade cognitiva de cada um sob controle.
     private void ConfigureBranchScopedTenantFilters(ModelBuilder modelBuilder)
     {
         ConfigureBranchScopedTenantFiltersPart1(modelBuilder);
@@ -195,8 +173,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<IFoodComplementMapping>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-        // Fase 17 — IFoodPizzaMapping tem BranchId direto (catálogo do iFood é por merchant/filial),
-        // mesmo padrão de IFoodComplementGroupMapping/IFoodProductMapping.
         modelBuilder.Entity<IFoodPizzaMapping>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<ComandaSetting>().HasQueryFilter(e =>
