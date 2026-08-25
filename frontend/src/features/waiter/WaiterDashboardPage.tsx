@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, type CSSProperties } from "react";
+﻿import { useMemo, useState, useRef, useEffect, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -6,6 +6,7 @@ import { getTablesByBranch } from "../tables/api";
 import { getOpenOrdersByBranch } from "../orders/api";
 import { getComandasByBranch } from "../comandas/api";
 import { getActiveAssignmentsByEmployee, getTablesByArea } from "../diningareas/api";
+import { api } from "../../lib/apiClient";
 
 import { useAuthStore } from "../../stores/authStore";
 import { useThemeStore } from "../../stores/themeStore";
@@ -20,6 +21,24 @@ import {
     orderTypeLabel,
 } from "../../lib/types";
 import type { ComandaResponse, OrderResponse, TableResponse } from "../../lib/types";
+
+// Interface para as mensagens do garçom
+interface WaiterMessageResponse {
+    id: number;
+    branchId: number;
+    senderEmployeeId: number;
+    recipientEmployeeId: number | null;
+    diningAreaId: number | null;
+    message: string;
+    isRead: boolean;
+    createdAt: string;
+}
+
+// Função de API para buscar mensagens filtradas por filial e praça (diningAreaId)
+const getWaiterMessagesByBranch = (branchId: number, diningAreaId: number | null): Promise<WaiterMessageResponse[]> => {
+    if (!diningAreaId) return Promise.resolve([]);
+    return api<WaiterMessageResponse[]>(`/api/diningareas/messages/branch/${branchId}?diningAreaId=${diningAreaId}`);
+};
 
 type BadgeTone = "ready" | "preparing" | "waiting";
 
@@ -120,6 +139,9 @@ export function WaiterDashboardPage() {
     const [profileOpen, setProfileOpen] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
 
+    // Referência para rolar o chat de mensagens para o final automaticamente
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
     const showToast = (message: string) => {
         setToast(message);
         window.setTimeout(() => setToast((current) => (current === message ? null : current)), 2500);
@@ -164,6 +186,27 @@ export function WaiterDashboardPage() {
         queryFn: () => getOpenOrdersByBranch(branchId),
         refetchInterval: 15_000,
     });
+
+    // Query para buscar as mensagens vinculadas exclusivamente à praça ativa do garçom
+    const messagesQuery = useQuery({
+        queryKey: ["waitermessages", branchId, activeAreaId],
+        queryFn: () => getWaiterMessagesByBranch(branchId, activeAreaId),
+        enabled: !!branchId && !!activeAreaId,
+        refetchInterval: 10_000,
+    });
+
+    // Ordena as mensagens cronologicamente (mais antiga em cima, mais nova embaixo — estilo WhatsApp)
+    const sortedMessages = useMemo(() => {
+        const msgs = messagesQuery.data ?? [];
+        return [...msgs].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    }, [messagesQuery.data]);
+
+    // Rola para baixo automaticamente quando entra na aba mensagens ou chegam novas mensagens
+    useEffect(() => {
+        if (activeTab === "mensagens") {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [activeTab, sortedMessages.length]);
 
     const tablesById = useMemo(() => {
         const map = new Map<number, TableResponse>();
@@ -219,6 +262,7 @@ export function WaiterDashboardPage() {
         void queryClient.invalidateQueries({ queryKey: ["tables"] });
         void queryClient.invalidateQueries({ queryKey: ["orders"] });
         void queryClient.invalidateQueries({ queryKey: ["comandas"] });
+        void queryClient.invalidateQueries({ queryKey: ["waitermessages"] });
     };
 
     const handleQuickAction = (key: QuickActionKey) => {
@@ -245,10 +289,8 @@ export function WaiterDashboardPage() {
             case "inicio":
             case "mesas":
             case "pedidos":
-                setActiveTab(key);
-                break;
             case "mensagens":
-                showToast("Mensagens internas — em breve.");
+                setActiveTab(key);
                 break;
             case "perfil":
                 setProfileOpen(true);
@@ -509,7 +551,7 @@ export function WaiterDashboardPage() {
                     )}
 
                     {/* ========================================================== */}
-                    {/* ABA: PEDIDOS (HISTÓRICO DA PRAÇA)                          */}
+                    {/* ABA: PEDIDOS                                               */}
                     {/* ========================================================== */}
                     {activeTab === "pedidos" && (
                         <section className="waiter-section">
@@ -570,6 +612,56 @@ export function WaiterDashboardPage() {
                                             </button>
                                         );
                                     })}
+                                </div>
+                            )}
+                        </section>
+                    )}
+
+                    {/* ========================================================== */}
+                    {/* ABA: MENSAGENS (EXCLUSIVAS DA PRAÇA ATIVA DO GARÇOM)        */}
+                    {/* ========================================================== */}
+                    {activeTab === "mensagens" && (
+                        <section className="waiter-section">
+                            <h2 className="waiter-section-title" style={{ marginBottom: 16 }}>Mensagens e Avisos</h2>
+
+                            {!activeAreaId ? (
+                                <p className="waiter-empty">Atribua-se a uma praça para visualizar as mensagens locais.</p>
+                            ) : messagesQuery.isLoading ? (
+                                <p className="waiter-empty">Carregando mensagens...</p>
+                            ) : messagesQuery.isError ? (
+                                <QueryError error={messagesQuery.error} what="as mensagens" />
+                            ) : sortedMessages.length === 0 ? (
+                                <p className="waiter-empty">Nenhuma mensagem registrada na sua praça no momento.</p>
+                            ) : (
+                                <div className="waiter-order-list" style={{ display: "grid", gap: "10px" }}>
+                                    {sortedMessages.map((msg) => (
+                                        <div
+                                            key={msg.id}
+                                            style={{
+                                                backgroundColor: "var(--surface, #ffffff)",
+                                                borderRadius: "10px",
+                                                padding: "14px",
+                                                border: "1px solid var(--border, #e5e7eb)",
+                                                borderLeft: `6px solid ${msg.isRead ? "#9ca3af" : "#3b82f6"}`,
+                                                display: "grid",
+                                                gap: "6px"
+                                            }}
+                                        >
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--ink-dim)" }}>
+                                                    Aviso Operacional
+                                                </span>
+                                                <span style={{ fontSize: "0.75rem", color: "var(--ink-faint)" }}>
+                                                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(msg.createdAt).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <p style={{ fontSize: "0.95rem", color: "var(--ink)", margin: 0, fontWeight: 500 }}>
+                                                {msg.message}
+                                            </p>
+                                        </div>
+                                    ))}
+                                    {/* Elemento de ancoragem para rolar até o final automaticamente */}
+                                    <div ref={messagesEndRef} />
                                 </div>
                             )}
                         </section>

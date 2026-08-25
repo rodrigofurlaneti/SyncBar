@@ -1,20 +1,22 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SyncBar.Domain.Repositories;
 using SyncBar.Application.Features.Dining.Area.Create;
-using SyncBar.Application.Features.Dining.Area.Update;
-using SyncBar.Application.Features.Dining.Area.GetById;
 using SyncBar.Application.Features.Dining.Area.GetByBranchId;
-using SyncBar.Application.Features.Dining.Table.Create;
-using SyncBar.Application.Features.Dining.Table.Update;
-using SyncBar.Application.Features.Dining.Table.Deactivate;
-using SyncBar.Application.Features.Dining.Table.GetByDiningAreaId;
-using SyncBar.Application.Features.Dining.Table.GetById;
+using SyncBar.Application.Features.Dining.Area.GetById;
+using SyncBar.Application.Features.Dining.Area.Update;
 using SyncBar.Application.Features.Dining.Assignment.Create;
 using SyncBar.Application.Features.Dining.Assignment.End;
 using SyncBar.Application.Features.Dining.Assignment.GetActiveByDiningAreaId;
 using SyncBar.Application.Features.Dining.Assignment.GetActiveByEmployeeId;
+using SyncBar.Application.Features.Dining.Messages.Create;
+using SyncBar.Application.Features.Dining.Messages.GetWaiterMessagesByBranch;
+using SyncBar.Application.Features.Dining.Table.Create;
+using SyncBar.Application.Features.Dining.Table.Deactivate;
+using SyncBar.Application.Features.Dining.Table.GetByDiningAreaId;
+using SyncBar.Application.Features.Dining.Table.GetById;
+using SyncBar.Application.Features.Dining.Table.Update;
+using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers
 {
@@ -122,7 +124,24 @@ namespace SyncBar.API.Controllers
                 var result = await Mediator.Send(new EndDiningAreaAssignmentCommand(assignmentId, request.EndAt), ct);
                 return result.IsFailure ? HandleFailure(result) : NoContent();
             });
+
+        [HttpGet("messages/branch/{branchId:long}")]
+        public Task<IActionResult> GetMessagesByBranch(long branchId, [FromQuery] long? diningAreaId, CancellationToken ct) =>
+                ExecuteWithLogAsync(logRepository, unitOfWork, nameof(DiningAreasController), nameof(GetMessagesByBranch), async () =>
+                {
+                    var result = await Mediator.Send(new GetWaiterMessagesByBranchQuery(branchId, diningAreaId), ct);
+                    return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+                });
+
+        [HttpPost("messages")]
+        public Task<IActionResult> SendMessage([FromBody] CreateWaiterMessageCommand command, CancellationToken ct) =>
+            ExecuteWithLogAsync(logRepository, unitOfWork, nameof(DiningAreasController), nameof(SendMessage), async () =>
+            {
+                var result = await Mediator.Send(command, ct);
+                return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+            });
     }
+
     public sealed record UpdateDiningAreaRequest(string Name);
     public sealed record AssignTableRequest(long DiningTableId);
     public sealed record UpdateTableAssignmentRequest(long DiningAreaId, long DiningTableId);

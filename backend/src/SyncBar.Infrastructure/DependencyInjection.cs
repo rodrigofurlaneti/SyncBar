@@ -102,7 +102,7 @@ public static class DependencyInjection
         services.AddSingleton<IRawPrinterTransport, WindowsRawPrinterTransport>();
         services.AddSingleton<IRawPrinterTransport, NetworkRawPrinterTransport>();
         services.AddScoped<SyncBar.Application.Abstractions.Printing.IPrintingService, PrintingService>();
-
+        services.AddScoped<IWaiterMessageRepository, WaiterMessageRepository>();
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IJwtTokenProvider, JwtTokenProvider>();
