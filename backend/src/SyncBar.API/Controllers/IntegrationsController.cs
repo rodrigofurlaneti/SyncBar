@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,17 +22,12 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-// Credenciais de integrações externas (iFood e, futuramente, outras) — só quem administra a
-// empresa mexe aqui, mesmo padrão de acesso do resto de Configurações (ManagerGate no frontend).
 [Authorize(Roles = "Administrador,Gerente")]
 public sealed class IntegrationsController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
-    // Credenciais do app iFood (client_id/client_secret) — por EMPRESA, não por filial: o app
-    // criado no portal do iFood é "centralizado" e um único client_id dá acesso a vários
-    // merchants (ver comentário em IFoodIntegrationSetting.cs).
     [HttpGet("ifood/company/{companyId:long}")]
     public Task<IActionResult> GetIFoodSettings(long companyId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodSettings), async () =>
@@ -49,8 +44,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Testa as credenciais salvas contra o endpoint OAuth do iFood — endpoint/payload
-    // confirmados contra a doc oficial (ver IFoodAuthClient).
     [HttpPost("ifood/test-connection")]
     public Task<IActionResult> TestIFoodConnection([FromBody] TestIFoodConnectionCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(TestIFoodConnection), async () =>
@@ -59,7 +52,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Mapeamento loja (filial) → MerchantId do iFood — por filial, diferente das credenciais.
     [HttpGet("ifood/merchants/company/{companyId:long}")]
     public Task<IActionResult> GetIFoodMerchantMappings(long companyId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodMerchantMappings), async () =>

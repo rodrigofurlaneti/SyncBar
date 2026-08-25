@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Domain.Exceptions;
 using SyncBar.Domain.Entities;
@@ -52,12 +52,10 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         return await ExecuteWithLogAsync(
             nameof(AddOrderItemCommandHandler),
             nameof(Handle),
-            null, // Substitua pelo IP presente no request, caso aplicável
+            null, 
             async (userIdBox) =>
             {
-                // Mapeia o ID do funcionário (usuário) responsável pela ação para o log de auditoria
                 userIdBox.Value = request.EmployeeId;
-
                 return await HandleCoreAsync(request, cancellationToken);
             });
     }

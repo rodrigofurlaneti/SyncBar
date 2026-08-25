@@ -1,6 +1,4 @@
-﻿using System.Security.Claims;
-using System.Text.Json.Serialization;
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Orders.AddItem;
@@ -14,16 +12,19 @@ using SyncBar.Application.Features.Orders.GetOpenByBranch;
 using SyncBar.Application.Features.Orders.Open;
 using SyncBar.Application.Features.Orders.RaiseComandaLimit;
 using SyncBar.Application.Features.Orders.RemoveItemComplement;
-using SyncBar.Application.Features.Orders.Reopen;
 using SyncBar.Application.Features.Orders.RemoveServiceFee;
+using SyncBar.Application.Features.Orders.Reopen;
 using SyncBar.Application.Features.Orders.ServiceFeeSetting;
 using SyncBar.Application.Features.Orders.SplitBill;
+using SyncBar.Application.Features.Orders.TransferItem;
 using SyncBar.Application.Features.Orders.UpdateItemStatus;
 using SyncBar.Domain.Repositories;
+using System.Security.Claims;
+using System.Text.Json.Serialization;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Salao")]
+[Authorize(Roles = "Administrador,Gerente")]
 public sealed class OrdersController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -175,6 +176,20 @@ public sealed class OrdersController(
             var result = await Mediator.Send(new CancelOrderCommand(id), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
+    [HttpPut("items/transfer")]
+    public Task<IActionResult> TransferItem([FromBody] TransferTableItemRequest request, CancellationToken ct) =>
+            ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(TransferItem), async () =>
+            {
+                var result = await Mediator.Send(new TransferTableItemCommand(
+                    request.SourceCustomerOrderId,
+                    request.TargetCustomerOrderId,
+                    request.CustomerOrderItemId,
+                    request.SourceDiningTableId,
+                    request.TargetDiningTableId,
+                    request.ActorEmployeeId
+                ), ct);
+                return result.IsFailure ? HandleFailure(result) : NoContent();
+            });
 }
 public sealed record AddOrderItemRequest(
     [property: JsonRequired] long ProductId,
@@ -200,3 +215,11 @@ public sealed record UpdateOrderItemStatusRequest(
     [property: JsonRequired] long OrderItemStatusId, long? ActorEmployeeId = null);
 public sealed record ApplyOrderDiscountRequest([property: JsonRequired] decimal DiscountAmount);
 public sealed record CloseOrderRequest(decimal ServiceFeeRate = 0.10m);
+public sealed record TransferTableItemRequest(
+    [property: JsonRequired] long SourceCustomerOrderId,
+    [property: JsonRequired] long TargetCustomerOrderId,
+    [property: JsonRequired] long CustomerOrderItemId,
+    [property: JsonRequired] long SourceDiningTableId,
+    [property: JsonRequired] long TargetDiningTableId,
+    [property: JsonRequired] long ActorEmployeeId
+);
