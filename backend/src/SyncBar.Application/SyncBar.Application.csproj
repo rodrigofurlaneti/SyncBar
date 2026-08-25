@@ -19,4 +19,7 @@
     <InternalsVisibleTo Include="SyncBar.Tests" />
     <InternalsVisibleTo Include="SyncBar.Specs" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Features\Dining\Assignment\Update\" />
+  </ItemGroup>
 </Project>
