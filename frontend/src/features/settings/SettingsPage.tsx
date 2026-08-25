@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+﻿import { useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getServiceFeeSetting, setSelfServiceEmployee, setServiceFeeEnabled } from "./api";
@@ -11,19 +11,20 @@ import { formatBRL } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
 
 const cards = [
-  { to: "/acessos", label: "Acessos", desc: "Papéis e permissões dos usuários" },
-  { to: "/usuarios", label: "Usuários", desc: "Contas de acesso ao sistema" },
-  { to: "/equipe", label: "Equipe", desc: "Funcionários e cargos" },
-  { to: "/faturamento", label: "Faturamento", desc: "Custos e metas do mês" },
-  { to: "/relatorios", label: "Relatórios", desc: "Vendas, produtos e taxa de serviço" },
-  { to: "/cenarios", label: "Cenários", desc: "Projeções e simulações" },
-  { to: "/fechamentos", label: "Fechamentos", desc: "Histórico de sessões de caixa" },
-  { to: "/promocoes", label: "Promoções", desc: "Ofertas e descontos ativos" },
-  { to: "/impressao", label: "Impressão", desc: "Impressoras e cupons" },
-  { to: "/compras", label: "Compras", desc: "Fornecedores e entrada de estoque" },
-  { to: "/reservas", label: "Reservas", desc: "Agenda de reservas de mesa" },
-  { to: "/clientes", label: "Clientes", desc: "Cadastro e fidelidade" },
-  { to: "/integracoes/ifood", label: "Integração iFood", desc: "Credenciais e conexão com o iFood" },
+    { to: "/acessos", label: "Acessos", desc: "Papéis e permissões dos usuários" },
+    { to: "/usuarios", label: "Usuários", desc: "Contas de acesso ao sistema" },
+    { to: "/equipe", label: "Equipe", desc: "Funcionários e cargos" },
+    { to: "/pracas", label: "Praças e Salões", desc: "Gestão de áreas, mesas e turnos de garçons" },
+    { to: "/faturamento", label: "Faturamento", desc: "Custos e metas do mês" },
+    { to: "/relatorios", label: "Relatórios", desc: "Vendas, produtos e taxa de serviço" },
+    { to: "/cenarios", label: "Cenários", desc: "Projeções e simulações" },
+    { to: "/fechamentos", label: "Fechamentos", desc: "Histórico de sessões de caixa" },
+    { to: "/promocoes", label: "Promoções", desc: "Ofertas e descontos ativos" },
+    { to: "/impressao", label: "Impressão", desc: "Impressoras e cupons" },
+    { to: "/compras", label: "Compras", desc: "Fornecedores e entrada de estoque" },
+    { to: "/reservas", label: "Reservas", desc: "Agenda de reservas de mesa" },
+    { to: "/clientes", label: "Clientes", desc: "Cadastro e fidelidade" },
+    { to: "/integracoes/ifood", label: "Integração iFood", desc: "Credenciais e conexão com o iFood" },
 ];
 
 export function SettingsPage() {

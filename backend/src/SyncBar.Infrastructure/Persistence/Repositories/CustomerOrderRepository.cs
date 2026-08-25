@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
@@ -15,7 +15,6 @@ internal sealed class CustomerOrderRepository(AppDbContext context) : ICustomerO
             .Include(x => x.Items)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-    // Tracked, com itens — para AddItem/Close/Cancel.
     public async Task<CustomerOrder?> GetByIdForUpdateAsync(long id, CancellationToken cancellationToken = default)
         => await context.CustomerOrders
             .Include(x => x.Items)

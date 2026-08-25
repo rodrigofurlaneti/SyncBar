@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -18,5 +18,8 @@
   <ItemGroup>
     <InternalsVisibleTo Include="SyncBar.Tests" />
     <InternalsVisibleTo Include="SyncBar.Specs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Features\Dining\Assignment\Update\" />
   </ItemGroup>
 </Project>

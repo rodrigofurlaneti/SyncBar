@@ -24,7 +24,6 @@ public sealed class PreparationController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Avanco de status a partir do painel — cozinha/bar nao precisam da tela Salao.
     [HttpPut("orders/{orderId:long}/items/{itemId:long}/status")]
     public Task<IActionResult> UpdateItemStatus(long orderId, long itemId,
         [FromBody] UpdateOrderItemStatusRequest request, CancellationToken ct) =>

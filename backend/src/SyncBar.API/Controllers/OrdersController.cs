@@ -1,6 +1,4 @@
-using System.Security.Claims;
-using System.Text.Json.Serialization;
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Orders.AddItem;
@@ -14,16 +12,19 @@ using SyncBar.Application.Features.Orders.GetOpenByBranch;
 using SyncBar.Application.Features.Orders.Open;
 using SyncBar.Application.Features.Orders.RaiseComandaLimit;
 using SyncBar.Application.Features.Orders.RemoveItemComplement;
-using SyncBar.Application.Features.Orders.Reopen;
 using SyncBar.Application.Features.Orders.RemoveServiceFee;
+using SyncBar.Application.Features.Orders.Reopen;
 using SyncBar.Application.Features.Orders.ServiceFeeSetting;
 using SyncBar.Application.Features.Orders.SplitBill;
+using SyncBar.Application.Features.Orders.TransferItem;
 using SyncBar.Application.Features.Orders.UpdateItemStatus;
 using SyncBar.Domain.Repositories;
+using System.Security.Claims;
+using System.Text.Json.Serialization;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Salao")]
+[Authorize(Roles = "Administrador,Gerente")]
 public sealed class OrdersController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -64,9 +65,6 @@ public sealed class OrdersController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Fase 17 — lança uma pizza no pedido. Rota separada de AddItem porque o preço não vem do
-    // Product (é calculado a partir do tamanho/borda/recheio/sabores escolhidos, ver
-    // AddPizzaOrderItemCommandHandler) e o payload é bem diferente (sem Complements).
     [HttpPost("{id:long}/pizza-items")]
     public Task<IActionResult> AddPizzaItem(long id, [FromBody] AddPizzaOrderItemRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(AddPizzaItem), async () =>
@@ -77,7 +75,6 @@ public sealed class OrdersController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Adiciona um complemento a um item JÁ lançado (ex.: "esqueci de pedir bacon extra").
     [HttpPost("{id:long}/items/{itemId:long}/complements")]
     public Task<IActionResult> AddItemComplement(long id, long itemId, [FromBody] AddOrderItemComplementRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(AddItemComplement), async () =>
@@ -121,7 +118,6 @@ public sealed class OrdersController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Fechou a conta por engano: reabre para consumo.
     [HttpPut("{id:long}/reopen")]
     public Task<IActionResult> Reopen(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(Reopen), async () =>
@@ -130,7 +126,6 @@ public sealed class OrdersController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Somente o gerente libera mais limite de comanda.
     [Authorize(Roles = "Administrador,Gerente")]
     [HttpPut("{id:long}/credit-limit")]
     public Task<IActionResult> RaiseCreditLimit(long id, [FromBody] RaiseCreditLimitRequest request, CancellationToken ct) =>
@@ -140,7 +135,6 @@ public sealed class OrdersController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Somente o gerente pode retirar os 10% — role exigida ALEM da policy do controller.
     [Authorize(Roles = "Administrador,Gerente")]
     [HttpPut("{id:long}/remove-service-fee")]
     public Task<IActionResult> RemoveServiceFee(long id, CancellationToken ct) =>
@@ -150,7 +144,6 @@ public sealed class OrdersController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Config da taxa de servico (10%) por filial — leitura liberada a quem ve o Salao.
     [HttpGet("service-fee-setting/branch/{branchId:long}")]
     public Task<IActionResult> GetServiceFeeSetting(long branchId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(GetServiceFeeSetting), async () =>
@@ -159,7 +152,6 @@ public sealed class OrdersController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Ligar/desligar os 10% — somente o gerente.
     [Authorize(Roles = "Administrador,Gerente")]
     [HttpPut("service-fee-setting")]
     public Task<IActionResult> SetServiceFeeEnabled([FromBody] SetServiceFeeEnabledCommand command, CancellationToken ct) =>
@@ -169,8 +161,6 @@ public sealed class OrdersController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Divide a conta em N partes iguais (em centavos, sem perder nem sobrar 1 centavo) —
-    // o caixa registra cada parte como um pagamento na mesma venda (RegisterSaleCommand.Payments).
     [HttpGet("{id:long}/split/{peopleCount:int}")]
     public Task<IActionResult> CalculateSplit(long id, int peopleCount, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(CalculateSplit), async () =>
@@ -186,13 +176,21 @@ public sealed class OrdersController(
             var result = await Mediator.Send(new CancelOrderCommand(id), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
+    [HttpPut("items/transfer")]
+    public Task<IActionResult> TransferItem([FromBody] TransferTableItemRequest request, CancellationToken ct) =>
+            ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(TransferItem), async () =>
+            {
+                var result = await Mediator.Send(new TransferTableItemCommand(
+                    request.SourceCustomerOrderId,
+                    request.TargetCustomerOrderId,
+                    request.CustomerOrderItemId,
+                    request.SourceDiningTableId,
+                    request.TargetDiningTableId,
+                    request.ActorEmployeeId
+                ), ct);
+                return result.IsFailure ? HandleFailure(result) : NoContent();
+            });
 }
-
-// Requests separados dos commands quando ha parametro de rota.
-// Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor sem
-// default para evitar under-posting (campos com default, como CloseOrderRequest.ServiceFeeRate
-// e UpdateOrderItemStatusRequest.ActorEmployeeId, ja tratam ausencia do campo corretamente e
-// nao foram sinalizados pelo Sonar).
 public sealed record AddOrderItemRequest(
     [property: JsonRequired] long ProductId,
     [property: JsonRequired] decimal Quantity,
@@ -217,3 +215,11 @@ public sealed record UpdateOrderItemStatusRequest(
     [property: JsonRequired] long OrderItemStatusId, long? ActorEmployeeId = null);
 public sealed record ApplyOrderDiscountRequest([property: JsonRequired] decimal DiscountAmount);
 public sealed record CloseOrderRequest(decimal ServiceFeeRate = 0.10m);
+public sealed record TransferTableItemRequest(
+    [property: JsonRequired] long SourceCustomerOrderId,
+    [property: JsonRequired] long TargetCustomerOrderId,
+    [property: JsonRequired] long CustomerOrderItemId,
+    [property: JsonRequired] long SourceDiningTableId,
+    [property: JsonRequired] long TargetDiningTableId,
+    [property: JsonRequired] long ActorEmployeeId
+);

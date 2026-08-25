@@ -35,6 +35,7 @@ import { IFoodDashboardPage } from "./features/integrations/IFoodDashboardPage";
 import { IFoodStatusDetailedPage } from "./features/integrations/IFoodStatusDetailedPage";
 import { IFoodReviewsDetailedPage } from "./features/integrations/IFoodReviewsDetailedPage";
 import { IFoodAnalyticsEnhancedPage } from "./features/integrations/IFoodAnalyticsEnhancedPage";
+import { DiningAreasPage } from "./features/diningareas/DiningAreasPage";
 import { FeatureGate, NoAccessPage } from "./features/access/FeatureGate";
 import { useMyFeatures } from "./features/access/hooks";
 
@@ -94,6 +95,7 @@ export default function App() {
         <Route path="/integracoes/ifood/avaliacoes" element={<ManagerGate><IFoodReviewsDetailedPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/indicadores" element={<ManagerGate><IFoodAnalyticsEnhancedPage /></ManagerGate>} />
         <Route path="/integracoes/ifood/financeiro/relatorios" element={<ManagerGate><IFoodFinancialReportsPage /></ManagerGate>} />
+        <Route path="/pracas" element={<ManagerGate><DiningAreasPage /></ManagerGate>} />
         <Route path="/sem-acesso" element={<NoAccessPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
