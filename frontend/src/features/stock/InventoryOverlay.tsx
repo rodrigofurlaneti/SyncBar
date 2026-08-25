@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { adjustInventory, type InventoryAdjustment } from "./api";
 import { useAuthStore } from "../../stores/authStore";
@@ -21,7 +21,6 @@ const parseNum = (raw: string): number | null => {
 
 export function InventoryOverlay({ items, productName, onClose, onDone }: Props) {
   const { branchId, employeeId } = useAuthStore();
-  // Comeca vazio de proposito: obriga a digitar a CONTAGEM real, nao aceitar o saldo do sistema.
   const [counts, setCounts] = useState<Record<number, string>>({});
   const [result, setResult] = useState<InventoryAdjustment[] | null>(null);
   const [error, setError] = useState<string | null>(null);

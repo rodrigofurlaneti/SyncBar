@@ -22,7 +22,6 @@ import {
 } from "../../lib/types";
 import type { ComandaResponse, OrderResponse, TableResponse } from "../../lib/types";
 
-// Interface para as mensagens do garçom
 interface WaiterMessageResponse {
     id: number;
     branchId: number;
@@ -34,7 +33,6 @@ interface WaiterMessageResponse {
     createdAt: string;
 }
 
-// Função de API para buscar mensagens filtradas por filial e praça (diningAreaId)
 const getWaiterMessagesByBranch = (branchId: number, diningAreaId: number | null): Promise<WaiterMessageResponse[]> => {
     if (!diningAreaId) return Promise.resolve([]);
     return api<WaiterMessageResponse[]>(`/api/diningareas/messages/branch/${branchId}?diningAreaId=${diningAreaId}`);
@@ -103,15 +101,12 @@ const badgeToneVar: Record<BadgeTone, string> = {
     waiting: "var(--w-warn, #f59e0b)",
 };
 
-type QuickActionKey = "nova" | "transferir" | "mesas" | "conta" | "dividir" | "turno";
+type QuickActionKey = "transferir" | "mesas" | "calculadora" | "turno";
 
 const quickActions: { key: QuickActionKey; icon: string; label: string }[] = [
-    { key: "nova", icon: "🧾", label: "Nova" },
     { key: "transferir", icon: "🔀", label: "Transferir" },
     { key: "mesas", icon: "🍽️", label: "Mesas" },
-    { key: "conta", icon: "💳", label: "Conta" },
-    { key: "dividir", icon: "➗", label: "Dividir" },
-    { key: "turno", icon: "🕒", label: "Turno" },
+    { key: "calculadora", icon: "🔢", label: "Calculadora" }
 ];
 
 type TabKey = "inicio" | "mesas" | "pedidos" | "mensagens" | "perfil";
@@ -139,6 +134,13 @@ export function WaiterDashboardPage() {
     const [profileOpen, setProfileOpen] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
 
+    // Estados para a Calculadora
+    const [calculatorOpen, setCalculatorOpen] = useState(false);
+    const [calcInput, setCalcInput] = useState("0");
+    const [calcPrevValue, setCalcPrevValue] = useState<number | null>(null);
+    const [calcOperator, setCalcOperator] = useState<string | null>(null);
+    const [calcNewNumber, setCalcNewNumber] = useState(false);
+
     // Estados para o Modal de Transferência de Mesa/Item
     const [transferOpen, setTransferOpen] = useState(false);
     const [sourceTableId, setSourceTableId] = useState<string>("");
@@ -153,6 +155,55 @@ export function WaiterDashboardPage() {
         setToast(message);
         window.setTimeout(() => setToast((current) => (current === message ? null : current)), 2500);
     };
+
+    // -------------------------------------------------------------
+    // Funções da Calculadora
+    // -------------------------------------------------------------
+    const handleCalcNum = (num: string) => {
+        if (calcNewNumber) {
+            setCalcInput(num);
+            setCalcNewNumber(false);
+        } else {
+            setCalcInput(calcInput === "0" && num !== "." ? num : calcInput + num);
+        }
+    };
+
+    const handleCalcOp = (op: string) => {
+        if (calcOperator && !calcNewNumber) {
+            handleCalcEqual();
+        } else {
+            setCalcPrevValue(parseFloat(calcInput));
+        }
+        setCalcOperator(op);
+        setCalcNewNumber(true);
+    };
+
+    const handleCalcEqual = () => {
+        if (calcOperator && calcPrevValue !== null) {
+            const current = parseFloat(calcInput);
+            let result = 0;
+            if (calcOperator === "+") result = calcPrevValue + current;
+            if (calcOperator === "-") result = calcPrevValue - current;
+            if (calcOperator === "*") result = calcPrevValue * current;
+            if (calcOperator === "/") result = calcPrevValue / current;
+
+            // Formatando para evitar muitas casas decimais
+            result = parseFloat(result.toFixed(4));
+
+            setCalcInput(result.toString());
+            setCalcPrevValue(null);
+            setCalcOperator(null);
+            setCalcNewNumber(true);
+        }
+    };
+
+    const handleCalcClear = () => {
+        setCalcInput("0");
+        setCalcPrevValue(null);
+        setCalcOperator(null);
+        setCalcNewNumber(false);
+    };
+    // -------------------------------------------------------------
 
     const assignmentQuery = useQuery({
         queryKey: ["diningareaassignments", "active", employeeId],
@@ -285,8 +336,10 @@ export function WaiterDashboardPage() {
                 break;
             case "nova":
             case "conta":
-            case "dividir":
                 navigate("/");
+                break;
+            case "calculadora":
+                setCalculatorOpen(true);
                 break;
             case "transferir":
                 setTransferOpen(true);
@@ -311,11 +364,18 @@ export function WaiterDashboardPage() {
         }
     };
 
+    // ---------------------------------------------------------
+    // AQUI ESTÁ A ALTERAÇÃO PRINCIPAL
+    // ---------------------------------------------------------
     const handleTableClick = (tableId: number, statusId: number) => {
         if (statusId === TableStatus.Livre) {
-            showToast("Mesa livre. Vá para Início e clique em '+ Nova comanda' para lançar.");
+            // Em vez de mostrar um aviso de texto, redireciona o usuário para
+            // a raiz ("/" - geralmente a tela de Salão/Cardápio) e passa o ID da mesa
+            navigate("/", { state: { selectedTableId: tableId } });
             return;
         }
+
+        // Se a mesa estiver ocupada, abre o OrderDrawer para visualizá-la
         const order = myOrders.find((o) => o.diningTableId === tableId);
         if (order) {
             setSelectedOrderId(order.id);
@@ -433,7 +493,7 @@ export function WaiterDashboardPage() {
                             </div>
 
                             <div className="waiter-highlight-card">
-                                <span className="waiter-highlight-label">Comandas em aberto</span>
+                                <span className="waiter-highlight-label">Mesas em aberto</span>
                                 <span className="waiter-highlight-value mono-num">{formatBRL(totalOpenAmount)}</span>
                                 <span className="waiter-highlight-sub">
                                     {myOrders.length} pedido{myOrders.length === 1 ? "" : "s"} em aberto agora
@@ -479,10 +539,6 @@ export function WaiterDashboardPage() {
                                     </div>
                                 )}
                             </section>
-
-                            <button type="button" className="waiter-cta" onClick={() => navigate("/")}>
-                                + Nova comanda
-                            </button>
 
                             <section className="waiter-section">
                                 <h2 className="waiter-section-title">Ações rápidas</h2>
@@ -671,7 +727,7 @@ export function WaiterDashboardPage() {
                     )}
 
                     {/* ========================================================== */}
-                    {/* ABA: MENSAGENS (EXCLUSIVAS DA PRAÇA ATIVA DO GARÇOM)        */}
+                    {/* ABA: MENSAGENS (EXCLUSIVAS DA PRAÇA ATIVA DO GARÇOM)       */}
                     {/* ========================================================== */}
                     {activeTab === "mensagens" && (
                         <section className="waiter-section">
@@ -742,6 +798,57 @@ export function WaiterDashboardPage() {
                 </div>
             )}
 
+            {/* MODAL CALCULADORA */}
+            {calculatorOpen && (
+                <div className="modal-backdrop is-center" onClick={() => setCalculatorOpen(false)}>
+                    <div className="modal-panel is-center" onClick={(e) => e.stopPropagation()} style={{ width: "90%", maxWidth: "320px", padding: "20px" }}>
+                        <div className="modal-head" style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span className="display" style={{ fontSize: "1.2rem", fontWeight: "bold" }}>➗ Calculadora</span>
+                            <button type="button" className="btn-ghost btn-icon" onClick={() => setCalculatorOpen(false)}>✕</button>
+                        </div>
+
+                        <div style={{
+                            backgroundColor: "var(--bg-body)",
+                            border: "1px solid var(--border)",
+                            borderRadius: "8px",
+                            padding: "16px",
+                            fontSize: "2rem",
+                            textAlign: "right",
+                            marginBottom: "16px",
+                            overflow: "hidden",
+                            color: "var(--ink)",
+                            fontWeight: "bold"
+                        }}>
+                            {calcInput}
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px" }}>
+                            <button type="button" className="btn-ghost" style={{ gridColumn: "span 3", backgroundColor: "#fee2e2", color: "#b91c1c", fontWeight: "bold", fontSize: "1.2rem" }} onClick={handleCalcClear}>C</button>
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: "bold", fontSize: "1.2rem" }} onClick={() => handleCalcOp("/")}>÷</button>
+
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("7")}>7</button>
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("8")}>8</button>
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("9")}>9</button>
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: "bold", fontSize: "1.2rem" }} onClick={() => handleCalcOp("*")}>×</button>
+
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("4")}>4</button>
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("5")}>5</button>
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("6")}>6</button>
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: "bold", fontSize: "1.5rem" }} onClick={() => handleCalcOp("-")}>-</button>
+
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("1")}>1</button>
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("2")}>2</button>
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("3")}>3</button>
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: "bold", fontSize: "1.2rem" }} onClick={() => handleCalcOp("+")}>+</button>
+
+                            <button type="button" className="btn-ghost" style={{ gridColumn: "span 2", backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("0")}>0</button>
+                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontWeight: "bold", fontSize: "1.2rem" }} onClick={() => handleCalcNum(".")}>.</button>
+                            <button type="button" className="waiter-cta" style={{ margin: 0, fontSize: "1.2rem" }} onClick={handleCalcEqual}>=</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* MODAL DE TRANSFERÊNCIA DE MESA / ITENS */}
             {transferOpen && (
                 <div className="modal-backdrop is-center" onClick={() => setTransferOpen(false)}>
@@ -783,9 +890,8 @@ export function WaiterDashboardPage() {
                                 >
                                     <option value="">Selecione o item...</option>
                                     {sourceOrder?.items
-                                        .filter((item) => item.orderItemStatusId !== 6) // Não exibe os cancelados
+                                        .filter((item) => item.orderItemStatusId !== 6) 
                                         .map((item) => {
-                                            // Traduz o ID do status para um nome amigável
                                             let statusLabel = item.orderItemStatusId.toString();
                                             if (item.orderItemStatusId === 1) statusLabel = "Lançado";
                                             if (item.orderItemStatusId === 2) statusLabel = "Enviado Cozinha";
@@ -793,7 +899,6 @@ export function WaiterDashboardPage() {
                                             if (item.orderItemStatusId === 4) statusLabel = "Pronto";
                                             if (item.orderItemStatusId === 5) statusLabel = "Entregue";
 
-                                            // Tenta pegar o nome do produto no DTO, com fallback seguro
                                             const productName = (item as any).productName || (item as any).name || `Produto #${item.productId}`;
 
                                             return (

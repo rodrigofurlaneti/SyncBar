@@ -57,12 +57,6 @@ export function ProductsPage() {
     const [modalNewCategory, setModalNewCategory] = useState("");
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [error, setError] = useState<string | null>(null);
-
-    // Achado de revisão (web-design-guidelines / performance): antes, `URL.createObjectURL`
-    // era chamado direto no JSX — a cada re-render do formulário (qualquer tecla digitada em
-    // qualquer campo) uma blob URL nova era criada e a anterior nunca era liberada
-    // (URL.revokeObjectURL), vazando memória enquanto o modal ficasse aberto. Agora a URL só é
-    // recriada quando `imageFile` de fato muda, e a anterior é revogada na troca/no unmount.
     const imagePreviewUrl = useMemo(
         () => (imageFile !== null ? URL.createObjectURL(imageFile) : null),
         [imageFile],
@@ -166,8 +160,6 @@ export function ProductsPage() {
         onError: onApiError,
     });
 
-    // Criar categoria sem sair do formulário de produto — a nova categoria
-    // já entra selecionada assim que criada.
     const modalCategoryMutation = useMutation({
         mutationFn: () =>
             createCategory(companyId ?? 1, modalNewCategory.trim(), (categoriesQuery.data?.length ?? 0) + 1),

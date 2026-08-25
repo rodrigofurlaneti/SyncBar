@@ -14,7 +14,6 @@ import { useToast } from "../../ui/Toast";
 import { EmptyState } from "../../ui/EmptyState";
 import { SkeletonList } from "../../ui/Skeleton";
 
-// Janela padrão: hoje até 14 dias à frente — cobre a agenda de curto prazo sem paginação.
 function defaultRange() {
     const from = new Date();
     from.setHours(0, 0, 0, 0);

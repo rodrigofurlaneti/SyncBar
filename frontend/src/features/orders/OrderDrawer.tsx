@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addOrderItem,
@@ -45,8 +45,6 @@ const nextItemStatus: Record<number, number> = {
   [OrderItemStatus.Pronto]: OrderItemStatus.Entregue,
 };
 
-// Cor do valor consumido vs. limite da comanda: vermelho ao estourar, âmbar perto do limite
-// (>= 80%), verde caso contrário.
 function creditLimitColor(totalAmount: number, creditLimitAmount: number): string {
   if (totalAmount >= creditLimitAmount) return "var(--danger)";
   if (totalAmount >= creditLimitAmount * 0.8) return "var(--busy)";
@@ -62,10 +60,7 @@ export function OrderDrawer({ orderId, onClose }: Props) {
   const [search, setSearch] = useState("");
   const [discount, setDiscount] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
-  // Fase 6a: item do cardápio com grupos de complementos vinculados, aguardando a escolha no
-  // ComplementSelectorModal antes de lançar (produtos sem grupos vão direto pro addItem.mutate).
   const [selectingItem, setSelectingItem] = useState<MenuItemResponse | null>(null);
-
   const orderQuery = useQuery({
     queryKey: ["order", orderId],
     queryFn: () => getOrder(orderId),
@@ -99,8 +94,6 @@ export function OrderDrawer({ orderId, onClose }: Props) {
     return map;
   }, [menuQuery.data]);
 
-  // Fase 6a: catálogo completo de complementos da empresa — usado só para resolver o nome de
-  // OrderItemComplementResponse.complementId (o backend não devolve o nome, ver OrderResponse.cs).
   const complementGroupsQuery = useQuery({
     queryKey: ["complement-groups", companyId],
     queryFn: () => getComplementGroups(companyId ?? 1),
@@ -139,7 +132,6 @@ export function OrderDrawer({ orderId, onClose }: Props) {
     onError,
   });
 
-  // Produtos sem grupos de complementos lançam direto; com grupos, abre o seletor primeiro.
   const handlePickItem = (item: MenuItemResponse) => {
     if (item.complementGroups.length > 0) setSelectingItem(item);
     else addItem.mutate({ productId: item.id });

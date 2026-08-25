@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getComplementGroups,
@@ -17,9 +17,6 @@ interface Props {
   productId: number;
 }
 
-// Fase 6a: painel embutido no formulário de edição de produto (ProductsPage) — vincula/desvincula
-// ComplementGroup ao produto (ProductComplementGroup), na ordem em que devem aparecer pro cliente.
-// Só aparece editando um produto já existente (precisa de productId — não faz sentido em "novo").
 export function ProductComplementLinkPanel({ productId }: Props) {
   const queryClient = useQueryClient();
   const toast = useToast();

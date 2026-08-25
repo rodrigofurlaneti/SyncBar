@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getOpenSession, openCashSession } from "../cash/api";
 import { registerSale, type SalePaymentInput } from "../billing/api";
@@ -105,8 +105,6 @@ export function PaymentPanel({ order, onPaid }: Props) {
   const setRow = (index: number, patch: Partial<PaymentRow>) =>
     setRows((current) => current.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
-  // Divide o valor restante em N partes iguais (em centavos — nunca perde/sobra 1 centavo,
-  // o resto vai para as primeiras pessoas), uma linha de pagamento por pessoa.
   const applySplit = () => {
     const people = Math.max(1, Math.trunc(Number(splitCount) || 1));
     const totalCents = Math.round(amountDue * 100);

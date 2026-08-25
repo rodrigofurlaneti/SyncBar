@@ -1,6 +1,4 @@
-﻿// Formatadores especializados para dados iFood com mais contexto
-
-export function formatOrderStatus(status: string): { label: string; color: string; icon: string } {
+﻿export function formatOrderStatus(status: string): { label: string; color: string; icon: string } {
   const statusMap: Record<
     string,
     { label: string; color: string; icon: string }
@@ -48,9 +46,6 @@ export function formatMerchantAvailability(available: boolean, state?: string | 
   };
 }
 
-// O iFood não documenta o vocabulário de `state` das validações e o backend repassa o valor
-// bruto (ver IFoodMerchantClient) — por isso as duas grafias observadas (ERROR/INVALID,
-// VALID/OK) são mapeadas pra mesma severidade.
 export function formatValidationState(state: string): { severity: "error" | "warning" | "info"; icon: string; label: string } {
   const states: Record<string, { severity: "error" | "warning" | "info"; icon: string; label: string }> = {
     ERROR: { severity: "error", icon: "✕", label: "Erro" },
@@ -164,7 +159,6 @@ export function formatDateTimeShort(date: string | Date): string {
   return `${formatDate(date)} ${formatTime(date)}`;
 }
 
-// Cálculos e análises
 export function calculateOrderMetrics(
   orders: Array<{ status: string; ifoodOrderType: string; totalAmount?: number }>,
 ) {

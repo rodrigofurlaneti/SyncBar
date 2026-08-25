@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Modal } from "../../ui/Modal";
 import { Button } from "../../ui/Button";
 import { formatBRL } from "../../lib/types";
@@ -13,10 +13,6 @@ interface Props {
   submitting?: boolean;
 }
 
-// Fase 6a: aberto antes de lançar um item que tem grupos de complementos vinculados (balcão/mesa
-// via OrderDrawer, autoatendimento QR Code via PublicOrderPage — mesmo componente nos dois, só
-// muda quem chama). minSelection/maxSelection de cada grupo vêm do cadastro (ComplementsPage);
-// o preço nunca é escolhido aqui, só exibido — quem resolve o ExtraPrice de verdade é o backend.
 export function ComplementSelectorModal({
   productName,
   groups,

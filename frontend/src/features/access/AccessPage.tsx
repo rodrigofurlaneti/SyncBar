@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getFeatures,
@@ -45,7 +45,6 @@ export function AccessPage() {
     enabled: targetId !== "",
   });
 
-  // Sincroniza os checkboxes quando os grants chegam
   const grants = grantsQuery.data;
   const [loadedFor, setLoadedFor] = useState<string>("");
   if (grants !== undefined && loadedFor !== `${mode}:${targetId}`) {
