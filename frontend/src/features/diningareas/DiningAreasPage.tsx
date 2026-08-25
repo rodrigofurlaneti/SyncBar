@@ -12,8 +12,10 @@ import {
     endAssignment,
     type DiningAreaResponse
 } from "./api";
+
 import { getEmployeesByBranch } from "../employees/api";
 import { getTablesByBranch } from "../tables/api";
+
 import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import { QueryError } from "../../components/QueryError";
@@ -209,7 +211,6 @@ export function DiningAreasPage() {
                 </div>
             )}
 
-            {/* MODAL: CRIAR PRAÇA */}
             {creating && (
                 <Modal title="Nova praça" onClose={() => setCreating(false)}>
                     <TextField label="Nome (ex: Varanda, Salão 1)" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} autoFocus />
@@ -220,7 +221,6 @@ export function DiningAreasPage() {
                 </Modal>
             )}
 
-            {/* MODAL: EDITAR PRAÇA */}
             {editingTo !== null && (
                 <Modal title="Editar praça" onClose={() => setEditingTo(null)}>
                     <TextField label="Nome" value={editingTo.name} onChange={(e) => setEditingTo((prev) => prev ? { ...prev, name: e.target.value } : null)} autoFocus />
@@ -231,12 +231,10 @@ export function DiningAreasPage() {
                 </Modal>
             )}
 
-            {/* MODAL: GERENCIAR (MESAS E GARÇONS) */}
             {managingArea !== null && (
                 <Modal title={`Gerenciando: ${managingArea.name}`} onClose={() => { setManagingArea(null); setError(null); }}>
                     {error && <p className="error-text" style={{ marginBottom: 16 }}>{error}</p>}
 
-                    {/* SESSÃO: MESAS VINCULADAS */}
                     <div style={{ marginBottom: 24 }}>
                         <h3 style={{ fontSize: "1.1rem", marginBottom: 8 }}>Mesas Vinculadas</h3>
                         <div className="ui-row" style={{ gap: 8, marginBottom: 12, alignItems: "end" }}>
@@ -257,7 +255,7 @@ export function DiningAreasPage() {
                                 </Field>
                             </div>
                             <Button
-                                variant="secondary"
+                                variant="ghost"
                                 disabled={!tableForm.tableId}
                                 loading={addTableMutation.isPending}
                                 onClick={() => addTableMutation.mutate()}
@@ -286,7 +284,6 @@ export function DiningAreasPage() {
 
                     <hr style={{ border: "0", borderTop: "1px solid var(--border)", margin: "16px 0" }} />
 
-                    {/* SESSÃO: ESCALA DA EQUIPE */}
                     <div>
                         <h3 style={{ fontSize: "1.1rem", marginBottom: 8 }}>Garçons no Turno</h3>
                         <div className="ui-row" style={{ gap: 8, marginBottom: 12, alignItems: "end" }}>
@@ -307,7 +304,7 @@ export function DiningAreasPage() {
                                 </Field>
                             </div>
                             <Button
-                                variant="secondary"
+                                variant="ghost"
                                 disabled={!assignmentForm.employeeId}
                                 loading={startAssignmentMutation.isPending}
                                 onClick={() => startAssignmentMutation.mutate()}
