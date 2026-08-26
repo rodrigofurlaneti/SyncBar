@@ -16,15 +16,12 @@ internal sealed class GetOrderByIdQueryHandler(
         return await ExecuteWithLogAsync(
             nameof(GetOrderByIdQueryHandler),
             nameof(Handle),
-            null, // Substitua pelo IP presente no request, se possuir
+            null,
             async (userIdBox) =>
             {
-                // Se houver o ID do usuário que fez a requisição, preencha:
-
                 var order = await orderRepository.GetByIdAsync(request.CustomerOrderId, cancellationToken);
                 if (order is null || !order.IsActive)
                     return Result.Failure<OrderResponse>(new Error("CustomerOrder.NotFound", "Order not found."));
-
                 var partials = await partialPaymentRepository.GetByOrderAsync(order.Id, cancellationToken);
                 return Result.Success(order.ToResponse(partials.Sum(p => p.Amount)));
             });

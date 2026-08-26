@@ -12,6 +12,7 @@ using SyncBar.Application.Features.Catalog.DeactivateProduct;
 using SyncBar.Application.Features.Catalog.GetCategories;
 using SyncBar.Application.Features.Catalog.SetProductImage;
 using SyncBar.Application.Features.Catalog.UpdateProduct;
+using SyncBar.Application.Features.Catalog.GetProductById;
 using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
@@ -57,7 +58,6 @@ public sealed class ProductsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Upload da foto do produto (JPG/PNG/WebP ate 2 MB).
     [HttpPost("{id:long}/image")]
     [RequestSizeLimit(3 * 1024 * 1024)]
     public Task<IActionResult> UploadImage(long id, IFormFile? file, CancellationToken ct) =>
@@ -65,15 +65,19 @@ public sealed class ProductsController(
         {
             if (file is null || file.Length == 0)
                 return BadRequest(new ProblemDetails { Title = "Product.NoFile", Detail = "Envie um arquivo de imagem." });
-
             using var memory = new MemoryStream();
             await file.CopyToAsync(memory, ct);
-
             var result = await Mediator.Send(new SetProductImageCommand(
                 id, Path.GetExtension(file.FileName), memory.ToArray()), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(new { imageUrl = result.Value });
         });
-
+    [HttpGet("{id:long}")]
+    public Task<IActionResult> GetById(long id, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(GetById), async () =>
+        {
+            var result = await Mediator.Send(new GetProductByIdQuery(id), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
     [HttpPut("{id:long}/deactivate")]
     public Task<IActionResult> Deactivate(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(Deactivate), async () =>
@@ -83,8 +87,6 @@ public sealed class ProductsController(
         });
 }
 
-// Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor para
-// evitar under-posting.
 public sealed record UpdateProductRequest(
     [property: JsonRequired] long CategoryId,
     [property: JsonRequired] long UnitOfMeasureId,

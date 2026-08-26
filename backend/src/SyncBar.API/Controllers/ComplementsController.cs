@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,8 +20,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-// Fase 6a: cadastro de complementos (ComplementItem/ComplementGroup/Complement) e vínculo com
-// produtos (ProductComplementGroup) — mesma policy de ProductsController, é parte do cardápio.
 [Authorize(Policy = "Feature:Cardapio")]
 [Route("api/complements")]
 public sealed class ComplementsController(
@@ -29,8 +27,6 @@ public sealed class ComplementsController(
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
-    // --- ComplementItem (cadastro leve) ---
-
     [HttpGet("items/company/{companyId:long}")]
     public Task<IActionResult> GetItems(long companyId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ComplementsController), nameof(GetItems), async () =>
@@ -62,8 +58,6 @@ public sealed class ComplementsController(
             var result = await Mediator.Send(new DeactivateComplementItemCommand(id), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
-
-    // --- ComplementGroup (agrupador, ex.: "Escolha uma bebida") ---
 
     [HttpGet("groups/company/{companyId:long}")]
     public Task<IActionResult> GetGroups(long companyId, CancellationToken ct) =>
@@ -98,8 +92,6 @@ public sealed class ComplementsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // --- Complement (opção dentro de um grupo, ex.: "Coca-Cola" dentro de "Escolha uma bebida") ---
-
     [HttpPost("groups/{id:long}/complements")]
     public Task<IActionResult> AddComplement(long id, [FromBody] AddComplementRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ComplementsController), nameof(AddComplement), async () =>
@@ -123,8 +115,6 @@ public sealed class ComplementsController(
             var result = await Mediator.Send(new RemoveComplementCommand(id, complementId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
-
-    // --- ProductComplementGroup (vínculo produto x grupo) ---
 
     [HttpGet("products/{productId:long}")]
     public Task<IActionResult> GetProductGroups(long productId, CancellationToken ct) =>
@@ -151,9 +141,6 @@ public sealed class ComplementsController(
         });
 }
 
-// Requests separados dos commands quando há parâmetro de rota.
-// Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor para
-// evitar under-posting.
 public sealed record UpdateComplementItemRequest(string Name);
 public sealed record UpdateComplementGroupRequest(
     string Name,
