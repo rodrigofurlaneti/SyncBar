@@ -8,8 +8,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-// Onboarding self-service: qualquer visitante pode cadastrar uma nova empresa (novo cliente do SaaS).
-// Reaproveita a policy de rate limit "auth" — é tão sensível a abuso quanto login/refresh.
 [EnableRateLimiting("auth")]
 public sealed class CompaniesController(
     IMediator mediator,

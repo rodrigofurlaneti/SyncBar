@@ -5,8 +5,6 @@ import { useAuthStore } from "../../stores/authStore";
 import { OrderItemStatus, orderItemStatusLabel, OrderType } from "../../lib/types";
 import type { PreparationItemResponse } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
-
-// Verde ate 70% do tempo-limite, amarelo ate 100%, vermelho (pulsando) estourado.
 function timeColor(ratio: number): string {
     if (ratio >= 1) return "var(--danger)";
     if (ratio >= 0.7) return "var(--busy)";
@@ -142,7 +140,6 @@ export function PreparationPage() {
     const { branchId } = useAuthStore();
     const [now, setNow] = useState(() => Date.now());
 
-    // Relogio local (1s) + atualizacao da fila (10s).
     useEffect(() => {
         const timer = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(timer);

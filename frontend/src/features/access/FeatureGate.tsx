@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { featurePath, useMyFeatures } from "./hooks";
 
@@ -7,8 +7,6 @@ interface Props {
   children: ReactNode;
 }
 
-// Esconde a rota de quem nao tem a tela liberada — o backend tambem bloqueia
-// via policy Feature:X; isto aqui e so a experiencia de navegacao.
 export function FeatureGate({ code, children }: Props) {
   const featuresQuery = useMyFeatures();
 

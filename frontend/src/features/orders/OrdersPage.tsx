@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from "react";
+﻿import { useMemo, useState, type CSSProperties } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { generateTableQrToken, getTablesByBranch } from "../tables/api";
 import { getOpenOrdersByBranch } from "./api";
@@ -65,7 +65,6 @@ export function OrdersPage() {
     refetchInterval: 15_000,
   });
 
-  // Limite padrão da comanda: exibido como contexto (edição fica em Config).
   const comandaSettingQuery = useQuery({
     queryKey: ["comandas", "setting", branchId],
     queryFn: () => getComandaSetting(branchId),

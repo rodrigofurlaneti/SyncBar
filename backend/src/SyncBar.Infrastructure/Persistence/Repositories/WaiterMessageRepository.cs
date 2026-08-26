@@ -14,11 +14,11 @@ namespace SyncBar.Infrastructure.Persistence.Repositories
             => await context.Set<WaiterMessage>().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         public async Task<IEnumerable<WaiterMessage>> GetByBranchIdAsync(long branchId, CancellationToken cancellationToken = default)
-            => await context.Set<WaiterMessage>()
-                .AsNoTracking()
-                .Where(x => x.BranchId == branchId && x.IsActive)
-                .OrderByDescending(x => x.CreatedAt)
-                .ToListAsync(cancellationToken);
+                    => await context.Set<WaiterMessage>()
+                        .AsNoTracking()
+                        .Where(x => x.BranchId == branchId && x.IsActive)
+                        .OrderBy(x => x.CreatedAt)
+                        .ToListAsync(cancellationToken);
 
         public async Task AddAsync(WaiterMessage entity, CancellationToken cancellationToken = default)
             => await context.Set<WaiterMessage>().AddAsync(entity, cancellationToken);

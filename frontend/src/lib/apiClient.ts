@@ -1,4 +1,4 @@
-import { useAuthStore } from "../stores/authStore";
+﻿import { useAuthStore } from "../stores/authStore";
 import type { ApiProblem, LoginResponse } from "./types";
 
 export class ApiError extends Error {
@@ -14,7 +14,6 @@ export class ApiError extends Error {
 let refreshing: Promise<boolean> | null = null;
 
 async function tryRefresh(): Promise<boolean> {
-  // Uma unica renovacao por vez — demais chamadas aguardam a mesma promise.
   refreshing ??= (async () => {
     const { refreshToken, setSession, clear } = useAuthStore.getState();
     if (!refreshToken) return false;
@@ -40,7 +39,6 @@ async function tryRefresh(): Promise<boolean> {
   return refreshing;
 }
 
-// Upload multipart (imagens): mesmo fluxo de auth/refresh, sem Content-Type manual.
 export async function apiUpload<T>(path: string, formData: FormData, retry = true): Promise<T> {
   const { accessToken } = useAuthStore.getState();
 
@@ -76,7 +74,6 @@ export async function apiUpload<T>(path: string, formData: FormData, retry = tru
   return (await response.json()) as T;
 }
 
-// Faz o fetch autenticado (JSON) e traduz falha de rede em ApiError.
 async function fetchJson(path: string, init: RequestInit | undefined, accessToken: string | null): Promise<Response> {
   try {
     return await fetch(path, {
@@ -92,19 +89,16 @@ async function fetchJson(path: string, init: RequestInit | undefined, accessToke
   }
 }
 
-// Extrai title/detail do corpo de erro (ProblemDetails), agregando ValidationProblemDetails quando presente.
 async function parseErrorBody(response: Response): Promise<{ title?: string; detail?: string }> {
   try {
     const body = (await response.json()) as ApiProblem & { errors?: Record<string, string[]> };
     const detail = body.detail ?? (body.errors ? Object.values(body.errors).flat().join(" ") : undefined);
     return { title: body.title, detail };
   } catch {
-    // corpo vazio ou nao-JSON (ex.: 403 da policy de feature)
     return {};
   }
 }
 
-// Mensagem padrão quando a API não retorna um "detail" utilizável.
 function getFallbackMessage(status: number): string {
   if (status === 403) return "Você não tem acesso a esta funcionalidade — peça ao gerente na tela Acessos.";
   if (status === 404) return "Recurso não encontrado — a API está atualizada (reiniciada após a última alteração)?";
@@ -112,7 +106,6 @@ function getFallbackMessage(status: number): string {
   return "Falha ao comunicar com a API.";
 }
 
-// Tenta renovar o token e refazer a chamada original; caso contrário, sinaliza sessão expirada.
 async function handleUnauthorized<T>(retryFn: () => Promise<T>): Promise<T> {
   const renewed = await tryRefresh();
   if (renewed) return retryFn();

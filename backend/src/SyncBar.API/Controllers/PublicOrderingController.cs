@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using MediatR;
@@ -13,10 +13,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-// Autoatendimento via QR Code — sem autenticação (o cliente final não tem login).
-// O "segredo" é o token da mesa (GUID imprevisível gerado em TablesController.GenerateQrToken).
-// Segue o padrão api/[controller] (= api/PublicOrdering) como os demais controllers —
-// ver rate limit dedicado em Program.cs ("public-ordering").
 [AllowAnonymous]
 [EnableRateLimiting("public-ordering")]
 public sealed class PublicOrderingController(

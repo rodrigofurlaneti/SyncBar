@@ -35,8 +35,6 @@ public sealed class EmployeesController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Criar cargo sem sair do formulário de novo funcionário — mesmo padrão de
-    // "+ nova categoria" no cadastro de produto (CatalogController/CreateCategory).
     [Authorize(Policy = "Feature:Equipe")]
     [HttpPost("jobtitles")]
     public Task<IActionResult> CreateJobTitle([FromBody] CreateJobTitleCommand command, CancellationToken ct) =>
@@ -78,7 +76,6 @@ public sealed class EmployeesController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Prerrogativa do gerente — define o % de comissão sobre vendas do garçom/vendedor.
     [Authorize(Roles = "Administrador,Gerente")]
     [HttpPut("{id:long}/commission")]
     public Task<IActionResult> SetCommission(long id, [FromBody] SetCommissionRequest request, CancellationToken ct) =>

@@ -53,52 +53,69 @@ function RequireAuth({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
-  return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/cadastro" element={<SignupPage />} />
-      <Route path="/pedido/:token" element={<PublicOrderPage />} />
-      <Route
-        element={
-          <RequireAuth>
-            <AppShell />
-          </RequireAuth>
-        }
-      >
-        <Route path="/" element={<FeatureGate code="Salao"><OrdersPage /></FeatureGate>} />
-        <Route path="/garcom" element={<FeatureGate code="Salao"><WaiterDashboardPage /></FeatureGate>} />
-        <Route path="/delivery" element={<FeatureGate code="Salao"><DeliveryBoardPage /></FeatureGate>} />
-        <Route path="/produtos" element={<FeatureGate code="Cardapio"><ProductsPage /></FeatureGate>} />
-        <Route path="/complementos" element={<FeatureGate code="Cardapio"><ComplementsPage /></FeatureGate>} />
-        <Route path="/estoque" element={<FeatureGate code="Estoque"><StockPage /></FeatureGate>} />
-        <Route path="/equipe" element={<ManagerGate><EmployeesPage /></ManagerGate>} />
-        <Route path="/usuarios" element={<ManagerGate><UsersPage /></ManagerGate>} />
-        <Route path="/faturamento" element={<ManagerGate><FinancePage /></ManagerGate>} />
-        <Route path="/cenarios" element={<ManagerGate><ScenariosPage /></ManagerGate>} />
-        <Route path="/relatorios" element={<ManagerGate><ReportsPage /></ManagerGate>} />
-        <Route path="/preparo" element={<FeatureGate code="Preparo"><PreparationPage /></FeatureGate>} />
-        <Route path="/fechamentos" element={<ManagerGate><CashHistoryPage /></ManagerGate>} />
-        <Route path="/promocoes" element={<ManagerGate><PromotionsPage /></ManagerGate>} />
-        <Route path="/impressao" element={<ManagerGate><PrintingPage /></ManagerGate>} />
-        <Route path="/compras" element={<FeatureGate code="Estoque"><PurchasingPage /></FeatureGate>} />
-        <Route path="/reservas" element={<FeatureGate code="Salao"><ReservationsPage /></FeatureGate>} />
-        <Route path="/clientes" element={<FeatureGate code="Salao"><CustomersPage /></FeatureGate>} />
-        <Route path="/acessos" element={<ManagerGate><AccessPage /></ManagerGate>} />
-        <Route path="/configuracoes" element={<ManagerGate><SettingsPage /></ManagerGate>} />
-        <Route path="/integracoes/ifood" element={<ManagerGate><IFoodIntegrationPage /></ManagerGate>} />
-        <Route path="/integracoes/ifood/dashboard" element={<ManagerGate><IFoodDashboardPage /></ManagerGate>} />
-        <Route path="/integracoes/ifood/status" element={<ManagerGate><IFoodStatusDetailedPage /></ManagerGate>} />
-        <Route path="/integracoes/ifood/pedidos" element={<ManagerGate><IFoodOrdersPage /></ManagerGate>} />
-        <Route path="/integracoes/ifood/shipping" element={<ManagerGate><IFoodShippingPage /></ManagerGate>} />
-        <Route path="/integracoes/ifood/logistica" element={<ManagerGate><IFoodLogisticsPage /></ManagerGate>} />
-        <Route path="/integracoes/ifood/catalogo" element={<ManagerGate><IFoodCatalogPage /></ManagerGate>} />
-        <Route path="/integracoes/ifood/avaliacoes" element={<ManagerGate><IFoodReviewsDetailedPage /></ManagerGate>} />
-        <Route path="/integracoes/ifood/indicadores" element={<ManagerGate><IFoodAnalyticsEnhancedPage /></ManagerGate>} />
-        <Route path="/integracoes/ifood/financeiro/relatorios" element={<ManagerGate><IFoodFinancialReportsPage /></ManagerGate>} />
-        <Route path="/pracas" element={<ManagerGate><DiningAreasPage /></ManagerGate>} />
-        <Route path="/sem-acesso" element={<NoAccessPage />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
+    return (
+        <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/cadastro" element={<SignupPage />} />
+            <Route path="/pedido/:token" element={<PublicOrderPage />} />
+
+            {/* 1. Mova a rota do Garçom para CÁ, fora do AppShell, mas com RequireAuth */}
+            <Route
+                path="/garcom"
+                element={
+                    <RequireAuth>
+                        <FeatureGate code="Salao">
+                            <WaiterDashboardPage />
+                        </FeatureGate>
+                    </RequireAuth>
+                }
+            />
+
+            {/* 2. O restante do sistema continua dentro do AppShell */}
+            <Route
+                element={
+                    <RequireAuth>
+                        <AppShell />
+                    </RequireAuth>
+                }
+            >
+                <Route path="/" element={<FeatureGate code="Salao"><OrdersPage /></FeatureGate>} />
+
+                {/* A rota /garcom foi removida daqui */}
+
+                <Route path="/delivery" element={<FeatureGate code="Salao"><DeliveryBoardPage /></FeatureGate>} />
+                <Route path="/produtos" element={<FeatureGate code="Cardapio"><ProductsPage /></FeatureGate>} />
+                <Route path="/complementos" element={<FeatureGate code="Cardapio"><ComplementsPage /></FeatureGate>} />
+                <Route path="/estoque" element={<FeatureGate code="Estoque"><StockPage /></FeatureGate>} />
+                <Route path="/equipe" element={<ManagerGate><EmployeesPage /></ManagerGate>} />
+                <Route path="/usuarios" element={<ManagerGate><UsersPage /></ManagerGate>} />
+                <Route path="/faturamento" element={<ManagerGate><FinancePage /></ManagerGate>} />
+                <Route path="/cenarios" element={<ManagerGate><ScenariosPage /></ManagerGate>} />
+                <Route path="/relatorios" element={<ManagerGate><ReportsPage /></ManagerGate>} />
+                <Route path="/preparo" element={<FeatureGate code="Preparo"><PreparationPage /></FeatureGate>} />
+                <Route path="/fechamentos" element={<ManagerGate><CashHistoryPage /></ManagerGate>} />
+                <Route path="/promocoes" element={<ManagerGate><PromotionsPage /></ManagerGate>} />
+                <Route path="/impressao" element={<ManagerGate><PrintingPage /></ManagerGate>} />
+                <Route path="/compras" element={<FeatureGate code="Estoque"><PurchasingPage /></FeatureGate>} />
+                <Route path="/reservas" element={<FeatureGate code="Salao"><ReservationsPage /></FeatureGate>} />
+                <Route path="/clientes" element={<FeatureGate code="Salao"><CustomersPage /></FeatureGate>} />
+                <Route path="/acessos" element={<ManagerGate><AccessPage /></ManagerGate>} />
+                <Route path="/configuracoes" element={<ManagerGate><SettingsPage /></ManagerGate>} />
+                <Route path="/integracoes/ifood" element={<ManagerGate><IFoodIntegrationPage /></ManagerGate>} />
+                <Route path="/integracoes/ifood/dashboard" element={<ManagerGate><IFoodDashboardPage /></ManagerGate>} />
+                <Route path="/integracoes/ifood/status" element={<ManagerGate><IFoodStatusDetailedPage /></ManagerGate>} />
+                <Route path="/integracoes/ifood/pedidos" element={<ManagerGate><IFoodOrdersPage /></ManagerGate>} />
+                <Route path="/integracoes/ifood/shipping" element={<ManagerGate><IFoodShippingPage /></ManagerGate>} />
+                <Route path="/integracoes/ifood/logistica" element={<ManagerGate><IFoodLogisticsPage /></ManagerGate>} />
+                <Route path="/integracoes/ifood/catalogo" element={<ManagerGate><IFoodCatalogPage /></ManagerGate>} />
+                <Route path="/integracoes/ifood/avaliacoes" element={<ManagerGate><IFoodReviewsDetailedPage /></ManagerGate>} />
+                <Route path="/integracoes/ifood/indicadores" element={<ManagerGate><IFoodAnalyticsEnhancedPage /></ManagerGate>} />
+                <Route path="/integracoes/ifood/financeiro/relatorios" element={<ManagerGate><IFoodFinancialReportsPage /></ManagerGate>} />
+                <Route path="/pracas" element={<ManagerGate><DiningAreasPage /></ManagerGate>} />
+                <Route path="/sem-acesso" element={<NoAccessPage />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+    );
 }

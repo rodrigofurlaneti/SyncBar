@@ -27,21 +27,15 @@ internal sealed class DeactivateProductCommandHandler : BaseCommandHandler<Deact
         ExecuteWithLogAsync(
             nameof(DeactivateProductCommandHandler),
             nameof(Handle),
-            null, // Substitua por request.IpAddress se o IP estiver disponível no Command
+            null, 
             async (userIdBox) =>
             {
                 var product = await _productRepository.GetByIdForUpdateAsync(request.ProductId, cancellationToken);
                 if (product is null || !product.IsActive)
                     return Result.Failure(new Error("Product.NotFound", "Product not found."));
-
                 product.Deactivate();
                 await _unitOfWork.CommitAsync(cancellationToken);
-
-                // Produto some da lista de "ativos" que a sincronização usa — o próprio
-                // SyncIFoodCatalogCommand detecta isso e pausa (PATCH /items/status) o item
-                // correspondente em cada loja, sem precisar de um comando dedicado aqui.
                 _catalogSyncTrigger.TriggerCompanySync(product.CompanyId);
-
                 return Result.Success();
             });
 }

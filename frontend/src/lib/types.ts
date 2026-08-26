@@ -1,6 +1,4 @@
-// Espelham os Responses da SyncBar.API — manter em sincronia com o backend.
-
-export interface LoginResponse {
+﻿export interface LoginResponse {
   accessToken: string;
   accessTokenExpiresAt: string;
   refreshToken: string;
@@ -10,10 +8,6 @@ export interface LoginResponse {
   employeeId: number | null;
 }
 
-// Fase 6a (frontend): espelha OrderItemComplementResponse (Application/Features/Orders/OrderResponse.cs).
-// ComplementItemName não vem do backend aqui (cross-aggregate) — resolvido no front casando
-// complementId contra o catálogo já carregado via getComplementGroups (mesma ideia de productId
-// em OrderItemResponse não carregar o nome do produto).
 export interface OrderItemComplementResponse {
   id: number;
   complementId: number;
@@ -32,9 +26,6 @@ export interface OrderItemResponse {
   complements: OrderItemComplementResponse[];
 }
 
-// Fase 6a (frontend): seleção de complemento enviada ao lançar um item — espelha
-// Application/Features/Orders/AddItem/OrderItemComplementSelection.cs. O preço nunca é enviado
-// pelo front: é sempre resolvido no backend a partir do Complement cadastrado.
 export interface OrderItemComplementSelection {
   complementGroupId: number;
   complementId: number;
@@ -58,18 +49,12 @@ export interface OrderResponse {
   creditLimitAmount: number | null;
   notes: string | null;
   items: OrderItemResponse[];
-  // Quadro de Delivery/Retirada (src/features/orders/DeliveryBoardPage.tsx): OpenOrderPayload já
-  // envia esses campos ao abrir o pedido (ver OpenDeliveryOrderDialog.tsx), mas o Response ainda
-  // não os expunha aqui. Opcionais de propósito — continuam funcionando mesmo se algum ambiente
-  // de API estiver rodando uma versão do backend anterior a essa exposição.
   orderTypeId?: number;
   customerName?: string | null;
   customerPhone?: string | null;
   deliveryAddress?: string | null;
 }
 
-// Fase 6a (frontend): espelham SyncBar.Application.Features.Catalog.Complements — grupos de
-// complementos (ex.: "Escolha uma bebida") e as opções dentro deles (ex.: "Coca-Cola").
 export interface ComplementResponse {
   id: number;
   complementItemId: number;
@@ -94,8 +79,6 @@ export interface ComplementItemResponse {
   isActive: boolean;
 }
 
-// Espelha ProductComplementGroupResponse.cs — vínculo produto × grupo, já com o grupo achatado
-// (sem objeto aninhado) do jeito que o backend devolve.
 export interface ProductComplementGroupResponse {
   productComplementGroupId: number;
   complementGroupId: number;
@@ -107,7 +90,6 @@ export interface ProductComplementGroupResponse {
   complements: ComplementResponse[];
 }
 
-// Ids fixos de LookupIds.ComplementGroupTypeIds (backend) — usar como enum no front.
 export const ComplementGroupTypeIds = {
   SelecaoAdicional: 1,
   Especificacao: 2,
@@ -134,8 +116,6 @@ export interface MenuItemResponse {
   isStockControlled: boolean;
   preparationTimeMinutes: number | null;
   imageUrl: string | null;
-  // Fase 6a (extensão backend): grupos de complementos vinculados a este produto — ver
-  // MenuComplementsBuilder.cs. Lista vazia quando o produto não tem complementos.
   complementGroups: ComplementGroupResponse[];
 }
 
@@ -152,7 +132,6 @@ export interface ApiProblem {
   detail: string;
 }
 
-// Ids fixos dos lookups (BarRestaurante_Seed.sql)
 export const OrderStatus = {
   Aberto: 1,
   EmAndamento: 2,
@@ -250,7 +229,6 @@ export const CashMovementType = {
   Despesa: 5,
 } as const;
 
-// Caixa físico padrão (seed: "Caixa 01")
 export const DEFAULT_CASH_REGISTER_ID = 1;
 
 export interface EmployeeResponse {
@@ -341,7 +319,6 @@ export const stockMovementTypeLabel: Record<number, string> = {
   10: "Consumo interno",
 };
 
-// Tipos ofertados no lançamento manual (venda/estorno passam pelos fluxos próprios)
 export const manualStockMovementTypes = [1, 3, 4, 5, 6, 10] as const;
 
 export const stockMovementIsInflow: Record<number, boolean> = {
@@ -623,8 +600,6 @@ export interface SessionSaleResponse {
   paymentSummary: string[];
 }
 
-// --- Compras e Fornecedores ---
-
 export interface SupplierResponse {
   id: number;
   legalName: string;
@@ -682,8 +657,6 @@ export interface ReservationResponse {
   notes: string | null;
 }
 
-// --- Clientes / CRM e fidelidade ---
-
 export interface CustomerResponse {
   id: number;
   name: string;
@@ -693,8 +666,6 @@ export interface CustomerResponse {
   loyaltyPoints: number;
   isActive: boolean;
 }
-
-// --- Delivery / retirada ---
 
 export const OrderType = {
   Mesa: 1,
@@ -708,15 +679,11 @@ export const orderTypeLabel: Record<number, string> = {
   3: "Delivery",
 };
 
-// --- Pedido via QR Code (autoatendimento) ---
-
 export interface PublicMenuResponse {
   branchName: string;
   tableNumber: number;
   items: MenuItemResponse[];
 }
-
-// --- Split de conta ---
 
 export interface BillShareResponse {
   personNumber: number;

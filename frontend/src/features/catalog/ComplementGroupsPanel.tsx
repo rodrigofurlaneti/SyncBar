@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addComplement,
@@ -31,9 +31,6 @@ const parseInt0 = (raw: string): number => {
   return Number.isFinite(value) && value >= 0 ? Math.trunc(value) : 0;
 };
 
-// Fase 6a: cadastro de ComplementGroup (ex.: "Escolha uma bebida", min 1 / max 1) e, dentro dele,
-// as opções (Complement) que apontam para um ComplementItem já cadastrado na aba Itens, cada uma
-// com seu próprio preço extra (ex.: "Coca-Cola" +R$ 6,00 dentro do grupo).
 export function ComplementGroupsPanel() {
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -77,10 +74,6 @@ export function ComplementGroupsPanel() {
     );
   };
 
-  // Duas mutations separadas (em vez de uma só com ternário) porque createComplementGroup
-  // retorna Promise<number> e updateComplementGroup retorna Promise<void> — um mutationFn que
-  // devolve os dois tipos via ternário não tipa em Promise<number> | Promise<void>, que o
-  // useMutation não aceita (mesmo padrão usado em ComplementItemsPanel.tsx).
   const createMutation = useMutation({
     mutationFn: () =>
       createComplementGroup(
@@ -252,8 +245,6 @@ interface GroupCardProps {
   onError: (e: unknown) => void;
 }
 
-// Cartão expansível — ao abrir, mostra as opções (Complement) já vinculadas ao grupo e um
-// formulário para adicionar mais uma opção a partir de um ComplementItem existente.
 function GroupCard({ group, expanded, onToggle, onEdit, onDeactivate, activeItems, onError }: GroupCardProps) {
   const queryClient = useQueryClient();
   const toast = useToast();

@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type Theme = "dark" | "light";
@@ -30,8 +30,6 @@ export const useThemeStore = create<ThemeState>()(
     {
       name: "syncbar-theme",
       onRehydrateStorage: () => (state) => {
-        // Garante consistência caso o script inline do index.html não tenha
-        // pego o mesmo valor (ex.: primeira visita, storage vazio).
         if (state) applyTheme(state.theme);
       },
     },

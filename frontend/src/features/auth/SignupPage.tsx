@@ -4,10 +4,6 @@ import { useMutation } from "@tanstack/react-query";
 import { registerCompany } from "./signupApi";
 import { ApiError } from "../../lib/apiClient";
 
-/**
- * Onboarding self-service: cadastra empresa + primeira filial + usuário administrador
- * em uma única chamada. Sem tela, o único jeito de criar um cliente novo era via SQL manual.
- */
 export function SignupPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -16,8 +12,8 @@ export function SignupPage() {
     cpf: "",
     cnpj: "",
     branchName: "",
-    adminName: "",     // <-- Adicionado
-    adminCpf: "",      // <-- Adicionado
+    adminName: "",
+    adminCpf: "",
     adminUserName: "",
     adminEmail: "",
     adminPassword: "",

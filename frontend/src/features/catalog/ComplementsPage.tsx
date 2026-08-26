@@ -1,12 +1,9 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { ComplementItemsPanel } from "./ComplementItemsPanel";
 import { ComplementGroupsPanel } from "./ComplementGroupsPanel";
 
 type Tab = "groups" | "items";
 
-// Fase 6a: tela de cadastro de complementos — grupos (ex.: "Escolha uma bebida") e as opções
-// (Complement→ComplementItem) dentro deles. O vínculo produto × grupo fica em ProductsPage
-// (ver ProductComplementLinkPanel), junto do cadastro do produto — não aqui.
 export function ComplementsPage() {
   const [tab, setTab] = useState<Tab>("groups");
 

@@ -1,14 +1,9 @@
-// Fase 6a (frontend): espelha SyncBar.API.Controllers.ComplementsController — rotas confirmadas
-// lendo o controller real (não o padrão api/[controller] puro: usa /company/{id} nas listagens
-// e "id" como nome de parâmetro nas rotas de update/deactivate).
-import { api } from "../../lib/apiClient";
+﻿import { api } from "../../lib/apiClient";
 import type {
   ComplementGroupResponse,
   ComplementItemResponse,
   ProductComplementGroupResponse,
 } from "../../lib/types";
-
-// --- ComplementItem (cadastro leve) ---
 
 export const getComplementItems = (companyId: number): Promise<ComplementItemResponse[]> =>
   api<ComplementItemResponse[]>(`/api/complements/items/company/${companyId}`);
@@ -27,8 +22,6 @@ export const updateComplementItem = (id: number, name: string): Promise<void> =>
 
 export const deactivateComplementItem = (id: number): Promise<void> =>
   api<void>(`/api/complements/items/${id}/deactivate`, { method: "PUT" });
-
-// --- ComplementGroup (agrupador, ex.: "Escolha uma bebida") ---
 
 export const getComplementGroups = (companyId: number): Promise<ComplementGroupResponse[]> =>
   api<ComplementGroupResponse[]>(`/api/complements/groups/company/${companyId}`);
@@ -60,8 +53,6 @@ export const updateComplementGroup = (
 export const deactivateComplementGroup = (id: number): Promise<void> =>
   api<void>(`/api/complements/groups/${id}/deactivate`, { method: "PUT" });
 
-// --- Complement (opção dentro de um grupo, ex.: "Coca-Cola" dentro de "Escolha uma bebida") ---
-
 export const addComplement = (
   groupId: number,
   complementItemId: number,
@@ -84,8 +75,6 @@ export const updateComplementPrice = (
 
 export const removeComplement = (groupId: number, complementId: number): Promise<void> =>
   api<void>(`/api/complements/groups/${groupId}/complements/${complementId}`, { method: "DELETE" });
-
-// --- ProductComplementGroup (vínculo produto × grupo) ---
 
 export const getProductComplementGroups = (productId: number): Promise<ProductComplementGroupResponse[]> =>
   api<ProductComplementGroupResponse[]>(`/api/complements/products/${productId}`);

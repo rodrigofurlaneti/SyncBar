@@ -13,8 +13,7 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-// Gestao de impressoras e interruptores — tela Impressao.
-[Authorize(Policy = "Feature:Impressao")]
+[Authorize(Roles = "Administrador,Gerente")]
 public sealed class PrintersController(
     IMediator mediator,
     IPrintingService printingService,

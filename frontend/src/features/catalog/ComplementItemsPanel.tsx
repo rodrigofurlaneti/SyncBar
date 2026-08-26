@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createComplementItem,
@@ -16,9 +16,6 @@ import { useDialog } from "../../ui/Dialog";
 import { EmptyState } from "../../ui/EmptyState";
 import { SkeletonList } from "../../ui/Skeleton";
 
-// Fase 6a: cadastro leve de ComplementItem (ex.: "Coca-Cola", "Bacon") — reutilizado dentro de
-// vários ComplementGroup (ver ComplementGroupsPanel), igual um Product é reutilizado em vários
-// pedidos.
 export function ComplementItemsPanel() {
   const queryClient = useQueryClient();
   const toast = useToast();

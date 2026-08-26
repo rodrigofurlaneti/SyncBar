@@ -62,67 +62,46 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
 
     private async Task<Result> HandleCoreAsync(AddOrderItemCommand request, CancellationToken cancellationToken)
     {
-        // 1. Busca e valida o pedido sequencialmente
         var orderResult = await GetOpenOrderAsync(request.CustomerOrderId, cancellationToken);
         if (orderResult.IsFailure)
             return Result.Failure(orderResult.Error);
         var order = orderResult.Value;
 
-        // 2. Busca e valida o produto sequencialmente
         var productResult = await GetActiveProductAsync(request.ProductId, cancellationToken);
         if (productResult.IsFailure)
             return Result.Failure(productResult.Error);
         var product = productResult.Value;
 
-        // 3. Busca as promoções sequencialmente
         var promotions = await _promotionRepository.GetByBranchAsync(order.BranchId, cancellationToken);
 
-        // 4. Busca o estoque sequencialmente
         var stockSnapshot = await _stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
 
-        // 5. Se houver complementos selecionados, valida contra os grupos vinculados ao
-        // produto ANTES de lançar o item — evita lançar o item e falhar depois no meio do caminho.
         var complementsResult = await ResolveComplementsAsync(product.Id, request, cancellationToken);
         if (complementsResult.IsFailure)
             return Result.Failure(complementsResult.Error);
         var resolvedComplements = complementsResult.Value;
 
         var itemCountBefore = order.Items.Count;
-        // O domínio usa DateTime puro (DATETIME2 no banco), não DateTimeOffset —
-        // e o padrão do projeto é hora LOCAL (ver OpenOrderCommandHandler), não UTC,
-        // já que o front-end interpreta as datas recebidas como hora local sem conversão.
         var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
         var activePromotion = FindActivePromotion(promotions, product.Id, currentTime);
 
-        // Cria o OrderItem via factory do agregado CustomerOrder (Quantity > 0 e UnitPrice
-        // congelado no lançamento são garantidos dentro do próprio domínio).
         var addItemResult = AddPrimaryItem(order, product, request, activePromotion, currentTime);
         if (addItemResult.IsFailure)
             return addItemResult;
 
-        // 6. Aplica os complementos resolvidos na linha PRINCIPAL recém-lançada (a primeira
-        // adicionada por AddItemWithPromotion — o item bônus de promoção EmDobro, se houver,
-        // não recebe complementos).
         var applyComplementsResult = ApplyComplementsToOrder(order, itemCountBefore, resolvedComplements, currentTime);
         if (applyComplementsResult.IsFailure)
             return applyComplementsResult;
 
-        // Baixa o estoque do próprio produto lançado.
         var primaryStockResult = DeductPrimaryStock(order, stockSnapshot, itemCountBefore, request.EmployeeId, currentTime);
         if (primaryStockResult.IsFailure)
             return primaryStockResult;
 
-        // 7. Fase 18 (combos) — complementos cujo ComplementItem aponta pra um Product real
-        // (LinkedProductId) também baixam o estoque DAQUELE produto, na mesma quantidade do
-        // item principal (ex.: 2 combos = baixa 2 unidades do sanduíche vinculado à opção
-        // escolhida). Complementos sem LinkedProductId (a maioria — "sem cebola", "bacon
-        // extra") não têm produto próprio, então não geram movimentação aqui.
         var linkedStockResult = await DeductLinkedComplementStockAsync(
             order, itemCountBefore, resolvedComplements, request.EmployeeId, currentTime, cancellationToken);
         if (linkedStockResult.IsFailure)
             return linkedStockResult;
 
-        // Persiste tudo em uma única transação (item, complementos e movimentações de estoque).
         var commitResult = await CommitOrderAsync(cancellationToken);
         if (commitResult.IsFailure)
             return commitResult;

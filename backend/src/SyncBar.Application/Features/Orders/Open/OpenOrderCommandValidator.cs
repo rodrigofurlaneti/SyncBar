@@ -1,4 +1,4 @@
-using FluentValidation;
+﻿using FluentValidation;
 using SyncBar.Domain.Constants;
 
 namespace SyncBar.Application.Features.Orders.Open;
@@ -10,7 +10,6 @@ public sealed class OpenOrderCommandValidator : AbstractValidator<OpenOrderComma
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.EmployeeId).GreaterThan(0);
         RuleFor(x => x.OrderTypeId).InclusiveBetween(1, 3);
-        // Mesa exige mesa/comanda; Retirada/Delivery exigem nome do cliente (e endereço, se Delivery).
         RuleFor(x => x)
             .Must(x => x.DiningTableId.HasValue || x.ComandaId.HasValue)
             .WithMessage("Order must have a dining table or a comanda.")

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cancelOrder, getOpenOrdersByBranch, getOrder, updateItemStatus } from "./api";
 import { useAuthStore } from "../../stores/authStore";
@@ -70,13 +70,9 @@ function persistOnRoute(ids: Set<number>) {
   try {
     localStorage.setItem(ON_ROUTE_KEY, JSON.stringify([...ids]));
   } catch {
-    // localStorage indisponível (modo privado etc.) — segue só em memória.
   }
 }
 
-// Pedido SEM mesa e SEM comanda = aberto pelo fluxo de Retirada/Delivery
-// (OpenDeliveryOrderDialog). Esse par é a única distinção 100% confiável hoje;
-// orderTypeId é usado só para refinar Delivery × Retirada dentro desse grupo.
 const isDeliveryBoardOrder = (order: OrderResponse) =>
   order.diningTableId === null && order.comandaId === null;
 
@@ -237,10 +233,6 @@ export function DeliveryBoardPage() {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [openingNew, setOpeningNew] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
-
-  // Snapshots de pedidos que já saíram da lista de "abertos" (fechados/cancelados) — mantidos por
-  // sessão só pra a coluna Entregue/Cancelados não ficar vazia assim que o pedido é concluído (a
-  // API só lista pedidos abertos; ver getOpenOrdersByBranch em ./api.ts).
   const [ghosts, setGhosts] = useState<Map<number, OrderResponse>>(new Map());
   const knownRef = useRef<Map<number, OrderResponse>>(new Map());
   const fetchingRef = useRef<Set<number>>(new Set());
@@ -255,8 +247,6 @@ export function DeliveryBoardPage() {
     refetchInterval: 15_000,
   });
 
-  // Detecta pedidos do quadro que desapareceram da lista de "abertos" (fecharam/cancelaram) e
-  // busca o snapshot final uma única vez, pra alimentar as colunas Entregue/Cancelados.
   useEffect(() => {
     if (!ordersQuery.data) return;
     const boardOrders = ordersQuery.data.filter(isDeliveryBoardOrder);
@@ -293,8 +283,6 @@ export function DeliveryBoardPage() {
           });
         })
         .catch(() => {
-          // Pedido pode não existir mais / falha de rede pontual — ignora, a coluna
-          // simplesmente não mostra o card final desse pedido.
         })
         .finally(() => fetchingRef.current.delete(id));
     });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { addPublicOrderItem, getPublicMenu } from "./api";
@@ -6,17 +6,11 @@ import { formatBRL } from "../../lib/types";
 import type { MenuItemResponse, OrderItemComplementSelection } from "../../lib/types";
 import { ComplementSelectorModal } from "../orders/ComplementSelectorModal";
 
-// Página pública (sem login) acessada via QR Code na mesa — o token na URL é o único
-// "segredo": identifica a mesa e a filial. Cada item é enviado ao pedido assim que
-// o cliente confirma a quantidade (sem carrinho intermediário — mais simples e robusto
-// a perder a aba/recarregar a página no meio do pedido).
 export function PublicOrderPage() {
   const { token } = useParams<{ token: string }>();
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [sentIds, setSentIds] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
-  // Fase 6a: item com grupos de complementos vinculados, aguardando escolha no
-  // ComplementSelectorModal antes de enviar o pedido (itens sem grupos vão direto).
   const [selectingItem, setSelectingItem] = useState<MenuItemResponse | null>(null);
 
   const menuQuery = useQuery({

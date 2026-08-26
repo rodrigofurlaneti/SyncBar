@@ -10,7 +10,7 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Salao")]
+[Authorize(Roles = "Administrador,Gerente")]
 public sealed class CustomersController(
     IMediator mediator,
     ILogTrackerRepository logRepository,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { openOrder } from "./api";
 import { useAuthStore } from "../../stores/authStore";
@@ -11,9 +11,6 @@ interface Props {
   onOpened: (orderId: number) => void;
 }
 
-// Pedido sem mesa/comanda — retirada no balcão ou entrega no endereço do cliente.
-// Diferente do fluxo de mesa (OpenOrderDialog), aqui o nome do cliente é obrigatório
-// (é o único jeito de identificar o pedido depois) e o endereço só entra em Delivery.
 export function OpenDeliveryOrderDialog({ onClose, onOpened }: Props) {
   const { branchId, employeeId } = useAuthStore();
   const [orderTypeId, setOrderTypeId] = useState<number>(OrderType.Retirada);
