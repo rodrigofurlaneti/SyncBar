@@ -104,6 +104,7 @@ public static class DependencyInjection
         services.AddScoped<SyncBar.Application.Abstractions.Printing.IPrintingService, PrintingService>();
         services.AddScoped<IWaiterMessageRepository, WaiterMessageRepository>();
         services.AddScoped<ITableItemTransferRepository, TableItemTransferRepository>();
+        services.AddScoped<IComandaItemTransferRepository, ComandaItemTransferRepository>();
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IJwtTokenProvider, JwtTokenProvider>();

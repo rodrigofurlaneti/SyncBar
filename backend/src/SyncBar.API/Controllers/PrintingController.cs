@@ -8,7 +8,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-// Acoes de impressao usadas na operacao (salao/caixa) — qualquer usuario autenticado.
 [Authorize]
 public sealed class PrintingController(
     IMediator mediator,
@@ -16,7 +15,6 @@ public sealed class PrintingController(
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
-    // O frontend consulta para decidir se mostra o "Deseja imprimir?".
     [HttpGet("settings/branch/{branchId:long}")]
     public Task<IActionResult> GetSettings(long branchId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PrintingController), nameof(GetSettings), async () =>

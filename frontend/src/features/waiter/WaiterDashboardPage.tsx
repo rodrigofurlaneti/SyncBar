@@ -1,7 +1,6 @@
 ﻿import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-
 import { api } from "../../lib/apiClient";
 import { getTablesByBranch } from "../tables/api";
 import { getOpenOrdersByBranch } from "../orders/api";
@@ -9,14 +8,11 @@ import { getComandasByBranch } from "../comandas/api";
 import { getActiveAssignmentsByEmployee, getTablesByArea } from "../diningareas/api";
 import { useAuthStore } from "../../stores/authStore";
 import { useMyFeatures } from "../access/hooks";
-
 import { OrderDrawer } from "../orders/OrderDrawer";
 import { CashDrawer } from "../cash/CashDrawer";
 import { QueryError } from "../../components/QueryError";
 import { TableStatus, OrderItemStatus } from "../../lib/types";
 import type { ComandaResponse, OrderResponse, TableResponse } from "../../lib/types";
-
-// Importando componentes divididos
 import { TabKey, QuickActionKey } from "./utils";
 import { WaiterHeader } from "./components/WaiterHeader";
 import { WaiterTabBar } from "./components/WaiterTabBar";
@@ -25,9 +21,9 @@ import { TabMesas } from "./components/tabs/TabMesas";
 import { TabComandas } from "./components/tabs/TabComandas";
 import { TabPedidos } from "./components/tabs/TabPedidos";
 import { TabMensagens, WaiterMessageResponse } from "./components/tabs/TabMensagens";
-
 import { CalculatorModal } from "./components/modals/CalculatorModal";
 import { TransferItemModal } from "./components/modals/TransferItemModal";
+import { TransferComandaItemModal } from "./components/modals/TransferComandaItemModal";
 import { WaiterProfileModal } from "./components/modals/WaiterProfileModal";
 import { WaiterOpenTableModal } from "./components/modals/WaiterOpenTableModal";
 import { WaiterOpenComandaModal } from "./components/modals/WaiterOpenComandaModal";
@@ -43,50 +39,42 @@ export function WaiterDashboardPage() {
     const { branchId, userName, clear, employeeId } = useAuthStore();
     const featuresQuery = useMyFeatures();
 
-    const canSeeCaixa = featuresQuery.data?.canManageAccess || featuresQuery.data?.features.includes("Caixa");
+    const canSeeCaixa = !!(featuresQuery.data?.canManageAccess || featuresQuery.data?.features?.includes("Caixa"));
 
-    // Estados de UI
     const [activeTab, setActiveTab] = useState<TabKey>("inicio");
     const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
     const [tableToOpen, setTableToOpen] = useState<TableResponse | null>(null);
     const [comandaToOpen, setComandaToOpen] = useState<ComandaResponse | null>(null);
-    const [openModal, setOpenModal] = useState<"calculator" | "transfer" | "profile" | "cash" | null>(null);
-    const [toast, setToast] = useState<string | null>(null);
 
+    const [openModal, setOpenModal] = useState<"calculator" | "transfer" | "transferir-comanda" | "profile" | "cash" | null>(null);
+
+    const [toast, setToast] = useState<string | null>(null);
     const showToast = (message: string) => {
         setToast(message);
         window.setTimeout(() => setToast((current) => (current === message ? null : current)), 2500);
     };
-
     const handleLogout = () => {
         queryClient.clear();
         clear();
         navigate("/login", { replace: true });
     };
-
-    // Queries Principais
     const assignmentQuery = useQuery({ queryKey: ["diningareaassignments", "active", employeeId], queryFn: () => getActiveAssignmentsByEmployee(employeeId ?? 0), enabled: !!employeeId });
     const activeAreaId = assignmentQuery.data?.[0]?.diningAreaId ?? null;
-
     const areaTablesQuery = useQuery({ queryKey: ["diningareatables", activeAreaId], queryFn: () => getTablesByArea(activeAreaId!), enabled: !!activeAreaId });
-
     const allowedTableIds = useMemo(() => {
         const set = new Set<number>();
         for (const t of areaTablesQuery.data ?? []) set.add(t.diningTableId);
         return set;
     }, [areaTablesQuery.data]);
-
     const tablesQuery = useQuery({ queryKey: ["tables", branchId], queryFn: () => getTablesByBranch(branchId), refetchInterval: 15_000 });
     const comandasQuery = useQuery({ queryKey: ["comandas", branchId], queryFn: () => getComandasByBranch(branchId), refetchInterval: 15_000 });
     const ordersQuery = useQuery({ queryKey: ["orders", "open", branchId], queryFn: () => getOpenOrdersByBranch(branchId), refetchInterval: 15_000 });
-
     const messagesQuery = useQuery({
         queryKey: ["waitermessages", branchId, activeAreaId],
         queryFn: () => getWaiterMessagesByBranch(branchId, activeAreaId),
         enabled: !!branchId && !!activeAreaId,
         refetchInterval: 10_000,
     });
-
     const sortedMessages = useMemo(() => {
         const msgs = messagesQuery.data ?? [];
         return [...msgs].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -98,69 +86,58 @@ export function WaiterDashboardPage() {
         void queryClient.invalidateQueries({ queryKey: ["comandas"] });
         void queryClient.invalidateQueries({ queryKey: ["waitermessages"] });
     };
-
-    // Processamento de Dados (Memos)
     const allActiveOrders = ordersQuery.data ?? [];
-
     const myOrders = useMemo(() => {
         if (!activeAreaId) return [];
         return allActiveOrders.filter(order => (order.comandaId !== null) || (order.diningTableId !== null && allowedTableIds.has(order.diningTableId)));
     }, [allActiveOrders, activeAreaId, allowedTableIds]);
-
     const myTables = useMemo(() => (tablesQuery.data ?? []).filter((t) => allowedTableIds.has(t.id)), [tablesQuery.data, allowedTableIds]);
-
     const ordersByTableId = useMemo(() => {
         const map = new Map<number, OrderResponse>();
         for (const order of allActiveOrders) if (order.diningTableId !== null) map.set(order.diningTableId, order);
         return map;
     }, [allActiveOrders]);
-
     const tablesById = useMemo(() => {
         const map = new Map<number, TableResponse>();
         for (const table of tablesQuery.data ?? []) map.set(table.id, table);
         return map;
     }, [tablesQuery.data]);
-
     const comandasById = useMemo(() => {
         const map = new Map<number, ComandaResponse>();
         for (const comanda of comandasQuery.data ?? []) map.set(comanda.id, comanda);
         return map;
     }, [comandasQuery.data]);
-
     const myOpenTablesCount = myTables.filter((t) => t.tableStatusId === TableStatus.Ocupada || t.tableStatusId === TableStatus.EmFechamento).length;
     const tableOrders = useMemo(() => myOrders.filter((o) => o.diningTableId !== null), [myOrders]);
     const comandaOrders = useMemo(() => myOrders.filter((o) => o.comandaId !== null && o.diningTableId === null), [myOrders]);
-
     const totalTablesAmount = useMemo(() => tableOrders.reduce((sum, order) => sum + order.totalAmount, 0), [tableOrders]);
     const totalComandasAmount = useMemo(() => comandaOrders.reduce((sum, order) => sum + order.totalAmount, 0), [comandaOrders]);
     const readyItemsCount = useMemo(() => myOrders.reduce((sum, order) => sum + order.items.filter((i) => i.orderItemStatusId === OrderItemStatus.Pronto).length, 0), [myOrders]);
     const latestOrders = useMemo(() => [...myOrders].sort((a, b) => new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime()).slice(0, 3), [myOrders]);
 
-    // Handlers
     const handleQuickAction = (key: QuickActionKey) => {
         if (key === "mesas" || key === "comandas") setActiveTab(key);
         else if (key === "turno") setOpenModal("cash");
-        else if (key === "calculadora" || key === "transferir") setOpenModal(key);
+        else if (key === "calculadora") setOpenModal("calculator");
+        else if (key === "transferir") setOpenModal("transfer");
+        else if (key === "transferir-comanda") setOpenModal("transferir-comanda");
     };
 
     return (
         <div className="waiter-view">
             <div className="waiter-shell">
                 <WaiterHeader userName={userName} readyItemsCount={readyItemsCount} onBellClick={() => setActiveTab("inicio")} />
-
                 <main className="waiter-body">
                     {(tablesQuery.isError || ordersQuery.isError || comandasQuery.isError) && (
                         <div className="waiter-card">
                             <QueryError error={tablesQuery.error || ordersQuery.error || comandasQuery.error} what="os dados" />
                         </div>
                     )}
-
                     {!assignmentQuery.isLoading && !activeAreaId && (
                         <div className="waiter-card" style={{ backgroundColor: "var(--w-warn)", padding: 12, borderRadius: 8, marginBottom: 16 }}>
                             <strong>Sem praça atribuída!</strong> Solicite ao gerente que inicie seu turno em uma praça.
                         </div>
                     )}
-
                     {activeTab === "inicio" && (
                         <TabInicio
                             myOpenTablesCount={myOpenTablesCount} myTotalTables={myTables.length} comandaOrders={comandaOrders}
@@ -169,7 +146,6 @@ export function WaiterDashboardPage() {
                             onTabChange={setActiveTab} onQuickAction={handleQuickAction} onOrderClick={setSelectedOrderId}
                         />
                     )}
-
                     {activeTab === "mesas" && (
                         <TabMesas
                             activeAreaId={activeAreaId}
@@ -178,7 +154,6 @@ export function WaiterDashboardPage() {
                             onTableClick={(tableId, status) => status === TableStatus.Livre ? setTableToOpen(myTables.find(t => t.id === tableId)!) : setSelectedOrderId(myOrders.find(o => o.diningTableId === tableId)?.id || null)}
                         />
                     )}
-
                     {activeTab === "comandas" && (
                         <TabComandas
                             isLoading={comandasQuery.isLoading}
@@ -187,7 +162,6 @@ export function WaiterDashboardPage() {
                             onComandaClick={(comanda, orderId) => orderId ? setSelectedOrderId(orderId) : setComandaToOpen(comanda)}
                         />
                     )}
-
                     {activeTab === "pedidos" && (
                         <TabPedidos
                             myOrders={myOrders}
@@ -196,7 +170,6 @@ export function WaiterDashboardPage() {
                             onOrderClick={setSelectedOrderId}
                         />
                     )}
-
                     {activeTab === "mensagens" && (
                         <TabMensagens
                             activeAreaId={activeAreaId}
@@ -207,7 +180,6 @@ export function WaiterDashboardPage() {
                         />
                     )}
                 </main>
-
                 <WaiterTabBar
                     activeTab={activeTab}
                     onTabChange={(key) => key === "perfil" ? setOpenModal("profile") : setActiveTab(key)}
@@ -217,12 +189,24 @@ export function WaiterDashboardPage() {
                 {openModal === "calculator" && <CalculatorModal onClose={() => setOpenModal(null)} />}
                 {openModal === "profile" && <WaiterProfileModal userName={userName} branchId={branchId} onClose={() => setOpenModal(null)} onLogout={handleLogout} />}
                 {openModal === "cash" && <CashDrawer onClose={() => setOpenModal(null)} />}
-                {openModal === "transferir" && <TransferItemModal myTables={myTables} ordersByTableId={ordersByTableId} allActiveOrders={allActiveOrders} employeeId={employeeId} onClose={() => setOpenModal(null)} onSuccess={showToast} onError={showToast} />}
+                {openModal === "transfer" && <TransferItemModal myTables={myTables} ordersByTableId={ordersByTableId} allActiveOrders={allActiveOrders} employeeId={employeeId} onClose={() => setOpenModal(null)} onSuccess={showToast} onError={showToast} />}
+
+                {openModal === "transferir-comanda" && (
+                    <TransferComandaItemModal
+                        comandas={comandasQuery.data ?? []}
+                        comandaOrders={comandaOrders}
+                        allActiveOrders={allActiveOrders}
+                        employeeId={employeeId}
+                        onClose={() => setOpenModal(null)}
+                        onSuccess={showToast}
+                        onError={showToast}
+                    />
+                )}
 
                 {tableToOpen && <WaiterOpenTableModal table={tableToOpen} onClose={() => setTableToOpen(null)} onOpened={(id) => { setTableToOpen(null); refresh(); setSelectedOrderId(id); }} />}
                 {comandaToOpen && <WaiterOpenComandaModal comanda={comandaToOpen} onClose={() => setComandaToOpen(null)} onOpened={(id) => { setComandaToOpen(null); refresh(); setSelectedOrderId(id); }} />}
 
-                {selectedOrderId !== null && <OrderDrawer orderId={selectedOrderId} isWaiterMode={true} onClose={() => { setSelectedOrderId(null); refresh(); }} />}
+                {selectedOrderId !== null && <OrderDrawer orderId={selectedOrderId} onClose={() => { setSelectedOrderId(null); refresh(); }} />}
             </div>
 
             {toast && <div className="waiter-toast" role="status">{toast}</div>}

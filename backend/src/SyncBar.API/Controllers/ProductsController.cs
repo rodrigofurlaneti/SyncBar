@@ -17,7 +17,7 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Cardapio")]
+[Authorize(Roles = "Administrador,Gerente")]
 public sealed class ProductsController(
     IMediator mediator,
     ILogTrackerRepository logRepository,

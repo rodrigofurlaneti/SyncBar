@@ -20,7 +20,7 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Cardapio")]
+[Authorize(Roles = "Administrador,Gerente")]
 [Route("api/complements")]
 public sealed class ComplementsController(
     IMediator mediator,

@@ -14,13 +14,13 @@ export const badgeToneVar: Record<BadgeTone, string> = {
     waiting: "var(--w-warn, #f59e0b)",
 };
 
-export type QuickActionKey = "transferir" | "mesas" | "calculadora" | "turno" | "comandas" | "nova" | "conta";
+export type QuickActionKey = "mesas" | "comandas" | "turno" | "calculadora" | "transferir" | "transferir-comanda";
 
 export const quickActions: { key: QuickActionKey; icon: string; label: string }[] = [
     { key: "transferir", icon: "🔀", label: "Transferir Mesa" },
     { key: "mesas", icon: "🍽️", label: "Mesas" },
     { key: "calculadora", icon: "🔢", label: "Calculadora" },
-    { key: "transferir", icon: "🔀", label: "Transferir Comanda" },
+    { key: "transferir-comanda", icon: "🔀", label: "Transferir Comanda" },
     { key: "comandas", icon: "📋", label: "Comandas" }
 ];
 

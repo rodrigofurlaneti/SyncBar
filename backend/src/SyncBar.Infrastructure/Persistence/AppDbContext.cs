@@ -87,7 +87,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<OrderItemPizzaFlavor> OrderItemPizzaFlavors => Set<OrderItemPizzaFlavor>();
     public DbSet<IFoodPizzaMapping> IFoodPizzaMappings => Set<IFoodPizzaMapping>();
     public DbSet<IFoodPizzaElementMapping> IFoodPizzaElementMappings => Set<IFoodPizzaElementMapping>();
-
+    public DbSet<ComandaItemTransfer> ComandaItemTransfers => Set<ComandaItemTransfer>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
