@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { openOrder } from "../orders/api";
 import { useAuthStore } from "../../stores/authStore";
@@ -32,7 +32,7 @@ export function OpenComandaDialog({ comanda, onClose, onOpened }: Props) {
   return (
     <Overlay title={`Abrir comanda ${comanda.code}`} onClose={onClose}>
       <label style={{ display: "grid", gap: 6 }}>
-        <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>Nome do cliente (opcional)</span>
+        <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>Nome do cliente</span>
         <input
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}

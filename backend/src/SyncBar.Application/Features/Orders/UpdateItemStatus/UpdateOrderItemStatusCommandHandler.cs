@@ -10,8 +10,8 @@ internal sealed class UpdateOrderItemStatusCommandHandler : BaseCommandHandler<U
     private readonly ICustomerOrderRepository _orderRepository;
     private readonly IWaiterMessageRepository _messageRepository;
     private readonly IDiningAreaTableRepository _diningAreaTableRepository;
-    private readonly IDiningTableRepository _diningTableRepository; // <-- Injetado para buscar o número da mesa
-    private readonly IProductRepository _productRepository;         // <-- Injetado para buscar o nome do produto
+    private readonly IDiningTableRepository _diningTableRepository; 
+    private readonly IProductRepository _productRepository;
     private readonly TimeProvider _TimeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -71,7 +71,7 @@ internal sealed class UpdateOrderItemStatusCommandHandler : BaseCommandHandler<U
                             diningAreaId = areaTable.DiningAreaId;
                         }
                     }
-                    if (diningAreaId <= 0)
+                    if (diningAreaId <= 0 && order.ComandaId <= 0)
                     {
                         return Result.Failure(new Error("WaiterMessage.DiningAreaRequired", "Não foi possível identificar a praça da mesa para registrar a mensagem."));
                     }
@@ -84,7 +84,12 @@ internal sealed class UpdateOrderItemStatusCommandHandler : BaseCommandHandler<U
                             tableInfo = $"Mesa {table.Number}";
                         }
                     }
-                    var targetItem = order.Items.FirstOrDefault(i => i.Id == request.OrderItemId);
+                    else
+                    {
+                        diningAreaId = 1;//Por que comanda não tem praça, e o estabelecimento inteiro.
+                        tableInfo = $"Comanda {order.ComandaId}";
+                    }
+                        var targetItem = order.Items.FirstOrDefault(i => i.Id == request.OrderItemId);
                     string productName = "Item";
                     if (targetItem is not null)
                     {

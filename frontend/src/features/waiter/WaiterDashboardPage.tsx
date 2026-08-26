@@ -1,13 +1,11 @@
 ﻿import { useMemo, useState, useRef, useEffect, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { getTablesByBranch } from "../tables/api";
-import { getOpenOrdersByBranch } from "../orders/api";
+import { getOpenOrdersByBranch, openOrder } from "../orders/api";
 import { getComandasByBranch } from "../comandas/api";
 import { getActiveAssignmentsByEmployee, getTablesByArea } from "../diningareas/api";
-import { api } from "../../lib/apiClient";
-
+import { api, ApiError } from "../../lib/apiClient";
 import { useAuthStore } from "../../stores/authStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useMyFeatures } from "../access/hooks";
@@ -21,6 +19,191 @@ import {
     orderTypeLabel,
 } from "../../lib/types";
 import type { ComandaResponse, OrderResponse, TableResponse } from "../../lib/types";
+
+// ============================================================================
+// COMPONENTE: Modal para Abrir Comanda
+// ============================================================================
+interface WaiterOpenComandaModalProps {
+    comanda: ComandaResponse;
+    onClose: () => void;
+    onOpened: (orderId: number) => void;
+}
+
+function WaiterOpenComandaModal({ comanda, onClose, onOpened }: WaiterOpenComandaModalProps) {
+    const { branchId, employeeId } = useAuthStore();
+    const [customerName, setCustomerName] = useState("");
+
+    const mutation = useMutation({
+        mutationFn: () =>
+            openOrder({
+                branchId,
+                diningTableId: null,
+                comandaId: comanda.id,
+                employeeId: employeeId ?? 1,
+                guestCount: 1,
+                notes: customerName.trim() === "" ? null : `Cliente: ${customerName.trim()}`,
+            }),
+        onSuccess: (orderId) => onOpened(orderId),
+    });
+
+    return (
+        <div className="modal-backdrop is-center" onClick={onClose} style={{ position: "absolute" }}>
+            <div className="modal-panel is-center" onClick={(e) => e.stopPropagation()} style={{ width: "90%", maxWidth: "360px", padding: "24px" }}>
+
+                <div className="modal-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                    <span className="display" style={{ fontSize: "1.25rem", fontWeight: "800", textTransform: "uppercase" }}>
+                        Abrir Comanda {comanda.code || comanda.id}
+                    </span>
+                    <button type="button" className="btn-ghost btn-icon" onClick={onClose} aria-label="Fechar">
+                        ✕
+                    </button>
+                </div>
+
+                <div style={{ display: "grid", gap: "8px", marginBottom: "24px", textAlign: "left" }}>
+                    <label style={{ fontSize: "0.9rem", fontWeight: "600", color: "var(--ink-dim)" }}>
+                        Nome do cliente
+                    </label>
+                    <input
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        autoFocus
+                        placeholder="ex.: João Furlaneti"
+                        style={{
+                            padding: "12px",
+                            borderRadius: "8px",
+                            border: "1px solid var(--border)",
+                            backgroundColor: "var(--bg-raise, #f3f4f6)",
+                            color: "var(--ink)",
+                            width: "100%",
+                            fontSize: "1rem"
+                        }}
+                    />
+                </div>
+
+                {mutation.isError && (
+                    <p style={{ color: "var(--w-warn, #ef4444)", fontSize: "0.85rem", marginBottom: "16px", fontWeight: "500", textAlign: "left" }}>
+                        {mutation.error instanceof ApiError ? mutation.error.message : "Falha ao abrir comanda."}
+                    </p>
+                )}
+
+                <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+                    <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={onClose}
+                        style={{ padding: "10px 16px", borderRadius: "8px", fontWeight: "600" }}
+                    >
+                        Voltar
+                    </button>
+                    <button
+                        type="button"
+                        className="waiter-cta"
+                        onClick={() => mutation.mutate()}
+                        disabled={mutation.isPending}
+                        style={{ margin: 0, padding: "10px 20px", borderRadius: "8px", fontWeight: "700" }}
+                    >
+                        {mutation.isPending ? "Abrindo…" : "Abrir comanda"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// COMPONENTE: Modal para Abrir Mesa
+// ============================================================================
+interface WaiterOpenTableModalProps {
+    table: TableResponse;
+    onClose: () => void;
+    onOpened: (orderId: number) => void;
+}
+
+function WaiterOpenTableModal({ table, onClose, onOpened }: WaiterOpenTableModalProps) {
+    const { branchId, employeeId } = useAuthStore();
+    const [guestCount, setGuestCount] = useState<number>(2);
+
+    const mutation = useMutation({
+        mutationFn: () =>
+            openOrder({
+                branchId,
+                diningTableId: table.id,
+                comandaId: null,
+                employeeId: employeeId ?? 1,
+                guestCount,
+                notes: null,
+            }),
+        onSuccess: (orderId) => onOpened(orderId),
+    });
+
+    return (
+        <div className="modal-backdrop is-center" onClick={onClose} style={{ position: "absolute" }}>
+            <div className="modal-panel is-center" onClick={(e) => e.stopPropagation()} style={{ width: "90%", maxWidth: "360px", padding: "24px" }}>
+
+                <div className="modal-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                    <span className="display" style={{ fontSize: "1.25rem", fontWeight: "800", textTransform: "uppercase" }}>
+                        Abrir Mesa {table.number}
+                    </span>
+                    <button type="button" className="btn-ghost btn-icon" onClick={onClose} aria-label="Fechar">
+                        ✕
+                    </button>
+                </div>
+
+                <div style={{ display: "grid", gap: "8px", marginBottom: "24px", textAlign: "left" }}>
+                    <label style={{ fontSize: "0.9rem", fontWeight: "600", color: "var(--ink-dim)" }}>
+                        Pessoas na mesa
+                    </label>
+                    <input
+                        type="number"
+                        min={1}
+                        value={guestCount}
+                        onChange={(e) => setGuestCount(Number(e.target.value))}
+                        autoFocus
+                        style={{
+                            padding: "12px",
+                            borderRadius: "8px",
+                            border: "1px solid var(--border)",
+                            backgroundColor: "var(--bg-raise, #f3f4f6)",
+                            color: "var(--ink)",
+                            width: "100%",
+                            fontSize: "1rem"
+                        }}
+                    />
+                </div>
+
+                {mutation.isError && (
+                    <p style={{ color: "var(--w-warn, #ef4444)", fontSize: "0.85rem", marginBottom: "16px", fontWeight: "500", textAlign: "left" }}>
+                        {mutation.error instanceof ApiError ? mutation.error.message : "Falha ao abrir mesa."}
+                    </p>
+                )}
+
+                <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+                    <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={onClose}
+                        style={{ padding: "10px 16px", borderRadius: "8px", fontWeight: "600" }}
+                    >
+                        Voltar
+                    </button>
+                    <button
+                        type="button"
+                        className="waiter-cta"
+                        onClick={() => mutation.mutate()}
+                        disabled={mutation.isPending}
+                        style={{ margin: 0, padding: "10px 20px", borderRadius: "8px", fontWeight: "700" }}
+                    >
+                        {mutation.isPending ? "Abrindo…" : "Abrir mesa"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// LÓGICA E COMPONENTE PRINCIPAL
+// ============================================================================
 
 interface WaiterMessageResponse {
     id: number;
@@ -101,19 +284,20 @@ const badgeToneVar: Record<BadgeTone, string> = {
     waiting: "var(--w-warn, #f59e0b)",
 };
 
-type QuickActionKey = "transferir" | "mesas" | "calculadora" | "turno";
+type QuickActionKey = "transferir" | "mesas" | "calculadora" | "turno" | "comandas" | "nova" | "conta";
 
 const quickActions: { key: QuickActionKey; icon: string; label: string }[] = [
-    { key: "transferir", icon: "🔀", label: "Transferir" },
+    { key: "transferir", icon: "🔀", label: "Transferir Mesa" },
     { key: "mesas", icon: "🍽️", label: "Mesas" },
-    { key: "calculadora", icon: "🔢", label: "Calculadora" }
+    { key: "calculadora", icon: "🔢", label: "Calculadora" },
+    { key: "transferir", icon: "🔀", label: "Transferir Comanda" },
+    { key: "comandas", icon: "📋", label: "Comandas" }
 ];
 
-type TabKey = "inicio" | "mesas" | "pedidos" | "mensagens" | "perfil";
+type TabKey = "inicio" | "mesas" | "comandas" | "pedidos" | "mensagens" | "perfil";
 
 const tabs: { key: TabKey; icon: string; label: string }[] = [
     { key: "inicio", icon: "🏠", label: "Início" },
-    { key: "mesas", icon: "🍽️", label: "Mesas" },
     { key: "pedidos", icon: "🧾", label: "Pedidos" },
     { key: "mensagens", icon: "💬", label: "Mensagens" },
     { key: "perfil", icon: "👤", label: "Perfil" },
@@ -130,6 +314,8 @@ export function WaiterDashboardPage() {
 
     const [activeTab, setActiveTab] = useState<TabKey>("inicio");
     const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+    const [comandaToOpen, setComandaToOpen] = useState<ComandaResponse | null>(null);
+    const [tableToOpen, setTableToOpen] = useState<TableResponse | null>(null);
     const [cashOpen, setCashOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
@@ -187,7 +373,6 @@ export function WaiterDashboardPage() {
             if (calcOperator === "*") result = calcPrevValue * current;
             if (calcOperator === "/") result = calcPrevValue / current;
 
-            // Formatando para evitar muitas casas decimais
             result = parseFloat(result.toFixed(4));
 
             setCalcInput(result.toString());
@@ -245,7 +430,6 @@ export function WaiterDashboardPage() {
         refetchInterval: 15_000,
     });
 
-    // Query para buscar as mensagens vinculadas exclusivamente à praça ativa do garçom
     const messagesQuery = useQuery({
         queryKey: ["waitermessages", branchId, activeAreaId],
         queryFn: () => getWaiterMessagesByBranch(branchId, activeAreaId),
@@ -253,13 +437,11 @@ export function WaiterDashboardPage() {
         refetchInterval: 10_000,
     });
 
-    // Ordena as mensagens cronologicamente (mais antiga em cima, mais nova embaixo — estilo WhatsApp)
     const sortedMessages = useMemo(() => {
         const msgs = messagesQuery.data ?? [];
         return [...msgs].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     }, [messagesQuery.data]);
 
-    // Rola para baixo automaticamente quando entra na aba mensagens ou chegam novas mensagens
     useEffect(() => {
         if (activeTab === "mensagens") {
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -302,7 +484,6 @@ export function WaiterDashboardPage() {
         return map;
     }, [allActiveOrders]);
 
-    // Pedido vinculado à mesa de origem selecionada no modal de transferência
     const sourceOrder = useMemo(() => {
         if (!sourceTableId) return null;
         return allActiveOrders.find(o => o.diningTableId === Number(sourceTableId)) || null;
@@ -314,7 +495,14 @@ export function WaiterDashboardPage() {
 
     const myTotalTables = myTables.length;
 
-    const totalOpenAmount = useMemo(() => myOrders.reduce((sum, order) => sum + order.totalAmount, 0), [myOrders]);
+    // --- NOVA SEPARAÇÃO MESAS VS COMANDAS ---
+    const tableOrders = useMemo(() => myOrders.filter((o) => o.diningTableId !== null), [myOrders]);
+    const comandaOrders = useMemo(() => myOrders.filter((o) => o.comandaId !== null && o.diningTableId === null), [myOrders]);
+
+    const totalTablesAmount = useMemo(() => tableOrders.reduce((sum, order) => sum + order.totalAmount, 0), [tableOrders]);
+    const totalComandasAmount = useMemo(() => comandaOrders.reduce((sum, order) => sum + order.totalAmount, 0), [comandaOrders]);
+    // ----------------------------------------
+
     const readyItemsCount = useMemo(() => myOrders.reduce((sum, order) => sum + order.items.filter((i) => i.orderItemStatusId === OrderItemStatus.Pronto).length, 0), [myOrders]);
 
     const latestOrders = useMemo(
@@ -334,9 +522,8 @@ export function WaiterDashboardPage() {
             case "mesas":
                 setActiveTab("mesas");
                 break;
-            case "nova":
-            case "conta":
-                navigate("/");
+            case "comandas":
+                setActiveTab("comandas");
                 break;
             case "calculadora":
                 setCalculatorOpen(true);
@@ -354,6 +541,7 @@ export function WaiterDashboardPage() {
         switch (key) {
             case "inicio":
             case "mesas":
+            case "comandas":
             case "pedidos":
             case "mensagens":
                 setActiveTab(key);
@@ -364,38 +552,31 @@ export function WaiterDashboardPage() {
         }
     };
 
-    // ---------------------------------------------------------
-    // AQUI ESTÁ A ALTERAÇÃO PRINCIPAL
-    // ---------------------------------------------------------
     const handleTableClick = (tableId: number, statusId: number) => {
         if (statusId === TableStatus.Livre) {
-            // Em vez de mostrar um aviso de texto, redireciona o usuário para
-            // a raiz ("/" - geralmente a tela de Salão/Cardápio) e passa o ID da mesa
-            navigate("/", { state: { selectedTableId: tableId } });
+            const tableObj = myTables.find(t => t.id === tableId);
+            if (tableObj) {
+                setTableToOpen(tableObj);
+            }
             return;
         }
-
-        // Se a mesa estiver ocupada, abre o OrderDrawer para visualizá-la
         const order = myOrders.find((o) => o.diningTableId === tableId);
         if (order) {
             setSelectedOrderId(order.id);
         }
     };
 
-    // Submeter a transferência de item/mesa
     const handleExecuteTransfer = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!sourceTableId || !targetTableId || !selectedItemId || !sourceOrder) {
             showToast("Preencha todos os campos da transferência.");
             return;
         }
-
         const targetOrder = allActiveOrders.find(o => o.diningTableId === Number(targetTableId));
         if (!targetOrder) {
             showToast("A mesa de destino precisa ter um pedido aberto para receber o item.");
             return;
         }
-
         setIsTransferring(true);
         try {
             await api("/api/orders/items/transfer", {
@@ -478,26 +659,40 @@ export function WaiterDashboardPage() {
                     {/* ========================================================== */}
                     {activeTab === "inicio" && (
                         <>
-                            <div className="waiter-stats-row">
-                                <div className="waiter-stat-card" onClick={() => setActiveTab("mesas")} style={{ cursor: "pointer" }}>
+                            <div className="waiter-stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
+                                <div className="waiter-stat-card" onClick={() => setActiveTab("mesas")} style={{ cursor: "pointer", margin: 0 }}>
                                     <span className="waiter-stat-value mono-num">
                                         {myOpenTablesCount}
                                         <small>/{myTotalTables || "—"}</small>
                                     </span>
-                                    <span className="waiter-stat-label">Mesas abertas na sua praça</span>
+                                    <span className="waiter-stat-label">Mesas</span>
                                 </div>
-                                <div className="waiter-stat-card">
+                                <div className="waiter-stat-card" onClick={() => setActiveTab("comandas")} style={{ cursor: "pointer", margin: 0 }}>
+                                    <span className="waiter-stat-value mono-num">{comandaOrders.length}</span>
+                                    <span className="waiter-stat-label">Comandas</span>
+                                </div>
+                                <div className="waiter-stat-card" onClick={() => setActiveTab("pedidos")} style={{ cursor: "pointer", margin: 0 }}>
                                     <span className="waiter-stat-value mono-num">{myOrders.length}</span>
-                                    <span className="waiter-stat-label">Pedidos ativos na sua praça</span>
+                                    <span className="waiter-stat-label">Pedidos ativos</span>
                                 </div>
                             </div>
 
-                            <div className="waiter-highlight-card">
-                                <span className="waiter-highlight-label">Mesas em aberto</span>
-                                <span className="waiter-highlight-value mono-num">{formatBRL(totalOpenAmount)}</span>
-                                <span className="waiter-highlight-sub">
-                                    {myOrders.length} pedido{myOrders.length === 1 ? "" : "s"} em aberto agora
-                                </span>
+                            <div style={{ display: 'grid', gap: '10px', marginBottom: '16px' }}>
+                                <div className="waiter-highlight-card" style={{ margin: 0 }}>
+                                    <span className="waiter-highlight-label">Mesas em aberto</span>
+                                    <span className="waiter-highlight-value mono-num">{formatBRL(totalTablesAmount)}</span>
+                                    <span className="waiter-highlight-sub">
+                                        {tableOrders.length} pedido{tableOrders.length === 1 ? "" : "s"} em aberto agora
+                                    </span>
+                                </div>
+
+                                <div className="waiter-highlight-card" style={{ margin: 0 }}>
+                                    <span className="waiter-highlight-label">Comandas em aberto</span>
+                                    <span className="waiter-highlight-value mono-num">{formatBRL(totalComandasAmount)}</span>
+                                    <span className="waiter-highlight-sub">
+                                        {comandaOrders.length} pedido{comandaOrders.length === 1 ? "" : "s"} em aberto agora
+                                    </span>
+                                </div>
                             </div>
 
                             <section id="waiter-latest-orders" className="waiter-section">
@@ -545,9 +740,9 @@ export function WaiterDashboardPage() {
                                 <div className="waiter-quick-grid">
                                     {quickActions
                                         .filter((action) => action.key !== "turno" || canSeeCaixa)
-                                        .map((action) => (
+                                        .map((action, idx) => (
                                             <button
-                                                key={action.key}
+                                                key={`${action.key}-${idx}`}
                                                 type="button"
                                                 className="waiter-quick-tile"
                                                 onClick={() => handleQuickAction(action.key)}
@@ -629,6 +824,103 @@ export function WaiterDashboardPage() {
                                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: "6px" }}>
                                                     <span style={{ fontSize: "1.6rem", fontWeight: "800", color: "var(--ink, #111827)", lineHeight: 1 }}>
                                                         {table.number}
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize: "0.65rem",
+                                                            fontWeight: "700",
+                                                            backgroundColor: statusBg,
+                                                            color: statusColor,
+                                                            padding: "3px 8px",
+                                                            borderRadius: "20px",
+                                                            letterSpacing: "0.5px",
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            gap: "4px"
+                                                        }}
+                                                    >
+                                                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: statusColor }} />
+                                                        {statusText}
+                                                    </span>
+                                                </div>
+                                                <span style={{ fontSize: "0.8rem", color: "var(--ink-dim, #6b7280)", fontWeight: 500 }}>
+                                                    {subText}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </section>
+                    )}
+
+                    {/* ========================================================== */}
+                    {/* ABA: COMANDAS                                              */}
+                    {/* ========================================================== */}
+                    {activeTab === "comandas" && (
+                        <section className="waiter-section">
+                            <h2 className="waiter-section-title" style={{ marginBottom: 16 }}>Comandas</h2>
+
+                            {comandasQuery.isLoading ? (
+                                <p className="waiter-empty">Carregando comandas...</p>
+                            ) : !comandasQuery.data || comandasQuery.data.length === 0 ? (
+                                <p className="waiter-empty">Nenhuma comanda registrada.</p>
+                            ) : (
+                                <div
+                                    className="waiter-tables-grid"
+                                    style={{
+                                        display: "grid",
+                                        gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+                                        gap: "14px"
+                                    }}
+                                >
+                                    {comandasQuery.data.map((comanda) => {
+                                        const order = comandaOrders.find((o) => o.comandaId === comanda.id);
+
+                                        let leftBorderColor = "#22c55e"; // Cor Livre (Verde)
+                                        let statusBg = "#dcfce7";
+                                        let statusColor = "#15803d";
+                                        let statusText = "LIVRE";
+                                        let subText = "Toque para abrir";
+
+                                        if (order) {
+                                            leftBorderColor = "#f59e0b"; // Cor Ocupada (Laranja/Amarelo)
+                                            statusBg = "#fef3c7";
+                                            statusColor = "#b45309";
+                                            statusText = "EM USO";
+
+                                            const totalItems = order.items.length;
+                                            subText = `${totalItems} ${totalItems === 1 ? "item" : "itens"} · ${formatBRL(order.totalAmount)}`;
+                                        }
+
+                                        return (
+                                            <button
+                                                key={comanda.id}
+                                                onClick={() => {
+                                                    if (order) {
+                                                        setSelectedOrderId(order.id);
+                                                    } else {
+                                                        setComandaToOpen(comanda);
+                                                    }
+                                                }}
+                                                style={{
+                                                    display: "flex",
+                                                    flexDirection: "column",
+                                                    alignItems: "stretch",
+                                                    backgroundColor: "var(--surface, #ffffff)",
+                                                    borderRadius: "10px",
+                                                    border: "1px solid var(--border, #e5e7eb)",
+                                                    borderLeft: `6px solid ${leftBorderColor}`,
+                                                    padding: "12px 14px",
+                                                    cursor: "pointer",
+                                                    textAlign: "left",
+                                                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                                                    transition: "transform 0.1s ease",
+                                                }}
+                                            >
+                                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: "6px" }}>
+                                                    <span style={{ fontSize: "1.6rem", fontWeight: "800", color: "var(--ink, #111827)", lineHeight: 1 }}>
+                                                        {comanda.code || comanda.id}
                                                     </span>
                                                     <span
                                                         style={{
@@ -769,7 +1061,6 @@ export function WaiterDashboardPage() {
                                             </p>
                                         </div>
                                     ))}
-                                    {/* Elemento de ancoragem para rolar até o final automaticamente */}
                                     <div ref={messagesEndRef} />
                                 </div>
                             )}
@@ -790,172 +1081,202 @@ export function WaiterDashboardPage() {
                         </button>
                     ))}
                 </nav>
-            </div>
 
+                {/* MODAL CALCULADORA: Movido para dentro do waiter-shell */}
+                {calculatorOpen && (
+                    <div className="modal-backdrop is-center" onClick={() => setCalculatorOpen(false)} style={{ position: "absolute" }}>
+                        <div className="modal-panel is-center" onClick={(e) => e.stopPropagation()} style={{ width: "90%", maxWidth: "320px", padding: "20px" }}>
+                            <div className="modal-head" style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <span className="display" style={{ fontSize: "1.2rem", fontWeight: "bold" }}>➗ Calculadora</span>
+                                <button type="button" className="btn-ghost btn-icon" onClick={() => setCalculatorOpen(false)}>✕</button>
+                            </div>
+
+                            <div style={{
+                                backgroundColor: "var(--bg-body)",
+                                border: "1px solid var(--border)",
+                                borderRadius: "8px",
+                                padding: "16px",
+                                fontSize: "2rem",
+                                textAlign: "right",
+                                marginBottom: "16px",
+                                overflow: "hidden",
+                                color: "var(--ink)",
+                                fontWeight: "bold"
+                            }}>
+                                {calcInput}
+                            </div>
+
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px" }}>
+                                <button type="button" className="btn-ghost" style={{ gridColumn: "span 3", backgroundColor: "#fee2e2", color: "#b91c1c", fontWeight: "bold", fontSize: "1.2rem" }} onClick={handleCalcClear}>C</button>
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: "bold", fontSize: "1.2rem" }} onClick={() => handleCalcOp("/")}>÷</button>
+
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("7")}>7</button>
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("8")}>8</button>
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("9")}>9</button>
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: "bold", fontSize: "1.2rem" }} onClick={() => handleCalcOp("*")}>×</button>
+
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("4")}>4</button>
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("5")}>5</button>
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("6")}>6</button>
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: "bold", fontSize: "1.5rem" }} onClick={() => handleCalcOp("-")}>-</button>
+
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("1")}>1</button>
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("2")}>2</button>
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("3")}>3</button>
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: "bold", fontSize: "1.2rem" }} onClick={() => handleCalcOp("+")}>+</button>
+
+                                <button type="button" className="btn-ghost" style={{ gridColumn: "span 2", backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("0")}>0</button>
+                                <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontWeight: "bold", fontSize: "1.2rem" }} onClick={() => handleCalcNum(".")}>.</button>
+                                <button type="button" className="waiter-cta" style={{ margin: 0, fontSize: "1.2rem" }} onClick={handleCalcEqual}>=</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* MODAL DE TRANSFERÊNCIA: Movido para dentro do waiter-shell */}
+                {transferOpen && (
+                    <div className="modal-backdrop is-center" onClick={() => setTransferOpen(false)} style={{ position: "absolute" }}>
+                        <div className="modal-panel is-center" onClick={(e) => e.stopPropagation()} style={{ width: "90%", maxWidth: "420px" }}>
+                            <div className="modal-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                                <span className="display" style={{ fontSize: "1.2rem", fontWeight: "bold" }}>🔀 Transferir Item</span>
+                                <button type="button" className="btn-ghost btn-icon" aria-label="Fechar" onClick={() => setTransferOpen(false)}>
+                                    ✕
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleExecuteTransfer} style={{ display: "grid", gap: "14px" }}>
+                                <div style={{ display: "grid", gap: "6px" }}>
+                                    <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--ink-dim)" }}>Mesa de Origem (Com pedido)</label>
+                                    <select
+                                        value={sourceTableId}
+                                        onChange={(e) => {
+                                            setSourceTableId(e.target.value);
+                                            setSelectedItemId("");
+                                        }}
+                                        style={{ padding: "10px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--ink)" }}
+                                        required
+                                    >
+                                        <option value="">Selecione a mesa de origem...</option>
+                                        {myTables.filter(t => ordersByTableId.has(t.id)).map(t => (
+                                            <option key={t.id} value={t.id}>Mesa {t.number}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div style={{ display: "grid", gap: "6px" }}>
+                                    <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--ink-dim)" }}>Item a ser transferido</label>
+                                    <select
+                                        value={selectedItemId}
+                                        onChange={(e) => setSelectedItemId(e.target.value)}
+                                        style={{ padding: "10px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--ink)" }}
+                                        required
+                                        disabled={!sourceTableId || !sourceOrder}
+                                    >
+                                        <option value="">Selecione o item...</option>
+                                        {sourceOrder?.items
+                                            .filter((item) => item.orderItemStatusId !== 6)
+                                            .map((item) => {
+                                                let statusLabel = item.orderItemStatusId.toString();
+                                                if (item.orderItemStatusId === 1) statusLabel = "Lançado";
+                                                if (item.orderItemStatusId === 2) statusLabel = "Enviado Cozinha";
+                                                if (item.orderItemStatusId === 3) statusLabel = "Em Preparo";
+                                                if (item.orderItemStatusId === 4) statusLabel = "Pronto";
+                                                if (item.orderItemStatusId === 5) statusLabel = "Entregue";
+
+                                                const productName = (item as any).productName || (item as any).name || `Produto #${item.productId}`;
+
+                                                return (
+                                                    <option key={item.id} value={item.id}>
+                                                        {productName} - Qtd: {item.quantity} (Status: {statusLabel})
+                                                    </option>
+                                                );
+                                            })}
+                                    </select>
+                                </div>
+
+                                <div style={{ display: "grid", gap: "6px" }}>
+                                    <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--ink-dim)" }}>Mesa de Destino</label>
+                                    <select
+                                        value={targetTableId}
+                                        onChange={(e) => setTargetTableId(e.target.value)}
+                                        style={{ padding: "10px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--ink)" }}
+                                        required
+                                    >
+                                        <option value="">Selecione a mesa de destino...</option>
+                                        {myTables.filter(t => t.id.toString() !== sourceTableId).map(t => (
+                                            <option key={t.id} value={t.id}>Mesa {t.number} ({t.tableStatusId === TableStatus.Livre ? "Livre" : "Ocupada"})</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                                    <button
+                                        type="button"
+                                        className="btn-ghost"
+                                        style={{ flex: 1, padding: "10px", borderRadius: "8px" }}
+                                        onClick={() => setTransferOpen(false)}
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="waiter-cta"
+                                        style={{ flex: 1, margin: 0, padding: "10px" }}
+                                        disabled={isTransferring}
+                                    >
+                                        {isTransferring ? "Transferindo..." : "Confirmar"}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* MODAL DE ABRIR COMANDA: Movido para dentro do waiter-shell */}
+                {comandaToOpen && (
+                    <WaiterOpenComandaModal
+                        comanda={comandaToOpen}
+                        onClose={() => setComandaToOpen(null)}
+                        onOpened={(orderId) => {
+                            setComandaToOpen(null);
+                            refresh();
+                            setSelectedOrderId(orderId);
+                        }}
+                    />
+                )}
+
+                {/* MODAL DE ABRIR MESA: Movido para dentro do waiter-shell */}
+                {tableToOpen && (
+                    <WaiterOpenTableModal
+                        table={tableToOpen}
+                        onClose={() => setTableToOpen(null)}
+                        onOpened={(orderId) => {
+                            setTableToOpen(null);
+                            refresh();
+                            setSelectedOrderId(orderId);
+                        }}
+                    />
+                )}
+
+                {/* ORDER DRAWER: Movido para dentro do waiter-shell com isWaiterMode={true} */}
+                {selectedOrderId !== null && (
+                    <OrderDrawer
+                        orderId={selectedOrderId}
+                        isWaiterMode={true}
+                        onClose={() => {
+                            setSelectedOrderId(null);
+                            refresh();
+                        }}
+                    />
+                )}
+
+            </div> {/* <---- AQUI FECHA A WAITER-SHELL (CELULAR) */}
+
+            {/* ITENS GLOBAIS FORA DA WAITER-SHELL (Ficam na tela cheia real do PC) */}
             {toast && (
                 <div className="waiter-toast" role="status">
                     {toast}
                 </div>
-            )}
-
-            {/* MODAL CALCULADORA */}
-            {calculatorOpen && (
-                <div className="modal-backdrop is-center" onClick={() => setCalculatorOpen(false)}>
-                    <div className="modal-panel is-center" onClick={(e) => e.stopPropagation()} style={{ width: "90%", maxWidth: "320px", padding: "20px" }}>
-                        <div className="modal-head" style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span className="display" style={{ fontSize: "1.2rem", fontWeight: "bold" }}>➗ Calculadora</span>
-                            <button type="button" className="btn-ghost btn-icon" onClick={() => setCalculatorOpen(false)}>✕</button>
-                        </div>
-
-                        <div style={{
-                            backgroundColor: "var(--bg-body)",
-                            border: "1px solid var(--border)",
-                            borderRadius: "8px",
-                            padding: "16px",
-                            fontSize: "2rem",
-                            textAlign: "right",
-                            marginBottom: "16px",
-                            overflow: "hidden",
-                            color: "var(--ink)",
-                            fontWeight: "bold"
-                        }}>
-                            {calcInput}
-                        </div>
-
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px" }}>
-                            <button type="button" className="btn-ghost" style={{ gridColumn: "span 3", backgroundColor: "#fee2e2", color: "#b91c1c", fontWeight: "bold", fontSize: "1.2rem" }} onClick={handleCalcClear}>C</button>
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: "bold", fontSize: "1.2rem" }} onClick={() => handleCalcOp("/")}>÷</button>
-
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("7")}>7</button>
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("8")}>8</button>
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("9")}>9</button>
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: "bold", fontSize: "1.2rem" }} onClick={() => handleCalcOp("*")}>×</button>
-
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("4")}>4</button>
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("5")}>5</button>
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("6")}>6</button>
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: "bold", fontSize: "1.5rem" }} onClick={() => handleCalcOp("-")}>-</button>
-
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("1")}>1</button>
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("2")}>2</button>
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("3")}>3</button>
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: "bold", fontSize: "1.2rem" }} onClick={() => handleCalcOp("+")}>+</button>
-
-                            <button type="button" className="btn-ghost" style={{ gridColumn: "span 2", backgroundColor: "var(--bg-raise)", fontSize: "1.2rem" }} onClick={() => handleCalcNum("0")}>0</button>
-                            <button type="button" className="btn-ghost" style={{ backgroundColor: "var(--bg-raise)", fontWeight: "bold", fontSize: "1.2rem" }} onClick={() => handleCalcNum(".")}>.</button>
-                            <button type="button" className="waiter-cta" style={{ margin: 0, fontSize: "1.2rem" }} onClick={handleCalcEqual}>=</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* MODAL DE TRANSFERÊNCIA DE MESA / ITENS */}
-            {transferOpen && (
-                <div className="modal-backdrop is-center" onClick={() => setTransferOpen(false)}>
-                    <div className="modal-panel is-center" onClick={(e) => e.stopPropagation()} style={{ width: "90%", maxWidth: "420px" }}>
-                        <div className="modal-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                            <span className="display" style={{ fontSize: "1.2rem", fontWeight: "bold" }}>🔀 Transferir Item entre Mesas</span>
-                            <button type="button" className="btn-ghost btn-icon" aria-label="Fechar" onClick={() => setTransferOpen(false)}>
-                                ✕
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleExecuteTransfer} style={{ display: "grid", gap: "14px" }}>
-                            <div style={{ display: "grid", gap: "6px" }}>
-                                <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--ink-dim)" }}>Mesa de Origem (Com pedido)</label>
-                                <select
-                                    value={sourceTableId}
-                                    onChange={(e) => {
-                                        setSourceTableId(e.target.value);
-                                        setSelectedItemId("");
-                                    }}
-                                    style={{ padding: "10px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--ink)" }}
-                                    required
-                                >
-                                    <option value="">Selecione a mesa de origem...</option>
-                                    {myTables.filter(t => ordersByTableId.has(t.id)).map(t => (
-                                        <option key={t.id} value={t.id}>Mesa {t.number}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div style={{ display: "grid", gap: "6px" }}>
-                                <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--ink-dim)" }}>Item a ser transferido</label>
-                                <select
-                                    value={selectedItemId}
-                                    onChange={(e) => setSelectedItemId(e.target.value)}
-                                    style={{ padding: "10px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--ink)" }}
-                                    required
-                                    disabled={!sourceTableId || !sourceOrder}
-                                >
-                                    <option value="">Selecione o item...</option>
-                                    {sourceOrder?.items
-                                        .filter((item) => item.orderItemStatusId !== 6) 
-                                        .map((item) => {
-                                            let statusLabel = item.orderItemStatusId.toString();
-                                            if (item.orderItemStatusId === 1) statusLabel = "Lançado";
-                                            if (item.orderItemStatusId === 2) statusLabel = "Enviado Cozinha";
-                                            if (item.orderItemStatusId === 3) statusLabel = "Em Preparo";
-                                            if (item.orderItemStatusId === 4) statusLabel = "Pronto";
-                                            if (item.orderItemStatusId === 5) statusLabel = "Entregue";
-
-                                            const productName = (item as any).productName || (item as any).name || `Produto #${item.productId}`;
-
-                                            return (
-                                                <option key={item.id} value={item.id}>
-                                                    {productName} - Qtd: {item.quantity} (Status: {statusLabel})
-                                                </option>
-                                            );
-                                        })}
-                                </select>
-                            </div>
-
-                            <div style={{ display: "grid", gap: "6px" }}>
-                                <label style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--ink-dim)" }}>Mesa de Destino</label>
-                                <select
-                                    value={targetTableId}
-                                    onChange={(e) => setTargetTableId(e.target.value)}
-                                    style={{ padding: "10px", borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--ink)" }}
-                                    required
-                                >
-                                    <option value="">Selecione a mesa de destino...</option>
-                                    {myTables.filter(t => t.id.toString() !== sourceTableId).map(t => (
-                                        <option key={t.id} value={t.id}>Mesa {t.number} ({t.tableStatusId === TableStatus.Livre ? "Livre" : "Ocupada"})</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                                <button
-                                    type="button"
-                                    className="btn-ghost"
-                                    style={{ flex: 1, padding: "10px", borderRadius: "8px" }}
-                                    onClick={() => setTransferOpen(false)}
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="waiter-cta"
-                                    style={{ flex: 1, margin: 0, padding: "10px" }}
-                                    disabled={isTransferring}
-                                >
-                                    {isTransferring ? "Transferindo..." : "Confirmar"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {selectedOrderId !== null && (
-                <OrderDrawer
-                    orderId={selectedOrderId}
-                    onClose={() => {
-                        setSelectedOrderId(null);
-                        refresh();
-                    }}
-                />
             )}
 
             {cashOpen && <CashDrawer onClose={() => setCashOpen(false)} />}

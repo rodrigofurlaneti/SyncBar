@@ -16,14 +16,10 @@ internal sealed class GetComandasByBranchQueryHandler(
         return await ExecuteWithLogAsync(
             nameof(GetComandasByBranchQueryHandler),
             nameof(Handle),
-            null, // Substitua por request.IpAddress se você tiver essa propriedade na sua query
+            null, 
             async (userIdBox) =>
             {
-                // Se houver um UserId no request, você pode associá-lo aqui:
-
                 var comandas = await comandaRepository.GetByBranchAsync(request.BranchId, cancellationToken);
-
-                // Ordenacao em C# — codigos numericos primeiro, em ordem.
                 IReadOnlyCollection<ComandaResponse> response = comandas
                     .OrderBy(c => c.Code.Length)
                     .ThenBy(c => c.Code)
