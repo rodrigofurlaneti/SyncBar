@@ -1,14 +1,24 @@
 name: CI
 
-# Roda em pushes e pull requests para as branches principais (e permite disparo manual).
+# Executa em pushes e pull requests para as branches principais
+# e permite execução manual.
 on:
   push:
-    branches: [main, master, develop]
+    branches:
+      - main
+      - master
+      - develop
+
   pull_request:
-    branches: [main, master, develop]
+    branches:
+      - main
+      - master
+      - develop
+
   workflow_dispatch:
 
-# Cancela execucoes antigas do mesmo branch/PR quando um novo push chega.
+# Cancela execuções antigas do mesmo branch/PR
+# quando um novo push chega.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -18,15 +28,25 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
 
+
+# ============================================================
+# BACKEND
+# ============================================================
+
 jobs:
+
   backend:
     name: Backend — build + testes (.NET 9)
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: backend
+
     steps:
-      - uses: actions/checkout@v4
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
@@ -38,7 +58,8 @@ jobs:
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj') }}
-          restore-keys: nuget-${{ runner.os }}-
+          restore-keys: |
+            nuget-${{ runner.os }}-
 
       - name: Restore
         run: dotnet restore SyncBar.sln
@@ -47,13 +68,25 @@ jobs:
         run: dotnet build SyncBar.sln --no-restore --configuration Release -warnaserror
 
       - name: Testes unitários
-        run: dotnet test test/SyncBar.Tests --no-build --configuration Release --logger "trx;LogFileName=unit.trx"
+        run: >
+          dotnet test test/SyncBar.Tests
+          --no-build
+          --configuration Release
+          --logger "trx;LogFileName=unit.trx"
 
       - name: Testes de arquitetura
-        run: dotnet test test/SyncBar.ArchTests --no-build --configuration Release --logger "trx;LogFileName=arch.trx"
+        run: >
+          dotnet test test/SyncBar.ArchTests
+          --no-build
+          --configuration Release
+          --logger "trx;LogFileName=arch.trx"
 
       - name: Testes BDD (Specs)
-        run: dotnet test test/SyncBar.Specs --no-build --configuration Release --logger "trx;LogFileName=specs.trx"
+        run: >
+          dotnet test test/SyncBar.Specs
+          --no-build
+          --configuration Release
+          --logger "trx;LogFileName=specs.trx"
 
       - name: Publicar resultados dos testes
         if: always()
@@ -63,14 +96,23 @@ jobs:
           path: backend/**/TestResults/*.trx
           if-no-files-found: warn
 
+
+# ============================================================
+# FRONTEND
+# ============================================================
+
   frontend:
     name: Frontend — typecheck + build
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: frontend
+
     steps:
-      - uses: actions/checkout@v4
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup Node 22
         uses: actions/setup-node@v4
@@ -85,12 +127,23 @@ jobs:
       - name: Typecheck + build
         run: npm run build
 
+
+# ============================================================
+# DOCKER
+# ============================================================
+
   docker:
     name: Docker — valida build das imagens
     runs-on: ubuntu-latest
-    needs: [backend, frontend]
+
+    needs:
+      - backend
+      - frontend
+
     steps:
-      - uses: actions/checkout@v4
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Build imagem da API
         uses: docker/build-push-action@v6
