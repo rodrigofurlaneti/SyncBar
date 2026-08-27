@@ -1,0 +1,16 @@
+{
+  "routes": [
+    {
+      "route": "/api/*",
+      "rewrite": "http://9.205.156.87:84/api/*"
+    },
+    {
+      "route": "/uploads/*",
+      "rewrite": "http://9.205.156.87:84/uploads/*"
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [ "/images/*.{png,jpg,gif}", "/css/*", "/js/*" ]
+  }
+}
