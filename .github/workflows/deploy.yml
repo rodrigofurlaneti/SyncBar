@@ -1,11 +1,8 @@
-﻿name: Deploy to VM
+name: Deploy to VM (Docker Compose)
 
-# Publica a SyncBar.API na mesma VM dos demais servicos, na porta 84,
-# apos um build/test verde do workflow "CI" na main, ou manualmente
-# pela aba Actions.
 on:
   workflow_run:
-    workflows: [ "CI" ]        # espera o workflow ci.yml passar
+    workflows: [ "CI" ]
     types: [ completed ]
     branches: [ main ]
   workflow_dispatch:
@@ -16,9 +13,8 @@ env:
 
 jobs:
   build-and-push:
-    name: Build & Push image (GHCR)
+    name: Build & Push Images (GHCR)
     runs-on: ubuntu-latest
-    # So roda se o CI passou (ou se foi disparo manual)
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
@@ -39,33 +35,67 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Metadados/tags da imagem
-        id: meta
+      # --- Build e Push da API ---
+      - name: Metadados da API
+        id: meta-api
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
           tags: |
             type=raw,value=latest
             type=sha,format=short
 
-      - name: Build e push
+      - name: Build e push API
         uses: docker/build-push-action@v6
         with:
-          # O Dockerfile do backend continua em backend/src.
           context: ./backend/src
           file: ./backend/src/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # --- Build e Push do Frontend ---
+      - name: Metadados do Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Build e push Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   deploy:
-    name: Deploy via SSH
+    name: Deploy via SSH (Docker Compose)
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy na VM
+      - name: Checkout (para garantir o docker-compose.yml atualizado)
+        uses: actions/checkout@v4
+
+      - name: Copiar docker-compose.yml para a VM
+        uses: appleboy/scp-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: 22
+          source: "docker-compose.yml"
+          target: "/opt/syncbarservice"
+
+      - name: Executar Deploy na VM
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VM_HOST }}
@@ -74,22 +104,19 @@ jobs:
           port: 22
           script: |
             set -e
-            IMAGE="ghcr.io/rodrigofurlaneti/syncbar:latest"
+            cd /opt/syncbarservice
 
-            # Autentica no GHCR (PAT com read:packages)
+            # Autentica no GHCR na VM
             echo "${{ secrets.GHCR_PAT }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            sudo docker pull "$IMAGE"
-            sudo docker rm -f syncbar-api || true
-            sudo docker run -d \
-              --name syncbar-api \
-              --restart unless-stopped \
-              -p 84:8080 \
-              --env-file /opt/syncbarservice/.env \
-              "$IMAGE"
+            # Baixa as novas imagens e recria os containers via Compose unificado
+            sudo docker compose pull
+            sudo docker compose down
+            sudo docker compose up -d
 
+            # Limpeza de imagens antigas não utilizadas
             sudo docker image prune -f
 
-            # Verificacao rapida do health (rota /health)
-            sleep 8
-            curl -fsS http://localhost:84/health && echo " -> OK"
+            # Verificação rápida de saúde da API
+            sleep 5
+            curl -fsS http://localhost:84/health && echo " -> Sistema no ar e saudável!"
