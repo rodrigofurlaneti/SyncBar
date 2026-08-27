@@ -130,7 +130,7 @@ static void ConfigureCors(WebApplicationBuilder builder)
                     .AllowAnyMethod()
                     .AllowCredentials();
             }
-            else if (builder.Environment.IsDevelopment())
+            else if (builder.Environment.IsDevelopment() || builder.Environment.IsStaging() || builder.Environment.IsProduction())
             {
                 // Sem config em dev: libera qualquer origem local (Vite roda em porta variável).
                 policy.SetIsOriginAllowed(origin => new Uri(origin).IsLoopback)
