@@ -78,32 +78,47 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    name: Deploy via SSH (Docker Compose)
+    name: Deploy via SSH (Nativo)
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Executar Deploy na VM
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          port: 22
-          script: |
+      - name: Configurar e Executar Deploy na VM
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          GH_ACTOR: ${{ github.actor }}
+        run: |
+          # 1. Configura a chave privada na máquina do GitHub Actions
+          mkdir -p ~/.ssh
+          echo "$VM_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # 2. Ignora a confirmação de host seguro (prompt yes/no)
+          cat >> ~/.ssh/config <<END
+          Host *
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+          END
+          
+          # 3. Conecta na VM via SSH nativo e roda os comandos do Docker
+          ssh $VM_USER@$VM_HOST << EOF
             set -e
             cd /opt/syncbarservice
-
-            # Autentica no GHCR na VM
-            echo "${{ secrets.GHCR_PAT }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            # Baixa as novas imagens e recria os containers via Compose unificado
+            
+            # Autentica no GHCR
+            echo "$GHCR_PAT" | sudo docker login ghcr.io -u $GH_ACTOR --password-stdin
+            
+            # Atualiza e sobe os containers
             sudo docker compose pull
             sudo docker compose down
             sudo docker compose up -d
-
-            # Limpeza de imagens antigas não utilizadas
+            
+            # Limpa imagens antigas
             sudo docker image prune -f
-
-            # Verificação rápida de saúde da API
+            
+            # Teste de saúde
             sleep 5
             curl -fsS http://localhost:84/health && echo " -> Sistema no ar e saudável!"
+          EOF
