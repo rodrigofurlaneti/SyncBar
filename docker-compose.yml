@@ -1,8 +1,6 @@
 services:
   api:
-    build:
-      context: ./backend/src
-      dockerfile: Dockerfile
+    image: ghcr.io/rodrigofurlaneti/syncbar-api:latest
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: "Production"
@@ -17,9 +15,7 @@ services:
       - syncbar-uploads:/app/wwwroot/uploads
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/rodrigofurlaneti/syncbar-frontend:latest
     restart: unless-stopped
     depends_on:
       - api
