@@ -34,9 +34,9 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 ConfigureSwagger(builder);
 
 builder.Services.AddHealthChecks()
-    .AddSqlServer(
+    .AddMySql(
         builder.Configuration.GetConnectionString("DefaultConnection")!,
-        name: "sqlserver",
+        name: "mysql",
         tags: ["ready"]);
 
 var app = builder.Build();
