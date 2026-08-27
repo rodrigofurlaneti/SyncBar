@@ -1,11 +1,9 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cancelOrder, getOpenOrdersByBranch, getOrder, updateItemStatus } from "./api";
+import { getOpenOrdersByBranch, getOrder, updateItemStatus } from "./api";
 import { useAuthStore } from "../../stores/authStore";
 import { useToast } from "../../ui/Toast";
-import { useDialog } from "../../ui/Dialog";
 import { ApiError } from "../../lib/apiClient";
-import { QueryError } from "../../components/QueryError";
 import { OrderDrawer } from "./OrderDrawer";
 import { OpenDeliveryOrderDialog } from "./OpenDeliveryOrderDialog";
 import { OrderItemStatus, OrderStatus, OrderType, formatBRL } from "../../lib/types";
@@ -75,7 +73,7 @@ interface ColumnDef {
     label: string;
     hint: string;
     icon: React.ReactNode;
-    emptyIllustration: React.ReactNode; // NOVA PROPRIEDADE PARA A IMAGEM CENTRAL
+    emptyIllustration: React.ReactNode;
     themeColor: string;
     placeholder?: boolean;
 }
@@ -118,7 +116,7 @@ const FULL_COLUMNS: ColumnDef[] = [
 const SIMPLE_COLUMNS = FULL_COLUMNS.filter(c => c.id !== "agendamento" && c.id !== "cancelado");
 
 // --- COMPONENTES VISUAIS ---
-function OrderCard({ order, stage, dense, onOpen, onSendToKitchen, onMarkReady, onMarkOnRoute, onCancel, busy }: any) {
+function OrderCard({ order, stage, dense, onOpen, onSendToKitchen, onMarkReady, onMarkOnRoute, busy }: any) {
     const customerName = order.customerName?.trim() || `Pedido #${order.id}`;
     const channelLabel = getChannel(order) === "delivery" ? "DELIVERY" : "RETIRADA";
 
@@ -170,7 +168,6 @@ const btnActionStyle: React.CSSProperties = {
 export function DeliveryBoardPage() {
     const queryClient = useQueryClient();
     const toast = useToast();
-    const dialog = useDialog();
     const { branchId, employeeId } = useAuthStore();
 
     const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
@@ -290,19 +287,9 @@ export function DeliveryBoardPage() {
         onError: (e) => { onErr("Falha ao marcar.")(e); setPendingOrderId(null); },
     });
 
-    const cancelMutation = useMutation({
-        mutationFn: (orderId: number) => cancelOrder(orderId),
-        onSuccess: (_data, orderId) => { toast.success(`Pedido #${orderId} cancelado.`); setPendingOrderId(null); refresh(); },
-        onError: (e) => { onErr("Falha ao cancelar.")(e); setPendingOrderId(null); },
-    });
-
     const handleSendToKitchen = (o: OrderResponse) => { setPendingOrderId(o.id); sendToKitchen.mutate(o); };
     const handleMarkReady = (o: OrderResponse) => { setPendingOrderId(o.id); markReady.mutate(o); };
     const handleMarkOnRoute = (o: OrderResponse) => { setOnRoute((prev) => { const next = new Set(prev).add(o.id); persistOnRoute(next); return next; }); };
-    const handleCancel = async (order: OrderResponse) => {
-        const ok = await dialog.confirm({ title: "Cancelar", message: `Cancelar o pedido #${order.id}?`, confirmLabel: "Cancelar", cancelLabel: "Voltar", danger: true });
-        if (ok) { setPendingOrderId(order.id); cancelMutation.mutate(order.id); }
-    };
 
     const columns = viewMode === "completo" ? FULL_COLUMNS : SIMPLE_COLUMNS;
     const dense = viewMode === "simples";
@@ -413,7 +400,7 @@ export function DeliveryBoardPage() {
                                         <OrderCard
                                             key={order.id} order={order} stage={col.id as Stage} dense={dense} busy={pendingOrderId === order.id}
                                             onOpen={() => setSelectedOrderId(order.id)} onSendToKitchen={() => handleSendToKitchen(order)}
-                                            onMarkReady={() => handleMarkReady(order)} onMarkOnRoute={() => handleMarkOnRoute(order)} onCancel={() => void handleCancel(order)}
+                                            onMarkReady={() => handleMarkReady(order)} onMarkOnRoute={() => handleMarkOnRoute(order)}
                                         />
                                     ))
                                 )}
