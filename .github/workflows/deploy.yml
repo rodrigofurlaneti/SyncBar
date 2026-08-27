@@ -2,28 +2,43 @@ name: Deploy to VM (Docker Compose)
 
 on:
   workflow_run:
-    workflows: [ "CI" ]
-    types: [ completed ]
-    branches: [ main ]
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}   # rodrigofurlaneti/syncbar
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+
+  # ============================================================
+  # BUILD + PUSH GHCR
+  # ============================================================
+
   build-and-push:
     name: Build & Push Images (GHCR)
     runs-on: ubuntu-latest
+
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
+
     permissions:
       contents: read
       packages: write
+
     steps:
+
+      # Importante:
+      # quando disparado por workflow_run, utiliza o commit
+      # que realmente passou pelo CI.
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -35,7 +50,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # --- Build e Push da API ---
+
+      # ========================================================
+      # API
+      # ========================================================
+
       - name: Metadados da API
         id: meta-api
         uses: docker/metadata-action@v5
@@ -56,7 +75,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # --- Build e Push do Frontend ---
+
+      # ========================================================
+      # FRONTEND
+      # ========================================================
+
       - name: Metadados do Frontend
         id: meta-frontend
         uses: docker/metadata-action@v5
@@ -77,11 +100,21 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+
+  # ============================================================
+  # DEPLOY VM
+  # ============================================================
+
   deploy:
     name: Deploy via SSH (Nativo)
-    needs: build-and-push
+
+    needs:
+      - build-and-push
+
     runs-on: ubuntu-latest
+
     steps:
+
       - name: Configurar e Executar Deploy na VM
         env:
           VM_HOST: ${{ secrets.VM_HOST }}
@@ -89,42 +122,86 @@ jobs:
           VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
           GHCR_PAT: ${{ secrets.GHCR_PAT }}
           GH_ACTOR: ${{ github.actor }}
+
         run: |
-          # 1. Configura a chave privada na máquina do GitHub Actions
+
+          echo "=========================================="
+          echo "CONFIGURANDO SSH"
+          echo "=========================================="
+
           mkdir -p ~/.ssh
+
           echo "$VM_SSH_KEY" > ~/.ssh/id_rsa
+
           chmod 600 ~/.ssh/id_rsa
-          
-          # 2. Ignora a confirmação de host seguro (prompt yes/no)
+
           cat >> ~/.ssh/config <<END
           Host *
             StrictHostKeyChecking no
             UserKnownHostsFile /dev/null
           END
-          
-          # 3. Conecta na VM via SSH nativo e roda os comandos do Docker
-          ssh $VM_USER@$VM_HOST << EOF
+
+
+          echo "=========================================="
+          echo "CONECTANDO NA VM"
+          echo "=========================================="
+
+          ssh "$VM_USER@$VM_HOST" << EOF
+
             set -e
+
             cd /opt/syncbarservice
-            
-            # Autentica no GHCR
-            echo "$GHCR_PAT" | sudo docker login ghcr.io -u $GH_ACTOR --password-stdin
-            
-            # Baixa as imagens novas
+
+
+            echo "=========================================="
+            echo "LOGIN GHCR"
+            echo "=========================================="
+
+            echo "$GHCR_PAT" | sudo docker login ghcr.io \
+              -u "$GH_ACTOR" \
+              --password-stdin
+
+
+            echo "=========================================="
+            echo "BAIXANDO NOVAS IMAGENS"
+            echo "=========================================="
+
             sudo docker compose pull
-            
-            # Derruba o compose atual e forca a parada de containers antigos/zumbis
-            sudo docker compose down
-            sudo docker rm -f syncbar-api || true
-            sudo docker ps -q --filter "publish=84" | xargs -r sudo docker rm -f
-            
-            # Sobe os containers novos unificados
-            sudo docker compose up -d
-            
-            # Limpa imagens antigas
+
+
+            echo "=========================================="
+            echo "RECRIANDO CONTAINERS"
+            echo "=========================================="
+
+            sudo docker compose up -d --force-recreate
+
+
+            echo "=========================================="
+            echo "STATUS DOS CONTAINERS"
+            echo "=========================================="
+
+            sudo docker compose ps
+
+
+            echo "=========================================="
+            echo "LIMPANDO IMAGENS ANTIGAS"
+            echo "=========================================="
+
             sudo docker image prune -f
-            
-            # Teste de saúde
+
+
+            echo "=========================================="
+            echo "HEALTH CHECK"
+            echo "=========================================="
+
             sleep 5
-            curl -fsS http://localhost:84/health && echo " -> Sistema no ar e saudável!"
+
+            curl -fsS http://localhost:8080/health
+
+            echo ""
+
+            echo "=========================================="
+            echo "DEPLOY CONCLUIDO COM SUCESSO"
+            echo "=========================================="
+
           EOF
