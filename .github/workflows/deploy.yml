@@ -110,9 +110,15 @@ jobs:
             # Autentica no GHCR
             echo "$GHCR_PAT" | sudo docker login ghcr.io -u $GH_ACTOR --password-stdin
             
-            # Atualiza e sobe os containers
+            # Baixa as imagens novas
             sudo docker compose pull
+            
+            # Derruba o compose atual e forca a parada de containers antigos/zumbis
             sudo docker compose down
+            sudo docker rm -f syncbar-api || true
+            sudo docker ps -q --filter "publish=84" | xargs -r sudo docker rm -f
+            
+            # Sobe os containers novos unificados
             sudo docker compose up -d
             
             # Limpa imagens antigas
