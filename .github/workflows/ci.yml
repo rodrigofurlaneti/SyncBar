@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 # Roda em pushes e pull requests para as branches principais (e permite disparo manual).
 on:
@@ -24,7 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        # Ajustado para apontar para a pasta backend onde está o SyncBar.sln
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
