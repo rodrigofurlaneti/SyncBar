@@ -82,19 +82,6 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (para garantir o docker-compose.yml atualizado)
-        uses: actions/checkout@v4
-
-      - name: Copiar docker-compose.yml para a VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          port: 22
-          source: "docker-compose.yml"
-          target: "/opt/syncbarservice"
-
       - name: Executar Deploy na VM
         uses: appleboy/ssh-action@v1.2.0
         with:
