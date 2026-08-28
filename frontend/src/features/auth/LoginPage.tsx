@@ -13,10 +13,8 @@ export function LoginPage() {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
 
-    // Captura o hash do commit injetado no build
     const commitHash = (
         import.meta.env?.VITE_COMMIT_HASH ||
-        process.env?.REACT_APP_COMMIT_HASH ||
         "Dev"
     ).substring(0, 7);
 
