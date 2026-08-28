@@ -28,11 +28,13 @@ export function TabPedidos({ myOrders, tablesById, comandasById, onOrderClick }:
                                 className="waiter-order-row"
                                 onClick={() => onOrderClick(order.id)}
                                 style={{
-                                    backgroundColor: "var(--surface, #ffffff)",
+                                    // Utiliza --bg-elevated para adaptar a cor de fundo ao tema (escuro/claro)
+                                    backgroundColor: "var(--bg-elevated, var(--surface, #ffffff))",
                                     borderRadius: "10px",
                                     padding: "14px",
                                     marginBottom: "10px",
-                                    border: "1px solid var(--border, #e5e7eb)",
+                                    // Adapta a borda também usando --line
+                                    border: "1px solid var(--line, var(--border, #e5e7eb))",
                                     width: "100%",
                                     textAlign: "left",
                                     cursor: "pointer",
