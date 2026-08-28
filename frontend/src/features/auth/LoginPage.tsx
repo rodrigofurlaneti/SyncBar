@@ -116,22 +116,11 @@ export function LoginPage() {
                     Ainda não tem conta? Cadastre seu bar
                 </Link>
 
-                <div style={{ textAlign: "center", marginBottom: 8, marginTop: 16 }}>
-                    <div
-                        style={{
-                            color: "var(--ink-faint)",
-                            fontFamily: "var(--font-cond)",
-                            letterSpacing: "0.22em",
-                            textTransform: "uppercase",
-                            fontSize: "0.78rem",
-                        }}
-                    >
-                        <label>
-                            <span style={{ color: "var(--ink-dim)", fontSize: "0.75rem" }}>
-                                Versão: {commitHash}
-                            </span>
-                        </label>
-                    </div>
+                {/* Rodapé com a tag de Versão dinâmica injetada no build */}
+                <div style={{ textAlign: "center", marginTop: 8, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+                    <span style={{ color: "var(--ink-faint)", fontSize: "0.75rem", fontFamily: "monospace" }}>
+                        Versão: {commitHash}
+                    </span>
                 </div>
             </form>
         </main>
