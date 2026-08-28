@@ -116,7 +116,6 @@ jobs:
 
     steps:
 
-      # NOVO: Necessário para que o GitHub Actions tenha o docker-compose.yml localmente
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -152,7 +151,6 @@ jobs:
           echo "ENVIANDO DOCKER-COMPOSE.YML PARA O SERVIDOR"
           echo "=========================================="
           
-          # NOVO: Copia o arquivo atualizado para a VM
           scp ./docker-compose.yml "$VM_USER@$VM_HOST:/opt/syncbarservice/docker-compose.yml"
 
           echo "=========================================="
@@ -201,7 +199,8 @@ jobs:
             echo "HEALTH CHECK"
             echo "=========================================="
 
-            sleep 5
+            # Aguarda 15 segundos para dar tempo do EF Core rodar as migrations e a API subir
+            sleep 15
 
             curl -fsS http://localhost:8080/health
 
