@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -40,6 +41,15 @@ builder.Services.AddHealthChecks()
         tags: ["ready"]);
 
 var app = builder.Build();
+
+// ==========================================================================
+// APLICA AS MIGRATIONS AUTOMATICAMENTE NO BANCO DE DADOS NA INICIALIZAÇÃO
+// ==========================================================================
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<SyncBar.Infrastructure.Persistence.SyncBarDbContext>();
+    dbContext.Database.Migrate();
+}
 
 ValidateJwtSecret(builder.Configuration);
 
