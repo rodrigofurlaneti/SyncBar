@@ -9,6 +9,17 @@ import { OpenDeliveryOrderDialog } from "./OpenDeliveryOrderDialog";
 import { OrderItemStatus, OrderStatus, OrderType, formatBRL } from "../../lib/types";
 import type { OrderResponse } from "../../lib/types";
 
+// --- IMPORTAÇÃO DAS IMAGENS ---
+// Ajuste o caminho "../../image/" conforme a localização exata deste arquivo dentro de "src"
+import bagImg from "../../image/bag.png";
+import doorbellImg from "../../image/doorbell.png";
+import packageImg from "../../image/package.png";
+import positionImg from "../../image/position.png";
+import bagcheckImg from "../../image/bagcheck.png";
+import calendarImg from "../../image/calendar.png";
+import motorcycleImg from "../../image/motorcycle.jpeg";
+import screenBgImg from "../../image/screenbackground.jpeg";
+
 // --- TIPAGENS E CONSTANTES ---
 type Stage = "novo" | "cozinha" | "aguardando" | "rota" | "entregue" | "cancelado";
 type ViewMode = "simples" | "completo";
@@ -78,38 +89,38 @@ interface ColumnDef {
     placeholder?: boolean;
 }
 
-const illustrationStyle = { width: 120, height: 120, filter: "drop-shadow(0px 10px 15px rgba(255, 107, 0, 0.2))", opacity: 0.9 };
+const illustrationStyle = { width: 140, height: 140, objectFit: "contain" as const };
 
 const FULL_COLUMNS: ColumnDef[] = [
     {
         id: "novo", label: "NOVOS PEDIDOS", hint: "Aguardando aceite", themeColor: "#FF6B00",
         icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>,
-        emptyIllustration: <svg viewBox="0 0 24 24" fill="url(#gradNovo)" stroke="#FF6B00" strokeWidth="1" style={illustrationStyle}><defs><linearGradient id="gradNovo" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#FF8A00" stopOpacity="0.4" /><stop offset="100%" stopColor="#FF6B00" stopOpacity="0.1" /></linearGradient></defs><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+        emptyIllustration: <img src={bagImg} alt="Novos Pedidos" style={illustrationStyle} />
     },
     {
         id: "cozinha", label: "COZINHA", hint: "Aguardando preparo", themeColor: "#FF8A00",
         icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>,
-        emptyIllustration: <svg viewBox="0 0 24 24" fill="url(#gradCozinha)" stroke="#FF8A00" strokeWidth="1" style={illustrationStyle}><defs><linearGradient id="gradCozinha" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#FFB800" stopOpacity="0.4" /><stop offset="100%" stopColor="#FF8A00" stopOpacity="0.1" /></linearGradient></defs><path d="M3 18h18M6 14a6 6 0 0 1 12 0H6z"></path><path d="M12 4v4"></path><path d="M9 5v3"></path><path d="M15 5v3"></path></svg>
+        emptyIllustration: <img src={doorbellImg} alt="Cozinha" style={illustrationStyle} />
     },
     {
         id: "aguardando", label: "AGUARDANDO ENTREGA", hint: "Separação e conferência", themeColor: "#FF5500",
         icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>,
-        emptyIllustration: <svg viewBox="0 0 24 24" fill="url(#gradAg)" stroke="#FF5500" strokeWidth="1" style={illustrationStyle}><defs><linearGradient id="gradAg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#FF5500" stopOpacity="0.4" /><stop offset="100%" stopColor="#FF2A00" stopOpacity="0.1" /></linearGradient></defs><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+        emptyIllustration: <img src={packageImg} alt="Aguardando Entrega" style={illustrationStyle} />
     },
     {
         id: "rota", label: "SAIU PARA ENTREGA", hint: "Pedidos em rota", themeColor: "#FFB800",
         icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>,
-        emptyIllustration: <svg viewBox="0 0 24 24" fill="url(#gradRota)" stroke="#FFB800" strokeWidth="1" style={illustrationStyle}><defs><linearGradient id="gradRota" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#FFD147" stopOpacity="0.4" /><stop offset="100%" stopColor="#FFB800" stopOpacity="0.1" /></linearGradient></defs><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        emptyIllustration: <img src={positionImg} alt="Em Rota" style={illustrationStyle} />
     },
     {
         id: "entregue", label: "ENTREGUE", hint: "Última hora", themeColor: "#F5C344",
         icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}><polyline points="20 6 9 17 4 12"></polyline></svg>,
-        emptyIllustration: <svg viewBox="0 0 24 24" fill="url(#gradEnt)" stroke="#F5C344" strokeWidth="1" style={illustrationStyle}><defs><linearGradient id="gradEnt" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#FFE082" stopOpacity="0.4" /><stop offset="100%" stopColor="#F5C344" stopOpacity="0.1" /></linearGradient></defs><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><polyline points="9 13 11 15 16 10"></polyline></svg>
+        emptyIllustration: <img src={bagcheckImg} alt="Entregue" style={illustrationStyle} />
     },
     {
         id: "agendamento", label: "AGENDAMENTO", hint: "Em breve", themeColor: "#B0B0B0", placeholder: true,
         icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>,
-        emptyIllustration: <svg viewBox="0 0 24 24" fill="url(#gradCal)" stroke="#B0B0B0" strokeWidth="1" style={illustrationStyle}><defs><linearGradient id="gradCal" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#D9D9D9" stopOpacity="0.4" /><stop offset="100%" stopColor="#B0B0B0" stopOpacity="0.1" /></linearGradient></defs><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        emptyIllustration: <img src={calendarImg} alt="Agendamento" style={illustrationStyle} />
     },
 ];
 
@@ -295,12 +306,24 @@ export function DeliveryBoardPage() {
     const dense = viewMode === "simples";
 
     return (
-        <div style={{ backgroundColor: "#FDF8F4", minHeight: "100vh", padding: "32px 40px", fontFamily: "system-ui, -apple-system, sans-serif", display: "flex", flexDirection: "column" }}>
+        <div style={{
+            backgroundImage: `url(${screenBgImg})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundColor: "#FDF8F4",
+            minHeight: "100vh",
+            padding: "32px 40px",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            display: "flex",
+            flexDirection: "column"
+        }}>
 
             {/* HEADER TOP */}
             <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <div style={{ fontSize: "3rem" }}>🛵</div>
+                    <div>
+                        <img src={motorcycleImg} alt="Moto de Delivery" style={{ width: 64, height: 64, objectFit: "contain", mixBlendMode: "multiply" }} />
+                    </div>
                     <div>
                         <h1 style={{ fontSize: "2.4rem", fontWeight: 900, color: "#1A1A1A", margin: 0, textTransform: "uppercase", letterSpacing: "-1px" }}>Delivery</h1>
                         <span style={{ color: "#777", fontSize: "0.95rem" }}>Movimente cada pedido pelas etapas até a entrega</span>

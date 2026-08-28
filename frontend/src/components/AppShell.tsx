@@ -6,7 +6,10 @@ import { useThemeStore } from "../stores/themeStore";
 import { CashDrawer } from "../features/cash/CashDrawer";
 import { useMyFeatures } from "../features/access/hooks";
 import { IFoodAlertsBell } from "./IFoodAlertsBell";
-import logo from "../image/logo.png";
+
+// Importando os dois logos
+import logoDark from "../image/logodark.png";
+import logoLight from "../image/logoligth.png";
 
 const links = [
     { to: "/", label: "Salão", feature: "Salao" },
@@ -30,13 +33,21 @@ export function AppShell() {
     const closeNav = () => setNavOpen(false);
 
     return (
-        <>
+        <div style={{ animation: "fadeInAlpha 0.6s ease-out forwards", minHeight: "100%", display: "flex", flexDirection: "column" }}>
+            <style>{`
+                @keyframes fadeInAlpha {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+            `}</style>
+
             {/* Achado de revisão (web-design-guidelines): sem skip link, quem navega só por teclado
           precisa tabular pelo menu inteiro do topbar toda vez que troca de tela. Primeiro
           elemento focável da página — invisível até receber foco. */}
             <a href="#main-content" className="skip-link">
                 Pular para o conteúdo
             </a>
+
             <header className="topbar">
                 <button
                     type="button"
@@ -49,11 +60,11 @@ export function AppShell() {
                     {navOpen ? "✕" : "☰"}
                 </button>
 
-                {/* 2. Substitua o texto "brand" pela tag img do logo */}
+                {/* Alternância direta com base no estado 'theme' */}
                 <img
-                    src={logo}
+                    src={theme === "light" ? logoLight : logoDark}
                     alt="Logo do Sistema"
-                    style={{ height: 64, objectFit: "contain" }}
+                    style={{ height: 64, objectFit: "contain", transition: "opacity 0.2s ease-in-out" }}
                 />
 
                 <nav id="topbar-nav" className={`topbar-nav${navOpen ? " is-open" : ""}`}>
@@ -171,11 +182,11 @@ export function AppShell() {
             {/* tabIndex=-1: alvo do skip link acima — várias telas já têm seu próprio <main>
           (ex.: ProductsPage), então este é um div focável simples em vez de outro <main>
           aninhado (landmark duplicado seria inválido). */}
-            <div id="main-content" tabIndex={-1}>
+            <div id="main-content" tabIndex={-1} style={{ flex: 1 }}>
                 <Outlet />
             </div>
 
             {cashOpen && <CashDrawer onClose={() => setCashOpen(false)} />}
-        </>
+        </div>
     );
 }
