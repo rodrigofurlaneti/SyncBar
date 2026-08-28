@@ -32,9 +32,6 @@ jobs:
 
     steps:
 
-      # Importante:
-      # quando disparado por workflow_run, utiliza o commit
-      # que realmente passou pelo CI.
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -119,6 +116,12 @@ jobs:
 
     steps:
 
+      # NOVO: Necessário para que o GitHub Actions tenha o docker-compose.yml localmente
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
       - name: Configurar e Executar Deploy na VM
         env:
           VM_HOST: ${{ secrets.VM_HOST }}
@@ -145,6 +148,12 @@ jobs:
             UserKnownHostsFile /dev/null
           END
 
+          echo "=========================================="
+          echo "ENVIANDO DOCKER-COMPOSE.YML PARA O SERVIDOR"
+          echo "=========================================="
+          
+          # NOVO: Copia o arquivo atualizado para a VM
+          scp ./docker-compose.yml "$VM_USER@$VM_HOST:/opt/syncbarservice/docker-compose.yml"
 
           echo "=========================================="
           echo "CONECTANDO NA VM"
@@ -156,7 +165,6 @@ jobs:
 
             cd /opt/syncbarservice
 
-
             echo "=========================================="
             echo "LOGIN GHCR"
             echo "=========================================="
@@ -165,13 +173,11 @@ jobs:
               -u "$GH_ACTOR" \
               --password-stdin
 
-
             echo "=========================================="
             echo "BAIXANDO NOVAS IMAGENS"
             echo "=========================================="
 
             sudo docker compose pull
-
 
             echo "=========================================="
             echo "RECRIANDO CONTAINERS"
@@ -179,20 +185,17 @@ jobs:
 
             sudo docker compose up -d --force-recreate
 
-
             echo "=========================================="
             echo "STATUS DOS CONTAINERS"
             echo "=========================================="
 
             sudo docker compose ps
 
-
             echo "=========================================="
             echo "LIMPANDO IMAGENS ANTIGAS"
             echo "=========================================="
 
             sudo docker image prune -f
-
 
             echo "=========================================="
             echo "HEALTH CHECK"
