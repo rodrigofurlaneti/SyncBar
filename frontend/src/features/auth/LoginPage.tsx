@@ -121,9 +121,13 @@ export function LoginPage() {
                     <span style={{ color: "var(--ink-faint)", fontSize: "0.75rem", fontFamily: "monospace" }}>
                         Commit hash: {commitHash}
                     </span>
+                </div>
+                <div style={{ textAlign: "center", marginTop: 8, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
                     <span style={{ color: "var(--ink-faint)", fontSize: "0.75rem", fontFamily: "monospace" }}>
                         Release: 1.17v
                     </span>
+                </div>
+                <div style={{ textAlign: "center", marginTop: 8, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
                     <span style={{ color: "var(--ink-faint)", fontSize: "0.75rem", fontFamily: "monospace" }}>
                         Last update: 2026-08-28
                     </span>
