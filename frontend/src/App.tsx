@@ -38,18 +38,19 @@ import { IFoodAnalyticsEnhancedPage } from "./features/integrations/IFoodAnalyti
 import { DiningAreasPage } from "./features/diningareas/DiningAreasPage";
 import { FeatureGate, NoAccessPage } from "./features/access/FeatureGate";
 import { useMyFeatures } from "./features/access/hooks";
+import { DigitalMenuPage } from "./features/digitalmenu/DigitalMenuPage";
 
 function ManagerGate({ children }: { children: ReactNode }) {
-  const featuresQuery = useMyFeatures();
-  if (featuresQuery.isLoading) return null;
-  if (featuresQuery.data?.canManageAccess) return <>{children}</>;
-  return <Navigate to="/" replace />;
+    const featuresQuery = useMyFeatures();
+    if (featuresQuery.isLoading) return null;
+    if (featuresQuery.data?.canManageAccess) return <>{children}</>;
+    return <Navigate to="/" replace />;
 }
 
 function RequireAuth({ children }: { children: ReactNode }) {
-  const accessToken = useAuthStore((s) => s.accessToken);
-  if (!accessToken) return <Navigate to="/login" replace />;
-  return <>{children}</>;
+    const accessToken = useAuthStore((s) => s.accessToken);
+    if (!accessToken) return <Navigate to="/login" replace />;
+    return <>{children}</>;
 }
 
 export default function App() {
@@ -58,6 +59,18 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/cadastro" element={<SignupPage />} />
             <Route path="/pedido/:token" element={<PublicOrderPage />} />
+
+            {/* Rota do Tablet na Mesa (Sem AppShell para ser tela cheia) */}
+            <Route
+                path="/mesa/:mesa"
+                element={
+                    <RequireAuth>
+                        <FeatureGate code="Salao">
+                            <DigitalMenuPage />
+                        </FeatureGate>
+                    </RequireAuth>
+                }
+            />
 
             {/* 1. Mova a rota do Garçom para CÁ, fora do AppShell, mas com RequireAuth */}
             <Route
@@ -101,6 +114,8 @@ export default function App() {
                 <Route path="/clientes" element={<FeatureGate code="Salao"><CustomersPage /></FeatureGate>} />
                 <Route path="/acessos" element={<ManagerGate><AccessPage /></ManagerGate>} />
                 <Route path="/configuracoes" element={<ManagerGate><SettingsPage /></ManagerGate>} />
+
+                {/* Integrações iFood */}
                 <Route path="/integracoes/ifood" element={<ManagerGate><IFoodIntegrationPage /></ManagerGate>} />
                 <Route path="/integracoes/ifood/dashboard" element={<ManagerGate><IFoodDashboardPage /></ManagerGate>} />
                 <Route path="/integracoes/ifood/status" element={<ManagerGate><IFoodStatusDetailedPage /></ManagerGate>} />
@@ -111,6 +126,7 @@ export default function App() {
                 <Route path="/integracoes/ifood/avaliacoes" element={<ManagerGate><IFoodReviewsDetailedPage /></ManagerGate>} />
                 <Route path="/integracoes/ifood/indicadores" element={<ManagerGate><IFoodAnalyticsEnhancedPage /></ManagerGate>} />
                 <Route path="/integracoes/ifood/financeiro/relatorios" element={<ManagerGate><IFoodFinancialReportsPage /></ManagerGate>} />
+
                 <Route path="/pracas" element={<ManagerGate><DiningAreasPage /></ManagerGate>} />
                 <Route path="/sem-acesso" element={<NoAccessPage />} />
             </Route>
