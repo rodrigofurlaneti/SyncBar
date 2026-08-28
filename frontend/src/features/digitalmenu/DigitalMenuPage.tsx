@@ -1,10 +1,12 @@
 ﻿import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMenu, getCategories } from "../catalog/api";
+import { getOpenOrdersByBranch, openOrder, addOrderItem } from "../orders/api";
 import { useAuthStore } from "../../stores/authStore";
 import { formatBRL } from "../../lib/types";
-import type { MenuItemResponse } from "../../lib/types";
+import { ApiError } from "../../lib/apiClient";
+import type { MenuItemResponse, OrderItemComplementSelection, ComplementGroupResponse } from "../../lib/types";
 import { Button } from "../../ui/Button";
 import { Modal } from "../../ui/Modal";
 import { SkeletonList } from "../../ui/Skeleton";
@@ -15,13 +17,15 @@ interface CartItem {
     product: MenuItemResponse;
     quantity: number;
     notes: string;
+    complements: OrderItemComplementSelection[];
     totalPrice: number;
 }
 
 export function DigitalMenuPage() {
     const { mesa } = useParams();
+    const queryClient = useQueryClient();
     const toast = useToast();
-    const { companyId } = useAuthStore();
+    const { companyId, branchId, employeeId } = useAuthStore();
 
     const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<MenuItemResponse | null>(null);
@@ -38,7 +42,11 @@ export function DigitalMenuPage() {
         queryFn: () => getCategories(companyId ?? 1),
     });
 
-    // Define a primeira categoria como ativa caso nenhuma esteja selecionada
+    const openOrdersQuery = useQuery({
+        queryKey: ["orders", "open", branchId],
+        queryFn: () => getOpenOrdersByBranch(branchId ?? 1),
+    });
+
     const currentCategoryId = activeCategoryId ?? categoriesQuery.data?.[0]?.id ?? null;
     const activeCategoryName = categoriesQuery.data?.find(c => c.id === currentCategoryId)?.name ?? "Cardápio";
 
@@ -59,6 +67,51 @@ export function DigitalMenuPage() {
         toast.success("Garçom chamado para a mesa " + mesa);
     };
 
+    const submitOrderMutation = useMutation({
+        mutationFn: async () => {
+            const tableId = Number(mesa);
+            let orderId: number;
+
+            // Verifica se já existe um pedido em aberto na mesa
+            const existingOrder = openOrdersQuery.data?.find((o) => o.diningTableId === tableId);
+
+            if (existingOrder) {
+                orderId = existingOrder.id;
+            } else {
+                // Se não houver pedido, abre um novo com as configurações padrão
+                orderId = await openOrder({
+                    branchId: branchId ?? 1,
+                    diningTableId: tableId,
+                    comandaId: null,
+                    employeeId: employeeId ?? 1,
+                    guestCount: 1, // Assume 1 pessoa inicialmente no autoatendimento
+                    notes: "Aberto via Cardápio Digital",
+                });
+            }
+
+            // Adiciona os itens do carrinho ao pedido
+            for (const item of cart) {
+                await addOrderItem(
+                    orderId,
+                    item.product.id,
+                    item.quantity,
+                    item.notes,
+                    employeeId ?? 1,
+                    item.complements
+                );
+            }
+        },
+        onSuccess: () => {
+            toast.success("Pedido enviado para a cozinha!");
+            setCart([]);
+            setIsCartOpen(false);
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+        },
+        onError: (e) => {
+            toast.error(e instanceof ApiError ? e.message : "Falha ao enviar o pedido.");
+        },
+    });
+
     return (
         <>
             <style>{`
@@ -70,7 +123,6 @@ export function DigitalMenuPage() {
           overflow: hidden;
         }
         
-        /* Tema Escuro - Sidebar Tablet */
         .dm-sidebar {
           width: 280px;
           background-color: #111111;
@@ -120,7 +172,6 @@ export function DigitalMenuPage() {
           background-color: rgba(255, 107, 0, 0.05);
         }
 
-        /* Área de Conteúdo Branca */
         .dm-main {
           flex: 1;
           display: flex;
@@ -128,7 +179,6 @@ export function DigitalMenuPage() {
           overflow: hidden;
         }
 
-        /* Header Desktop/Tablet */
         .dm-header-desktop {
           display: flex;
           justify-content: flex-end;
@@ -137,7 +187,6 @@ export function DigitalMenuPage() {
           gap: 20px;
         }
 
-        /* Header Mobile */
         .dm-header-mobile {
           display: none;
           background-color: #111111;
@@ -196,7 +245,6 @@ export function DigitalMenuPage() {
           font-size: 0.95rem;
         }
 
-        /* Pills Horizontais */
         .dm-pills-container {
           display: flex;
           gap: 12px;
@@ -222,7 +270,6 @@ export function DigitalMenuPage() {
           color: #ffffff;
         }
 
-        /* Grid de Produtos */
         .dm-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -230,7 +277,6 @@ export function DigitalMenuPage() {
           margin-bottom: 40px;
         }
 
-        /* Card de Produto Idêntico ao Protótipo */
         .dm-card {
           display: flex;
           background: #ffffff;
@@ -274,7 +320,6 @@ export function DigitalMenuPage() {
           cursor: pointer;
         }
 
-        /* Rodapé de Informações */
         .dm-footer-info {
           display: flex;
           justify-content: space-between;
@@ -293,32 +338,15 @@ export function DigitalMenuPage() {
           display: none;
         }
 
-        /* --- RESPONSIVIDADE PARA CELULAR --- */
         @media (max-width: 768px) {
-          .dm-layout {
-            flex-direction: column;
-          }
-          .dm-sidebar {
-            display: none;
-          }
-          .dm-header-desktop {
-            display: none;
-          }
-          .dm-header-mobile {
-            display: flex;
-          }
-          .dm-content-scroll {
-            padding: 24px 20px 100px 20px; /* Espaço para a bottom nav */
-          }
-          .dm-grid {
-            grid-template-columns: 1fr;
-          }
-          .dm-footer-info {
-            flex-direction: column;
-            gap: 16px;
-          }
+          .dm-layout { flex-direction: column; }
+          .dm-sidebar { display: none; }
+          .dm-header-desktop { display: none; }
+          .dm-header-mobile { display: flex; }
+          .dm-content-scroll { padding: 24px 20px 100px 20px; }
+          .dm-grid { grid-template-columns: 1fr; }
+          .dm-footer-info { flex-direction: column; gap: 16px; }
           
-          /* Bottom Nav Mobile */
           .dm-bottom-nav {
             display: flex;
             background-color: #111111;
@@ -342,12 +370,8 @@ export function DigitalMenuPage() {
             min-width: 60px;
             cursor: pointer;
           }
-          .dm-bottom-item.active {
-            color: #ff6b00;
-          }
-          .dm-bottom-item svg {
-            margin-bottom: 6px;
-          }
+          .dm-bottom-item.active { color: #ff6b00; }
+          .dm-bottom-item svg { margin-bottom: 6px; }
           .dm-bottom-item span {
             font-size: 0.65rem;
             text-transform: uppercase;
@@ -357,8 +381,6 @@ export function DigitalMenuPage() {
       `}</style>
 
             <div className="dm-layout">
-
-                {/* SIDEBAR (Desktop/Tablet) */}
                 <aside className="dm-sidebar">
                     <div className="dm-logo-container">
                         <h1 className="dm-logo">ding<span>.food</span></h1>
@@ -378,7 +400,6 @@ export function DigitalMenuPage() {
                             </div>
                         ))}
                     </div>
-                    {/* Banner Promo */}
                     <div style={{ margin: "20px", padding: "16px", border: "1px solid #333", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
                         <div style={{ fontSize: "2rem" }}>🛎️</div>
                         <div>
@@ -389,8 +410,6 @@ export function DigitalMenuPage() {
                 </aside>
 
                 <main className="dm-main">
-
-                    {/* HEADER DESKTOP */}
                     <header className="dm-header-desktop">
                         <div style={{ textAlign: "right" }}>
                             <div style={{ color: "#ff6b00", fontSize: "0.85rem", fontWeight: "bold" }}>MESA {mesa}</div>
@@ -404,7 +423,6 @@ export function DigitalMenuPage() {
                         </button>
                     </header>
 
-                    {/* HEADER MOBILE */}
                     <header className="dm-header-mobile">
                         <div style={{ textAlign: "center", marginBottom: 24 }}>
                             <h1 className="dm-logo" style={{ color: "#fff" }}>ding<span>.food</span></h1>
@@ -426,12 +444,10 @@ export function DigitalMenuPage() {
                         </div>
                     </header>
 
-                    {/* CONTEÚDO */}
                     <div className="dm-content-scroll">
                         <h2 className="dm-title">{activeCategoryName}</h2>
                         <p className="dm-desc">Refrescância e sabor para todos os momentos</p>
 
-                        {/* Sub-filtros (Pills mockados para visualização do protótipo) */}
                         <div className="dm-pills-container">
                             <button className="dm-pill active">TODOS</button>
                             <button className="dm-pill">ÁGUAS</button>
@@ -440,7 +456,6 @@ export function DigitalMenuPage() {
                             <button className="dm-pill">CERVEJAS</button>
                         </div>
 
-                        {/* Grid de Produtos */}
                         {menuQuery.isLoading ? (
                             <SkeletonList rows={4} rowHeight={120} />
                         ) : (
@@ -458,7 +473,7 @@ export function DigitalMenuPage() {
                                                     {product.name}
                                                 </h4>
                                                 <div style={{ fontSize: "0.75rem", color: "#888", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                                                    {product.description || "350ml"}
+                                                    {product.description || "—"}
                                                 </div>
                                             </div>
                                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
@@ -475,7 +490,6 @@ export function DigitalMenuPage() {
                             </div>
                         )}
 
-                        {/* Informações do Rodapé */}
                         <div className="dm-footer-info">
                             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                                 <span style={{ fontSize: "1.5rem", color: "#ff6b00" }}>⏱</span>
@@ -493,7 +507,6 @@ export function DigitalMenuPage() {
                     </div>
                 </main>
 
-                {/* BOTTOM NAV (Apenas Mobile) */}
                 <nav className="dm-bottom-nav">
                     {categoriesQuery.data?.map((cat) => (
                         <div
@@ -508,7 +521,7 @@ export function DigitalMenuPage() {
                 </nav>
             </div>
 
-            {/* MODAL DE PRODUTO */}
+            {/* MODAL DE PRODUTO C/ COMPLEMENTOS */}
             {selectedProduct && (
                 <ProductOrderModal
                     product={selectedProduct}
@@ -517,7 +530,7 @@ export function DigitalMenuPage() {
                 />
             )}
 
-            {/* MODAL DO CARRINHO (Simples) */}
+            {/* MODAL DO CARRINHO */}
             {isCartOpen && (
                 <Modal title="Seu Pedido" onClose={() => setIsCartOpen(false)}>
                     <div style={{ minHeight: 200 }}>
@@ -538,11 +551,13 @@ export function DigitalMenuPage() {
                                     <span>Total</span>
                                     <span style={{ color: "#ff6b00" }}>{formatBRL(cartTotal)}</span>
                                 </div>
-                                <Button variant="primary" block style={{ background: "#ff6b00", borderColor: "#ff6b00", marginTop: 16 }} onClick={() => {
-                                    toast.success("Pedido enviado para a cozinha!");
-                                    setCart([]);
-                                    setIsCartOpen(false);
-                                }}>
+                                <Button
+                                    variant="primary"
+                                    block
+                                    loading={submitOrderMutation.isPending}
+                                    style={{ background: "#ff6b00", borderColor: "#ff6b00", marginTop: 16 }}
+                                    onClick={() => submitOrderMutation.mutate()}
+                                >
                                     Confirmar Pedido
                                 </Button>
                             </div>
@@ -554,7 +569,6 @@ export function DigitalMenuPage() {
     );
 }
 
-// Componente para icone genérico
 function IconPlaceholder() {
     return (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -563,48 +577,145 @@ function IconPlaceholder() {
     );
 }
 
-// Modal Interno para escolha de quantidades
 function ProductOrderModal({ product, onClose, onAdd }: { product: MenuItemResponse, onClose: () => void, onAdd: (item: CartItem) => void }) {
     const [quantity, setQuantity] = useState(1);
     const [notes, setNotes] = useState("");
+    const [selected, setSelected] = useState<Record<number, number[]>>({});
+
+    const toggle = (group: ComplementGroupResponse, complementId: number) => {
+        setSelected((current) => {
+            const chosen = current[group.id] ?? [];
+            const isSingle = group.maxSelection <= 1;
+
+            if (chosen.includes(complementId)) {
+                return { ...current, [group.id]: chosen.filter((id) => id !== complementId) };
+            }
+            if (isSingle) return { ...current, [group.id]: [complementId] };
+            if (chosen.length >= group.maxSelection) return current;
+            return { ...current, [group.id]: [...chosen, complementId] };
+        });
+    };
+
+    const groupSatisfied = (group: ComplementGroupResponse) => {
+        const count = (selected[group.id] ?? []).length;
+        return count >= group.minSelection && count <= group.maxSelection;
+    };
+
+    const allSatisfied = product.complementGroups.every(groupSatisfied);
+
+    const complementsTotal = product.complementGroups.reduce((acc, group) => {
+        const chosenIds = selected[group.id] ?? [];
+        const groupSum = group.complements
+            .filter((c) => chosenIds.includes(c.id))
+            .reduce((sum, c) => sum + c.extraPrice, 0);
+        return acc + groupSum;
+    }, 0);
+
+    const itemTotal = (product.salePrice + complementsTotal) * quantity;
 
     const handleConfirm = () => {
+        const selections: OrderItemComplementSelection[] = product.complementGroups.flatMap((group) =>
+            (selected[group.id] ?? []).map((complementId) => ({ complementGroupId: group.id, complementId }))
+        );
+
         onAdd({
             id: Math.random().toString(36).substr(2, 9),
             product,
             quantity,
-            notes,
-            totalPrice: product.salePrice * quantity,
+            notes: notes.trim(),
+            complements: selections,
+            totalPrice: itemTotal,
         });
     };
 
     return (
         <Modal title={product.name} onClose={onClose} variant="center">
-            {product.imageUrl && (
-                <img src={product.imageUrl} alt={product.name} style={{ width: "100%", height: 200, objectFit: "cover", borderRadius: 12, marginBottom: 16 }} />
-            )}
-            <p style={{ color: "#666", marginBottom: 20 }}>{product.description}</p>
+            <div style={{ maxHeight: "75vh", overflowY: "auto", paddingRight: 4 }}>
+                {product.imageUrl && (
+                    <img src={product.imageUrl} alt={product.name} style={{ width: "100%", height: 200, objectFit: "cover", borderRadius: 12, marginBottom: 16 }} />
+                )}
+                <p style={{ color: "#666", marginBottom: 20 }}>{product.description}</p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f9f9f9", padding: 12, borderRadius: 8 }}>
-                    <span style={{ fontWeight: "bold" }}>Quantidade</span>
-                    <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                        <button onClick={() => setQuantity(Math.max(1, quantity - 1))} style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid #ccc", background: "#fff", fontSize: "1.2rem" }}>-</button>
-                        <span style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{quantity}</span>
-                        <button onClick={() => setQuantity(quantity + 1)} style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid #ff6b00", color: "#ff6b00", background: "#fff", fontSize: "1.2rem" }}>+</button>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+                    {/* Lógica de Complementos no padrão SyncBar */}
+                    {product.complementGroups.map((group) => {
+                        const chosen = selected[group.id] ?? [];
+                        const isSingle = group.maxSelection <= 1;
+                        const satisfied = groupSatisfied(group);
+                        const activeComplements = group.complements.filter((c) => c.isActive);
+
+                        return (
+                            <div key={group.id} style={{ display: "grid", gap: 8 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                                    <span style={{ fontWeight: 600 }}>{group.name}</span>
+                                    <span style={{ fontSize: "0.8rem", color: satisfied ? "var(--ink-dim)" : "var(--danger)" }}>
+                                        {group.minSelection === 0
+                                            ? `opcional · até ${group.maxSelection}`
+                                            : group.minSelection === group.maxSelection
+                                                ? `escolha ${group.minSelection}`
+                                                : `escolha de ${group.minSelection} a ${group.maxSelection}`}
+                                    </span>
+                                </div>
+
+                                <div style={{ display: "grid", gap: 6 }}>
+                                    {activeComplements.map((c) => {
+                                        const isChosen = chosen.includes(c.id);
+                                        return (
+                                            <label
+                                                key={c.id}
+                                                style={{
+                                                    display: "flex", justifyContent: "space-between", padding: "10px",
+                                                    borderRadius: 8, border: `1px solid ${isChosen ? "#ff6b00" : "#eee"}`,
+                                                    cursor: "pointer", background: isChosen ? "rgba(255, 107, 0, 0.05)" : "#fff"
+                                                }}
+                                            >
+                                                <span style={{ display: "flex", gap: 8 }}>
+                                                    <input
+                                                        type={isSingle ? "radio" : "checkbox"}
+                                                        checked={isChosen}
+                                                        onChange={() => toggle(group, c.id)}
+                                                        style={{ accentColor: "#ff6b00" }}
+                                                    />
+                                                    {c.complementItemName}
+                                                </span>
+                                                <span style={{ color: "#888", fontSize: "0.9rem" }}>
+                                                    {c.extraPrice > 0 ? `+ ${formatBRL(c.extraPrice)}` : "sem custo"}
+                                                </span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f9f9f9", padding: 12, borderRadius: 8, marginTop: 8 }}>
+                        <span style={{ fontWeight: "bold" }}>Quantidade</span>
+                        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                            <button onClick={() => setQuantity(Math.max(1, quantity - 1))} style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid #ccc", background: "#fff", fontSize: "1.2rem" }}>-</button>
+                            <span style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{quantity}</span>
+                            <button onClick={() => setQuantity(quantity + 1)} style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid #ff6b00", color: "#ff6b00", background: "#fff", fontSize: "1.2rem" }}>+</button>
+                        </div>
                     </div>
+
+                    <textarea
+                        placeholder="Alguma observação? (Ex: Sem gelo)"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        style={{ width: "100%", height: 80, padding: 12, borderRadius: 8, border: "1px solid #ddd", fontFamily: "inherit" }}
+                    />
+
+                    <Button
+                        variant="primary"
+                        block
+                        disabled={!allSatisfied}
+                        onClick={handleConfirm}
+                        style={{ background: "#ff6b00", borderColor: "#ff6b00" }}
+                    >
+                        Adicionar • {formatBRL(itemTotal)}
+                    </Button>
                 </div>
-
-                <textarea
-                    placeholder="Alguma observação? (Ex: Sem gelo)"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    style={{ width: "100%", height: 80, padding: 12, borderRadius: 8, border: "1px solid #ddd", fontFamily: "inherit" }}
-                />
-
-                <Button variant="primary" block onClick={handleConfirm} style={{ background: "#ff6b00", borderColor: "#ff6b00" }}>
-                    Adicionar • {formatBRL(product.salePrice * quantity)}
-                </Button>
             </div>
         </Modal>
     );
