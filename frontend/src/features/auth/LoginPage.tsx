@@ -125,7 +125,7 @@ export function LoginPage() {
                         Release: 1.17v
                     </span>
                     <span style={{ color: "var(--ink-faint)", fontSize: "0.75rem", fontFamily: "monospace" }}>
-                        Last update: 2024-08-28
+                        Last update: 2026-08-28
                     </span>
                 </div>
             </form>
