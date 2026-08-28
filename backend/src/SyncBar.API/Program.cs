@@ -47,7 +47,7 @@ var app = builder.Build();
 // ==========================================================================
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<SyncBar.Infrastructure.Persistence.SyncBarDbContext>();
+    var dbContext = scope.ServiceProvider.GetRequiredService<SyncBar.Infrastructure.Persistence.AppDbContext>();
     dbContext.Database.Migrate();
 }
 
