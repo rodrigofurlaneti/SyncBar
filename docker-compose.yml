@@ -1,4 +1,4 @@
-services:
+﻿services:
   api:
     image: ghcr.io/rodrigofurlaneti/syncbar-api:latest
     pull_policy: always 
@@ -10,6 +10,7 @@ services:
       Jwt__Issuer: "SyncBar"
       Jwt__Audience: "SyncBar.Client"
       Cors__AllowedOrigins__0: "http://localhost"
+      Cors__AllowedOrigins__1: "http://9.205.156.87:84"
     ports:
       - "8080:8080"
     volumes:
