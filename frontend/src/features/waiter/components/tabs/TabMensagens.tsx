@@ -1,5 +1,6 @@
 ﻿import { useMemo } from "react";
 import { QueryError } from "../../../../components/QueryError";
+
 export interface WaiterMessageResponse {
     id: number;
     branchId: number;
@@ -10,6 +11,7 @@ export interface WaiterMessageResponse {
     isRead: boolean;
     createdAt: string;
 }
+
 interface TabMensagensProps {
     activeAreaId: number | null;
     isLoading: boolean;
@@ -17,12 +19,14 @@ interface TabMensagensProps {
     error: unknown;
     messages: WaiterMessageResponse[];
 }
+
 export function TabMensagens({ activeAreaId, isLoading, isError, error, messages }: TabMensagensProps) {
     const sortedMessages = useMemo(() => {
         return [...messages].sort((a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
     }, [messages]);
+
     return (
         <section className="waiter-section">
             <h2 className="waiter-section-title" style={{ marginBottom: 16 }}>Mensagens e Avisos</h2>
@@ -41,24 +45,24 @@ export function TabMensagens({ activeAreaId, isLoading, isError, error, messages
                         <div
                             key={msg.id}
                             style={{
-                                backgroundColor: "var(--surface, #ffffff)",
-                                borderRadius: "10px",
+                                backgroundColor: "var(--w-bg-card)",
+                                borderRadius: "14px",
                                 padding: "14px",
-                                border: "1px solid var(--border, #e5e7eb)",
-                                borderLeft: `6px solid ${msg.isRead ? "#9ca3af" : "#3b82f6"}`,
+                                border: "1px solid var(--w-line)",
+                                borderLeft: `6px solid ${msg.isRead ? "var(--w-ink-faint)" : "var(--w-accent-2)"}`,
                                 display: "grid",
                                 gap: "6px"
                             }}
                         >
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--ink-dim)" }}>
+                                <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "var(--w-ink-dim)" }}>
                                     Aviso Operacional
                                 </span>
-                                <span style={{ fontSize: "0.75rem", color: "var(--ink-faint)" }}>
+                                <span style={{ fontSize: "0.75rem", color: "var(--w-ink-faint)" }}>
                                     {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(msg.createdAt).toLocaleDateString()}
                                 </span>
                             </div>
-                            <p style={{ fontSize: "0.95rem", color: "var(--ink)", margin: 0, fontWeight: 500 }}>
+                            <p style={{ fontSize: "0.95rem", color: "var(--w-ink)", margin: 0, fontWeight: 500 }}>
                                 {msg.message}
                             </p>
                         </div>
