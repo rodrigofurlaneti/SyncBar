@@ -1,4 +1,4 @@
-name: Deploy to VM (Docker Compose)
+﻿name: Deploy to VM (Docker Compose)
 
 on:
   workflow_run:
@@ -74,6 +74,8 @@ jobs:
           labels: ${{ steps.meta-api.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            APP_VERSION=${{ github.sha }}
 
 
       # ========================================================
@@ -99,6 +101,8 @@ jobs:
           labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            VITE_COMMIT_HASH=${{ github.sha }}
 
 
   # ============================================================

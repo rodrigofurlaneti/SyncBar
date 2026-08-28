@@ -1,14 +1,15 @@
-# syntax=docker/dockerfile:1
-# Build multi-stage do frontend — roda a partir da pasta frontend/ como contexto:
-#   docker build -f frontend/Dockerfile -t syncbar-frontend ./frontend
-
-FROM node:22-alpine AS build
+﻿FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+
+ARG VITE_COMMIT_HASH
+ENV VITE_COMMIT_HASH=$VITE_COMMIT_HASH
+ENV REACT_APP_COMMIT_HASH=$VITE_COMMIT_HASH
+
 RUN npm run build
 
 FROM nginx:1.27-alpine AS runtime

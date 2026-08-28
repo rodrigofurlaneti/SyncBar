@@ -56,7 +56,29 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+
+        var version = app.Configuration["APP_VERSION"] ?? "Local/Dev";
+
+        var response = new
+        {
+            status = report.Status.ToString(),
+            version = version,
+            timestamp = DateTime.UtcNow,
+            checks = report.Entries.Select(e => new
+            {
+                component = e.Key,
+                status = e.Value.Status.ToString()
+            })
+        };
+
+        await context.Response.WriteAsJsonAsync(response);
+    }
+});
 
 app.Run();
 

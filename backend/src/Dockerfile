@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+﻿# syntax=docker/dockerfile:1
 
 # ==========================================================================
 # Build multi-stage da SyncBar.API — contexto de build: backend/src
@@ -36,6 +36,10 @@ COPY --from=build /app/publish .
 # Diretorio de uploads (imagens do cardapio) gravavel pelo usuario da app.
 RUN mkdir -p /app/wwwroot/uploads && chown -R appuser:appuser /app/wwwroot
 USER appuser
+
+# Injeta o hash do commit no ambiente da API (passado via build-args no Actions)
+ARG APP_VERSION
+ENV APP_VERSION=$APP_VERSION
 
 # A API escuta na 8080 dentro do container.
 ENV ASPNETCORE_URLS=http://+:8080

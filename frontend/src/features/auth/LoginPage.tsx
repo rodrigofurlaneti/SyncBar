@@ -13,6 +13,13 @@ export function LoginPage() {
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
 
+    // Captura o hash do commit injetado no build
+    const commitHash = (
+        import.meta.env?.VITE_COMMIT_HASH ||
+        process.env?.REACT_APP_COMMIT_HASH ||
+        "Dev"
+    ).substring(0, 7);
+
     const mutation = useMutation({
         mutationFn: () => login(userName, password),
         onSuccess: (session) => {
@@ -55,8 +62,6 @@ export function LoginPage() {
                 }}
             >
                 <div style={{ textAlign: "center", marginBottom: 8 }}>
-
-                    {/* 2. Substitua o texto pela tag img do logo */}
                     <img
                         src={logo}
                         alt="Logo do Sistema"
@@ -112,6 +117,24 @@ export function LoginPage() {
                 <Link to="/cadastro" style={{ textAlign: "center", color: "var(--ink-dim)", fontSize: "0.85rem" }}>
                     Ainda não tem conta? Cadastre seu bar
                 </Link>
+
+                <div style={{ textAlign: "center", marginBottom: 8, marginTop: 16 }}>
+                    <div
+                        style={{
+                            color: "var(--ink-faint)",
+                            fontFamily: "var(--font-cond)",
+                            letterSpacing: "0.22em",
+                            textTransform: "uppercase",
+                            fontSize: "0.78rem",
+                        }}
+                    >
+                        <label>
+                            <span style={{ color: "var(--ink-dim)", fontSize: "0.75rem" }}>
+                                Versão: {commitHash}
+                            </span>
+                        </label>
+                    </div>
+                </div>
             </form>
         </main>
     );
