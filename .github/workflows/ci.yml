@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 # Executa em pushes e pull requests para as branches principais
 # e permite execução manual.
@@ -47,11 +47,21 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # SonarCloud precisa do histórico completo (blame) para calcular
+          # "new code" e autoria das issues corretamente.
+          fetch-depth: 0
 
       - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
+
+      - name: Setup Java 17 (necessário para o dotnet-sonarscanner)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
 
       - name: Cache NuGet
         uses: actions/cache@v4
@@ -61,17 +71,36 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-
 
+      - name: Instalar dotnet-sonarscanner
+        run: dotnet tool install --global dotnet-sonarscanner
+
       - name: Restore
         run: dotnet restore SyncBar.sln
+
+      # A partir daqui a análise do SonarCloud só roda se o secret
+      # SONAR_TOKEN existir no repositório (evita falhar em forks/PRs
+      # externos, que não têm acesso aos secrets).
+      - name: Iniciar análise SonarCloud
+        if: ${{ secrets.SONAR_TOKEN != '' }}
+        run: >
+          dotnet-sonarscanner begin
+          /k:"rodrigofurlaneti_SyncBar"
+          /o:"rodrigofurlaneti"
+          /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+          /d:sonar.host.url="https://sonarcloud.io"
+          /d:sonar.cs.cobertura.reportsPaths="**/TestResults/**/coverage.cobertura.xml"
+          /d:sonar.coverage.exclusions="**/Migrations/**"
 
       - name: Build (Release)
         run: dotnet build SyncBar.sln --no-restore --configuration Release -warnaserror
 
-      - name: Testes unitários
+      - name: Testes unitários (com cobertura)
         run: >
           dotnet test test/SyncBar.Tests
           --no-build
           --configuration Release
+          --settings coverage.runsettings
+          --collect:"XPlat Code Coverage"
           --logger "trx;LogFileName=unit.trx"
 
       - name: Testes de arquitetura
@@ -81,12 +110,18 @@ jobs:
           --configuration Release
           --logger "trx;LogFileName=arch.trx"
 
-      - name: Testes BDD (Specs)
+      - name: Testes BDD (Specs, com cobertura)
         run: >
           dotnet test test/SyncBar.Specs
           --no-build
           --configuration Release
+          --settings coverage.runsettings
+          --collect:"XPlat Code Coverage"
           --logger "trx;LogFileName=specs.trx"
+
+      - name: Finalizar análise SonarCloud
+        if: ${{ always() && secrets.SONAR_TOKEN != '' }}
+        run: dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
 
       - name: Publicar resultados dos testes
         if: always()
