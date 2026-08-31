@@ -4,7 +4,7 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.PublicOrdering.GetPublicComandaBill;
 
-public sealed class GetPublicComandaBillQueryHandler(
+internal sealed class GetPublicComandaBillQueryHandler(
     IDiningTableRepository tableRepository,
     IComandaRepository comandaRepository,
     ICustomerOrderRepository orderRepository,

@@ -140,7 +140,7 @@ export function LoginPage() {
                     {/* Rodapé com a tag de Versão dinâmica injetada no build */}
                     <div style={{ textAlign: "center", marginTop: 8, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
                         <span style={{ color: "var(--ink-faint)", fontSize: "0.75rem", fontFamily: "monospace" }}>
-                            Commit hash: {commitHash} - Release: 1.18v
+                            Commit hash: {commitHash} - Release: 1.19v
                         </span>
                     </div>
                     <div style={{ textAlign: "center", marginTop: 8, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
