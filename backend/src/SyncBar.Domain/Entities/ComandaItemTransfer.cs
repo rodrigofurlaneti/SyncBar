@@ -26,7 +26,7 @@ namespace SyncBar.Domain.Entities
             SourceComandaId = sourceComandaId;
             TargetComandaId = targetComandaId;
             EmployeeId = employeeId;
-            CreatedAt = DateTime.UtcNow;
+            CreatedAt = DateTime.Now;
             IsActive = true;
         }
 

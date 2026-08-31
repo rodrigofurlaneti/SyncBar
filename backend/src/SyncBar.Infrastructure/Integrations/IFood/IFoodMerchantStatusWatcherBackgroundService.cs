@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -202,7 +202,7 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
     }
 
     // Turnos em horário local do servidor — mesma convenção já usada em IFoodOpeningHours
-    // (CreatedAt = DateTime.Now, não UtcNow). Cobre turno que cruza a meia-noite (ex.: 22h–2h).
+    // (CreatedAt = DateTime.Now, não Now). Cobre turno que cruza a meia-noite (ex.: 22h–2h).
     private static bool IsWithinConfiguredShift(IReadOnlyCollection<IFoodOpeningHours> shifts, DateTime now)
     {
         var nowTimeOfDay = now.TimeOfDay;

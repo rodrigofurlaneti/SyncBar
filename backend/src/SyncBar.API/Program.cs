@@ -78,7 +78,7 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
         {
             status = report.Status.ToString(),
             version = version,
-            timestamp = DateTime.UtcNow,
+            timestamp = DateTime.Now,
             checks = report.Entries.Select(e => new
             {
                 component = e.Key,

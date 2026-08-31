@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using SyncBar.Application.Abstractions.Integrations.IFood;
 
 namespace SyncBar.Infrastructure.Integrations.IFood;
@@ -22,7 +22,7 @@ internal sealed class InMemoryIFoodOperationalAlertStore : IIFoodOperationalAler
     public IFoodOperationalAlert Raise(
         long companyId, long branchId, string branchName, string title, string message, IFoodOperationalAlertSeverity severity)
     {
-        var alert = new IFoodOperationalAlert(Guid.NewGuid(), companyId, branchId, branchName, title, message, severity, DateTime.UtcNow);
+        var alert = new IFoodOperationalAlert(Guid.NewGuid(), companyId, branchId, branchName, title, message, severity, DateTime.Now);
 
         lock (_lock)
         {

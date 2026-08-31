@@ -24,7 +24,7 @@ namespace SyncBar.Domain.Entities
             SourceDiningTableId = sourceDiningTableId;
             TargetDiningTableId = targetDiningTableId;
             EmployeeId = employeeId;
-            CreatedAt = DateTime.UtcNow;
+            CreatedAt = DateTime.Now;
             IsActive = true;
         }
         public static Result<TableItemTransfer> Create(

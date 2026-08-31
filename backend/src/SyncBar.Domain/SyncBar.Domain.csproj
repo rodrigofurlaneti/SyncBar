@@ -5,4 +5,8 @@
     <Nullable>enable</Nullable>
     <LangVersion>13</LangVersion>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="SyncBar.Tests" />
+    <InternalsVisibleTo Include="SyncBar.Specs" />
+  </ItemGroup>
 </Project>
