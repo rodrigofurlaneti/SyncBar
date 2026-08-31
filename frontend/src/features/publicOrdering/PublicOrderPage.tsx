@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from "react";
+﻿import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Swal from "sweetalert2";
@@ -32,6 +32,19 @@ export function PublicOrderPage() {
     const [commandNumber, setCommandNumber] = useState("");
 
     const [showMyOrders, setShowMyOrders] = useState(false);
+
+    // Variáveis dinâmicas baseadas no tamanho da tela (Responsividade Multi-telas)
+    const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    // Definição dinâmica de escala com base na largura da tela
+    const isMobile = windowWidth < 640;
+    const isTvOrLarge = windowWidth > 1200;
 
     const menuQuery = useQuery({
         queryKey: ["public-menu", token],
@@ -115,28 +128,35 @@ export function PublicOrderPage() {
 
     const menu = menuQuery.data!;
 
+    // Grid responsivo dinâmico: 1 coluna no celular, 2 em tablets, 3 ou 4 em TVs/Telas grandes
+    const gridColumns = isMobile
+        ? "1fr"
+        : isTvOrLarge
+            ? "repeat(auto-fill, minmax(380px, 1fr))"
+            : "repeat(auto-fill, minmax(300px, 1fr))";
+
     return (
-        <main style={{ backgroundColor: "#121214", minHeight: "100vh", paddingBottom: 100, color: "#e1e1e6", fontFamily: "sans-serif", position: "relative" }}>
+        <main style={{ backgroundColor: "#121214", minHeight: "100vh", paddingBottom: 100, color: "#e1e1e6", fontFamily: "sans-serif", position: "relative", fontSize: isTvOrLarge ? "1.1rem" : "1rem" }}>
             {/* Cabeçalho */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 20px", backgroundImage: `linear-gradient(rgba(18, 18, 20, 0.85), rgba(18, 18, 20, 0.95)), url(${bgImg})`, backgroundSize: "cover", backgroundPosition: "center", borderBottom: "1px solid #29292e", height: "80px", boxSizing: "border-box" }}>
-                <img src={logoImg} alt="Logotipo SyncBar" style={{ height: 50, objectFit: "contain", position: "relative", zIndex: 2 }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: isMobile ? "8px 12px" : "12px 24px", backgroundImage: `linear-gradient(rgba(18, 18, 20, 0.85), rgba(18, 18, 20, 0.95)), url(${bgImg})`, backgroundSize: "cover", backgroundPosition: "center", borderBottom: "1px solid #29292e", height: isTvOrLarge ? "100px" : "80px", boxSizing: "border-box" }}>
+                <img src={logoImg} alt="Logotipo SyncBar" style={{ height: isTvOrLarge ? 70 : 50, objectFit: "contain", position: "relative", zIndex: 2 }} />
                 <div style={{ textAlign: "right", position: "relative", zIndex: 2 }}>
-                    <div style={{ color: "#ffffff", fontSize: "1.15rem", fontWeight: "600" }}>
+                    <div style={{ color: "#ffffff", fontSize: isTvOrLarge ? "1.5rem" : "1.15rem", fontWeight: "600" }}>
                         Mesa <span style={{ color: "#f59e0b" }}>{menu.tableNumber}</span>
                     </div>
                 </div>
             </div>
 
-            <div style={{ padding: "0 16px", maxWidth: 900, margin: "12px auto 0" }}>
+            <div style={{ padding: isMobile ? "0 12px" : "0 24px", maxWidth: isTvOrLarge ? 1400 : 900, margin: "16px auto 0" }}>
                 {/* Abas de Categoria */}
-                <div style={{ display: "flex", overflowX: "auto", gap: 24, paddingBottom: 4, borderBottom: "1px solid #323238" }}>
+                <div style={{ display: "flex", overflowX: "auto", gap: isTvOrLarge ? 32 : 24, paddingBottom: 6, borderBottom: "1px solid #323238" }}>
                     {categoryList.map((cat: string) => {
                         const isActive = activeCategory === cat;
                         return (
                             <button
                                 key={cat}
                                 onClick={() => setActiveCategory(cat)}
-                                style={{ background: "none", border: "none", padding: "0 0 8px 0", whiteSpace: "nowrap", fontWeight: isActive ? "bold" : "normal", color: isActive ? "#f59e0b" : "#a8a8b3", borderBottom: isActive ? "2px solid #f59e0b" : "2px solid transparent", cursor: "pointer", fontSize: "0.95rem" }}
+                                style={{ background: "none", border: "none", padding: "0 0 10px 0", whiteSpace: "nowrap", fontWeight: isActive ? "bold" : "normal", color: isActive ? "#f59e0b" : "#a8a8b3", borderBottom: isActive ? "2px solid #f59e0b" : "2px solid transparent", cursor: "pointer", fontSize: isTvOrLarge ? "1.2rem" : "0.95rem" }}
                             >
                                 {cat}
                             </button>
@@ -144,26 +164,26 @@ export function PublicOrderPage() {
                     })}
                 </div>
 
-                <div style={{ marginTop: 12, position: "relative" }}>
+                <div style={{ marginTop: 16, position: "relative" }}>
                     <input
                         type="text"
                         placeholder="Pesquisar um produto..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{ width: "100%", padding: "14px 16px", borderRadius: 8, border: "1px solid #323238", backgroundColor: "#202024", color: "#e1e1e6", outline: "none", fontSize: "0.95rem", boxSizing: "border-box" }}
+                        style={{ width: "100%", padding: isTvOrLarge ? "18px 20px" : "14px 16px", borderRadius: 8, border: "1px solid #323238", backgroundColor: "#202024", color: "#e1e1e6", outline: "none", fontSize: isTvOrLarge ? "1.1rem" : "0.95rem", boxSizing: "border-box" }}
                     />
-                    <span style={{ position: "absolute", right: 16, top: 14, color: "#a8a8b3" }}>🔍</span>
+                    <span style={{ position: "absolute", right: 16, top: isTvOrLarge ? 18 : 14, color: "#a8a8b3" }}>🔍</span>
                 </div>
 
                 {error && <p style={{ marginTop: 16, textAlign: "center", color: "#ef4444" }}>{error}</p>}
 
                 {activeCategory === "Todas" && !searchQuery ? (
                     Object.entries(groupedItems).map(([categoryName, products]) => (
-                        <div key={categoryName} style={{ marginTop: 28 }}>
+                        <div key={categoryName} style={{ marginTop: 32 }}>
                             <div style={{ marginBottom: 16 }}>
-                                <h2 style={{ fontSize: "1.05rem", textTransform: "uppercase", letterSpacing: 1, color: "#fff", margin: 0, paddingBottom: 6, borderBottom: "2px solid #f59e0b", display: "inline-block" }}>{categoryName}</h2>
+                                <h2 style={{ fontSize: isTvOrLarge ? "1.3rem" : "1.05rem", textTransform: "uppercase", letterSpacing: 1, color: "#fff", margin: 0, paddingBottom: 6, borderBottom: "2px solid #f59e0b", display: "inline-block" }}>{categoryName}</h2>
                             </div>
-                            <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
+                            <div style={{ display: "grid", gap: 16, gridTemplateColumns: gridColumns }}>
                                 {products.map((item) => (
                                     <PublicOrderCard
                                         key={item.id}
@@ -179,7 +199,7 @@ export function PublicOrderPage() {
                         </div>
                     ))
                 ) : (
-                    <div style={{ marginTop: 20, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
+                    <div style={{ marginTop: 24, display: "grid", gap: 16, gridTemplateColumns: gridColumns }}>
                         {filteredItems.map((item) => (
                             <PublicOrderCard
                                 key={item.id}
@@ -198,7 +218,7 @@ export function PublicOrderPage() {
             {/* Botão Flutuante de Conta */}
             <button
                 onClick={() => setShowMyOrders(true)}
-                style={{ position: "fixed", bottom: 24, right: 24, zIndex: 50, backgroundColor: "#f59e0b", color: "#121214", border: "none", borderRadius: "50%", width: 64, height: 64, boxShadow: "0 4px 15px rgba(245, 158, 11, 0.4)", fontSize: "1.8rem", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                style={{ position: "fixed", bottom: isTvOrLarge ? 36 : 24, right: isTvOrLarge ? 36 : 24, zIndex: 50, backgroundColor: "#f59e0b", color: "#121214", border: "none", borderRadius: "50%", width: isTvOrLarge ? 80 : 64, height: isTvOrLarge ? 80 : 64, boxShadow: "0 4px 15px rgba(245, 158, 11, 0.4)", fontSize: isTvOrLarge ? "2.2rem" : "1.8rem", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
                 aria-label="Ver minha conta"
             >
                 🧾
