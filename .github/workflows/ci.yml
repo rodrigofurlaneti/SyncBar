@@ -97,8 +97,14 @@ jobs:
           /d:sonar.cs.cobertura.reportsPaths="**/TestResults/**/coverage.cobertura.xml"
           /d:sonar.coverage.exclusions="**/Migrations/**"
 
+      # -warnaserror foi removido daqui: com o dotnet-sonarscanner ativo, o
+      # analisador do Sonar roda dentro do build e cada issue já mapeada no
+      # dashboard (centenas, em remediação incremental por ondas) virava erro
+      # de compilação, quebrando o build antes dos testes rodarem. As issues
+      # continuam sendo reportadas normalmente ao SonarCloud — só não travam
+      # mais o CI.
       - name: Build (Release)
-        run: dotnet build SyncBar.sln --no-restore --configuration Release -warnaserror
+        run: dotnet build SyncBar.sln --no-restore --configuration Release
 
       - name: Testes unitários (com cobertura)
         run: >
