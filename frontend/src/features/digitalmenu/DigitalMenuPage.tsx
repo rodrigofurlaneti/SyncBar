@@ -388,24 +388,17 @@ export function DigitalMenuPage() {
                     </div>
                     <div style={{ flex: 1, overflowY: "auto" }}>
                         {categoriesQuery.data?.map((cat) => (
-                            <div
+                            <button
                                 key={cat.id}
+                                type="button"
                                 className={`dm-nav-item ${currentCategoryId === cat.id ? "active" : ""}`}
                                 onClick={() => setActiveCategoryId(cat.id)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                        e.preventDefault();
-                                        setActiveCategoryId(cat.id);
-                                    }
-                                }}
-                                role="button"
-                                tabIndex={0}
                             >
                                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                     <IconPlaceholder /> {cat.name}
                                 </div>
                                 <span>›</span>
-                            </div>
+                            </button>
                         ))}
                     </div>
                     <div style={{ margin: "20px", padding: "16px", border: "1px solid #333", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
@@ -529,22 +522,15 @@ export function DigitalMenuPage() {
 
                 <nav className="dm-bottom-nav">
                     {categoriesQuery.data?.map((cat) => (
-                        <div
+                        <button
                             key={cat.id}
+                            type="button"
                             className={`dm-bottom-item ${currentCategoryId === cat.id ? "active" : ""}`}
                             onClick={() => setActiveCategoryId(cat.id)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    setActiveCategoryId(cat.id);
-                                }
-                            }}
-                            role="button"
-                            tabIndex={0}
                         >
                             <IconPlaceholder />
                             <span>{cat.name}</span>
-                        </div>
+                        </button>
                     ))}
                 </nav>
             </div>

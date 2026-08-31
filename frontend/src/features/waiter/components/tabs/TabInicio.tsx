@@ -22,56 +22,35 @@ export function TabInicio({ myOpenTablesCount, myTotalTables, comandaOrders, myO
     return (
         <>
             <div className="waiter-stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
-                <div
+                <button
+                    type="button"
                     className="waiter-stat-card"
                     onClick={() => onTabChange("mesas")}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            onTabChange("mesas");
-                        }
-                    }}
-                    role="button"
-                    tabIndex={0}
                     style={{ cursor: "pointer", margin: 0 }}
                 >
                     <span className="waiter-stat-value mono-num">
                         {myOpenTablesCount} <small>/{myTotalTables || "—"}</small>
                     </span>
                     <span className="waiter-stat-label">Mesas</span>
-                </div>
-                <div
+                </button>
+                <button
+                    type="button"
                     className="waiter-stat-card"
                     onClick={() => onTabChange("comandas")}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            onTabChange("comandas");
-                        }
-                    }}
-                    role="button"
-                    tabIndex={0}
                     style={{ cursor: "pointer", margin: 0 }}
                 >
                     <span className="waiter-stat-value mono-num">{comandaOrders.length}</span>
                     <span className="waiter-stat-label">Comandas</span>
-                </div>
-                <div
+                </button>
+                <button
+                    type="button"
                     className="waiter-stat-card"
                     onClick={() => onTabChange("pedidos")}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            onTabChange("pedidos");
-                        }
-                    }}
-                    role="button"
-                    tabIndex={0}
                     style={{ cursor: "pointer", margin: 0 }}
                 >
                     <span className="waiter-stat-value mono-num">{myOrders.length}</span>
                     <span className="waiter-stat-label">Pedidos ativos</span>
-                </div>
+                </button>
             </div>
 
             <div style={{ display: 'grid', gap: '10px', marginBottom: '16px' }}>
