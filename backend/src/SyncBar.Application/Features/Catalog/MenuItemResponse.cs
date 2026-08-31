@@ -5,6 +5,7 @@ namespace SyncBar.Application.Features.Catalog;
 public sealed record MenuItemResponse(
     long Id,
     long CategoryId,
+    string CategoryName, 
     long UnitOfMeasureId,
     string Name,
     string? Description,

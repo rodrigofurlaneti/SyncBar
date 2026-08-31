@@ -17,12 +17,15 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
+// 1. Protege a classe inteira para garantir que criação/edição exigem login de Gerente/Admin
 [Authorize(Roles = "Administrador,Gerente")]
 public sealed class ProductsController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
+    // 2. AllowAnonymous abre uma exceção APENAS para buscar as categorias (usado no QRCode)
+    [AllowAnonymous]
     [HttpGet("categories/company/{companyId:long}")]
     public Task<IActionResult> GetCategories(long companyId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(GetCategories), async () =>
@@ -71,6 +74,7 @@ public sealed class ProductsController(
                 id, Path.GetExtension(file.FileName), memory.ToArray()), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(new { imageUrl = result.Value });
         });
+
     [HttpGet("{id:long}")]
     public Task<IActionResult> GetById(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(GetById), async () =>
@@ -78,6 +82,7 @@ public sealed class ProductsController(
             var result = await Mediator.Send(new GetProductByIdQuery(id), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
+
     [HttpPut("{id:long}/deactivate")]
     public Task<IActionResult> Deactivate(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(Deactivate), async () =>

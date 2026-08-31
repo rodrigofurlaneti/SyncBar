@@ -34,12 +34,10 @@ export function PublicOrderPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [quantities, setQuantities] = useState<Record<number, number>>({});
 
-    // Estados para o fluxo de NOVO PEDIDO (Mesa ou Comanda)
     const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(null);
     const [destination, setDestination] = useState<"mesa" | "comanda">("mesa");
     const [commandNumber, setCommandNumber] = useState("");
 
-    // Estados para o fluxo de CONSULTAR CONTA
     const [showMyOrders, setShowMyOrders] = useState(false);
     const [myOrdersStep, setMyOrdersStep] = useState<"select" | "view">("select");
     const [myOrdersDestination, setMyOrdersDestination] = useState<"mesa" | "comanda">("mesa");
@@ -52,20 +50,15 @@ export function PublicOrderPage() {
         retry: false,
     });
 
-    // TODO: Query Simulada para buscar a conta da mesa/comanda.
-    // Use as variáveis `myOrdersDestination` e `myOrdersCommandNumber` para filtrar na sua API
     const myOrdersQuery = useQuery({
         queryKey: ["public-my-orders", token, myOrdersDestination, myOrdersCommandNumber],
         queryFn: async (): Promise<TableOrderView[]> => {
-            await new Promise(resolve => setTimeout(resolve, 800)); // Simulando loading
-
-            // Simulando retorno (no futuro, dependa da sua API)
+            await new Promise(resolve => setTimeout(resolve, 800));
             return [
                 { id: 1, productName: "Cerveja Heiniken Garrafa 600ml", quantity: 2, totalPrice: 49.98, status: "Entregue" },
                 { id: 2, productName: "Mini contra filé", quantity: 1, totalPrice: 39.99, status: "Preparando" }
             ];
         },
-        // Só busca os dados quando estiver no step de visualizar
         enabled: showMyOrders && myOrdersStep === "view",
     });
 
@@ -120,27 +113,39 @@ export function PublicOrderPage() {
         }
     };
 
-    const { categories, filteredItems } = useMemo(() => {
-        if (!menuQuery.data) return { categories: [], filteredItems: [] };
+    // Extrai categorias dinâmicas e agrupa os itens para exibição condicional
+    const { categoryList, groupedItems, filteredItems } = useMemo(() => {
+        if (!menuQuery.data) return { categoryList: [], groupedItems: {}, filteredItems: [] };
 
-        const getCategory = (i: MenuItemResponse) => (i as any).category || "Outros";
-        const cats = ["Todas", ...Array.from(new Set(menuQuery.data.items.map(getCategory)))];
+        const items = menuQuery.data.items;
 
-        let items = menuQuery.data.items;
+        // Extrai nomes únicos das categorias dos produtos
+        const uniqueCategories = Array.from(new Set(items.map((i: any) => i.categoryName || "Geral")));
+        const cats = ["Todas", ...uniqueCategories];
+
+        let resultItems = items;
 
         if (activeCategory !== "Todas") {
-            items = items.filter(i => getCategory(i) === activeCategory);
+            resultItems = resultItems.filter((i: any) => (i.categoryName || "Geral") === activeCategory);
         }
 
         if (searchQuery) {
-            items = items.filter(i => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
+            resultItems = resultItems.filter(i => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
         }
 
-        return { categories: cats, filteredItems: items };
+        // Agrupa os itens por categoria para quando estiver em "Todas"
+        const grouped: Record<string, MenuItemResponse[]> = {};
+        resultItems.forEach((item: any) => {
+            const catName = item.categoryName || "Geral";
+            if (!grouped[catName]) grouped[catName] = [];
+            grouped[catName].push(item);
+        });
+
+        return { categoryList: cats, groupedItems: grouped, filteredItems: resultItems };
     }, [menuQuery.data, activeCategory, searchQuery]);
 
     const openMyOrders = () => {
-        setMyOrdersStep("select"); // Sempre abre pedindo Mesa/Comanda primeiro
+        setMyOrdersStep("select");
         setShowMyOrders(true);
     };
 
@@ -179,50 +184,59 @@ export function PublicOrderPage() {
 
             <main className="alpha-load" style={{ backgroundColor: "#121214", minHeight: "100vh", paddingBottom: 100, color: "#e1e1e6", fontFamily: "sans-serif", position: "relative" }}>
 
+                {/* Cabeçalho */}
                 <div style={{
-                    textAlign: "center",
-                    paddingTop: 50,
-                    paddingBottom: 30,
-                    backgroundImage: `linear-gradient(to bottom, rgba(18, 18, 20, 0.7), rgba(18, 18, 20, 1)), url(${bgImg})`,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "8px 20px",
+                    backgroundImage: `linear-gradient(rgba(18, 18, 20, 0.85), rgba(18, 18, 20, 0.95)), url(${bgImg})`,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
-                    borderBottom: "1px solid #29292e"
+                    borderBottom: "1px solid #29292e",
+                    height: "80px",
+                    boxSizing: "border-box"
                 }}>
                     <img
                         src={logoImg}
                         alt="Logotipo SyncBar"
-                        style={{ height: 90, objectFit: "contain", marginBottom: 12, position: "relative", zIndex: 2 }}
+                        style={{ height: 50, objectFit: "contain", position: "relative", zIndex: 2 }}
                     />
 
-                    <div style={{ color: "#e1e1e6", marginTop: 6, fontSize: "1.05rem", fontWeight: "500", position: "relative", zIndex: 2 }}>
-                        {menu.branchName} <span style={{ color: "#f59e0b", margin: "0 6px" }}>•</span> Mesa {menu.tableNumber}
+                    <div style={{ textAlign: "right", position: "relative", zIndex: 2 }}>
+                        <div style={{ color: "#ffffff", fontSize: "1.15rem", fontWeight: "600" }}>
+                            Mesa <span style={{ color: "#f59e0b" }}>{menu.tableNumber}</span>
+                        </div>
                     </div>
                 </div>
 
-                <div style={{ padding: "0 16px", maxWidth: 900, margin: "20px auto 0" }}>
-                    <div style={{ display: "flex", overflowX: "auto", gap: 24, paddingBottom: 12, borderBottom: "1px solid #323238", WebkitOverflowScrolling: "touch" }}>
-                        {categories.map((cat: unknown) => {
-                            const categoryName = String(cat);
-                            const isActive = activeCategory === categoryName;
+                <div style={{ padding: "0 16px", maxWidth: 900, margin: "12px auto 0" }}>
+
+                    {/* Abas de Categoria */}
+                    <div style={{ display: "flex", overflowX: "auto", gap: 24, paddingBottom: 4, borderBottom: "1px solid #323238", WebkitOverflowScrolling: "touch" }}>
+                        {categoryList.map((cat: string) => {
+                            const isActive = activeCategory === cat;
                             return (
                                 <button
-                                    key={categoryName}
-                                    onClick={() => setActiveCategory(categoryName)}
+                                    key={cat}
+                                    onClick={() => setActiveCategory(cat)}
                                     style={{
-                                        background: "none", border: "none", padding: "8px 0", whiteSpace: "nowrap",
+                                        background: "none", border: "none",
+                                        padding: "0 0 8px 0",
+                                        whiteSpace: "nowrap",
                                         fontWeight: isActive ? "bold" : "normal",
                                         color: isActive ? "#f59e0b" : "#a8a8b3",
                                         borderBottom: isActive ? "2px solid #f59e0b" : "2px solid transparent",
                                         cursor: "pointer", fontSize: "0.95rem", transition: "color 0.2s"
                                     }}
                                 >
-                                    {categoryName}
+                                    {cat}
                                 </button>
                             );
                         })}
                     </div>
 
-                    <div style={{ marginTop: 24, position: "relative" }}>
+                    <div style={{ marginTop: 12, position: "relative" }}>
                         <input
                             type="text"
                             placeholder="Pesquisar um produto..."
@@ -239,98 +253,45 @@ export function PublicOrderPage() {
 
                     {error && <p style={{ marginTop: 16, textAlign: "center", color: "#ef4444" }}>{error}</p>}
 
-                    <div style={{
-                        marginTop: 24,
-                        display: "grid",
-                        gap: 16,
-                        gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))"
-                    }}>
-                        {filteredItems.map((item) => {
-                            const justSent = sentIds.includes(item.id);
-
-                            return (
-                                <div key={item.id} style={{
-                                    display: "flex",
-                                    backgroundColor: "#1e1e24",
-                                    borderRadius: 12,
-                                    padding: 16,
-                                    border: "1px solid #29292e",
-                                    boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
-                                }}>
-                                    <div style={{ width: 80, height: 80, borderRadius: 8, backgroundColor: "#323238", flexShrink: 0, overflow: "hidden" }}>
-                                        {item.imageUrl ? (
-                                            <img src={item.imageUrl} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                        ) : (
-                                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#555" }}>📷</div>
-                                        )}
-                                    </div>
-
-                                    <div style={{ marginLeft: 16, flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                                        <div>
-                                            <h3 style={{ margin: 0, fontSize: "1rem", color: "#ffffff", fontWeight: "600" }}>{item.name}</h3>
-                                            {item.description && (
-                                                <p style={{ margin: "4px 0 0", fontSize: "0.85rem", color: "#8d8d99", lineHeight: "1.3" }}>
-                                                    {item.description}
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        <span style={{ marginTop: 12, fontWeight: "bold", color: "#f59e0b", fontSize: "1.1rem" }}>
-                                            {item.complementGroups?.length ? "A partir de " : ""}{formatBRL(item.salePrice)}
-                                        </span>
-
-                                        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, marginTop: 12 }}>
-                                            <div style={{
-                                                display: "flex", alignItems: "center",
-                                                border: "1px solid #323238", borderRadius: 8,
-                                                overflow: "hidden", height: 36, backgroundColor: "#121214"
-                                            }}>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setQty(item.id, getQty(item.id) - 1)}
-                                                    style={{ width: 36, height: "100%", background: "none", border: "none", color: "#a8a8b3", fontSize: "1.2rem", cursor: "pointer" }}
-                                                >−</button>
-                                                <span style={{ width: 28, textAlign: "center", color: "#ffffff", fontWeight: "500", fontSize: "0.95rem" }}>
-                                                    {getQty(item.id)}
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setQty(item.id, getQty(item.id) + 1)}
-                                                    style={{ width: 36, height: "100%", background: "none", border: "none", color: "#a8a8b3", fontSize: "1.2rem", cursor: "pointer" }}
-                                                >+</button>
-                                            </div>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => handlePickItem(item)}
-                                                disabled={addMutation.isPending}
-                                                style={{
-                                                    backgroundColor: "#f59e0b",
-                                                    color: "#121214",
-                                                    border: "none",
-                                                    borderRadius: 8,
-                                                    padding: "0 20px",
-                                                    height: 36,
-                                                    fontWeight: "bold",
-                                                    fontSize: "0.95rem",
-                                                    cursor: addMutation.isPending ? "not-allowed" : "pointer",
-                                                    opacity: addMutation.isPending ? 0.7 : 1
-                                                }}
-                                            >
-                                                {justSent ? "Pedir de novo" : "Pedir"}
-                                            </button>
-                                        </div>
-                                    </div>
+                    {/* RENDERIZAÇÃO CONDICIONAL DAS CATEGORIAS */}
+                    {activeCategory === "Todas" && !searchQuery ? (
+                        // Se estiver em "Todas" e sem pesquisa, agrupa e exibe os títulos de categoria
+                        Object.entries(groupedItems).map(([categoryName, products]) => (
+                            <div key={categoryName} style={{ marginTop: 28 }}>
+                                {/* Título da Categoria Estilizado com Linha (Igual ao protótipo) */}
+                                <div style={{ marginBottom: 16 }}>
+                                    <h2 style={{ fontSize: "1.05rem", textTransform: "uppercase", letterSpacing: 1, color: "#fff", margin: 0, paddingBottom: 6, borderBottom: "2px solid #f59e0b", display: "inline-block" }}>
+                                        {categoryName}
+                                    </h2>
                                 </div>
-                            );
-                        })}
-                    </div>
+
+                                <div style={{
+                                    display: "grid",
+                                    gap: 16,
+                                    gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))"
+                                }}>
+                                    {products.map((item) => renderProductCard(item))}
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        // Se estiver em uma categoria específica ou pesquisando, exibe direto sem os títulos repetidos
+                        <div style={{
+                            marginTop: 20,
+                            display: "grid",
+                            gap: 16,
+                            gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))"
+                        }}>
+                            {filteredItems.map((item) => renderProductCard(item))}
+                        </div>
+                    )}
 
                     {filteredItems.length === 0 && (
                         <p style={{ textAlign: "center", color: "#a8a8b3", marginTop: 40 }}>Nenhum produto encontrado.</p>
                     )}
                 </div>
 
+                {/* Botão Flutuante de Conta */}
                 <button
                     onClick={openMyOrders}
                     style={{
@@ -357,11 +318,9 @@ export function PublicOrderPage() {
                     🧾
                 </button>
 
-                {/* MODAL GERAL: CONSULTAR CONTA */}
+                {/* Modais de Conta e Complementos */}
                 {showMyOrders && (
                     <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", zIndex: 9999, display: "flex", alignItems: myOrdersStep === "select" ? "center" : "flex-end", justifyContent: "center", padding: myOrdersStep === "select" ? 16 : 0 }}>
-
-                        {/* ETAPA 1: ESCOLHER MESA OU COMANDA */}
                         {myOrdersStep === "select" && (
                             <div style={{ backgroundColor: "#1e1e24", padding: 24, borderRadius: 12, width: "100%", maxWidth: 400, border: "1px solid #323238", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", animation: "fadeInAlpha 0.2s" }}>
                                 <h3 style={{ marginTop: 0, marginBottom: 24, color: "#fff", fontSize: "1.2rem", textAlign: "center" }}>
@@ -406,7 +365,7 @@ export function PublicOrderPage() {
                                     </button>
                                     <button
                                         disabled={myOrdersDestination === "comanda" && !myOrdersCommandNumber}
-                                        onClick={() => setMyOrdersStep("view")} // Avança para exibir os pedidos
+                                        onClick={() => setMyOrdersStep("view")}
                                         style={{
                                             flex: 1, padding: "14px", borderRadius: 8, border: "none",
                                             backgroundColor: "#f59e0b", color: "#121214", fontWeight: "bold",
@@ -420,10 +379,8 @@ export function PublicOrderPage() {
                             </div>
                         )}
 
-                        {/* ETAPA 2: LISTAR OS PEDIDOS DA CONTA */}
                         {myOrdersStep === "view" && (
                             <div style={{ backgroundColor: "#1e1e24", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, width: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 -5px 25px rgba(0,0,0,0.5)", animation: "fadeInAlpha 0.2s" }}>
-
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #323238", paddingBottom: 16, marginBottom: 16 }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                         <button onClick={() => setMyOrdersStep("select")} style={{ background: "none", border: "none", color: "#a8a8b3", fontSize: "1.2rem", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}>
@@ -567,4 +524,85 @@ export function PublicOrderPage() {
             </main>
         </>
     );
+
+    // Função auxiliar para renderizar o card do produto de forma limpa
+    function renderProductCard(item: MenuItemResponse) {
+        const justSent = sentIds.includes(item.id);
+
+        return (
+            <div key={item.id} style={{
+                display: "flex",
+                backgroundColor: "#1e1e24",
+                borderRadius: 12,
+                padding: 16,
+                border: "1px solid #29292e",
+                boxShadow: "0 4px 6px rgba(0,0,0,0.3)"
+            }}>
+                <div style={{ width: 80, height: 80, borderRadius: 8, backgroundColor: "#323238", flexShrink: 0, overflow: "hidden" }}>
+                    {item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#555" }}>📷</div>
+                    )}
+                </div>
+
+                <div style={{ marginLeft: 16, flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    <div>
+                        <h3 style={{ margin: 0, fontSize: "1rem", color: "#ffffff", fontWeight: "600" }}>{item.name}</h3>
+                        {item.description && (
+                            <p style={{ margin: "4px 0 0", fontSize: "0.85rem", color: "#8d8d99", lineHeight: "1.3" }}>
+                                {item.description}
+                            </p>
+                        )}
+                    </div>
+
+                    <span style={{ marginTop: 12, fontWeight: "bold", color: "#f59e0b", fontSize: "1.1rem" }}>
+                        {item.complementGroups?.length ? "A partir de " : ""}{formatBRL(item.salePrice)}
+                    </span>
+
+                    <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, marginTop: 12 }}>
+                        <div style={{
+                            display: "flex", alignItems: "center",
+                            border: "1px solid #323238", borderRadius: 8,
+                            overflow: "hidden", height: 36, backgroundColor: "#121214"
+                        }}>
+                            <button
+                                type="button"
+                                onClick={() => setQty(item.id, getQty(item.id) - 1)}
+                                style={{ width: 36, height: "100%", background: "none", border: "none", color: "#a8a8b3", fontSize: "1.2rem", cursor: "pointer" }}
+                            >−</button>
+                            <span style={{ width: 28, textAlign: "center", color: "#ffffff", fontWeight: "500", fontSize: "0.95rem" }}>
+                                {getQty(item.id)}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setQty(item.id, getQty(item.id) + 1)}
+                                style={{ width: 36, height: "100%", background: "none", border: "none", color: "#a8a8b3", fontSize: "1.2rem", cursor: "pointer" }}
+                            >+</button>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => handlePickItem(item)}
+                            disabled={addMutation.isPending}
+                            style={{
+                                backgroundColor: "#f59e0b",
+                                color: "#121214",
+                                border: "none",
+                                borderRadius: 8,
+                                padding: "0 20px",
+                                height: 36,
+                                fontWeight: "bold",
+                                fontSize: "0.95rem",
+                                cursor: addMutation.isPending ? "not-allowed" : "pointer",
+                                opacity: addMutation.isPending ? 0.7 : 1
+                            }}
+                        >
+                            {justSent ? "Pedir de novo" : "Pedir"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 }
