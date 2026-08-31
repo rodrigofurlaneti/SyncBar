@@ -7,8 +7,14 @@
 
 export function WaiterProfileModal({ userName, branchId, onClose, onLogout }: WaiterProfileModalProps) {
     return (
-        <div className="modal-backdrop is-center" onClick={onClose} style={{ position: "absolute" }}>
-            <div className="modal-panel is-center" onClick={(e) => e.stopPropagation()}>
+        <div
+            className="modal-backdrop is-center"
+            onMouseDown={(e) => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+            style={{ position: "absolute" }}
+        >
+            <div className="modal-panel is-center">
                 <div className="modal-head">
                     <span className="display" style={{ fontSize: "1.3rem" }}>Perfil</span>
                     <button type="button" className="btn-ghost btn-icon" onClick={onClose}>✕</button>

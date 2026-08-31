@@ -29,8 +29,14 @@ export function WaiterOpenComandaModal({ comanda, onClose, onOpened }: WaiterOpe
     });
 
     return (
-        <div className="modal-backdrop is-center" onClick={onClose} style={{ position: "absolute" }}>
-            <div className="modal-panel is-center" onClick={(e) => e.stopPropagation()} style={{ width: "90%", maxWidth: "360px", padding: "24px" }}>
+        <div
+            className="modal-backdrop is-center"
+            onMouseDown={(e) => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+            style={{ position: "absolute" }}
+        >
+            <div className="modal-panel is-center" style={{ width: "90%", maxWidth: "360px", padding: "24px" }}>
                 <div className="modal-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                     <span className="display" style={{ fontSize: "1.25rem", fontWeight: "800", textTransform: "uppercase" }}>
                         Abrir Comanda {comanda.code || comanda.id}

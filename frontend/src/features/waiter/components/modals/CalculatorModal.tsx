@@ -38,8 +38,14 @@ export function CalculatorModal({ onClose }: { onClose: () => void }) {
     };
 
     return (
-        <div className="modal-backdrop is-center" onClick={onClose} style={{ position: "absolute" }}>
-            <div className="modal-panel is-center" onClick={(e) => e.stopPropagation()} style={{ width: "90%", maxWidth: "320px", padding: "20px" }}>
+        <div
+            className="modal-backdrop is-center"
+            onMouseDown={(e) => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+            style={{ position: "absolute" }}
+        >
+            <div className="modal-panel is-center" style={{ width: "90%", maxWidth: "320px", padding: "20px" }}>
                 <div className="modal-head" style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span className="display" style={{ fontSize: "1.2rem", fontWeight: "bold" }}>➗ Calculadora</span>
                     <button type="button" className="btn-ghost btn-icon" onClick={onClose}>✕</button>

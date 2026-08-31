@@ -392,6 +392,14 @@ export function DigitalMenuPage() {
                                 key={cat.id}
                                 className={`dm-nav-item ${currentCategoryId === cat.id ? "active" : ""}`}
                                 onClick={() => setActiveCategoryId(cat.id)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        setActiveCategoryId(cat.id);
+                                    }
+                                }}
+                                role="button"
+                                tabIndex={0}
                             >
                                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                     <IconPlaceholder /> {cat.name}
@@ -461,7 +469,19 @@ export function DigitalMenuPage() {
                         ) : (
                             <div className="dm-grid">
                                 {filteredMenu.map((product) => (
-                                    <div key={product.id} className="dm-card" onClick={() => setSelectedProduct(product)}>
+                                    <div
+                                        key={product.id}
+                                        className="dm-card"
+                                        onClick={() => setSelectedProduct(product)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                setSelectedProduct(product);
+                                            }
+                                        }}
+                                        role="button"
+                                        tabIndex={0}
+                                    >
                                         <img
                                             src={product.imageUrl || "https://via.placeholder.com/80x100?text=Sem+Foto"}
                                             alt={product.name}
@@ -513,6 +533,14 @@ export function DigitalMenuPage() {
                             key={cat.id}
                             className={`dm-bottom-item ${currentCategoryId === cat.id ? "active" : ""}`}
                             onClick={() => setActiveCategoryId(cat.id)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    setActiveCategoryId(cat.id);
+                                }
+                            }}
+                            role="button"
+                            tabIndex={0}
                         >
                             <IconPlaceholder />
                             <span>{cat.name}</span>
