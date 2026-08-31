@@ -39,6 +39,12 @@ jobs:
     name: Backend — build + testes (.NET 9)
     runs-on: ubuntu-latest
 
+    # O contexto `secrets` não é reconhecido dentro de `if:` — só dentro de
+    # `env:`/`with:`/`run:`. Por isso o token é exposto aqui como variável de
+    # ambiente do job, e os `if:` das etapas do Sonar checam `env.SONAR_TOKEN`.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
     defaults:
       run:
         working-directory: backend
@@ -81,12 +87,12 @@ jobs:
       # SONAR_TOKEN existir no repositório (evita falhar em forks/PRs
       # externos, que não têm acesso aos secrets).
       - name: Iniciar análise SonarCloud
-        if: ${{ secrets.SONAR_TOKEN != '' }}
+        if: ${{ env.SONAR_TOKEN != '' }}
         run: >
           dotnet-sonarscanner begin
           /k:"rodrigofurlaneti_SyncBar"
           /o:"rodrigofurlaneti"
-          /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+          /d:sonar.token="${{ env.SONAR_TOKEN }}"
           /d:sonar.host.url="https://sonarcloud.io"
           /d:sonar.cs.cobertura.reportsPaths="**/TestResults/**/coverage.cobertura.xml"
           /d:sonar.coverage.exclusions="**/Migrations/**"
@@ -120,8 +126,8 @@ jobs:
           --logger "trx;LogFileName=specs.trx"
 
       - name: Finalizar análise SonarCloud
-        if: ${{ always() && secrets.SONAR_TOKEN != '' }}
-        run: dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+        if: ${{ always() && env.SONAR_TOKEN != '' }}
+        run: dotnet-sonarscanner end /d:sonar.token="${{ env.SONAR_TOKEN }}"
 
       - name: Publicar resultados dos testes
         if: always()
