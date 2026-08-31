@@ -2,7 +2,7 @@
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Swal from "sweetalert2";
-import { addPublicOrderItem, getPublicMenu } from "./api";
+import { addPublicOrderItem, getPublicMenu, getPublicBill, getPublicComandaBill } from "./api";
 import { formatBRL } from "../../lib/types";
 import type { MenuItemResponse, OrderItemComplementSelection } from "../../lib/types";
 import { ComplementSelectorModal } from "../orders/ComplementSelectorModal";
@@ -22,7 +22,7 @@ type TableOrderView = {
     productName: string;
     quantity: number;
     totalPrice: number;
-    status: "Pendente" | "Preparando" | "Pronto" | "Entregue";
+    status: string;
 };
 
 export function PublicOrderPage() {
@@ -43,6 +43,9 @@ export function PublicOrderPage() {
     const [myOrdersDestination, setMyOrdersDestination] = useState<"mesa" | "comanda">("mesa");
     const [myOrdersCommandNumber, setMyOrdersCommandNumber] = useState("");
 
+    // Estado que guarda a comanda efetivamente consultada após clicar em "Consultar"
+    const [consultedCommandNumber, setConsultedCommandNumber] = useState("");
+
     const menuQuery = useQuery({
         queryKey: ["public-menu", token],
         queryFn: () => getPublicMenu(token!),
@@ -50,16 +53,48 @@ export function PublicOrderPage() {
         retry: false,
     });
 
+    // Query para conta da mesa
+    const billQuery = useQuery({
+        queryKey: ["public-bill", token],
+        queryFn: () => getPublicBill(token!),
+        enabled: showMyOrders && myOrdersStep === "view" && myOrdersDestination === "mesa",
+        refetchInterval: 4000,
+    });
+
+    // Query para conta da comanda
+    const comandaBillQuery = useQuery({
+        queryKey: ["public-comanda-bill", token, consultedCommandNumber],
+        queryFn: () => getPublicComandaBill(token!, consultedCommandNumber),
+        enabled: showMyOrders && myOrdersStep === "view" && myOrdersDestination === "comanda" && !!consultedCommandNumber,
+        refetchInterval: 4000,
+    });
+
     const myOrdersQuery = useQuery({
-        queryKey: ["public-my-orders", token, myOrdersDestination, myOrdersCommandNumber],
+        queryKey: ["public-my-orders-view", token, myOrdersDestination, consultedCommandNumber],
         queryFn: async (): Promise<TableOrderView[]> => {
-            await new Promise(resolve => setTimeout(resolve, 800));
-            return [
-                { id: 1, productName: "Cerveja Heiniken Garrafa 600ml", quantity: 2, totalPrice: 49.98, status: "Entregue" },
-                { id: 2, productName: "Mini contra filé", quantity: 1, totalPrice: 39.99, status: "Preparando" }
-            ];
+            if (myOrdersDestination === "mesa") {
+                const bill = await getPublicBill(token!);
+                return bill.items.map((item) => ({
+                    id: item.itemId,
+                    productName: item.productName,
+                    quantity: item.quantity,
+                    totalPrice: item.totalPrice,
+                    status: item.statusId === 1 ? "Pendente" : item.statusId === 2 ? "Preparando" : item.statusId === 3 ? "Pronto" : "Entregue"
+                }));
+            } else {
+                if (!consultedCommandNumber) return [];
+                const bill = await getPublicComandaBill(token!, consultedCommandNumber);
+                return bill.items.map((item) => ({
+                    id: item.itemId,
+                    productName: item.productName,
+                    quantity: item.quantity,
+                    totalPrice: item.totalPrice,
+                    status: item.statusId === 1 ? "Pendente" : item.statusId === 2 ? "Preparando" : item.statusId === 3 ? "Pronto" : "Entregue"
+                }));
+            }
         },
         enabled: showMyOrders && myOrdersStep === "view",
+        refetchInterval: 4000,
     });
 
     const addMutation = useMutation({
@@ -113,13 +148,10 @@ export function PublicOrderPage() {
         }
     };
 
-    // Extrai categorias dinâmicas e agrupa os itens para exibição condicional
     const { categoryList, groupedItems, filteredItems } = useMemo(() => {
         if (!menuQuery.data) return { categoryList: [], groupedItems: {}, filteredItems: [] };
 
         const items = menuQuery.data.items;
-
-        // Extrai nomes únicos das categorias dos produtos
         const uniqueCategories = Array.from(new Set(items.map((i: any) => i.categoryName || "Geral")));
         const cats = ["Todas", ...uniqueCategories];
 
@@ -133,7 +165,6 @@ export function PublicOrderPage() {
             resultItems = resultItems.filter(i => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
         }
 
-        // Agrupa os itens por categoria para quando estiver em "Todas"
         const grouped: Record<string, MenuItemResponse[]> = {};
         resultItems.forEach((item: any) => {
             const catName = item.categoryName || "Geral";
@@ -168,7 +199,11 @@ export function PublicOrderPage() {
         );
 
     const menu = menuQuery.data!;
-    const totalConta = (myOrdersQuery.data || []).reduce((acc, order) => acc + order.totalPrice, 0);
+
+    // Calcula o total dinamicamente com base no destino selecionado (Mesa ou Comanda)
+    const totalConta = myOrdersDestination === "mesa"
+        ? (billQuery.data?.totalAmount || 0)
+        : (comandaBillQuery.data?.totalAmount || 0);
 
     return (
         <>
@@ -253,12 +288,9 @@ export function PublicOrderPage() {
 
                     {error && <p style={{ marginTop: 16, textAlign: "center", color: "#ef4444" }}>{error}</p>}
 
-                    {/* RENDERIZAÇÃO CONDICIONAL DAS CATEGORIAS */}
                     {activeCategory === "Todas" && !searchQuery ? (
-                        // Se estiver em "Todas" e sem pesquisa, agrupa e exibe os títulos de categoria
                         Object.entries(groupedItems).map(([categoryName, products]) => (
                             <div key={categoryName} style={{ marginTop: 28 }}>
-                                {/* Título da Categoria Estilizado com Linha (Igual ao protótipo) */}
                                 <div style={{ marginBottom: 16 }}>
                                     <h2 style={{ fontSize: "1.05rem", textTransform: "uppercase", letterSpacing: 1, color: "#fff", margin: 0, paddingBottom: 6, borderBottom: "2px solid #f59e0b", display: "inline-block" }}>
                                         {categoryName}
@@ -275,7 +307,6 @@ export function PublicOrderPage() {
                             </div>
                         ))
                     ) : (
-                        // Se estiver em uma categoria específica ou pesquisando, exibe direto sem os títulos repetidos
                         <div style={{
                             marginTop: 20,
                             display: "grid",
@@ -346,10 +377,10 @@ export function PublicOrderPage() {
                                     <div style={{ marginBottom: 24, animation: "fadeIn 0.2s" }}>
                                         <label style={{ display: "block", color: "#a8a8b3", marginBottom: 8, fontSize: "0.9rem" }}>Número da Comanda</label>
                                         <input
-                                            type="number"
+                                            type="text"
                                             value={myOrdersCommandNumber}
                                             onChange={(e) => setMyOrdersCommandNumber(e.target.value)}
-                                            placeholder="Ex: 15"
+                                            placeholder="Ex: 001"
                                             autoFocus
                                             style={{ width: "100%", padding: "14px 16px", borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", fontSize: "1rem", boxSizing: "border-box", outline: "none" }}
                                         />
@@ -365,7 +396,12 @@ export function PublicOrderPage() {
                                     </button>
                                     <button
                                         disabled={myOrdersDestination === "comanda" && !myOrdersCommandNumber}
-                                        onClick={() => setMyOrdersStep("view")}
+                                        onClick={() => {
+                                            if (myOrdersDestination === "comanda") {
+                                                setConsultedCommandNumber(myOrdersCommandNumber);
+                                            }
+                                            setMyOrdersStep("view");
+                                        }}
                                         style={{
                                             flex: 1, padding: "14px", borderRadius: 8, border: "none",
                                             backgroundColor: "#f59e0b", color: "#121214", fontWeight: "bold",
@@ -387,7 +423,7 @@ export function PublicOrderPage() {
                                             ←
                                         </button>
                                         <h2 style={{ margin: 0, fontSize: "1.2rem", color: "#fff" }}>
-                                            {myOrdersDestination === "mesa" ? `Conta - Mesa ${menu.tableNumber}` : `Conta - Comanda ${myOrdersCommandNumber}`}
+                                            {myOrdersDestination === "mesa" ? `Conta - Mesa ${menu.tableNumber}` : `Conta - Comanda ${consultedCommandNumber}`}
                                         </h2>
                                     </div>
                                     <button onClick={() => setShowMyOrders(false)} style={{ background: "none", border: "none", color: "#a8a8b3", fontSize: "1.5rem", cursor: "pointer" }}>✕</button>
@@ -397,7 +433,7 @@ export function PublicOrderPage() {
                                     {myOrdersQuery.isLoading ? (
                                         <p style={{ textAlign: "center", color: "#a8a8b3", marginTop: 40 }}>Buscando pedidos...</p>
                                     ) : myOrdersQuery.isError ? (
-                                        <p style={{ textAlign: "center", color: "#ef4444", marginTop: 40 }}>Erro ao carregar conta.</p>
+                                        <p style={{ textAlign: "center", color: "#ef4444", marginTop: 40 }}>Nenhum consumo encontrado ou comanda inválida.</p>
                                     ) : myOrdersQuery.data?.length === 0 ? (
                                         <p style={{ textAlign: "center", color: "#a8a8b3", marginTop: 40 }}>Nenhum pedido feito ainda nesta conta.</p>
                                     ) : (
@@ -425,7 +461,7 @@ export function PublicOrderPage() {
 
                                 <div style={{ borderTop: "1px solid #323238", paddingTop: 16, marginTop: 16 }}>
                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                                        <span style={{ color: "#a8a8b3", fontSize: "1.1rem" }}>Total Parcial</span>
+                                        <span style={{ color: "#a8a8b3", fontSize: "1.1rem" }}>Total Geral</span>
                                         <span style={{ color: "#fff", fontSize: "1.4rem", fontWeight: "bold" }}>{formatBRL(totalConta)}</span>
                                     </div>
                                     <button
@@ -481,10 +517,10 @@ export function PublicOrderPage() {
                                 <div style={{ marginBottom: 24, animation: "fadeIn 0.2s" }}>
                                     <label style={{ display: "block", color: "#a8a8b3", marginBottom: 8, fontSize: "0.9rem" }}>Número da Comanda</label>
                                     <input
-                                        type="number"
+                                        type="text"
                                         value={commandNumber}
                                         onChange={(e) => setCommandNumber(e.target.value)}
-                                        placeholder="Ex: 15"
+                                        placeholder="Ex: 001"
                                         autoFocus
                                         style={{ width: "100%", padding: "14px 16px", borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", fontSize: "1rem", boxSizing: "border-box", outline: "none" }}
                                     />
@@ -525,7 +561,6 @@ export function PublicOrderPage() {
         </>
     );
 
-    // Função auxiliar para renderizar o card do produto de forma limpa
     function renderProductCard(item: MenuItemResponse) {
         const justSent = sentIds.includes(item.id);
 

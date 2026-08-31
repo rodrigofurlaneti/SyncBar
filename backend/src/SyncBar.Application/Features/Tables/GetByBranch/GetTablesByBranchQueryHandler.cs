@@ -16,18 +16,14 @@ internal sealed class GetTablesByBranchQueryHandler(
         return await ExecuteWithLogAsync(
             nameof(GetTablesByBranchQueryHandler),
             nameof(Handle),
-            null, // Substitua pelo IP presente no request, caso aplicável
+            null,
             async (userIdBox) =>
             {
-                // Se o seu request possuir o Id do usuário/sistema consultando, preencha:
-
                 var tables = await diningTableRepository.GetByBranchAsync(request.BranchId, cancellationToken);
-
                 IReadOnlyCollection<TableResponse> response = tables
                     .OrderBy(t => t.Number)
                     .Select(t => new TableResponse(t.Id, t.BranchId, t.TableStatusId, t.Number, t.Capacity))
                     .ToList();
-
                 return Result.Success(response);
             });
     }

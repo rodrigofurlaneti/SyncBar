@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Features.Catalog;
 
 namespace SyncBar.Application.Features.PublicOrdering.GetPublicMenu;

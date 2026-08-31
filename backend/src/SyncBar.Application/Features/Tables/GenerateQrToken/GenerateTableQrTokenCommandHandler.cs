@@ -27,15 +27,11 @@ internal sealed class GenerateTableQrTokenCommandHandler : BaseCommandHandler<Ge
             null, // Substitua pelo IP presente no request, caso aplicável
             async (userIdBox) =>
             {
-                // Se o seu request possuir o Id do usuário/gerente gerando o novo token, preencha:
-
                 var table = await _diningTableRepository.GetByIdForUpdateAsync(request.DiningTableId, cancellationToken);
                 if (table is null || !table.IsActive)
                     return Result.Failure<Guid>(new Error("DiningTable.NotFound", "Dining table not found."));
-
                 var token = table.GenerateQrToken();
                 await _unitOfWork.CommitAsync(cancellationToken);
-
                 return Result.Success(token);
             });
     }

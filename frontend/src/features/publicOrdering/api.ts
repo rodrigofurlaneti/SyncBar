@@ -1,6 +1,4 @@
 ﻿// Chamadas sem autenticação — o "segredo" é o token do QR Code da mesa.
-// Não usa lib/apiClient (que injeta Authorization e tenta refresh de sessão).
-
 import type { OrderItemComplementSelection, PublicMenuResponse } from "../../lib/types";
 
 async function publicApi<T>(path: string, init?: RequestInit): Promise<T> {
@@ -14,11 +12,46 @@ async function publicApi<T>(path: string, init?: RequestInit): Promise<T> {
             const body = (await response.json()) as { detail?: string; title?: string };
             detail = body.detail ?? body.title;
         } catch { /* corpo vazio */ }
-        throw new Error(detail ?? "Não foi possível completar o pedido.");
+        throw new Error(detail ?? "Não foi possível completar a operação.");
     }
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
 }
+
+export type PublicBillItemResponse = {
+    itemId: number;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    statusId: number;
+    requestedAt: string;
+    notes?: string | null;
+};
+
+export type PublicBillResponse = {
+    orderId: number;
+    tableNumber: string;
+    status: string;
+    subtotalAmount: number;
+    discountAmount: number;
+    serviceFeeAmount: number;
+    totalAmount: number;
+    items: PublicBillItemResponse[];
+};
+
+// Tipagem correspondente ao retorno do Swagger da comanda
+export type PublicComandaBillResponse = {
+    orderId: number;
+    comandaCode: string;
+    status: string;
+    subtotalAmount: number;
+    discountAmount: number;
+    serviceFeeAmount: number;
+    totalAmount: number;
+    creditLimitAmount?: number | null;
+    items: PublicBillItemResponse[];
+};
 
 export const getPublicMenu = (token: string): Promise<PublicMenuResponse> =>
     publicApi<PublicMenuResponse>(`/api/publicordering/${token}/menu`);
@@ -35,6 +68,8 @@ export const addPublicOrderItem = (
         body: JSON.stringify({ productId, quantity, notes, complements: complements ?? null }),
     });
 
-// Nova função para buscar as categorias utilizando o token da mesa do autoatendimento
-export const getPublicCategories = (token: string): Promise<{ id: number; name: string }[]> =>
-    publicApi<{ id: number; name: string }[]>(`/api/publicordering/${token}/categories`);
+export const getPublicBill = (token: string): Promise<PublicBillResponse> =>
+    publicApi<PublicBillResponse>(`/api/publicordering/${token}/bill`);
+
+export const getPublicComandaBill = (token: string, comandaCode: string): Promise<PublicComandaBillResponse> =>
+    publicApi<PublicComandaBillResponse>(`/api/publicordering/${token}/comandas/${comandaCode}/bill`);

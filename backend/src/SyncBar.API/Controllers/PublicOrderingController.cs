@@ -1,15 +1,17 @@
-﻿using System.Diagnostics;
-using System.Security.Claims;
-using System.Text.Json.Serialization;
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using SyncBar.Application.Features.Orders.AddItem;
 using SyncBar.Application.Features.PublicOrdering.AddItem;
+using SyncBar.Application.Features.PublicOrdering.GetPublicBill;
+using SyncBar.Application.Features.PublicOrdering.GetPublicComandaBill; // 1. Adicionado o using da nova feature
 using SyncBar.Application.Features.PublicOrdering.GetPublicMenu;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
+using System.Diagnostics;
+using System.Security.Claims;
+using System.Text.Json.Serialization;
 
 namespace SyncBar.API.Controllers;
 
@@ -25,6 +27,22 @@ public sealed class PublicOrderingController(
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PublicOrderingController), nameof(GetMenu), async () =>
         {
             var result = await Mediator.Send(new GetPublicMenuQuery(token), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpGet("{token:guid}/bill")]
+    public Task<IActionResult> GetBill(Guid token, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PublicOrderingController), nameof(GetBill), async () =>
+        {
+            var result = await Mediator.Send(new GetPublicBillQuery(token), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpGet("{token:guid}/comandas/{code}/bill")]
+    public Task<IActionResult> GetComandaBill(Guid token, string code, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PublicOrderingController), nameof(GetComandaBill), async () =>
+        {
+            var result = await Mediator.Send(new GetPublicComandaBillQuery(token, code), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 

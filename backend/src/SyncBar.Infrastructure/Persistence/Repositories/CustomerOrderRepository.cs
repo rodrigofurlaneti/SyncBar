@@ -54,4 +54,16 @@ internal sealed class CustomerOrderRepository(AppDbContext context) : ICustomerO
 
     public async Task AddAsync(CustomerOrder entity, CancellationToken cancellationToken = default)
         => await context.CustomerOrders.AddAsync(entity, cancellationToken);
+
+    public async Task<CustomerOrder?> GetOpenByComandaAsync(long comandaId, CancellationToken cancellationToken = default)
+    => await context.CustomerOrders
+        .AsNoTracking()
+        .Include(o => o.Items)
+        .FirstOrDefaultAsync(o => o.ComandaId == comandaId && o.ClosedAt == null && o.IsActive, cancellationToken);
+
+    public async Task<CustomerOrder?> GetOpenByTableAsync(long diningTableId, CancellationToken cancellationToken = default)
+            => await context.CustomerOrders
+                .AsNoTracking()
+                .Include(o => o.Items)
+                .FirstOrDefaultAsync(o => o.DiningTableId == diningTableId && o.ClosedAt == null && o.IsActive, cancellationToken);
 }

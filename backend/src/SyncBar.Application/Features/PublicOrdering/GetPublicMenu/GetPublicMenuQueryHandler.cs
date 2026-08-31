@@ -43,7 +43,7 @@ internal sealed class GetPublicMenuQueryHandler(
                     .Select(p => new MenuItemResponse(
                         p.Id,
                         p.CategoryId,
-                        categoryMap.TryGetValue(p.CategoryId, out var catName) ? catName : "Geral", // <-- NOME DA CATEGORIA
+                        categoryMap.TryGetValue(p.CategoryId, out var catName) ? catName : "Geral", 
                         p.UnitOfMeasureId,
                         p.Name,
                         p.Description,
