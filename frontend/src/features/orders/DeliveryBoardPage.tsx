@@ -89,7 +89,7 @@ interface ColumnDef {
     placeholder?: boolean;
 }
 
-const illustrationStyle = { width: 140, height: 140, objectFit: "contain" as const };
+const illustrationStyle = { height: 140, objectFit: "contain" as const };
 
 const FULL_COLUMNS: ColumnDef[] = [
     {
