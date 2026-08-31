@@ -40,7 +40,6 @@ export type PublicBillResponse = {
     items: PublicBillItemResponse[];
 };
 
-// Tipagem correspondente ao retorno do Swagger da comanda
 export type PublicComandaBillResponse = {
     orderId: number;
     comandaCode: string;
