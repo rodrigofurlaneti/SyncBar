@@ -21,7 +21,7 @@ namespace SyncBar.Application.Features.Orders.GetQrViewSetting
         public async Task<Result<QrViewSettingResponse>> Handle(GetQrViewSettingQuery request, CancellationToken cancellationToken)
         {
             var tables = await _diningTableRepository.GetByBranchAsync(request.BranchId, cancellationToken);
-            var isEnabled = tables.Any() ? tables.First().IsQrViewEnabled : true;
+            var isEnabled = tables.Count > 0 ? tables.First().IsQrViewEnabled : true;
             return Result.Success(new QrViewSettingResponse(isEnabled));
         }
     }

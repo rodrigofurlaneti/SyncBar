@@ -13,7 +13,6 @@ namespace SyncBar.Application.Features.Orders.SetQrViewEnabled
     {
         private readonly IDiningTableRepository _diningTableRepository;
         private readonly IUnitOfWork _unitOfWork;
-
         public SetQrViewEnabledCommandHandler(IDiningTableRepository diningTableRepository, IUnitOfWork unitOfWork)
         {
             _diningTableRepository = diningTableRepository;
@@ -23,7 +22,7 @@ namespace SyncBar.Application.Features.Orders.SetQrViewEnabled
         public async Task<Result> Handle(SetQrViewEnabledCommand request, CancellationToken cancellationToken)
         {
             var tables = await _diningTableRepository.GetByBranchAsync(request.BranchId, cancellationToken);
-            if (!tables.Any())
+            if (tables.Count == 0)
             {
                 return Result.Success();
             }
@@ -33,7 +32,6 @@ namespace SyncBar.Application.Features.Orders.SetQrViewEnabled
                 _diningTableRepository.Update(table);
             }
             await _unitOfWork.CommitAsync(cancellationToken);
-
             return Result.Success();
         }
     }
