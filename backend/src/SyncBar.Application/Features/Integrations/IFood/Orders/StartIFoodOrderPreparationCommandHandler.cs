@@ -1,31 +1,31 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Orders;
+namespace SyncBar.Application.Features.Integrations.Ifood.Orders;
 
-internal sealed class StartIFoodOrderPreparationCommandHandler : BaseCommandHandler<StartIFoodOrderPreparationCommand>
+internal sealed class StartIfoodOrderPreparationCommandHandler : BaseCommandHandler<StartIfoodOrderPreparationCommand>
 {
-    private readonly IIFoodOrderRepository _ifoodOrderRepository;
+    private readonly IIfoodOrderRepository _IfoodOrderRepository;
     private readonly IBranchRepository _branchRepository;
-    private readonly IIFoodTokenProvider _tokenProvider;
-    private readonly IIFoodOrderClient _orderClient;
+    private readonly IIfoodTokenProvider _tokenProvider;
+    private readonly IIfoodOrderClient _orderClient;
     private readonly TimeProvider _timeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
-    public StartIFoodOrderPreparationCommandHandler(
-        IIFoodOrderRepository ifoodOrderRepository,
+    public StartIfoodOrderPreparationCommandHandler(
+        IIfoodOrderRepository IfoodOrderRepository,
         IBranchRepository branchRepository,
-        IIFoodTokenProvider tokenProvider,
-        IIFoodOrderClient orderClient,
+        IIfoodTokenProvider tokenProvider,
+        IIfoodOrderClient orderClient,
         TimeProvider timeProviderCustom,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
     {
-        _ifoodOrderRepository = ifoodOrderRepository;
+        _IfoodOrderRepository = IfoodOrderRepository;
         _branchRepository = branchRepository;
         _tokenProvider = tokenProvider;
         _orderClient = orderClient;
@@ -33,33 +33,33 @@ internal sealed class StartIFoodOrderPreparationCommandHandler : BaseCommandHand
         _unitOfWork = unitOfWork;
     }
 
-    public override async Task<Result> Handle(StartIFoodOrderPreparationCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(StartIfoodOrderPreparationCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(StartIFoodOrderPreparationCommandHandler),
+            nameof(StartIfoodOrderPreparationCommandHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var ifoodOrder = await _ifoodOrderRepository.GetByIdForUpdateAsync(request.IFoodOrderId, cancellationToken);
-                if (ifoodOrder is null)
-                    return Result.Failure(new Error("IFoodOrder.NotFound", "Pedido iFood não encontrado."));
+                var IfoodOrder = await _IfoodOrderRepository.GetByIdForUpdateAsync(request.IfoodOrderId, cancellationToken);
+                if (IfoodOrder is null)
+                    return Result.Failure(new Error("IfoodOrder.NotFound", "Pedido Ifood não encontrado."));
 
-                var branch = await _branchRepository.GetByIdAsync(ifoodOrder.BranchId, cancellationToken);
+                var branch = await _branchRepository.GetByIdAsync(IfoodOrder.BranchId, cancellationToken);
                 if (branch is null)
                     return Result.Failure(new Error("Branch.NotFound", "Filial não encontrada."));
 
                 var token = await _tokenProvider.GetAccessTokenAsync(branch.CompanyId, cancellationToken);
                 if (token is null)
-                    return Result.Failure(new Error("IFood.NotConnected",
-                        "Não foi possível autenticar com o iFood — confira as credenciais em Integrações."));
+                    return Result.Failure(new Error("Ifood.NotConnected",
+                        "Não foi possível autenticar com o Ifood — confira as credenciais em Integrações."));
 
-                var actionResult = await _orderClient.StartPreparationAsync(token, ifoodOrder.IFoodOrderId, cancellationToken);
+                var actionResult = await _orderClient.StartPreparationAsync(token, IfoodOrder.IfoodOrderId, cancellationToken);
                 if (!actionResult.Success)
-                    return Result.Failure(new Error("IFood.ActionFailed", actionResult.ErrorMessage ?? "Falha ao iniciar preparo no iFood."));
+                    return Result.Failure(new Error("Ifood.ActionFailed", actionResult.ErrorMessage ?? "Falha ao iniciar preparo no Ifood."));
 
                 var now = _timeProviderCustom.GetLocalNow().DateTime;
-                ifoodOrder.SetStatus(IFoodOrderStatuses.PreparationStarted, now);
+                IfoodOrder.SetStatus(IfoodOrderStatuses.PreparationStarted, now);
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success();

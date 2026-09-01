@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood;
+namespace SyncBar.Application.Features.Integrations.Ifood;
 
-public sealed class SaveIFoodSettingsCommandValidator : AbstractValidator<SaveIFoodSettingsCommand>
+public sealed class SaveIfoodSettingsCommandValidator : AbstractValidator<SaveIfoodSettingsCommand>
 {
-    public SaveIFoodSettingsCommandValidator()
+    public SaveIfoodSettingsCommandValidator()
     {
         RuleFor(x => x.CompanyId).GreaterThan(0);
         RuleFor(x => x.ClientId).MaximumLength(200);
@@ -15,6 +15,6 @@ public sealed class SaveIFoodSettingsCommandValidator : AbstractValidator<SaveIF
             .When(x => x.Enabled)
             .WithMessage("Informe o Client ID antes de ativar a integração.");
 
-        RuleFor(x => x.IFoodCustomerId).MaximumLength(100);
+        RuleFor(x => x.IfoodCustomerId).MaximumLength(100);
     }
 }

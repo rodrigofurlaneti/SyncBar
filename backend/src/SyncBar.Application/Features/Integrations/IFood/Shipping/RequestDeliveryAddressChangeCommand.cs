@@ -1,9 +1,9 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
 public sealed record RequestDeliveryAddressChangeCommand(
-    long IFoodOrderId,
+    long IfoodOrderId,
     string StreetNumber,
     string StreetName,
     string? Complement,

@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.Categories;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.Categories;
 
-public sealed class EditIFoodCategoryCommandValidator : AbstractValidator<EditIFoodCategoryCommand>
+public sealed class EditIfoodCategoryCommandValidator : AbstractValidator<EditIfoodCategoryCommand>
 {
-    public EditIFoodCategoryCommandValidator()
+    public EditIfoodCategoryCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.CatalogId).NotEmpty();

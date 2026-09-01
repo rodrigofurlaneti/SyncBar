@@ -13,7 +13,7 @@ namespace SyncBar.Domain.Entities
         public long? EmployeeId { get; private set; }
         public decimal Quantity { get; private set; }
         public decimal UnitPrice { get; private set; }
-        public decimal DiscountAmount { get; private set; }
+        public decimal DiscountAmount { get; }
         public decimal TotalAmount { get; private set; }
         public string? Notes { get; private set; }
         public DateTime? SentToKitchenAt { get; private set; }

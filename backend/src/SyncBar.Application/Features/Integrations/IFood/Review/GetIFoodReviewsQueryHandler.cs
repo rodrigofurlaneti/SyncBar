@@ -1,34 +1,34 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Review;
+namespace SyncBar.Application.Features.Integrations.Ifood.Review;
 
-internal sealed class GetIFoodReviewsQueryHandler(
+internal sealed class GetIfoodReviewsQueryHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodReviewClient reviewClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodReviewClient reviewClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodReviewsQuery, IFoodReviewListResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodReviewsQuery, IfoodReviewListResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodReviewListResponse>> Handle(
-        GetIFoodReviewsQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodReviewListResponse>> Handle(
+        GetIfoodReviewsQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodReviewsQueryHandler),
+            nameof(GetIfoodReviewsQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodReviewListResponse>(resolved.Error);
+                    return Result.Failure<IfoodReviewListResponse>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
                 var result = await reviewClient.GetReviewsAsync(
@@ -36,12 +36,12 @@ internal sealed class GetIFoodReviewsQueryHandler(
                     request.DateFrom, request.DateTo, request.Sort, request.SortBy, cancellationToken);
 
                 var items = result.Reviews
-                    .Select(r => new IFoodReviewListItemResponse(
+                    .Select(r => new IfoodReviewListItemResponse(
                         r.Id, r.CreatedAt, r.Discarded, r.Published, r.Comment, r.Moderated, r.ModerationStatus, r.Reply, r.Score,
-                        r.Order is null ? null : new IFoodReviewOrderResponse(r.Order.CreatedAt, r.Order.Id, r.Order.ShortId)))
+                        r.Order is null ? null : new IfoodReviewOrderResponse(r.Order.CreatedAt, r.Order.Id, r.Order.ShortId)))
                     .ToList();
 
-                return Result.Success(new IFoodReviewListResponse(result.Page, result.Size, result.Total, result.PageCount, items));
+                return Result.Success(new IfoodReviewListResponse(result.Page, result.Size, result.Total, result.PageCount, items));
             });
     }
 }

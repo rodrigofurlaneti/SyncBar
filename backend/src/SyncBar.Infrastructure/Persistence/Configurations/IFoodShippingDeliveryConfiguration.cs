@@ -1,14 +1,14 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SyncBar.Domain.Entities;
 
 namespace SyncBar.Infrastructure.Persistence.Configurations;
 
-internal sealed class IFoodShippingDeliveryConfiguration : IEntityTypeConfiguration<IFoodShippingDelivery>
+internal sealed class IfoodShippingDeliveryConfiguration : IEntityTypeConfiguration<IfoodShippingDelivery>
 {
-    public void Configure(EntityTypeBuilder<IFoodShippingDelivery> builder)
+    public void Configure(EntityTypeBuilder<IfoodShippingDelivery> builder)
     {
-        builder.ToTable("IFoodShippingDelivery");
+        builder.ToTable("IfoodShippingDelivery");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
@@ -27,7 +27,7 @@ internal sealed class IFoodShippingDeliveryConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.Reference).HasMaxLength(200);
         builder.Property(x => x.MerchantFee).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.QuoteId).HasMaxLength(100).IsRequired();
-        builder.Property(x => x.IFoodDeliveryId).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.IfoodDeliveryId).HasMaxLength(100).IsRequired();
         builder.Property(x => x.TrackingUrl).HasMaxLength(500);
         builder.Property(x => x.Status).HasMaxLength(30).IsRequired();
         builder.Property(x => x.CancellationReason).HasMaxLength(300);
@@ -36,10 +36,10 @@ internal sealed class IFoodShippingDeliveryConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
 
-        builder.HasIndex(x => x.BranchId).HasDatabaseName("IX_IFoodShippingDelivery_BranchId");
-        builder.HasIndex(x => x.IFoodDeliveryId).IsUnique().HasDatabaseName("UQ_IFoodShippingDelivery_IFoodDeliveryId");
+        builder.HasIndex(x => x.BranchId).HasDatabaseName("IX_IfoodShippingDelivery_BranchId");
+        builder.HasIndex(x => x.IfoodDeliveryId).IsUnique().HasDatabaseName("UQ_IfoodShippingDelivery_IfoodDeliveryId");
 
         builder.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId)
-            .HasConstraintName("FK_IFoodShippingDelivery_Branch").OnDelete(DeleteBehavior.Restrict);
+            .HasConstraintName("FK_IfoodShippingDelivery_Branch").OnDelete(DeleteBehavior.Restrict);
     }
 }

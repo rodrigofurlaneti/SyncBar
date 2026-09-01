@@ -1,9 +1,9 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
 // Um grupo de opções vinculável a um ou mais Products (ex.: "Escolha o ponto da carne",
-// "Escolha uma bebida", "Adicionais") — espelha optionGroup do módulo Catalog do iFood.
+// "Escolha uma bebida", "Adicionais") — espelha optionGroup do módulo Catalog do Ifood.
 // Dono de uma coleção de Complement (mesmo padrão de CustomerOrder dono de OrderItem).
 // MinSelection/MaxSelection controlam quantas opções o cliente pode/deve escolher deste
 // grupo (ex.: MinSelection 1, MaxSelection 1 = obrigatório escolher exatamente uma).

@@ -1,27 +1,27 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Financial;
+namespace SyncBar.Application.Features.Integrations.Ifood.Financial;
 
-internal sealed class GetIFoodFinancialSummaryQueryHandler(
-    IIFoodFinancialEventRepository financialEventRepository,
-    IIFoodSettlementRepository settlementRepository,
-    IIFoodOrderRepository ifoodOrderRepository,
+internal sealed class GetIfoodFinancialSummaryQueryHandler(
+    IIfoodFinancialEventRepository financialEventRepository,
+    IIfoodSettlementRepository settlementRepository,
+    IIfoodOrderRepository IfoodOrderRepository,
     TimeProvider timeProviderCustom,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodFinancialSummaryQuery, IFoodFinancialSummaryResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodFinancialSummaryQuery, IfoodFinancialSummaryResponse>(logRepository, unitOfWork)
 {
     // Tolerância de discrepância recomendada pela doc oficial (arredondamentos entre os
     // lançamentos individuais e o repasse consolidado são esperados).
     private const decimal DiscrepancyTolerancePercent = 0.0001m; // 0,01%
 
-    public override async Task<Result<IFoodFinancialSummaryResponse>> Handle(
-        GetIFoodFinancialSummaryQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodFinancialSummaryResponse>> Handle(
+        GetIfoodFinancialSummaryQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodFinancialSummaryQueryHandler),
+            nameof(GetIfoodFinancialSummaryQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
@@ -33,23 +33,23 @@ internal sealed class GetIFoodFinancialSummaryQueryHandler(
                 var events = await financialEventRepository.GetByBranchAndPeriodAsync(request.BranchId, periodStart, periodEnd, cancellationToken);
                 var settlements = await settlementRepository.GetByBranchAndPeriodAsync(request.BranchId, periodStart, periodEnd, cancellationToken);
 
-                var eventResponses = new List<IFoodFinancialEventItemResponse>();
+                var eventResponses = new List<IfoodFinancialEventItemResponse>();
                 foreach (var evt in events)
                 {
                     long? linkedOrderId = null;
                     if (evt.ReferenceType == "ORDER" && !string.IsNullOrWhiteSpace(evt.ReferenceId))
                     {
-                        var linkedOrder = await ifoodOrderRepository.GetByIFoodOrderIdAsync(evt.ReferenceId, cancellationToken);
+                        var linkedOrder = await IfoodOrderRepository.GetByIfoodOrderIdAsync(evt.ReferenceId, cancellationToken);
                         linkedOrderId = linkedOrder?.Id;
                     }
 
-                    eventResponses.Add(new IFoodFinancialEventItemResponse(
+                    eventResponses.Add(new IfoodFinancialEventItemResponse(
                         evt.Id, evt.Name, evt.Description, evt.Amount, evt.HasTransferImpact,
                         evt.CompetenceDate, evt.ReferenceType, evt.ReferenceId, linkedOrderId));
                 }
 
                 var settlementResponses = settlements
-                    .Select(s => new IFoodSettlementItemResponse(s.Id, s.Type, s.Product, s.Amount, s.Status, s.PaymentDate))
+                    .Select(s => new IfoodSettlementItemResponse(s.Id, s.Type, s.Product, s.Amount, s.Status, s.PaymentDate))
                     .ToList();
 
                 var totalEventsWithImpact = events.Where(e => e.HasTransferImpact).Sum(e => e.Amount);
@@ -61,7 +61,7 @@ internal sealed class GetIFoodFinancialSummaryQueryHandler(
                 var referenceAmount = Math.Max(Math.Abs(totalEventsWithImpact), Math.Abs(totalSettlements));
                 var hasDiscrepancy = referenceAmount > 0 && (discrepancy / referenceAmount) > DiscrepancyTolerancePercent;
 
-                var response = new IFoodFinancialSummaryResponse(
+                var response = new IfoodFinancialSummaryResponse(
                     periodStart, periodEnd, totalEventsWithImpact, totalSettlements, hasDiscrepancy, discrepancy,
                     eventResponses, settlementResponses);
 

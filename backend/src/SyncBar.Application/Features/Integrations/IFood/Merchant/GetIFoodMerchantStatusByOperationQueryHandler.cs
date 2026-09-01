@@ -1,44 +1,44 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Merchant;
+namespace SyncBar.Application.Features.Integrations.Ifood.Merchant;
 
-internal sealed class GetIFoodMerchantStatusByOperationQueryHandler(
+internal sealed class GetIfoodMerchantStatusByOperationQueryHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodMerchantClient merchantClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodMerchantClient merchantClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodMerchantStatusByOperationQuery, IFoodMerchantStatusByOperationResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodMerchantStatusByOperationQuery, IfoodMerchantStatusByOperationResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodMerchantStatusByOperationResponse>> Handle(
-        GetIFoodMerchantStatusByOperationQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodMerchantStatusByOperationResponse>> Handle(
+        GetIfoodMerchantStatusByOperationQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodMerchantStatusByOperationQueryHandler),
+            nameof(GetIfoodMerchantStatusByOperationQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodMerchantStatusByOperationResponse>(resolved.Error);
+                    return Result.Failure<IfoodMerchantStatusByOperationResponse>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
                 var status = await merchantClient.GetStatusByOperationAsync(token, merchantId, request.Operation, cancellationToken);
                 if (!status.Success)
-                    return Result.Failure<IFoodMerchantStatusByOperationResponse>(new Error("IFoodMerchant.StatusByOperationFailed", status.ErrorMessage ?? "Falha ao buscar o status da operação no iFood."));
+                    return Result.Failure<IfoodMerchantStatusByOperationResponse>(new Error("IfoodMerchant.StatusByOperationFailed", status.ErrorMessage ?? "Falha ao buscar o status da operação no Ifood."));
 
                 var validations = status.Validations
-                    .Select(v => new IFoodMerchantValidationResponse(v.Id, v.State, v.Message))
+                    .Select(v => new IfoodMerchantValidationResponse(v.Id, v.State, v.Message))
                     .ToList();
 
-                return Result.Success(new IFoodMerchantStatusByOperationResponse(
+                return Result.Success(new IfoodMerchantStatusByOperationResponse(
                     status.Operation, status.SalesChannel, status.Available, status.State, validations));
             });
     }

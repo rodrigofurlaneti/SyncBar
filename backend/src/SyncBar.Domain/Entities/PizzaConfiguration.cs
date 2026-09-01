@@ -1,4 +1,4 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
@@ -11,6 +11,9 @@ namespace SyncBar.Domain.Entities;
 // Product com PizzaConfiguration, é ignorado no lançamento do pedido (ver AddPizzaOrderItem).
 public sealed class PizzaConfiguration : AggregateRoot
 {
+    private const string SizeNotFoundErrorCode = "PizzaConfiguration.SizeNotFound";
+    private const string SizeNotFoundMessage = "Size not found.";
+
     private readonly List<PizzaSize> _sizes = [];
     private readonly List<PizzaCrust> _crusts = [];
     private readonly List<PizzaEdge> _edges = [];
@@ -55,7 +58,7 @@ public sealed class PizzaConfiguration : AggregateRoot
     {
         var size = _sizes.FirstOrDefault(s => s.Id == pizzaSizeId && s.IsActive);
         if (size is null)
-            return Result.Failure(new Error("PizzaConfiguration.SizeNotFound", "Size not found."));
+            return Result.Failure(new Error(SizeNotFoundErrorCode, SizeNotFoundMessage));
 
         var result = size.UpdateDetails(name, slices, acceptedFractions, displayOrder);
         if (result.IsFailure)
@@ -69,7 +72,7 @@ public sealed class PizzaConfiguration : AggregateRoot
     {
         var size = _sizes.FirstOrDefault(s => s.Id == pizzaSizeId && s.IsActive);
         if (size is null)
-            return Result.Failure(new Error("PizzaConfiguration.SizeNotFound", "Size not found."));
+            return Result.Failure(new Error(SizeNotFoundErrorCode, SizeNotFoundMessage));
 
         size.Deactivate();
         foreach (var price in _flavorPrices.Where(p => p.IsActive && p.PizzaSizeId == pizzaSizeId))
@@ -128,7 +131,7 @@ public sealed class PizzaConfiguration : AggregateRoot
     public Result<PizzaFlavorPrice> SetFlavorPrice(long pizzaFlavorId, long pizzaSizeId, decimal price)
     {
         if (_sizes.All(s => s.Id != pizzaSizeId || !s.IsActive))
-            return Result.Failure<PizzaFlavorPrice>(new Error("PizzaConfiguration.SizeNotFound", "Size not found."));
+            return Result.Failure<PizzaFlavorPrice>(new Error(SizeNotFoundErrorCode, SizeNotFoundMessage));
 
         var existing = _flavorPrices.FirstOrDefault(p =>
             p.IsActive && p.PizzaFlavorId == pizzaFlavorId && p.PizzaSizeId == pizzaSizeId);
@@ -164,7 +167,7 @@ public sealed class PizzaConfiguration : AggregateRoot
         return Result.Success();
     }
 
-    // Regra de negócio (decisão do SyncBar, não imposta pelo iFood — a API só guarda o preço por
+    // Regra de negócio (decisão do SyncBar, não imposta pelo Ifood — a API só guarda o preço por
     // sabor×tamanho, quem decide como cobrar um meio-a-meio é o lojista): o preço da pizza
     // fracionada é o do sabor MAIS CARO entre os escolhidos, na convenção mais comum entre
     // pizzarias brasileiras. Ver PizzaConfiguration.CalculateUnitPrice.
@@ -172,7 +175,7 @@ public sealed class PizzaConfiguration : AggregateRoot
     {
         var size = _sizes.FirstOrDefault(s => s.Id == pizzaSizeId && s.IsActive);
         if (size is null)
-            return Result.Failure<decimal>(new Error("PizzaConfiguration.SizeNotFound", "Size not found."));
+            return Result.Failure<decimal>(new Error(SizeNotFoundErrorCode, SizeNotFoundMessage));
 
         var flavorSelectionValidation = ValidateFlavorSelection(size, pizzaFlavorIds);
         if (flavorSelectionValidation.IsFailure)

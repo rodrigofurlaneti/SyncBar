@@ -79,7 +79,7 @@ namespace SyncBar.Tests.Domain.Entities
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void Create_WithEmptyOrWhitespaceMessage_ShouldReturnFailureResult(string invalidMessage)
+        public void Create_WithEmptyOrWhitespaceMessage_ShouldReturnFailureResult(string? invalidMessage)
         {
             // Act
             var result = WaiterMessage.Create(1, 10, null, 5, invalidMessage);

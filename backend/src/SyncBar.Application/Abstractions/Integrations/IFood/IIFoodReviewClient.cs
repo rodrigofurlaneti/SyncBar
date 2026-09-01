@@ -1,8 +1,8 @@
-namespace SyncBar.Application.Abstractions.Integrations.IFood;
+﻿namespace SyncBar.Application.Abstractions.Integrations.Ifood;
 
-public sealed record IFoodReviewOrderDto(DateTime? CreatedAt, string? Id, string? ShortId);
+public sealed record IfoodReviewOrderDto(DateTime? CreatedAt, string? Id, string? ShortId);
 
-public sealed record IFoodReviewListItemDto(
+public sealed record IfoodReviewListItemDto(
     string Id,
     DateTime? CreatedAt,
     bool Discarded,
@@ -13,16 +13,16 @@ public sealed record IFoodReviewListItemDto(
     string? Reply,
     double? Score,
     string? SurveyId,
-    IFoodReviewOrderDto? Order);
+    IfoodReviewOrderDto? Order);
 
-public sealed record IFoodReviewListResultDto(
-    long Page, long Size, long Total, long PageCount, IReadOnlyCollection<IFoodReviewListItemDto> Reviews);
+public sealed record IfoodReviewListResultDto(
+    long Page, long Size, long Total, long PageCount, IReadOnlyCollection<IfoodReviewListItemDto> Reviews);
 
-public sealed record IFoodReviewAnswerOptionDto(string Id, string? Title);
+public sealed record IfoodReviewAnswerOptionDto(string Id, string? Title);
 
-public sealed record IFoodReviewQuestionDto(string Id, string? Type, string? Title, IReadOnlyCollection<IFoodReviewAnswerOptionDto> Answers);
+public sealed record IfoodReviewQuestionDto(string Id, string? Type, string? Title, IReadOnlyCollection<IfoodReviewAnswerOptionDto> Answers);
 
-public sealed record IFoodReviewDetailDto(
+public sealed record IfoodReviewDetailDto(
     string Id,
     DateTime? CreatedAt,
     bool Discarded,
@@ -34,34 +34,34 @@ public sealed record IFoodReviewDetailDto(
     string? Reply,
     double? Score,
     string? SurveyId,
-    IFoodReviewOrderDto? Order,
-    IReadOnlyCollection<IFoodReviewQuestionDto> Questions);
+    IfoodReviewOrderDto? Order,
+    IReadOnlyCollection<IfoodReviewQuestionDto> Questions);
 
-public sealed record IFoodReviewReplyResultDto(DateTime? CreatedAt, string Text, string ReviewId);
+public sealed record IfoodReviewReplyResultDto(DateTime? CreatedAt, string Text, string ReviewId);
 
-public sealed record IFoodReviewSummaryDto(double? Score, long TotalReviewsCount, long ValidReviewsCount);
+public sealed record IfoodReviewSummaryDto(double? Score, long TotalReviewsCount, long ValidReviewsCount);
 
 /// <summary>
-/// Abstração para o módulo Review do iFood (Fase 9) — review/v1.0, 4 endpoints, confirmados
+/// Abstração para o módulo Review do Ifood (Fase 9) — review/v1.0, 4 endpoints, confirmados
 /// campo-a-campo contra o texto/response de exemplo da coleção Postman oficial "Merchant API —
-/// Review". Implementação real: Infrastructure.Integrations.IFood.IFoodReviewClient.
+/// Review". Implementação real: Infrastructure.Integrations.Ifood.IfoodReviewClient.
 ///
 /// Só o v1 foi implementado (v2 tem os mesmos 4 paths, mas devolve "replies[]" em vez de "reply"
 /// singular, mais os campos visibility/version — ficou fora do escopo de hoje, ver
-/// ifood-integration-status.md).
+/// Ifood-integration-status.md).
 /// </summary>
-public interface IIFoodReviewClient
+public interface IIfoodReviewClient
 {
-    Task<IFoodReviewListResultDto> GetReviewsAsync(
+    Task<IfoodReviewListResultDto> GetReviewsAsync(
         string accessToken, string merchantId, int page, int pageSize, bool addCount,
         DateTime? dateFrom, DateTime? dateTo, string sort, string sortBy, CancellationToken cancellationToken = default);
 
-    Task<IFoodReviewDetailDto?> GetReviewByIdAsync(
+    Task<IfoodReviewDetailDto?> GetReviewByIdAsync(
         string accessToken, string merchantId, string reviewId, CancellationToken cancellationToken = default);
 
-    Task<IFoodReviewReplyResultDto> ReplyReviewAsync(
+    Task<IfoodReviewReplyResultDto> ReplyReviewAsync(
         string accessToken, string merchantId, string reviewId, string text, CancellationToken cancellationToken = default);
 
-    Task<IFoodReviewSummaryDto?> GetSummaryAsync(
+    Task<IfoodReviewSummaryDto?> GetSummaryAsync(
         string accessToken, string merchantId, CancellationToken cancellationToken = default);
 }

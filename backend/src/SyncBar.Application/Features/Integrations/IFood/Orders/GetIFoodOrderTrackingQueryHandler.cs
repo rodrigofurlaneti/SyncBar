@@ -1,46 +1,46 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Orders;
+namespace SyncBar.Application.Features.Integrations.Ifood.Orders;
 
-internal sealed class GetIFoodOrderTrackingQueryHandler(
-    IIFoodOrderRepository ifoodOrderRepository,
+internal sealed class GetIfoodOrderTrackingQueryHandler(
+    IIfoodOrderRepository IfoodOrderRepository,
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodOrderClient orderClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodOrderClient orderClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodOrderTrackingQuery, IFoodOrderTrackingResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodOrderTrackingQuery, IfoodOrderTrackingResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodOrderTrackingResponse>> Handle(
-        GetIFoodOrderTrackingQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodOrderTrackingResponse>> Handle(
+        GetIfoodOrderTrackingQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodOrderTrackingQueryHandler),
+            nameof(GetIfoodOrderTrackingQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var ifoodOrder = await ifoodOrderRepository.GetByIdForUpdateAsync(request.IFoodOrderId, cancellationToken);
-                if (ifoodOrder is null)
-                    return Result.Failure<IFoodOrderTrackingResponse>(new Error("IFoodOrder.NotFound", "Pedido iFood não encontrado."));
+                var IfoodOrder = await IfoodOrderRepository.GetByIdForUpdateAsync(request.IfoodOrderId, cancellationToken);
+                if (IfoodOrder is null)
+                    return Result.Failure<IfoodOrderTrackingResponse>(new Error("IfoodOrder.NotFound", "Pedido Ifood não encontrado."));
 
-                var branch = await branchRepository.GetByIdAsync(ifoodOrder.BranchId, cancellationToken);
+                var branch = await branchRepository.GetByIdAsync(IfoodOrder.BranchId, cancellationToken);
                 if (branch is null)
-                    return Result.Failure<IFoodOrderTrackingResponse>(new Error("Branch.NotFound", "Filial não encontrada."));
+                    return Result.Failure<IfoodOrderTrackingResponse>(new Error("Branch.NotFound", "Filial não encontrada."));
 
                 var token = await tokenProvider.GetAccessTokenAsync(branch.CompanyId, cancellationToken);
                 if (token is null)
-                    return Result.Failure<IFoodOrderTrackingResponse>(new Error("IFood.NotConnected",
-                        "Não foi possível autenticar com o iFood — confira as credenciais em Integrações."));
+                    return Result.Failure<IfoodOrderTrackingResponse>(new Error("Ifood.NotConnected",
+                        "Não foi possível autenticar com o Ifood — confira as credenciais em Integrações."));
 
-                var tracking = await orderClient.GetOrderTrackingAsync(token, ifoodOrder.IFoodOrderId, cancellationToken);
+                var tracking = await orderClient.GetOrderTrackingAsync(token, IfoodOrder.IfoodOrderId, cancellationToken);
                 if (tracking is null)
-                    return Result.Success(new IFoodOrderTrackingResponse(null, null, null, null, null));
+                    return Result.Success(new IfoodOrderTrackingResponse(null, null, null, null, null));
 
-                return Result.Success(new IFoodOrderTrackingResponse(
+                return Result.Success(new IfoodOrderTrackingResponse(
                     tracking.Latitude, tracking.Longitude, tracking.ExpectedDelivery, tracking.DeliveryEtaEndMinutes, tracking.PickupEtaStartMinutes));
             });
     }

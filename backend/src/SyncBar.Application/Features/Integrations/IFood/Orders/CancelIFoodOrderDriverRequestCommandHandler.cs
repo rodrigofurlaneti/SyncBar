@@ -1,43 +1,43 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Orders;
+namespace SyncBar.Application.Features.Integrations.Ifood.Orders;
 
-internal sealed class CancelIFoodOrderDriverRequestCommandHandler(
-    IIFoodOrderRepository ifoodOrderRepository,
+internal sealed class CancelIfoodOrderDriverRequestCommandHandler(
+    IIfoodOrderRepository IfoodOrderRepository,
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodOrderClient orderClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodOrderClient orderClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CancelIFoodOrderDriverRequestCommand>(logRepository, unitOfWork)
+    : BaseCommandHandler<CancelIfoodOrderDriverRequestCommand>(logRepository, unitOfWork)
 {
-    public override async Task<Result> Handle(CancelIFoodOrderDriverRequestCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(CancelIfoodOrderDriverRequestCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(CancelIFoodOrderDriverRequestCommandHandler),
+            nameof(CancelIfoodOrderDriverRequestCommandHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var ifoodOrder = await ifoodOrderRepository.GetByIdForUpdateAsync(request.IFoodOrderId, cancellationToken);
-                if (ifoodOrder is null)
-                    return Result.Failure(new Error("IFoodOrder.NotFound", "Pedido iFood não encontrado."));
+                var IfoodOrder = await IfoodOrderRepository.GetByIdForUpdateAsync(request.IfoodOrderId, cancellationToken);
+                if (IfoodOrder is null)
+                    return Result.Failure(new Error("IfoodOrder.NotFound", "Pedido Ifood não encontrado."));
 
-                var branch = await branchRepository.GetByIdAsync(ifoodOrder.BranchId, cancellationToken);
+                var branch = await branchRepository.GetByIdAsync(IfoodOrder.BranchId, cancellationToken);
                 if (branch is null)
                     return Result.Failure(new Error("Branch.NotFound", "Filial não encontrada."));
 
                 var token = await tokenProvider.GetAccessTokenAsync(branch.CompanyId, cancellationToken);
                 if (token is null)
-                    return Result.Failure(new Error("IFood.NotConnected",
-                        "Não foi possível autenticar com o iFood — confira as credenciais em Integrações."));
+                    return Result.Failure(new Error("Ifood.NotConnected",
+                        "Não foi possível autenticar com o Ifood — confira as credenciais em Integrações."));
 
-                var result = await orderClient.CancelOrderRequestDriverAsync(token, ifoodOrder.IFoodOrderId, cancellationToken);
+                var result = await orderClient.CancelOrderRequestDriverAsync(token, IfoodOrder.IfoodOrderId, cancellationToken);
                 if (!result.Success)
-                    return Result.Failure(new Error("IFood.ActionFailed", result.ErrorMessage ?? "Falha ao cancelar a solicitação de entregador no iFood."));
+                    return Result.Failure(new Error("Ifood.ActionFailed", result.ErrorMessage ?? "Falha ao cancelar a solicitação de entregador no Ifood."));
 
                 return Result.Success();
             });

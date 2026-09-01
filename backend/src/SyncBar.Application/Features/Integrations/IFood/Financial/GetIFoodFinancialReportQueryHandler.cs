@@ -1,43 +1,43 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Financial;
+namespace SyncBar.Application.Features.Integrations.Ifood.Financial;
 
-internal sealed class GetIFoodFinancialReportQueryHandler(
+internal sealed class GetIfoodFinancialReportQueryHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodFinancialClient financialClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodFinancialClient financialClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodFinancialReportQuery, IFoodFinancialReportResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodFinancialReportQuery, IfoodFinancialReportResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodFinancialReportResponse>> Handle(
-        GetIFoodFinancialReportQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodFinancialReportResponse>> Handle(
+        GetIfoodFinancialReportQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodFinancialReportQueryHandler),
+            nameof(GetIfoodFinancialReportQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodFinancialReportResponse>(resolved.Error);
+                    return Result.Failure<IfoodFinancialReportResponse>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
 
-                IFoodFinancialReportResultDto result;
-                if (request.ReportType == IFoodFinancialReportType.AnticipationsV3)
+                IfoodFinancialReportResultDto result;
+                if (request.ReportType == IfoodFinancialReportType.AnticipationsV3)
                 {
                     result = await financialClient.GetAnticipationsAsync(token, merchantId, cancellationToken);
                 }
-                else if (request.ReportType == IFoodFinancialReportType.SalesV3)
+                else if (request.ReportType == IfoodFinancialReportType.SalesV3)
                 {
                     var end = request.RangeEnd ?? DateTime.Today;
                     var start = request.RangeStart ?? end.AddDays(-30);
@@ -49,7 +49,7 @@ internal sealed class GetIFoodFinancialReportQueryHandler(
                         token, merchantId, request.ReportType, request.PeriodId, request.RangeStart, request.RangeEnd, cancellationToken);
                 }
 
-                return Result.Success(new IFoodFinancialReportResponse(
+                return Result.Success(new IfoodFinancialReportResponse(
                     request.ReportType.ToString(), result.RawItems.Count, result.RawItems));
             });
     }

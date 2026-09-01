@@ -1,33 +1,33 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Infrastructure.Persistence.Repositories;
 
-internal sealed class IFoodLogisticsDeliveryRepository(AppDbContext context) : IIFoodLogisticsDeliveryRepository
+internal sealed class IfoodLogisticsDeliveryRepository(AppDbContext context) : IIfoodLogisticsDeliveryRepository
 {
-    public async Task<IFoodLogisticsDelivery?> GetByIFoodOrderIdAsync(long ifoodOrderId, CancellationToken cancellationToken = default)
-        => await context.IFoodLogisticsDeliveries.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.IFoodOrderId == ifoodOrderId, cancellationToken);
+    public async Task<IfoodLogisticsDelivery?> GetByIfoodOrderIdAsync(long IfoodOrderId, CancellationToken cancellationToken = default)
+        => await context.IfoodLogisticsDeliveries.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.IfoodOrderId == IfoodOrderId, cancellationToken);
 
-    public async Task<IFoodLogisticsDelivery?> GetByIFoodOrderIdForUpdateAsync(long ifoodOrderId, CancellationToken cancellationToken = default)
-        => await context.IFoodLogisticsDeliveries
-            .FirstOrDefaultAsync(x => x.IFoodOrderId == ifoodOrderId, cancellationToken);
+    public async Task<IfoodLogisticsDelivery?> GetByIfoodOrderIdForUpdateAsync(long IfoodOrderId, CancellationToken cancellationToken = default)
+        => await context.IfoodLogisticsDeliveries
+            .FirstOrDefaultAsync(x => x.IfoodOrderId == IfoodOrderId, cancellationToken);
 
-    // "Abertas" é definido pelo status do PEDIDO (IFoodOrder), não da entrega em si — uma entrega
+    // "Abertas" é definido pelo status do PEDIDO (IfoodOrder), não da entrega em si — uma entrega
     // com DELIVERY_CODE_VERIFIED continua aparecendo (com selo "Entrega concluída") enquanto o
-    // pedido ainda não foi concluído/cancelado no lado do iFood. Isso evita que a entrega "suma"
+    // pedido ainda não foi concluído/cancelado no lado do Ifood. Isso evita que a entrega "suma"
     // da tela logo após o código ser verificado e o botão "Atribuir entregador" reaparecer por
     // engano (o handler já bloqueia reatribuição, mas é melhor a tela nem oferecer a ação).
-    public async Task<IReadOnlyCollection<IFoodLogisticsDelivery>> GetOpenByBranchAsync(long branchId, CancellationToken cancellationToken = default)
-        => await context.IFoodLogisticsDeliveries.AsNoTracking()
+    public async Task<IReadOnlyCollection<IfoodLogisticsDelivery>> GetOpenByBranchAsync(long branchId, CancellationToken cancellationToken = default)
+        => await context.IfoodLogisticsDeliveries.AsNoTracking()
             .Where(x => x.BranchId == branchId && x.IsActive
-                && context.IFoodOrders.Any(io => io.Id == x.IFoodOrderId
-                    && io.Status != IFoodOrderStatuses.Concluded && io.Status != IFoodOrderStatuses.Cancelled))
+                && context.IfoodOrders.Any(io => io.Id == x.IfoodOrderId
+                    && io.Status != IfoodOrderStatuses.Concluded && io.Status != IfoodOrderStatuses.Cancelled))
             .OrderBy(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
 
-    public async Task AddAsync(IFoodLogisticsDelivery entity, CancellationToken cancellationToken = default)
-        => await context.IFoodLogisticsDeliveries.AddAsync(entity, cancellationToken);
+    public async Task AddAsync(IfoodLogisticsDelivery entity, CancellationToken cancellationToken = default)
+        => await context.IfoodLogisticsDeliveries.AddAsync(entity, cancellationToken);
 }

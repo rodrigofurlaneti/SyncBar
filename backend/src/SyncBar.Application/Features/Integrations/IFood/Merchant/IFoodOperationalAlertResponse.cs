@@ -1,10 +1,10 @@
-namespace SyncBar.Application.Features.Integrations.IFood.Merchant;
+﻿namespace SyncBar.Application.Features.Integrations.Ifood.Merchant;
 
-public sealed record IFoodOperationalAlertResponse(
+public sealed record IfoodOperationalAlertResponse(
     Guid Id,
     long BranchId,
     string BranchName,
     string Title,
     string Message,
-    string Severity, // "Info" | "Warning" | "Critical" — enum serializado como string, ver IFoodOperationalAlertSeverity
+    string Severity, // "Info" | "Warning" | "Critical" — enum serializado como string, ver IfoodOperationalAlertSeverity
     DateTime CreatedAtUtc);

@@ -1,7 +1,7 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Orders;
+namespace SyncBar.Application.Features.Integrations.Ifood.Orders;
 
-// Pedidos iFood ainda "abertos" (não concluídos/cancelados) de uma filial — para a tela
-// "Pedidos iFood" no frontend.
-public sealed record GetIFoodOrdersQuery(long BranchId) : IQuery<IReadOnlyCollection<IFoodOrderResponse>>;
+// Pedidos Ifood ainda "abertos" (não concluídos/cancelados) de uma filial — para a tela
+// "Pedidos Ifood" no frontend.
+public sealed record GetIfoodOrdersQuery(long BranchId) : IQuery<IReadOnlyCollection<IfoodOrderResponse>>;

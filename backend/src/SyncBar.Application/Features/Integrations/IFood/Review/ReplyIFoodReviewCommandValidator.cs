@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Review;
+namespace SyncBar.Application.Features.Integrations.Ifood.Review;
 
-public sealed class ReplyIFoodReviewCommandValidator : AbstractValidator<ReplyIFoodReviewCommand>
+public sealed class ReplyIfoodReviewCommandValidator : AbstractValidator<ReplyIfoodReviewCommand>
 {
-    public ReplyIFoodReviewCommandValidator()
+    public ReplyIfoodReviewCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.ReviewId).NotEmpty();

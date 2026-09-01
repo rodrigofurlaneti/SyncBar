@@ -1,28 +1,28 @@
-using Microsoft.Extensions.Caching.Memory;
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using Microsoft.Extensions.Caching.Memory;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Security;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Infrastructure.Integrations.IFood;
+namespace SyncBar.Infrastructure.Integrations.Ifood;
 
 /// <summary>
 /// Cache de access token OAuth2 por empresa, em memória (IMemoryCache). Fecha a lacuna deixada
 /// na fase 1 (o teste de conexão pegava um token novo a cada chamada) — necessário agora porque
 /// o polling de pedidos roda a cada 30s e pegar token novo toda vez não escala e arrisca rate
-/// limit. TTL do cache = expiresIn da resposta do iFood menos 60s de margem (nunca um valor
+/// limit. TTL do cache = expiresIn da resposta do Ifood menos 60s de margem (nunca um valor
 /// fixo hardcoded, conforme a doc de Autenticação).
 /// </summary>
-internal sealed class IFoodTokenProvider(
+internal sealed class IfoodTokenProvider(
     IMemoryCache cache,
-    IIFoodIntegrationSettingRepository settingRepository,
+    IIfoodIntegrationSettingRepository settingRepository,
     ISecretProtector secretProtector,
-    IIFoodAuthClient authClient) : IIFoodTokenProvider
+    IIfoodAuthClient authClient) : IIfoodTokenProvider
 {
-    // Mesma purpose usada em SaveIFoodSettingsCommandHandler/TestIFoodConnectionCommandHandler —
+    // Mesma purpose usada em SaveIfoodSettingsCommandHandler/TestIfoodConnectionCommandHandler —
     // trocar quebra a descriptografia de segredos já salvos.
-    private const string ProtectorPurpose = "SyncBar.Integrations.IFood.ClientSecret.v1";
+    private const string ProtectorPurpose = "SyncBar.Integrations.Ifood.ClientSecret.v1";
 
-    private static string CacheKey(long companyId) => $"ifood:token:{companyId}";
+    private static string CacheKey(long companyId) => $"Ifood:token:{companyId}";
 
     public async Task<string?> GetAccessTokenAsync(long companyId, CancellationToken cancellationToken = default)
     {

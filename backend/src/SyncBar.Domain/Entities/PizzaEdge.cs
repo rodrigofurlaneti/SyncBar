@@ -1,9 +1,9 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
 // Fase 17 — uma "edge" / recheio de borda (ex.: "Catupiry", "Cheddar") dentro de uma
-// PizzaConfiguration — espelha edges[] da API de pizza do iFood. Mesma simplificação de
+// PizzaConfiguration — espelha edges[] da API de pizza do Ifood. Mesma simplificação de
 // PizzaCrust: ExtraPrice único, não varia por tamanho.
 public sealed class PizzaEdge : Entity
 {

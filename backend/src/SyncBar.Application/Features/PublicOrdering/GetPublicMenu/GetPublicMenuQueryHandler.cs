@@ -36,8 +36,8 @@ internal sealed class GetPublicMenuQueryHandler(
                 var categories = await categoryRepository.GetByCompanyAsync(branch.CompanyId, cancellationToken);
                 var categoryMap = categories.ToDictionary(c => c.Id, c => c.Name);
                 var complementsByProduct = await MenuComplementsBuilder.BuildAsync(
-                    productIds, productComplementGroupRepository, complementGroupRepository, complementItemRepository, cancellationToken,
-                    productRepository);
+                    productIds, productComplementGroupRepository, complementGroupRepository, complementItemRepository,
+                    productRepository, cancellationToken);
                 var items = products
                     .OrderBy(p => p.CategoryId).ThenBy(p => p.Name)
                     .Select(p => new MenuItemResponse(

@@ -1,4 +1,4 @@
-﻿using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -9,12 +9,12 @@ namespace SyncBar.Application.Features.Catalog.CreateCategory;
 internal sealed class CreateCategoryCommandHandler : BaseCommandHandler<CreateCategoryCommand, long>
 {
     private readonly ICategoryRepository _categoryRepository;
-    private readonly IIFoodCatalogSyncTrigger _catalogSyncTrigger;
+    private readonly IIfoodCatalogSyncTrigger _catalogSyncTrigger;
     private readonly IUnitOfWork _unitOfWork;
 
     public CreateCategoryCommandHandler(
         ICategoryRepository categoryRepository,
-        IIFoodCatalogSyncTrigger catalogSyncTrigger,
+        IIfoodCatalogSyncTrigger catalogSyncTrigger,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)

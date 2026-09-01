@@ -1,18 +1,18 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SyncBar.Domain.Entities;
 
 namespace SyncBar.Infrastructure.Persistence.Configurations;
 
-internal sealed class IFoodFinancialEventConfiguration : IEntityTypeConfiguration<IFoodFinancialEvent>
+internal sealed class IfoodFinancialEventConfiguration : IEntityTypeConfiguration<IfoodFinancialEvent>
 {
-    public void Configure(EntityTypeBuilder<IFoodFinancialEvent> builder)
+    public void Configure(EntityTypeBuilder<IfoodFinancialEvent> builder)
     {
-        builder.ToTable("IFoodFinancialEvent");
+        builder.ToTable("IfoodFinancialEvent");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
-        builder.Property(x => x.IFoodEventId).HasMaxLength(100).IsRequired();
+        builder.Property(x => x.IfoodEventId).HasMaxLength(100).IsRequired();
         builder.Property(x => x.Name).HasMaxLength(150).IsRequired();
         builder.Property(x => x.Description).HasMaxLength(500);
         builder.Property(x => x.Trigger).HasMaxLength(100);
@@ -29,12 +29,12 @@ internal sealed class IFoodFinancialEventConfiguration : IEntityTypeConfiguratio
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
 
         // Sem índice único filtrado (MySQL sem índice parcial) — dedup garantido pelo handler
-        // (ExistsByIFoodEventIdAsync antes de inserir), mesmo padrão de IFoodProductMapping.
-        builder.HasIndex(x => new { x.BranchId, x.IFoodEventId }).HasDatabaseName("IX_IFoodFinancialEvent_BranchId_IFoodEventId");
-        builder.HasIndex(x => new { x.BranchId, x.CompetenceDate }).HasDatabaseName("IX_IFoodFinancialEvent_BranchId_CompetenceDate");
-        builder.HasIndex(x => new { x.ReferenceType, x.ReferenceId }).HasDatabaseName("IX_IFoodFinancialEvent_ReferenceType_ReferenceId");
+        // (ExistsByIfoodEventIdAsync antes de inserir), mesmo padrão de IfoodProductMapping.
+        builder.HasIndex(x => new { x.BranchId, x.IfoodEventId }).HasDatabaseName("IX_IfoodFinancialEvent_BranchId_IfoodEventId");
+        builder.HasIndex(x => new { x.BranchId, x.CompetenceDate }).HasDatabaseName("IX_IfoodFinancialEvent_BranchId_CompetenceDate");
+        builder.HasIndex(x => new { x.ReferenceType, x.ReferenceId }).HasDatabaseName("IX_IfoodFinancialEvent_ReferenceType_ReferenceId");
 
         builder.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId)
-            .HasConstraintName("FK_IFoodFinancialEvent_Branch").OnDelete(DeleteBehavior.Restrict);
+            .HasConstraintName("FK_IfoodFinancialEvent_Branch").OnDelete(DeleteBehavior.Restrict);
     }
 }

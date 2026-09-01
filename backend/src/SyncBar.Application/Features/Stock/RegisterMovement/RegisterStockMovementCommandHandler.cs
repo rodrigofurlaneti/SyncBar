@@ -126,7 +126,7 @@ internal sealed class RegisterStockMovementCommandHandler : BaseCommandHandler<R
         return Result.Success(stockItem);
     }
 
-    private Result ApplyMovementToStock(StockItem stockItem, RegisterStockMovementCommand request)
+    private static Result ApplyMovementToStock(StockItem stockItem, RegisterStockMovementCommand request)
     {
         var isInflow = InflowTypes.Contains(request.StockMovementTypeId);
         return isInflow ? stockItem.Increase(request.Quantity) : stockItem.Decrease(request.Quantity);

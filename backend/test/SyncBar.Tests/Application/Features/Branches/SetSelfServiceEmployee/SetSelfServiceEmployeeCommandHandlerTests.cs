@@ -73,7 +73,7 @@ public sealed class SetSelfServiceEmployeeCommandHandlerTests
         var command = new SetSelfServiceEmployeeCommand(BranchId: 1, EmployeeId: 99);
         _branchRepository.GetByIdForUpdateAsync(command.BranchId, Arg.Any<CancellationToken>())
             .Returns(branch);
-        _employeeRepository.GetByIdAsync(command.EmployeeId.Value, Arg.Any<CancellationToken>())
+        _employeeRepository.GetByIdAsync(command.EmployeeId.GetValueOrDefault(), Arg.Any<CancellationToken>())
             .Returns((Employee?)null);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -93,7 +93,7 @@ public sealed class SetSelfServiceEmployeeCommandHandlerTests
         var command = new SetSelfServiceEmployeeCommand(BranchId: 1, EmployeeId: 5);
         _branchRepository.GetByIdForUpdateAsync(command.BranchId, Arg.Any<CancellationToken>())
             .Returns(branch);
-        _employeeRepository.GetByIdAsync(command.EmployeeId.Value, Arg.Any<CancellationToken>())
+        _employeeRepository.GetByIdAsync(command.EmployeeId.GetValueOrDefault(), Arg.Any<CancellationToken>())
             .Returns(employee);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -111,7 +111,7 @@ public sealed class SetSelfServiceEmployeeCommandHandlerTests
         var command = new SetSelfServiceEmployeeCommand(BranchId: 1, EmployeeId: 5);
         _branchRepository.GetByIdForUpdateAsync(command.BranchId, Arg.Any<CancellationToken>())
             .Returns(branch);
-        _employeeRepository.GetByIdAsync(command.EmployeeId.Value, Arg.Any<CancellationToken>())
+        _employeeRepository.GetByIdAsync(command.EmployeeId.GetValueOrDefault(), Arg.Any<CancellationToken>())
             .Returns(employee);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -147,7 +147,7 @@ public sealed class SetSelfServiceEmployeeCommandHandlerTests
         var command = new SetSelfServiceEmployeeCommand(BranchId: 1, EmployeeId: 5);
         _branchRepository.GetByIdForUpdateAsync(command.BranchId, Arg.Any<CancellationToken>())
             .Returns(branch);
-        _employeeRepository.GetByIdAsync(command.EmployeeId.Value, Arg.Any<CancellationToken>())
+        _employeeRepository.GetByIdAsync(command.EmployeeId.GetValueOrDefault(), Arg.Any<CancellationToken>())
             .Returns(employee);
 
         var result = await _handler.Handle(command, CancellationToken.None);

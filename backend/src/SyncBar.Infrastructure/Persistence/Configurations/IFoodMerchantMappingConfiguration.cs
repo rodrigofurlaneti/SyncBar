@@ -1,14 +1,14 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SyncBar.Domain.Entities;
 
 namespace SyncBar.Infrastructure.Persistence.Configurations;
 
-internal sealed class IFoodMerchantMappingConfiguration : IEntityTypeConfiguration<IFoodMerchantMapping>
+internal sealed class IfoodMerchantMappingConfiguration : IEntityTypeConfiguration<IfoodMerchantMapping>
 {
-    public void Configure(EntityTypeBuilder<IFoodMerchantMapping> builder)
+    public void Configure(EntityTypeBuilder<IfoodMerchantMapping> builder)
     {
-        builder.ToTable("IFoodMerchantMapping");
+        builder.ToTable("IfoodMerchantMapping");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
@@ -20,9 +20,9 @@ internal sealed class IFoodMerchantMappingConfiguration : IEntityTypeConfigurati
 
         // Sem índice único filtrado — mesmo motivo de sempre (MySQL sem índice parcial). "1
         // mapeamento ativo por filial" é garantido pelo handler (upsert por BranchId).
-        builder.HasIndex(x => x.BranchId).HasDatabaseName("IX_IFoodMerchantMapping_BranchId");
+        builder.HasIndex(x => x.BranchId).HasDatabaseName("IX_IfoodMerchantMapping_BranchId");
 
         builder.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId)
-            .HasConstraintName("FK_IFoodMerchantMapping_Branch").OnDelete(DeleteBehavior.Restrict);
+            .HasConstraintName("FK_IfoodMerchantMapping_Branch").OnDelete(DeleteBehavior.Restrict);
     }
 }

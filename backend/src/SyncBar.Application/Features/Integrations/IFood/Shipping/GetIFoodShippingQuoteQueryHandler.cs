@@ -1,41 +1,41 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-internal sealed class GetIFoodShippingQuoteQueryHandler(
+internal sealed class GetIfoodShippingQuoteQueryHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodShippingClient shippingClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodShippingClient shippingClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodShippingQuoteQuery, IFoodShippingQuoteResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodShippingQuoteQuery, IfoodShippingQuoteResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodShippingQuoteResponse>> Handle(GetIFoodShippingQuoteQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodShippingQuoteResponse>> Handle(GetIfoodShippingQuoteQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodShippingQuoteQueryHandler),
+            nameof(GetIfoodShippingQuoteQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodShippingQuoteResponse>(resolved.Error);
+                    return Result.Failure<IfoodShippingQuoteResponse>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
                 var quote = await shippingClient.GetDeliveryAvailabilitiesAsync(token, merchantId, request.Latitude, request.Longitude, cancellationToken);
                 if (!quote.Success || quote.QuoteId is null)
-                    return Result.Failure<IFoodShippingQuoteResponse>(new Error("IFoodShipping.QuoteFailed",
-                        quote.ErrorMessage ?? "Não foi possível obter cotação de entrega no iFood."));
+                    return Result.Failure<IfoodShippingQuoteResponse>(new Error("IfoodShipping.QuoteFailed",
+                        quote.ErrorMessage ?? "Não foi possível obter cotação de entrega no Ifood."));
 
-                return Result.Success(new IFoodShippingQuoteResponse(
+                return Result.Success(new IfoodShippingQuoteResponse(
                     quote.QuoteId, quote.GrossValue, quote.Discount, quote.NetValue,
                     quote.DeliveryTimeMinMinutes, quote.DeliveryTimeMaxMinutes, quote.DistanceMeters, quote.ExpirationAt));
             });

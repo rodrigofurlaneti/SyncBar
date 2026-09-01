@@ -1,5 +1,5 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Merchant;
+namespace SyncBar.Application.Features.Integrations.Ifood.Merchant;
 
-public sealed record AcknowledgeIFoodOperationalAlertCommand(long CompanyId, Guid AlertId) : ICommand;
+public sealed record AcknowledgeIfoodOperationalAlertCommand(long CompanyId, Guid AlertId) : ICommand;

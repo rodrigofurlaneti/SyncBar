@@ -1,43 +1,43 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Financial;
+namespace SyncBar.Application.Features.Integrations.Ifood.Financial;
 
 /// <summary>
 /// Núcleo da Fase 4 (financeiro): busca Financial Events + Settlement dos últimos dias, por
 /// filial com MerchantId configurado, e grava/atualiza os registros locais de forma idempotente
-/// (dedup por IFoodEventId pra eventos; get-or-update por IFoodSettlementId pra títulos, já que
-/// o mesmo título pode ser reentregue com status diferente conforme o iFood processa o repasse).
+/// (dedup por IfoodEventId pra eventos; get-or-update por IfoodSettlementId pra títulos, já que
+/// o mesmo título pode ser reentregue com status diferente conforme o Ifood processa o repasse).
 ///
 /// Este módulo é só de auditoria/reconciliação — não mexe no fluxo operacional existente
 /// (Sale/CashSession/CashMovement continuam sendo a fonte de verdade do caixa físico da loja).
 /// </summary>
-internal sealed class SyncIFoodFinancialCommandHandler : BaseCommandHandler<SyncIFoodFinancialCommand>
+internal sealed class SyncIfoodFinancialCommandHandler : BaseCommandHandler<SyncIfoodFinancialCommand>
 {
     // Janela de sincronização: 10 dias — bem menor que o limite de 33 dias por chamada da API, e
     // com sobra suficiente pra cobrir eventos que a apuração semanal ainda não tinha consolidado
     // no ciclo anterior (dedup garante que reprocessar dias já sincronizados não duplica nada).
     private static readonly TimeSpan SyncWindow = TimeSpan.FromDays(10);
 
-    private readonly IIFoodIntegrationSettingRepository _settingRepository;
-    private readonly IIFoodTokenProvider _tokenProvider;
-    private readonly IIFoodFinancialClient _financialClient;
-    private readonly IIFoodMerchantMappingRepository _merchantMappingRepository;
-    private readonly IIFoodFinancialEventRepository _financialEventRepository;
-    private readonly IIFoodSettlementRepository _settlementRepository;
+    private readonly IIfoodIntegrationSettingRepository _settingRepository;
+    private readonly IIfoodTokenProvider _tokenProvider;
+    private readonly IIfoodFinancialClient _financialClient;
+    private readonly IIfoodMerchantMappingRepository _merchantMappingRepository;
+    private readonly IIfoodFinancialEventRepository _financialEventRepository;
+    private readonly IIfoodSettlementRepository _settlementRepository;
     private readonly TimeProvider _timeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
-    public SyncIFoodFinancialCommandHandler(
-        IIFoodIntegrationSettingRepository settingRepository,
-        IIFoodTokenProvider tokenProvider,
-        IIFoodFinancialClient financialClient,
-        IIFoodMerchantMappingRepository merchantMappingRepository,
-        IIFoodFinancialEventRepository financialEventRepository,
-        IIFoodSettlementRepository settlementRepository,
+    public SyncIfoodFinancialCommandHandler(
+        IIfoodIntegrationSettingRepository settingRepository,
+        IIfoodTokenProvider tokenProvider,
+        IIfoodFinancialClient financialClient,
+        IIfoodMerchantMappingRepository merchantMappingRepository,
+        IIfoodFinancialEventRepository financialEventRepository,
+        IIfoodSettlementRepository settlementRepository,
         TimeProvider timeProviderCustom,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
@@ -53,10 +53,10 @@ internal sealed class SyncIFoodFinancialCommandHandler : BaseCommandHandler<Sync
         _unitOfWork = unitOfWork;
     }
 
-    public override async Task<Result> Handle(SyncIFoodFinancialCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(SyncIfoodFinancialCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(SyncIFoodFinancialCommandHandler),
+            nameof(SyncIfoodFinancialCommandHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
@@ -103,11 +103,11 @@ internal sealed class SyncIFoodFinancialCommandHandler : BaseCommandHandler<Sync
         var events = await _financialClient.GetFinancialEventsAsync(token, merchantId, periodStart, periodEnd, cancellationToken);
         foreach (var evt in events)
         {
-            var exists = await _financialEventRepository.ExistsByIFoodEventIdAsync(branchId, evt.Id, cancellationToken);
+            var exists = await _financialEventRepository.ExistsByIfoodEventIdAsync(branchId, evt.Id, cancellationToken);
             if (exists)
                 continue;
 
-            var result = IFoodFinancialEvent.Create(
+            var result = IfoodFinancialEvent.Create(
                 branchId, evt.Id, evt.Name, evt.Description, evt.Trigger, evt.Amount, evt.HasTransferImpact,
                 evt.CompetenceDate, evt.PeriodStart, evt.PeriodEnd, evt.SettlementExpectedDate,
                 evt.ReferenceType, evt.ReferenceId, evt.RawPayload);
@@ -119,7 +119,7 @@ internal sealed class SyncIFoodFinancialCommandHandler : BaseCommandHandler<Sync
         var settlements = await _financialClient.GetSettlementsAsync(token, merchantId, periodStart, periodEnd, cancellationToken);
         foreach (var settlement in settlements)
         {
-            var existing = await _settlementRepository.GetByIFoodSettlementIdForUpdateAsync(branchId, settlement.Id, cancellationToken);
+            var existing = await _settlementRepository.GetByIfoodSettlementIdForUpdateAsync(branchId, settlement.Id, cancellationToken);
             if (existing is not null)
             {
                 existing.UpdateFromSync(
@@ -128,7 +128,7 @@ internal sealed class SyncIFoodFinancialCommandHandler : BaseCommandHandler<Sync
                 continue;
             }
 
-            var result = IFoodSettlement.Create(
+            var result = IfoodSettlement.Create(
                 branchId, settlement.Id, settlement.Type, settlement.Product, settlement.Amount, settlement.Status,
                 settlement.PaymentDate, settlement.BankCode, settlement.BankAgency, settlement.BankAccount, settlement.RawPayload);
 

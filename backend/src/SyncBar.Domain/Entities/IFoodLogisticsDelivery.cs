@@ -1,15 +1,15 @@
-using SyncBar.Domain.Constants;
+﻿using SyncBar.Domain.Constants;
 using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
 /// <summary>
-/// Rastreia a entrega feita pela FROTA PRÓPRIA de um pedido iFood (módulo Logistics, fase 7) —
-/// só existe para pedidos com deliveredBy diferente de "IFOOD" (self-delivery/frota própria);
-/// pedidos entregues pela logística do próprio iFood não usam esta entidade (não há o que o
-/// SyncBar comandar nesse caso). 1:1 com <see cref="IFoodOrder"/>, referenciado pelo Id LOCAL
-/// (long) do SyncBar — não pelo IFoodOrderId string do iFood, mesma convenção de FK usada em
-/// outras entidades ligadas a IFoodOrder.
+/// Rastreia a entrega feita pela FROTA PRÓPRIA de um pedido Ifood (módulo Logistics, fase 7) —
+/// só existe para pedidos com deliveredBy diferente de "Ifood" (self-delivery/frota própria);
+/// pedidos entregues pela logística do próprio Ifood não usam esta entidade (não há o que o
+/// SyncBar comandar nesse caso). 1:1 com <see cref="IfoodOrder"/>, referenciado pelo Id LOCAL
+/// (long) do SyncBar — não pelo IfoodOrderId string do Ifood, mesma convenção de FK usada em
+/// outras entidades ligadas a IfoodOrder.
 ///
 /// Ressalva de confiança: nomes de ação/status batem com a doc oficial (POST assignDriver/
 /// goingToOrigin/arrivedAtOrigin/dispatch/arrivedAtDestination/verifyDeliveryCode, todas 202
@@ -19,11 +19,13 @@ namespace SyncBar.Domain.Entities;
 /// transições (DRIVER_ASSIGNED → GOING_TO_ORIGIN → ARRIVED_AT_ORIGIN → DISPATCHED →
 /// ARRIVED_AT_DESTINATION → DELIVERY_CODE_VERIFIED) é inferida do nome/sequência dos endpoints
 /// na doc, não de um diagrama de estados explícito — validada aqui no Domain para não deixar a
-/// tela pular passos, mas vale reconferir se o iFood devolver erro de sequência inesperado.
+/// tela pular passos, mas vale reconferir se o Ifood devolver erro de sequência inesperado.
 /// </summary>
-public sealed class IFoodLogisticsDelivery : AggregateRoot
+public sealed class IfoodLogisticsDelivery : AggregateRoot
 {
-    public long IFoodOrderId { get; private set; }
+    private const string InvalidTransitionErrorCode = "IfoodLogisticsDelivery.InvalidTransition";
+
+    public long IfoodOrderId { get; private set; }
     public long BranchId { get; private set; }
     public string DriverName { get; private set; } = null!;
     public string DriverPhone { get; private set; } = null!;
@@ -39,43 +41,43 @@ public sealed class IFoodLogisticsDelivery : AggregateRoot
     public DateTime? UpdatedAt { get; private set; }
     public bool IsActive { get; private set; }
 
-    private IFoodLogisticsDelivery() : base(0) { }
+    private IfoodLogisticsDelivery() : base(0) { }
 
-    private IFoodLogisticsDelivery(
-        long ifoodOrderId, long branchId, string driverName, string driverPhone, string driverVehicleType, DateTime now) : base(0)
+    private IfoodLogisticsDelivery(
+        long IfoodOrderId, long branchId, string driverName, string driverPhone, string driverVehicleType, DateTime now) : base(0)
     {
-        IFoodOrderId = ifoodOrderId;
+        IfoodOrderId = IfoodOrderId;
         BranchId = branchId;
         DriverName = driverName;
         DriverPhone = driverPhone;
         DriverVehicleType = driverVehicleType;
-        Status = IFoodLogisticsStatuses.DriverAssigned;
+        Status = IfoodLogisticsStatuses.DriverAssigned;
         AssignedAt = now;
         IsActive = true;
         CreatedAt = now;
     }
 
-    public static Result<IFoodLogisticsDelivery> Create(
-        long ifoodOrderId, long branchId, string driverName, string driverPhone, string driverVehicleType, DateTime now)
+    public static Result<IfoodLogisticsDelivery> Create(
+        long IfoodOrderId, long branchId, string driverName, string driverPhone, string driverVehicleType, DateTime now)
     {
         if (string.IsNullOrWhiteSpace(driverName))
-            return Result.Failure<IFoodLogisticsDelivery>(new Error("IFoodLogisticsDelivery.MissingDriverName", "Driver name is required."));
+            return Result.Failure<IfoodLogisticsDelivery>(new Error("IfoodLogisticsDelivery.MissingDriverName", "Driver name is required."));
         if (string.IsNullOrWhiteSpace(driverPhone))
-            return Result.Failure<IFoodLogisticsDelivery>(new Error("IFoodLogisticsDelivery.MissingDriverPhone", "Driver phone is required."));
+            return Result.Failure<IfoodLogisticsDelivery>(new Error("IfoodLogisticsDelivery.MissingDriverPhone", "Driver phone is required."));
         if (string.IsNullOrWhiteSpace(driverVehicleType))
-            return Result.Failure<IFoodLogisticsDelivery>(new Error("IFoodLogisticsDelivery.MissingVehicleType", "Driver vehicle type is required."));
+            return Result.Failure<IfoodLogisticsDelivery>(new Error("IfoodLogisticsDelivery.MissingVehicleType", "Driver vehicle type is required."));
 
-        return Result.Success(new IFoodLogisticsDelivery(
-            ifoodOrderId, branchId, driverName.Trim(), driverPhone.Trim(), driverVehicleType.Trim(), now));
+        return Result.Success(new IfoodLogisticsDelivery(
+            IfoodOrderId, branchId, driverName.Trim(), driverPhone.Trim(), driverVehicleType.Trim(), now));
     }
 
     public Result MarkGoingToOrigin(DateTime now)
     {
-        if (Status != IFoodLogisticsStatuses.DriverAssigned)
-            return Result.Failure(new Error("IFoodLogisticsDelivery.InvalidTransition",
+        if (Status != IfoodLogisticsStatuses.DriverAssigned)
+            return Result.Failure(new Error(InvalidTransitionErrorCode,
                 "O entregador precisa estar atribuído antes de sair para a origem."));
 
-        Status = IFoodLogisticsStatuses.GoingToOrigin;
+        Status = IfoodLogisticsStatuses.GoingToOrigin;
         GoingToOriginAt = now;
         UpdatedAt = now;
         return Result.Success();
@@ -83,11 +85,11 @@ public sealed class IFoodLogisticsDelivery : AggregateRoot
 
     public Result MarkArrivedAtOrigin(DateTime now)
     {
-        if (Status != IFoodLogisticsStatuses.GoingToOrigin)
-            return Result.Failure(new Error("IFoodLogisticsDelivery.InvalidTransition",
+        if (Status != IfoodLogisticsStatuses.GoingToOrigin)
+            return Result.Failure(new Error(InvalidTransitionErrorCode,
                 "O entregador precisa estar a caminho da origem antes de chegar nela."));
 
-        Status = IFoodLogisticsStatuses.ArrivedAtOrigin;
+        Status = IfoodLogisticsStatuses.ArrivedAtOrigin;
         ArrivedAtOriginAt = now;
         UpdatedAt = now;
         return Result.Success();
@@ -95,11 +97,11 @@ public sealed class IFoodLogisticsDelivery : AggregateRoot
 
     public Result MarkDispatched(DateTime now)
     {
-        if (Status != IFoodLogisticsStatuses.ArrivedAtOrigin)
-            return Result.Failure(new Error("IFoodLogisticsDelivery.InvalidTransition",
+        if (Status != IfoodLogisticsStatuses.ArrivedAtOrigin)
+            return Result.Failure(new Error(InvalidTransitionErrorCode,
                 "O entregador precisa ter chegado na origem antes de despachar."));
 
-        Status = IFoodLogisticsStatuses.Dispatched;
+        Status = IfoodLogisticsStatuses.Dispatched;
         DispatchedAt = now;
         UpdatedAt = now;
         return Result.Success();
@@ -107,11 +109,11 @@ public sealed class IFoodLogisticsDelivery : AggregateRoot
 
     public Result MarkArrivedAtDestination(DateTime now)
     {
-        if (Status != IFoodLogisticsStatuses.Dispatched)
-            return Result.Failure(new Error("IFoodLogisticsDelivery.InvalidTransition",
+        if (Status != IfoodLogisticsStatuses.Dispatched)
+            return Result.Failure(new Error(InvalidTransitionErrorCode,
                 "O entregador precisa estar despachado antes de chegar no destino."));
 
-        Status = IFoodLogisticsStatuses.ArrivedAtDestination;
+        Status = IfoodLogisticsStatuses.ArrivedAtDestination;
         ArrivedAtDestinationAt = now;
         UpdatedAt = now;
         return Result.Success();
@@ -119,11 +121,11 @@ public sealed class IFoodLogisticsDelivery : AggregateRoot
 
     public Result MarkDeliveryCodeVerified(DateTime now)
     {
-        if (Status != IFoodLogisticsStatuses.ArrivedAtDestination)
-            return Result.Failure(new Error("IFoodLogisticsDelivery.InvalidTransition",
+        if (Status != IfoodLogisticsStatuses.ArrivedAtDestination)
+            return Result.Failure(new Error(InvalidTransitionErrorCode,
                 "O entregador precisa ter chegado no destino antes de verificar o código de entrega."));
 
-        Status = IFoodLogisticsStatuses.DeliveryCodeVerified;
+        Status = IfoodLogisticsStatuses.DeliveryCodeVerified;
         DeliveryCodeVerifiedAt = now;
         UpdatedAt = now;
         return Result.Success();

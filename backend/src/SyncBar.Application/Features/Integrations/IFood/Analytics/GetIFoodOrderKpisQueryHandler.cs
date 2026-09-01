@@ -1,35 +1,35 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Analytics;
+namespace SyncBar.Application.Features.Integrations.Ifood.Analytics;
 
-internal sealed class GetIFoodOrderKpisQueryHandler(
+internal sealed class GetIfoodOrderKpisQueryHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodAnalyticsClient analyticsClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodAnalyticsClient analyticsClient,
     TimeProvider timeProviderCustom,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodOrderKpisQuery, IFoodOrderKpisResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodOrderKpisQuery, IfoodOrderKpisResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodOrderKpisResponse>> Handle(
-        GetIFoodOrderKpisQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodOrderKpisResponse>> Handle(
+        GetIfoodOrderKpisQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodOrderKpisQueryHandler),
+            nameof(GetIfoodOrderKpisQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodOrderKpisResponse>(resolved.Error);
+                    return Result.Failure<IfoodOrderKpisResponse>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
                 var end = request.PeriodEnd ?? timeProviderCustom.GetLocalNow().DateTime;
@@ -38,7 +38,7 @@ internal sealed class GetIFoodOrderKpisQueryHandler(
 
                 var result = await analyticsClient.GetOrderKpisAsync(token, merchantId, start, end, page, size: 20, cancellationToken);
 
-                return Result.Success(new IFoodOrderKpisResponse(result.CurrentPage, result.RawBuckets));
+                return Result.Success(new IfoodOrderKpisResponse(result.CurrentPage, result.RawBuckets));
             });
     }
 }

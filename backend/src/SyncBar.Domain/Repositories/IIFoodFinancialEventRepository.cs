@@ -1,16 +1,16 @@
-using SyncBar.Domain.Entities;
+﻿using SyncBar.Domain.Entities;
 
 namespace SyncBar.Domain.Repositories;
 
-public interface IIFoodFinancialEventRepository
+public interface IIfoodFinancialEventRepository
 {
-    // Dedup por IFoodEventId — a sincronização (Fase 4) roda 1x/dia sobre uma janela de dias que
-    // se sobrepõe ao ciclo anterior (evita perder eventos por atraso de apuração do iFood), então
+    // Dedup por IfoodEventId — a sincronização (Fase 4) roda 1x/dia sobre uma janela de dias que
+    // se sobrepõe ao ciclo anterior (evita perder eventos por atraso de apuração do Ifood), então
     // precisa checar se o evento já foi gravado antes de inserir de novo.
-    Task<bool> ExistsByIFoodEventIdAsync(long branchId, string ifoodEventId, CancellationToken cancellationToken = default);
+    Task<bool> ExistsByIfoodEventIdAsync(long branchId, string IfoodEventId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyCollection<IFoodFinancialEvent>> GetByBranchAndPeriodAsync(
+    Task<IReadOnlyCollection<IfoodFinancialEvent>> GetByBranchAndPeriodAsync(
         long branchId, DateTime periodStart, DateTime periodEnd, CancellationToken cancellationToken = default);
 
-    Task AddAsync(IFoodFinancialEvent entity, CancellationToken cancellationToken = default);
+    Task AddAsync(IfoodFinancialEvent entity, CancellationToken cancellationToken = default);
 }

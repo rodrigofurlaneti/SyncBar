@@ -28,7 +28,7 @@ namespace SyncBar.Tests.Domain.Entities
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string invalidName)
+        public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
             var result = TableStatus.Create(invalidName);

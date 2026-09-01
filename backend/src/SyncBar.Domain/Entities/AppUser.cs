@@ -12,7 +12,7 @@ public sealed class AppUser : AggregateRoot
     public string UserName { get; private set; } = null!;
     public string Email { get; private set; } = null!;
     public string PasswordHash { get; private set; } = null!;
-    public string? PasswordSalt { get; private set; }
+    public string? PasswordSalt { get; }
     public int FailedAccessCount { get; private set; }
     public DateTime? LockoutEndAt { get; private set; }
     public DateTime? LastLoginAt { get; private set; }

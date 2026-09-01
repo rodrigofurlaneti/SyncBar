@@ -1,7 +1,7 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood;
+namespace SyncBar.Application.Features.Integrations.Ifood;
 
-public sealed record TestIFoodConnectionCommand(long CompanyId) : ICommand<TestIFoodConnectionResponse>;
+public sealed record TestIfoodConnectionCommand(long CompanyId) : ICommand<TestIfoodConnectionResponse>;
 
-public sealed record TestIFoodConnectionResponse(bool Success, string? ErrorMessage);
+public sealed record TestIfoodConnectionResponse(bool Success, string? ErrorMessage);

@@ -1,14 +1,14 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SyncBar.Domain.Entities;
 
 namespace SyncBar.Infrastructure.Persistence.Configurations;
 
-internal sealed class IFoodLogisticsDeliveryConfiguration : IEntityTypeConfiguration<IFoodLogisticsDelivery>
+internal sealed class IfoodLogisticsDeliveryConfiguration : IEntityTypeConfiguration<IfoodLogisticsDelivery>
 {
-    public void Configure(EntityTypeBuilder<IFoodLogisticsDelivery> builder)
+    public void Configure(EntityTypeBuilder<IfoodLogisticsDelivery> builder)
     {
-        builder.ToTable("IFoodLogisticsDelivery");
+        builder.ToTable("IfoodLogisticsDelivery");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
@@ -25,12 +25,12 @@ internal sealed class IFoodLogisticsDeliveryConfiguration : IEntityTypeConfigura
         builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
 
-        builder.HasIndex(x => x.IFoodOrderId).IsUnique().HasDatabaseName("UQ_IFoodLogisticsDelivery_IFoodOrderId");
-        builder.HasIndex(x => x.BranchId).HasDatabaseName("IX_IFoodLogisticsDelivery_BranchId");
+        builder.HasIndex(x => x.IfoodOrderId).IsUnique().HasDatabaseName("UQ_IfoodLogisticsDelivery_IfoodOrderId");
+        builder.HasIndex(x => x.BranchId).HasDatabaseName("IX_IfoodLogisticsDelivery_BranchId");
 
-        builder.HasOne<IFoodOrder>().WithMany().HasForeignKey(x => x.IFoodOrderId)
-            .HasConstraintName("FK_IFoodLogisticsDelivery_IFoodOrder").OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<IfoodOrder>().WithMany().HasForeignKey(x => x.IfoodOrderId)
+            .HasConstraintName("FK_IfoodLogisticsDelivery_IfoodOrder").OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId)
-            .HasConstraintName("FK_IFoodLogisticsDelivery_Branch").OnDelete(DeleteBehavior.Restrict);
+            .HasConstraintName("FK_IfoodLogisticsDelivery_Branch").OnDelete(DeleteBehavior.Restrict);
     }
 }

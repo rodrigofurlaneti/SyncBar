@@ -1,4 +1,4 @@
-namespace SyncBar.Application.Abstractions.Security;
+﻿namespace SyncBar.Application.Abstractions.Security;
 
 /// <summary>
 /// Abstração pra cifrar/decifrar segredos antes de persistir (ex.: ClientSecret de integrações
@@ -10,7 +10,7 @@ namespace SyncBar.Application.Abstractions.Security;
 /// concreta na Infrastructure, registrada em SyncBar.Infrastructure.DependencyInjection.
 ///
 /// <paramref name="purpose"/> isola criptograficamente segredos de features diferentes (ex.:
-/// "SyncBar.Integrations.IFood.ClientSecret.v1") — use uma string fixa e nunca a troque depois
+/// "SyncBar.Integrations.Ifood.ClientSecret.v1") — use uma string fixa e nunca a troque depois
 /// que já houver segredos salvos com ela, ou eles ficam ilegíveis.
 /// </summary>
 public interface ISecretProtector

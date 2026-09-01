@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood;
+namespace SyncBar.Application.Features.Integrations.Ifood;
 
-public sealed class SetIFoodMerchantMappingCommandValidator : AbstractValidator<SetIFoodMerchantMappingCommand>
+public sealed class SetIfoodMerchantMappingCommandValidator : AbstractValidator<SetIfoodMerchantMappingCommand>
 {
-    public SetIFoodMerchantMappingCommandValidator()
+    public SetIfoodMerchantMappingCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.MerchantId).MaximumLength(100);

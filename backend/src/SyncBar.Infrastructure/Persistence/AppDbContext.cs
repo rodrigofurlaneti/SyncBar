@@ -59,22 +59,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<OrderPartialPayment> OrderPartialPayments => Set<OrderPartialPayment>();
     public DbSet<ComandaSetting> ComandaSettings => Set<ComandaSetting>();
     public DbSet<ServiceFeeSetting> ServiceFeeSettings => Set<ServiceFeeSetting>();
-    public DbSet<IFoodIntegrationSetting> IFoodIntegrationSettings => Set<IFoodIntegrationSetting>();
-    public DbSet<IFoodMerchantMapping> IFoodMerchantMappings => Set<IFoodMerchantMapping>();
-    public DbSet<IFoodOrder> IFoodOrders => Set<IFoodOrder>();
-    public DbSet<IFoodLogisticsDelivery> IFoodLogisticsDeliveries => Set<IFoodLogisticsDelivery>();
-    public DbSet<IFoodShippingDelivery> IFoodShippingDeliveries => Set<IFoodShippingDelivery>();
-    public DbSet<IFoodCategoryMapping> IFoodCategoryMappings => Set<IFoodCategoryMapping>();
-    public DbSet<IFoodProductMapping> IFoodProductMappings => Set<IFoodProductMapping>();
-    public DbSet<IFoodFinancialEvent> IFoodFinancialEvents => Set<IFoodFinancialEvent>();
-    public DbSet<IFoodSettlement> IFoodSettlements => Set<IFoodSettlement>();
-    public DbSet<IFoodOpeningHours> IFoodOpeningHours => Set<IFoodOpeningHours>();
+    public DbSet<IfoodIntegrationSetting> IfoodIntegrationSettings => Set<IfoodIntegrationSetting>();
+    public DbSet<IfoodMerchantMapping> IfoodMerchantMappings => Set<IfoodMerchantMapping>();
+    public DbSet<IfoodOrder> IfoodOrders => Set<IfoodOrder>();
+    public DbSet<IfoodLogisticsDelivery> IfoodLogisticsDeliveries => Set<IfoodLogisticsDelivery>();
+    public DbSet<IfoodShippingDelivery> IfoodShippingDeliveries => Set<IfoodShippingDelivery>();
+    public DbSet<IfoodCategoryMapping> IfoodCategoryMappings => Set<IfoodCategoryMapping>();
+    public DbSet<IfoodProductMapping> IfoodProductMappings => Set<IfoodProductMapping>();
+    public DbSet<IfoodFinancialEvent> IfoodFinancialEvents => Set<IfoodFinancialEvent>();
+    public DbSet<IfoodSettlement> IfoodSettlements => Set<IfoodSettlement>();
+    public DbSet<IfoodOpeningHours> IfoodOpeningHours => Set<IfoodOpeningHours>();
     public DbSet<ComplementItem> ComplementItems => Set<ComplementItem>();
     public DbSet<ComplementGroup> ComplementGroups => Set<ComplementGroup>();
     public DbSet<Complement> Complements => Set<Complement>();
     public DbSet<ProductComplementGroup> ProductComplementGroups => Set<ProductComplementGroup>();
-    public DbSet<IFoodComplementGroupMapping> IFoodComplementGroupMappings => Set<IFoodComplementGroupMapping>();
-    public DbSet<IFoodComplementMapping> IFoodComplementMappings => Set<IFoodComplementMapping>();
+    public DbSet<IfoodComplementGroupMapping> IfoodComplementGroupMappings => Set<IfoodComplementGroupMapping>();
+    public DbSet<IfoodComplementMapping> IfoodComplementMappings => Set<IfoodComplementMapping>();
     public DbSet<JobTitleFeature> JobTitleFeatures => Set<JobTitleFeature>();
     public DbSet<AppUserFeature> AppUserFeatures => Set<AppUserFeature>();
     public DbSet<LogTracker> LogTrackers { get; set; }
@@ -85,8 +85,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<PizzaEdge> PizzaEdges => Set<PizzaEdge>();
     public DbSet<PizzaFlavorPrice> PizzaFlavorPrices => Set<PizzaFlavorPrice>();
     public DbSet<OrderItemPizzaFlavor> OrderItemPizzaFlavors => Set<OrderItemPizzaFlavor>();
-    public DbSet<IFoodPizzaMapping> IFoodPizzaMappings => Set<IFoodPizzaMapping>();
-    public DbSet<IFoodPizzaElementMapping> IFoodPizzaElementMappings => Set<IFoodPizzaElementMapping>();
+    public DbSet<IfoodPizzaMapping> IfoodPizzaMappings => Set<IfoodPizzaMapping>();
+    public DbSet<IfoodPizzaElementMapping> IfoodPizzaElementMappings => Set<IfoodPizzaElementMapping>();
     public DbSet<ComandaItemTransfer> ComandaItemTransfers => Set<ComandaItemTransfer>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -111,7 +111,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
         modelBuilder.Entity<Supplier>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
-        modelBuilder.Entity<IFoodIntegrationSetting>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodIntegrationSetting>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
         modelBuilder.Entity<ComplementItem>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || e.CompanyId == _currentTenant.CompanyId);
@@ -143,37 +143,37 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<ServiceFeeSetting>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-        modelBuilder.Entity<IFoodMerchantMapping>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodMerchantMapping>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
     }
 
     private void ConfigureBranchScopedTenantFiltersPart2(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<IFoodOrder>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodOrder>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-        modelBuilder.Entity<IFoodLogisticsDelivery>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodLogisticsDelivery>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-        modelBuilder.Entity<IFoodShippingDelivery>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodShippingDelivery>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-        modelBuilder.Entity<IFoodCategoryMapping>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodCategoryMapping>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-        modelBuilder.Entity<IFoodProductMapping>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodProductMapping>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-        modelBuilder.Entity<IFoodFinancialEvent>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodFinancialEvent>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-        modelBuilder.Entity<IFoodSettlement>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodSettlement>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
     }
 
     private void ConfigureBranchScopedTenantFiltersPart3(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<IFoodOpeningHours>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodOpeningHours>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-        modelBuilder.Entity<IFoodComplementGroupMapping>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodComplementGroupMapping>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-        modelBuilder.Entity<IFoodComplementMapping>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodComplementMapping>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
-        modelBuilder.Entity<IFoodPizzaMapping>().HasQueryFilter(e =>
+        modelBuilder.Entity<IfoodPizzaMapping>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<ComandaSetting>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));

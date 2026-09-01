@@ -1,4 +1,4 @@
-namespace SyncBar.Domain.Constants;
+﻿namespace SyncBar.Domain.Constants;
 
 // Ids fixos dos lookups seedados em BarRestaurante_Seed.sql — nunca alterar sem alterar o seed.
 public static class OrderStatusIds
@@ -101,7 +101,7 @@ public static class PromotionTypeIds
 }
 
 // Não é lookup seedado (sem tabela própria) — mesmo padrão de OrderTypeIds/ReservationStatusIds.
-// Espelha optionGroupType do módulo Catalog do iFood 1:1 (fase 6a) — ver
+// Espelha optionGroupType do módulo Catalog do Ifood 1:1 (fase 6a) — ver
 // ComplementGroupConfiguration (CHECK 1-4 em sql/BarRestaurante_Complementos.sql).
 public static class ComplementGroupTypeIds
 {

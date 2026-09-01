@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.Admin;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.Admin;
 
-public sealed class UploadIFoodImageCommandValidator : AbstractValidator<UploadIFoodImageCommand>
+public sealed class UploadIfoodImageCommandValidator : AbstractValidator<UploadIfoodImageCommand>
 {
-    public UploadIFoodImageCommandValidator()
+    public UploadIfoodImageCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.JsonBody).NotEmpty();

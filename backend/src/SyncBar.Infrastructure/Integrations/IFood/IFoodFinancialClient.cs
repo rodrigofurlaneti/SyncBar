@@ -1,32 +1,32 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using SyncBar.Application.Abstractions.Integrations.IFood;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
 
-namespace SyncBar.Infrastructure.Integrations.IFood;
+namespace SyncBar.Infrastructure.Integrations.Ifood;
 
 /// <summary>
-/// Cliente HTTP real do módulo Financial do iFood. Cobre os 19 endpoints oficiais:
+/// Cliente HTTP real do módulo Financial do Ifood. Cobre os 19 endpoints oficiais:
 /// financial/v2.0 (12), financial/v2.1 (1) e financial/v3.0 (6) — ver comentário completo em
-/// IIFoodFinancialClient sobre a correção do endpoint "financial-events" (nunca existiu) pra
+/// IIfoodFinancialClient sobre a correção do endpoint "financial-events" (nunca existiu) pra
 /// "reconciliation" (real) e sobre por que os relatórios v2.0/v2.1 usam um catálogo genérico.
 ///
 /// Cada registro é parseado individualmente quando o client tenta tipar campos conhecidos — se
 /// vier em formato inesperado, é pulado (não derruba o ciclo inteiro) e o payload bruto sempre é
 /// guardado em RawPayload/RawItems pra auditoria/depuração manual.
 /// </summary>
-internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinancialClient
+internal sealed class IfoodFinancialClient(HttpClient httpClient) : IIfoodFinancialClient
 {
-    private const string BaseUrlV2 = "https://merchant-api.ifood.com.br/financial/v2.0/merchants";
-    private const string BaseUrlV21 = "https://merchant-api.ifood.com.br/financial/v2.1/merchants";
-    private const string BaseUrlV3 = "https://merchant-api.ifood.com.br/financial/v3.0/merchants";
+    private const string BaseUrlV2 = "https://merchant-api.Ifood.com.br/financial/v2.0/merchants";
+    private const string BaseUrlV21 = "https://merchant-api.Ifood.com.br/financial/v2.1/merchants";
+    private const string BaseUrlV3 = "https://merchant-api.Ifood.com.br/financial/v3.0/merchants";
 
-    public async Task<IReadOnlyCollection<IFoodFinancialEventDto>> GetFinancialEventsAsync(
+    public async Task<IReadOnlyCollection<IfoodFinancialEventDto>> GetFinancialEventsAsync(
         string accessToken, string merchantId, DateTime periodStart, DateTime periodEnd, CancellationToken cancellationToken = default)
     {
         // financial/v3.0/reconciliation é filtrado por "competence" (yyyy-MM), não por
         // intervalo de datas — itera todos os meses distintos cobertos por [periodStart, periodEnd].
-        var events = new List<IFoodFinancialEventDto>();
+        var events = new List<IfoodFinancialEventDto>();
         foreach (var competence in EnumerateCompetences(periodStart, periodEnd))
         {
             var url = $"{BaseUrlV3}/{Uri.EscapeDataString(merchantId)}/reconciliation?competence={competence}";
@@ -43,7 +43,7 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
         return events;
     }
 
-    public async Task<IReadOnlyCollection<IFoodSettlementDto>> GetSettlementsAsync(
+    public async Task<IReadOnlyCollection<IfoodSettlementDto>> GetSettlementsAsync(
         string accessToken, string merchantId, DateTime periodStart, DateTime periodEnd, CancellationToken cancellationToken = default)
     {
         // A coleção Postman oficial não documenta filtros de data pra este endpoint (ao contrário
@@ -71,7 +71,7 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
     // lançamentos de fato (id/type/amount/...) estão em settlements[].closingItems[], não em
     // settlements[] diretamente — sem este achatamento, cada "período" virava 1 registro
     // falso com id aleatório e amount=0 (nenhum campo batia).
-    private static List<IFoodSettlementDto> ParseSettlements(JsonElement root)
+    private static List<IfoodSettlementDto> ParseSettlements(JsonElement root)
     {
         if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("settlements", out var periods) && periods.ValueKind == JsonValueKind.Array)
             return ParseSettlementsFromPeriods(periods);
@@ -84,9 +84,9 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
             : [];
     }
 
-    private static List<IFoodSettlementDto> ParseSettlementsFromPeriods(JsonElement periods)
+    private static List<IfoodSettlementDto> ParseSettlementsFromPeriods(JsonElement periods)
     {
-        var settlements = new List<IFoodSettlementDto>();
+        var settlements = new List<IfoodSettlementDto>();
         foreach (var period in periods.EnumerateArray())
         {
             if (!period.TryGetProperty("closingItems", out var closingItems) || closingItems.ValueKind != JsonValueKind.Array)
@@ -98,9 +98,9 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
         return settlements;
     }
 
-    private static List<IFoodSettlementDto> ParseSettlementItems(JsonElement items)
+    private static List<IfoodSettlementDto> ParseSettlementItems(JsonElement items)
     {
-        var settlements = new List<IFoodSettlementDto>();
+        var settlements = new List<IfoodSettlementDto>();
         foreach (var item in items.EnumerateArray())
         {
             var dto = TryParseSettlement(item);
@@ -111,14 +111,14 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
         return settlements;
     }
 
-    public async Task<IFoodFinancialReportResultDto> GetAnticipationsAsync(
+    public async Task<IfoodFinancialReportResultDto> GetAnticipationsAsync(
         string accessToken, string merchantId, CancellationToken cancellationToken = default)
     {
         var url = $"{BaseUrlV3}/{Uri.EscapeDataString(merchantId)}/anticipations";
         return await GetRawReportAsync(url, accessToken, cancellationToken);
     }
 
-    public async Task<IFoodFinancialReportResultDto> GetSalesV3Async(
+    public async Task<IfoodFinancialReportResultDto> GetSalesV3Async(
         string accessToken, string merchantId, DateTime periodStart, DateTime periodEnd, int page, CancellationToken cancellationToken = default)
     {
         var url = $"{BaseUrlV3}/{Uri.EscapeDataString(merchantId)}/sales" +
@@ -126,7 +126,7 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
         return await GetRawReportAsync(url, accessToken, cancellationToken);
     }
 
-    public async Task<IFoodReconciliationOnDemandRequestDto> RequestReconciliationOnDemandAsync(
+    public async Task<IfoodReconciliationOnDemandRequestDto> RequestReconciliationOnDemandAsync(
         string accessToken, string merchantId, string competence, CancellationToken cancellationToken = default)
     {
         var url = $"{BaseUrlV3}/{Uri.EscapeDataString(merchantId)}/reconciliation/on-demand";
@@ -139,7 +139,7 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
         using var response = await httpClient.SendAsync(request, cancellationToken);
         var raw = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"iFood reconciliation on-demand request failed ({(int)response.StatusCode}): {raw}");
+            throw new InvalidOperationException($"Ifood reconciliation on-demand request failed ({(int)response.StatusCode}): {raw}");
 
         string requestId;
         try
@@ -152,7 +152,7 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
             requestId = string.Empty;
         }
 
-        return new IFoodReconciliationOnDemandRequestDto(requestId, raw);
+        return new IfoodReconciliationOnDemandRequestDto(requestId, raw);
     }
 
     public async Task<string?> GetReconciliationOnDemandStatusAsync(
@@ -170,8 +170,8 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
         return await response.Content.ReadAsStringAsync(cancellationToken);
     }
 
-    public async Task<IFoodFinancialReportResultDto> GetReportAsync(
-        string accessToken, string merchantId, IFoodFinancialReportType reportType,
+    public async Task<IfoodFinancialReportResultDto> GetReportAsync(
+        string accessToken, string merchantId, IfoodFinancialReportType reportType,
         string? periodId, DateTime? rangeStart, DateTime? rangeEnd, CancellationToken cancellationToken = default)
     {
         var url = BuildReportUrl(merchantId, reportType, periodId, rangeStart, rangeEnd);
@@ -181,7 +181,7 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
     // Mapeia cada tipo de relatório pro path e pros nomes reais de query param, confirmados
     // contra a coleção Postman oficial "Merchant API — Financial" (v2.0/v2.1).
     private static string BuildReportUrl(
-        string merchantId, IFoodFinancialReportType reportType, string? periodId, DateTime? rangeStart, DateTime? rangeEnd)
+        string merchantId, IfoodFinancialReportType reportType, string? periodId, DateTime? rangeStart, DateTime? rangeEnd)
     {
         var id = Uri.EscapeDataString(merchantId);
         var start = rangeStart?.ToString("yyyy-MM-dd");
@@ -189,35 +189,35 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
 
         return reportType switch
         {
-            IFoodFinancialReportType.SalesAdjustments =>
+            IfoodFinancialReportType.SalesAdjustments =>
                 $"{BaseUrlV2}/{id}/salesAdjustments{Query(("periodId", periodId), ("beginUpdateDate", start), ("endUpdateDate", end))}",
-            IFoodFinancialReportType.Payments =>
+            IfoodFinancialReportType.Payments =>
                 $"{BaseUrlV2}/{id}/payments{Query(("periodId", periodId), ("beginExpectedExecutionDate", start), ("endExpectedExecutionDate", end), ("beginConfirmedPaymentDate", start), ("endConfirmedPaymentDate", end))}",
-            IFoodFinancialReportType.PaymentDetails =>
+            IfoodFinancialReportType.PaymentDetails =>
                 $"{BaseUrlV2}/{id}/paymentDetails{Query(("beginPaymentDate", start), ("endPaymentDate", end))}",
-            IFoodFinancialReportType.Occurrences =>
+            IfoodFinancialReportType.Occurrences =>
                 $"{BaseUrlV2}/{id}/occurrences{Query(("periodId", periodId), ("transactionDateBegin", start), ("transactionDateEnd", end))}",
-            IFoodFinancialReportType.MaintenanceFees =>
+            IfoodFinancialReportType.MaintenanceFees =>
                 $"{BaseUrlV2}/{id}/maintenanceFees{Query(("periodId", periodId), ("transactionDateBegin", start), ("transactionDateEnd", end))}",
-            IFoodFinancialReportType.IncomeTaxes =>
+            IfoodFinancialReportType.IncomeTaxes =>
                 $"{BaseUrlV2}/{id}/incomeTaxes{Query(("periodId", periodId), ("transactionDateBegin", start), ("transactionDateEnd", end))}",
-            IFoodFinancialReportType.Periods =>
+            IfoodFinancialReportType.Periods =>
                 $"{BaseUrlV2}/{id}/periods{Query(("competence", periodId))}",
-            IFoodFinancialReportType.ChargeCancellations =>
+            IfoodFinancialReportType.ChargeCancellations =>
                 $"{BaseUrlV2}/{id}/chargeCancellations{Query(("periodId", periodId), ("transactionDateBegin", start), ("transactionDateEnd", end))}",
-            IFoodFinancialReportType.Cancellations =>
+            IfoodFinancialReportType.Cancellations =>
                 $"{BaseUrlV2}/{id}/cancellations{Query(("periodId", periodId), ("beginCancellationDate", start), ("endCancellationDate", end))}",
-            IFoodFinancialReportType.ReceivableRecords =>
+            IfoodFinancialReportType.ReceivableRecords =>
                 $"{BaseUrlV2}/{id}/receivableRecords{Query(("beginReceivableDate", start), ("endReceivableDate", end))}",
-            IFoodFinancialReportType.SalesBenefits =>
+            IfoodFinancialReportType.SalesBenefits =>
                 $"{BaseUrlV2}/{id}/salesBenefits{Query(("periodId", periodId), ("beginOrderDate", start), ("endOrderDate", end))}",
-            IFoodFinancialReportType.AdjustmentsBenefits =>
+            IfoodFinancialReportType.AdjustmentsBenefits =>
                 $"{BaseUrlV2}/{id}/adjustmentsBenefits{Query(("periodId", periodId), ("beginOrderDate", start), ("endOrderDate", end))}",
-            IFoodFinancialReportType.SalesV21 =>
+            IfoodFinancialReportType.SalesV21 =>
                 $"{BaseUrlV21}/{id}/sales{Query(("periodId", periodId), ("beginLastProcessingDate", start), ("endLastProcessingDate", end), ("beginOrderDate", start), ("endOrderDate", end))}",
-            IFoodFinancialReportType.AnticipationsV3 =>
+            IfoodFinancialReportType.AnticipationsV3 =>
                 $"{BaseUrlV3}/{id}/anticipations",
-            IFoodFinancialReportType.SalesV3 =>
+            IfoodFinancialReportType.SalesV3 =>
                 $"{BaseUrlV3}/{id}/sales{Query(("beginSalesDate", start), ("endSalesDate", end))}",
             _ => throw new ArgumentOutOfRangeException(nameof(reportType), reportType, null),
         };
@@ -267,14 +267,14 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
         return result;
     }
 
-    private async Task<IFoodFinancialReportResultDto> GetRawReportAsync(string url, string accessToken, CancellationToken cancellationToken)
+    private async Task<IfoodFinancialReportResultDto> GetRawReportAsync(string url, string accessToken, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
-            return new IFoodFinancialReportResultDto([]);
+            return new IfoodFinancialReportResultDto([]);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
@@ -293,10 +293,10 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
             items.Add(root.GetRawText());
         }
 
-        return new IFoodFinancialReportResultDto(items);
+        return new IfoodFinancialReportResultDto(items);
     }
 
-    // Algumas APIs do iFood retornam a lista direto na raiz, outras dentro de { "data": [...] }
+    // Algumas APIs do Ifood retornam a lista direto na raiz, outras dentro de { "data": [...] }
     // ou chaves nomeadas — tenta as chaves comuns antes de assumir que a raiz já é o array/objeto.
     private static JsonElement ResolveArrayRoot(JsonElement root)
     {
@@ -312,7 +312,7 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
         return root;
     }
 
-    private static IFoodFinancialEventDto? TryParseFinancialEvent(JsonElement item)
+    private static IfoodFinancialEventDto? TryParseFinancialEvent(JsonElement item)
     {
         try
         {
@@ -336,7 +336,7 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
                 referenceId = GetString(reference, "id");
             }
 
-            return new IFoodFinancialEventDto(
+            return new IfoodFinancialEventDto(
                 id, name, description, trigger, amount, hasTransferImpact,
                 competence, periodStart, periodEnd, settlementExpected, referenceType, referenceId, raw);
         }
@@ -346,7 +346,7 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
         }
     }
 
-    private static IFoodSettlementDto? TryParseSettlement(JsonElement item)
+    private static IfoodSettlementDto? TryParseSettlement(JsonElement item)
     {
         try
         {
@@ -371,7 +371,7 @@ internal sealed class IFoodFinancialClient(HttpClient httpClient) : IIFoodFinanc
                 bankAccount = GetString(bank, "account");
             }
 
-            return new IFoodSettlementDto(id, type, product, amount, status, paymentDate, bankCode, bankAgency, bankAccount, raw);
+            return new IfoodSettlementDto(id, type, product, amount, status, paymentDate, bankCode, bankAgency, bankAccount, raw);
         }
         catch
         {

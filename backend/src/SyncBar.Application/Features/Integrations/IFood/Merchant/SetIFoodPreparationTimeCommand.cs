@@ -1,6 +1,6 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Merchant;
+namespace SyncBar.Application.Features.Integrations.Ifood.Merchant;
 
-// Nulo = remove a customização (volta pra estimativa automática do iFood).
-public sealed record SetIFoodPreparationTimeCommand(long BranchId, int? Minutes) : ICommand;
+// Nulo = remove a customização (volta pra estimativa automática do Ifood).
+public sealed record SetIfoodPreparationTimeCommand(long BranchId, int? Minutes) : ICommand;

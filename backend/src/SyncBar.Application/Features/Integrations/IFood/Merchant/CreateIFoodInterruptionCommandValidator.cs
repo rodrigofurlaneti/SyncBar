@@ -1,11 +1,11 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Merchant;
+namespace SyncBar.Application.Features.Integrations.Ifood.Merchant;
 
 // Duração de 1 minuto a 7 dias — limite confirmado na doc oficial do módulo Merchant (Fase 5).
-public sealed class CreateIFoodInterruptionCommandValidator : AbstractValidator<CreateIFoodInterruptionCommand>
+public sealed class CreateIfoodInterruptionCommandValidator : AbstractValidator<CreateIfoodInterruptionCommand>
 {
-    public CreateIFoodInterruptionCommandValidator()
+    public CreateIfoodInterruptionCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.Description).NotEmpty().MaximumLength(255);

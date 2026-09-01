@@ -1,6 +1,6 @@
-namespace SyncBar.Application.Features.Integrations.IFood.Financial;
+﻿namespace SyncBar.Application.Features.Integrations.Ifood.Financial;
 
-public sealed record IFoodFinancialEventItemResponse(
+public sealed record IfoodFinancialEventItemResponse(
     long Id,
     string Name,
     string? Description,
@@ -9,9 +9,9 @@ public sealed record IFoodFinancialEventItemResponse(
     DateTime CompetenceDate,
     string? ReferenceType,
     string? ReferenceId,
-    long? LinkedIFoodOrderId);
+    long? LinkedIfoodOrderId);
 
-public sealed record IFoodSettlementItemResponse(
+public sealed record IfoodSettlementItemResponse(
     long Id,
     string Type,
     string? Product,
@@ -19,15 +19,15 @@ public sealed record IFoodSettlementItemResponse(
     string Status,
     DateTime? PaymentDate);
 
-// Resumo do período pra tela "Financeiro" em /integracoes/ifood — soma de eventos com impacto
+// Resumo do período pra tela "Financeiro" em /integracoes/Ifood — soma de eventos com impacto
 // no repasse vs soma dos títulos de repasse do mesmo período, com o alerta de discrepância
 // (tolerância de 0,01%, conforme recomendação da doc oficial).
-public sealed record IFoodFinancialSummaryResponse(
+public sealed record IfoodFinancialSummaryResponse(
     DateTime PeriodStart,
     DateTime PeriodEnd,
     decimal TotalFinancialEventsWithTransferImpact,
     decimal TotalSettlements,
     bool HasDiscrepancy,
     decimal DiscrepancyAmount,
-    IReadOnlyCollection<IFoodFinancialEventItemResponse> Events,
-    IReadOnlyCollection<IFoodSettlementItemResponse> Settlements);
+    IReadOnlyCollection<IfoodFinancialEventItemResponse> Events,
+    IReadOnlyCollection<IfoodSettlementItemResponse> Settlements);

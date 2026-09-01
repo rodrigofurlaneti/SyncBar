@@ -1,12 +1,12 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
 // Fase 17 — cadastro de SABOR de pizza, reutilizável entre várias PizzaConfiguration da mesma
 // empresa (ex.: "Calabresa" pode ser sabor da pizza "Pizza Grande" e da pizza "Pizza Broto" ao
 // mesmo tempo) — mesmo espírito de ComplementItem (cadastro leve reaproveitável), mas com
-// Description/ImageUrl porque o iFood exige esses campos no objeto "topping" da API de pizza
-// (ver IFoodCatalogClient — CreatePizza/UpdatePizza, campo toppings[].description/image).
+// Description/ImageUrl porque o Ifood exige esses campos no objeto "topping" da API de pizza
+// (ver IfoodCatalogClient — CreatePizza/UpdatePizza, campo toppings[].description/image).
 public sealed class PizzaFlavor : AggregateRoot
 {
     public long CompanyId { get; private set; }

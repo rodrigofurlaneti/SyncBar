@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SyncBar.Domain.Entities;
 
@@ -17,7 +17,7 @@ internal sealed class PizzaConfigurationConfiguration : IEntityTypeConfiguration
 
         // 1:1 com Product — sem índice único filtrado (MySQL sem índice parcial confiável em
         // CREATE INDEX); "1 configuração ativa por produto" é garantido pelo handler
-        // (get-or-create), mesmo padrão de IFoodProductMapping/ProductComplementGroup.
+        // (get-or-create), mesmo padrão de IfoodProductMapping/ProductComplementGroup.
         builder.HasIndex(x => x.ProductId).HasDatabaseName("IX_PizzaConfiguration_ProductId");
 
         builder.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId)

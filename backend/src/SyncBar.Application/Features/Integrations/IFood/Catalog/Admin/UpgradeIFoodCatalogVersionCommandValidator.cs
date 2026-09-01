@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.Admin;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.Admin;
 
-public sealed class UpgradeIFoodCatalogVersionCommandValidator : AbstractValidator<UpgradeIFoodCatalogVersionCommand>
+public sealed class UpgradeIfoodCatalogVersionCommandValidator : AbstractValidator<UpgradeIfoodCatalogVersionCommand>
 {
-    public UpgradeIFoodCatalogVersionCommandValidator()
+    public UpgradeIfoodCatalogVersionCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
     }

@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -8,12 +8,12 @@ namespace SyncBar.Application.Features.Catalog.Complements.UpdateComplementItem;
 internal sealed class UpdateComplementItemCommandHandler : BaseCommandHandler<UpdateComplementItemCommand>
 {
     private readonly IComplementItemRepository _complementItemRepository;
-    private readonly IIFoodCatalogSyncTrigger _catalogSyncTrigger;
+    private readonly IIfoodCatalogSyncTrigger _catalogSyncTrigger;
     private readonly IUnitOfWork _unitOfWork;
 
     public UpdateComplementItemCommandHandler(
         IComplementItemRepository complementItemRepository,
-        IIFoodCatalogSyncTrigger catalogSyncTrigger,
+        IIfoodCatalogSyncTrigger catalogSyncTrigger,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
@@ -41,7 +41,7 @@ internal sealed class UpdateComplementItemCommandHandler : BaseCommandHandler<Up
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 // O nome vira o `name` do product embrulhado por cada option que usa este
-                // ComplementItem (ver IFoodComplementMapping) — precisa resincronizar.
+                // ComplementItem (ver IfoodComplementMapping) — precisa resincronizar.
                 _catalogSyncTrigger.TriggerCompanySync(complementItem.CompanyId);
 
                 return Result.Success();

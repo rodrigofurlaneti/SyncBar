@@ -1,7 +1,7 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Orders;
+namespace SyncBar.Application.Features.Integrations.Ifood.Orders;
 
 // Fase 9b — disputas Handshake (POST disputes/{disputeId}/reject). Ver ressalva em
-// AcceptIFoodDisputeCommand.
-public sealed record RejectIFoodDisputeCommand(long BranchId, string DisputeId, string Reason) : ICommand<IFoodDisputeActionResponse>;
+// AcceptIfoodDisputeCommand.
+public sealed record RejectIfoodDisputeCommand(long BranchId, string DisputeId, string Reason) : ICommand<IfoodDisputeActionResponse>;

@@ -1,7 +1,7 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-public sealed record IFoodSafeDeliveryScoreResponse(string? Score);
+public sealed record IfoodSafeDeliveryScoreResponse(string? Score);
 
-public sealed record GetIFoodSafeDeliveryScoreQuery(long Id) : IQuery<IFoodSafeDeliveryScoreResponse>;
+public sealed record GetIfoodSafeDeliveryScoreQuery(long Id) : IQuery<IfoodSafeDeliveryScoreResponse>;

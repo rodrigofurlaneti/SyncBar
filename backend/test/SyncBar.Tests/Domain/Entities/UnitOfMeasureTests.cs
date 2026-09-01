@@ -30,7 +30,7 @@ namespace SyncBar.Tests.Domain.Entities
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string invalidName)
+        public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
             var result = UnitOfMeasure.Create(invalidName, "kg");
@@ -45,7 +45,7 @@ namespace SyncBar.Tests.Domain.Entities
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void Create_WithEmptyOrWhitespaceAbbreviation_ShouldReturnFailureResult(string invalidAbbreviation)
+        public void Create_WithEmptyOrWhitespaceAbbreviation_ShouldReturnFailureResult(string? invalidAbbreviation)
         {
             // Act
             var result = UnitOfMeasure.Create("Kilogram", invalidAbbreviation);

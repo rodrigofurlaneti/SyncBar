@@ -1,41 +1,41 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.Admin;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.Admin;
 
-internal sealed class UploadIFoodImageCommandHandler(
+internal sealed class UploadIfoodImageCommandHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodCatalogClient catalogClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodCatalogClient catalogClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseCommandHandler<UploadIFoodImageCommand, IFoodImageUploadResponse>(logRepository, unitOfWork)
+    : BaseCommandHandler<UploadIfoodImageCommand, IfoodImageUploadResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodImageUploadResponse>> Handle(
-        UploadIFoodImageCommand request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodImageUploadResponse>> Handle(
+        UploadIfoodImageCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(UploadIFoodImageCommandHandler),
+            nameof(UploadIfoodImageCommandHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodImageUploadResponse>(resolved.Error);
+                    return Result.Failure<IfoodImageUploadResponse>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
                 var result = await catalogClient.UploadImageAsync(token, merchantId, request.JsonBody, cancellationToken);
                 if (!result.Success)
-                    return Result.Failure<IFoodImageUploadResponse>(new Error("IFoodCatalog.UploadImageFailed", result.ErrorMessage ?? "Falha ao enviar a imagem para o iFood."));
+                    return Result.Failure<IfoodImageUploadResponse>(new Error("IfoodCatalog.UploadImageFailed", result.ErrorMessage ?? "Falha ao enviar a imagem para o Ifood."));
 
-                return Result.Success(new IFoodImageUploadResponse(result.RawPayload));
+                return Result.Success(new IfoodImageUploadResponse(result.RawPayload));
             });
     }
 }

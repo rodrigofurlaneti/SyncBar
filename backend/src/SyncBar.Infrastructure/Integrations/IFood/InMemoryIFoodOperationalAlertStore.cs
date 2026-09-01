@@ -1,28 +1,28 @@
 ﻿using System.Threading;
-using SyncBar.Application.Abstractions.Integrations.IFood;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
 
-namespace SyncBar.Infrastructure.Integrations.IFood;
+namespace SyncBar.Infrastructure.Integrations.Ifood;
 
 /// <summary>
-/// Implementação em memória de IIFoodOperationalAlertStore (Fase 13) — ver comentário na
+/// Implementação em memória de IIfoodOperationalAlertStore (Fase 13) — ver comentário na
 /// interface pra justificativa do trade-off "sem persistência". Registrada como Singleton (não
 /// Scoped) porque precisa sobreviver entre os ciclos do BackgroundService, que roda fora de
 /// qualquer request HTTP.
 /// </summary>
-internal sealed class InMemoryIFoodOperationalAlertStore : IIFoodOperationalAlertStore
+internal sealed class InMemoryIfoodOperationalAlertStore : IIfoodOperationalAlertStore
 {
     // Por empresa, guarda só os últimos N alertas não reconhecidos — evita crescer sem limite se
     // ninguém abrir a tela por dias (ex.: loja oscilando disponível/indisponível repetidamente
     // por causa de uma instabilidade de internet na loja).
     private const int MaxPerCompany = 50;
 
-    private readonly Dictionary<long, List<IFoodOperationalAlert>> _byCompany = [];
+    private readonly Dictionary<long, List<IfoodOperationalAlert>> _byCompany = [];
     private readonly Lock _lock = new();
 
-    public IFoodOperationalAlert Raise(
-        long companyId, long branchId, string branchName, string title, string message, IFoodOperationalAlertSeverity severity)
+    public IfoodOperationalAlert Raise(
+        long companyId, long branchId, string branchName, string title, string message, IfoodOperationalAlertSeverity severity)
     {
-        var alert = new IFoodOperationalAlert(Guid.NewGuid(), companyId, branchId, branchName, title, message, severity, DateTime.Now);
+        var alert = new IfoodOperationalAlert(Guid.NewGuid(), companyId, branchId, branchName, title, message, severity, DateTime.Now);
 
         lock (_lock)
         {
@@ -40,7 +40,7 @@ internal sealed class InMemoryIFoodOperationalAlertStore : IIFoodOperationalAler
         return alert;
     }
 
-    public IReadOnlyList<IFoodOperationalAlert> GetUnacknowledged(long companyId)
+    public IReadOnlyList<IfoodOperationalAlert> GetUnacknowledged(long companyId)
     {
         lock (_lock)
         {

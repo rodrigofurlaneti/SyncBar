@@ -7,7 +7,7 @@ public sealed class AppFeature : Entity
     public string Code { get; private set; } = null!;
     public string Name { get; private set; } = null!;
     public DateTime CreatedAt { get; private set; }
-    public DateTime? UpdatedAt { get; private set; }
+    public DateTime? UpdatedAt { get; }
     public bool IsActive { get; private set; }
 
     private AppFeature() : base(0) { }

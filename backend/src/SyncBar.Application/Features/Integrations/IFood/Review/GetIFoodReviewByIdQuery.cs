@@ -1,5 +1,5 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Review;
+namespace SyncBar.Application.Features.Integrations.Ifood.Review;
 
-public sealed record GetIFoodReviewByIdQuery(long BranchId, string ReviewId) : IQuery<IFoodReviewDetailResponse>;
+public sealed record GetIfoodReviewByIdQuery(long BranchId, string ReviewId) : IQuery<IfoodReviewDetailResponse>;

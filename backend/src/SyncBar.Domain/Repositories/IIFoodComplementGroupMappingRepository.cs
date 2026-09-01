@@ -1,10 +1,10 @@
-using SyncBar.Domain.Entities;
+﻿using SyncBar.Domain.Entities;
 
 namespace SyncBar.Domain.Repositories;
 
-public interface IIFoodComplementGroupMappingRepository
+public interface IIfoodComplementGroupMappingRepository
 {
-    Task<IFoodComplementGroupMapping?> GetByComplementGroupAndBranchAsync(long complementGroupId, long branchId, CancellationToken cancellationToken = default);
-    Task<IReadOnlyCollection<IFoodComplementGroupMapping>> GetByBranchAsync(long branchId, CancellationToken cancellationToken = default);
-    Task AddAsync(IFoodComplementGroupMapping entity, CancellationToken cancellationToken = default);
+    Task<IfoodComplementGroupMapping?> GetByComplementGroupAndBranchAsync(long complementGroupId, long branchId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<IfoodComplementGroupMapping>> GetByBranchAsync(long branchId, CancellationToken cancellationToken = default);
+    Task AddAsync(IfoodComplementGroupMapping entity, CancellationToken cancellationToken = default);
 }

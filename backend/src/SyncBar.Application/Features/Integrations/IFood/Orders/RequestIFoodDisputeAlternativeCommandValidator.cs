@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Orders;
+namespace SyncBar.Application.Features.Integrations.Ifood.Orders;
 
-public sealed class RequestIFoodDisputeAlternativeCommandValidator : AbstractValidator<RequestIFoodDisputeAlternativeCommand>
+public sealed class RequestIfoodDisputeAlternativeCommandValidator : AbstractValidator<RequestIfoodDisputeAlternativeCommand>
 {
-    public RequestIFoodDisputeAlternativeCommandValidator()
+    public RequestIfoodDisputeAlternativeCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.DisputeId).NotEmpty().MaximumLength(60);

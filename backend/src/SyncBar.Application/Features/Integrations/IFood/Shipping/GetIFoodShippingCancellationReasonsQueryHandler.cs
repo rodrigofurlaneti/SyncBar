@@ -1,38 +1,38 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-internal sealed class GetIFoodShippingCancellationReasonsQueryHandler(
-    IIFoodShippingDeliveryRepository deliveryRepository,
+internal sealed class GetIfoodShippingCancellationReasonsQueryHandler(
+    IIfoodShippingDeliveryRepository deliveryRepository,
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodShippingClient shippingClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodShippingClient shippingClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodShippingCancellationReasonsQuery, IReadOnlyCollection<IFoodShippingCancellationReasonResponse>>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodShippingCancellationReasonsQuery, IReadOnlyCollection<IfoodShippingCancellationReasonResponse>>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IReadOnlyCollection<IFoodShippingCancellationReasonResponse>>> Handle(
-        GetIFoodShippingCancellationReasonsQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IReadOnlyCollection<IfoodShippingCancellationReasonResponse>>> Handle(
+        GetIfoodShippingCancellationReasonsQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodShippingCancellationReasonsQueryHandler),
+            nameof(GetIfoodShippingCancellationReasonsQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodShippingTokenResolution.ResolveAsync(
+                var resolved = await IfoodShippingTokenResolution.ResolveAsync(
                     request.Id, deliveryRepository, branchRepository, tokenProvider, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IReadOnlyCollection<IFoodShippingCancellationReasonResponse>>(resolved.Error);
+                    return Result.Failure<IReadOnlyCollection<IfoodShippingCancellationReasonResponse>>(resolved.Error);
 
                 var (delivery, token) = resolved.Value;
-                var reasons = await shippingClient.GetCancellationReasonsAsync(token, delivery.IFoodDeliveryId, cancellationToken);
+                var reasons = await shippingClient.GetCancellationReasonsAsync(token, delivery.IfoodDeliveryId, cancellationToken);
 
-                IReadOnlyCollection<IFoodShippingCancellationReasonResponse> responses = reasons
-                    .Select(r => new IFoodShippingCancellationReasonResponse(r.CancelCodeId, r.Description))
+                IReadOnlyCollection<IfoodShippingCancellationReasonResponse> responses = reasons
+                    .Select(r => new IfoodShippingCancellationReasonResponse(r.CancelCodeId, r.Description))
                     .ToList();
 
                 return Result.Success(responses);

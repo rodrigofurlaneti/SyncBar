@@ -48,7 +48,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<SyncBar.Infrastructure.Persistence.AppDbContext>();
-    dbContext.Database.Migrate();
+    await dbContext.Database.MigrateAsync();
 }
 
 ValidateJwtSecret(builder.Configuration);
@@ -90,7 +90,7 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
     }
 });
 
-app.Run();
+await app.RunAsync();
 
 // --- Métodos locais: cada bloco de configuração condicional foi extraído para cá para
 // manter o fluxo principal do Program.cs simples (reduz a Complexidade Cognitiva do arquivo). ---
@@ -312,4 +312,9 @@ static void UseDocsOrTransportSecurity(WebApplication app)
     }
 }
 
-public partial class Program { } // exposto para testes de integração (WebApplicationFactory)
+public partial class Program
+{
+    // Construtor protegido: a classe nunca deve ser instanciada diretamente, só serve
+    // como marcador de assembly para o WebApplicationFactory<Program> dos testes de integração.
+    protected Program() { }
+}

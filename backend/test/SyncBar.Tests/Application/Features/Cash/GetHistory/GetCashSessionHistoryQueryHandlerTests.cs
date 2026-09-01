@@ -91,7 +91,7 @@ public sealed class GetCashSessionHistoryQueryHandlerTests
         var olderSession = CashSession.Open(cashRegisterId: 1, openedByEmployeeId: 10, openingAmount: 100m).Value;
         // Garante um OpenedAt distinguível do segundo, já que CashSession.Open usa DateTime.Now
         // internamente e a resolução do relógio do Windows pode não diferenciar chamadas muito próximas.
-        Thread.Sleep(20);
+        await Task.Delay(20);
         var newerSession = CashSession.Open(cashRegisterId: 2, openedByEmployeeId: 20, openingAmount: 200m).Value;
 
         _cashSessionRepository.GetByBranchAndPeriodAsync(query.BranchId, Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())

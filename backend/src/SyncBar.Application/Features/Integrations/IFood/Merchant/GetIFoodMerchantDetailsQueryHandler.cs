@@ -1,47 +1,47 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Merchant;
+namespace SyncBar.Application.Features.Integrations.Ifood.Merchant;
 
-internal sealed class GetIFoodMerchantDetailsQueryHandler(
+internal sealed class GetIfoodMerchantDetailsQueryHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodMerchantClient merchantClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodMerchantClient merchantClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodMerchantDetailsQuery, IFoodMerchantDetailsResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodMerchantDetailsQuery, IfoodMerchantDetailsResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodMerchantDetailsResponse>> Handle(
-        GetIFoodMerchantDetailsQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodMerchantDetailsResponse>> Handle(
+        GetIfoodMerchantDetailsQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodMerchantDetailsQueryHandler),
+            nameof(GetIfoodMerchantDetailsQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodMerchantDetailsResponse>(resolved.Error);
+                    return Result.Failure<IfoodMerchantDetailsResponse>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
                 var details = await merchantClient.GetMerchantDetailsAsync(token, merchantId, cancellationToken);
                 if (!details.Success)
-                    return Result.Failure<IFoodMerchantDetailsResponse>(new Error("IFoodMerchant.DetailsFailed", details.ErrorMessage ?? "Falha ao buscar os detalhes da loja no iFood."));
+                    return Result.Failure<IfoodMerchantDetailsResponse>(new Error("IfoodMerchant.DetailsFailed", details.ErrorMessage ?? "Falha ao buscar os detalhes da loja no Ifood."));
 
                 var address = details.Address is null
                     ? null
-                    : new IFoodMerchantAddressResponse(
+                    : new IfoodMerchantAddressResponse(
                         details.Address.Country, details.Address.State, details.Address.City, details.Address.PostalCode,
                         details.Address.District, details.Address.Street, details.Address.Number,
                         details.Address.Latitude, details.Address.Longitude);
 
-                return Result.Success(new IFoodMerchantDetailsResponse(
+                return Result.Success(new IfoodMerchantDetailsResponse(
                     details.Id, details.Name, details.CorporateName, details.Description, details.Type, details.Status,
                     details.CreatedAt, address));
             });

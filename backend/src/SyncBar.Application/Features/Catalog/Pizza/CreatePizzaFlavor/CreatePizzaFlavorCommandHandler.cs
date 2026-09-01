@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Tenancy;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -41,7 +41,7 @@ internal sealed class CreatePizzaFlavorCommandHandler(
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Sem TriggerCompanySync aqui: um sabor sozinho (sem preço em nenhuma
-                // PizzaConfiguration) não afeta o catálogo do iFood ainda — mesmo critério de
+                // PizzaConfiguration) não afeta o catálogo do Ifood ainda — mesmo critério de
                 // CreateComplementItemCommandHandler.
                 return Result.Success(flavor.Value.Id);
             });

@@ -1,6 +1,6 @@
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog;
+﻿namespace SyncBar.Application.Features.Integrations.Ifood.Catalog;
 
-public sealed record IFoodCatalogSyncSummary(
+public sealed record IfoodCatalogSyncSummary(
     bool Skipped,
     int BranchesSynced,
     int CategoriesCreated,

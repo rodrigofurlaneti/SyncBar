@@ -1,6 +1,6 @@
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+﻿namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-public sealed record IFoodShippingQuoteResponse(
+public sealed record IfoodShippingQuoteResponse(
     string QuoteId,
     decimal GrossValue,
     decimal Discount,

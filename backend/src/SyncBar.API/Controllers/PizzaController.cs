@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,13 +8,13 @@ using SyncBar.Application.Features.Catalog.Pizza.AddPizzaSize;
 using SyncBar.Application.Features.Catalog.Pizza.CreatePizzaConfiguration;
 using SyncBar.Application.Features.Catalog.Pizza.CreatePizzaFlavor;
 using SyncBar.Application.Features.Catalog.Pizza.SetPizzaFlavorPrice;
-using SyncBar.Application.Features.Integrations.IFood.Catalog.Pizza;
+using SyncBar.Application.Features.Integrations.Ifood.Catalog.Pizza;
 using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
 // Fase 17 (pizza) — cadastro de sabores e configuração de pizza (tamanhos/bordas/recheios de
-// borda/preço por sabor×tamanho) de um Product, e o gatilho manual de sincronização com o iFood.
+// borda/preço por sabor×tamanho) de um Product, e o gatilho manual de sincronização com o Ifood.
 // Mesma policy de ComplementsController — é parte do cardápio.
 [Authorize(Policy = "Feature:Cardapio")]
 [Route("api/pizza")]
@@ -75,13 +75,13 @@ public sealed class PizzaController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // --- Sincronização manual com o iFood (Catalog v1, legado) ---
+    // --- Sincronização manual com o Ifood (Catalog v1, legado) ---
 
-    [HttpPost("configurations/{id:long}/ifood-sync")]
-    public Task<IActionResult> SyncWithIFood(long id, [FromBody] SyncIFoodPizzaRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PizzaController), nameof(SyncWithIFood), async () =>
+    [HttpPost("configurations/{id:long}/Ifood-sync")]
+    public Task<IActionResult> SyncWithIfood(long id, [FromBody] SyncIfoodPizzaRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PizzaController), nameof(SyncWithIfood), async () =>
         {
-            var result = await Mediator.Send(new SyncIFoodPizzaCommand(request.BranchId, id), ct);
+            var result = await Mediator.Send(new SyncIfoodPizzaCommand(request.BranchId, id), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 }
@@ -101,4 +101,4 @@ public sealed record SetPizzaFlavorPriceRequest(
     [property: JsonRequired] long PizzaFlavorId,
     [property: JsonRequired] long PizzaSizeId,
     [property: JsonRequired] decimal Price);
-public sealed record SyncIFoodPizzaRequest([property: JsonRequired] long BranchId);
+public sealed record SyncIfoodPizzaRequest([property: JsonRequired] long BranchId);

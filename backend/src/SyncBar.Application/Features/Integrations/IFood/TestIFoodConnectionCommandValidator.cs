@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood;
+namespace SyncBar.Application.Features.Integrations.Ifood;
 
-public sealed class TestIFoodConnectionCommandValidator : AbstractValidator<TestIFoodConnectionCommand>
+public sealed class TestIfoodConnectionCommandValidator : AbstractValidator<TestIfoodConnectionCommand>
 {
-    public TestIFoodConnectionCommandValidator()
+    public TestIfoodConnectionCommandValidator()
     {
         RuleFor(x => x.CompanyId).GreaterThan(0);
     }

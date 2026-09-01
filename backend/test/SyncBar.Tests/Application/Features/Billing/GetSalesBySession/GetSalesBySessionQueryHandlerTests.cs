@@ -90,7 +90,7 @@ public sealed class GetSalesBySessionQueryHandlerTests
         var olderSale = CreateSale(query.CashSessionId, saleNumber: 1001);
         // Garante um SoldAt distinguível do primeiro, já que Sale.Create usa DateTime.Now internamente
         // e a resolução do relógio do Windows pode não diferenciar chamadas muito próximas.
-        Thread.Sleep(20);
+        await Task.Delay(20);
         var newerSale = CreateSale(query.CashSessionId, saleNumber: 1002);
 
         _saleRepository.GetByCashSessionAsync(query.CashSessionId, Arg.Any<CancellationToken>())

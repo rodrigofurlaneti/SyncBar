@@ -1,6 +1,6 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.Products;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.Products;
 
 // Fase 10 — exclui um produto (DELETE catalog/v2.0/merchants/{merchantId}/products/{productId}).
-public sealed record DeleteIFoodProductCommand(long BranchId, Guid ProductId) : ICommand;
+public sealed record DeleteIfoodProductCommand(long BranchId, Guid ProductId) : ICommand;

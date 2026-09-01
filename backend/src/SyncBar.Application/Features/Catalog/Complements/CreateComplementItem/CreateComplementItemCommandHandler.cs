@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Tenancy;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -59,7 +59,7 @@ internal sealed class CreateComplementItemCommandHandler : BaseCommandHandler<Cr
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Não dispara TriggerCompanySync aqui: um ComplementItem sozinho (fora de um
-                // ComplementGroup) não afeta o catálogo do iFood — só quando vira um Complement
+                // ComplementGroup) não afeta o catálogo do Ifood — só quando vira um Complement
                 // dentro de um grupo vinculado a um produto (ver AddComplement/LinkProductComplementGroup).
                 return Result.Success(complementItem.Value.Id);
             });

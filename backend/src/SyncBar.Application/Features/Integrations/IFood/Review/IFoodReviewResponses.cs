@@ -1,8 +1,8 @@
-namespace SyncBar.Application.Features.Integrations.IFood.Review;
+﻿namespace SyncBar.Application.Features.Integrations.Ifood.Review;
 
-public sealed record IFoodReviewOrderResponse(DateTime? CreatedAt, string? Id, string? ShortId);
+public sealed record IfoodReviewOrderResponse(DateTime? CreatedAt, string? Id, string? ShortId);
 
-public sealed record IFoodReviewListItemResponse(
+public sealed record IfoodReviewListItemResponse(
     string Id,
     DateTime? CreatedAt,
     bool Discarded,
@@ -12,16 +12,16 @@ public sealed record IFoodReviewListItemResponse(
     string? ModerationStatus,
     string? Reply,
     double? Score,
-    IFoodReviewOrderResponse? Order);
+    IfoodReviewOrderResponse? Order);
 
-public sealed record IFoodReviewListResponse(
-    long Page, long Size, long Total, long PageCount, IReadOnlyCollection<IFoodReviewListItemResponse> Reviews);
+public sealed record IfoodReviewListResponse(
+    long Page, long Size, long Total, long PageCount, IReadOnlyCollection<IfoodReviewListItemResponse> Reviews);
 
-public sealed record IFoodReviewAnswerOptionResponse(string Id, string? Title);
+public sealed record IfoodReviewAnswerOptionResponse(string Id, string? Title);
 
-public sealed record IFoodReviewQuestionResponse(string Id, string? Type, string? Title, IReadOnlyCollection<IFoodReviewAnswerOptionResponse> Answers);
+public sealed record IfoodReviewQuestionResponse(string Id, string? Type, string? Title, IReadOnlyCollection<IfoodReviewAnswerOptionResponse> Answers);
 
-public sealed record IFoodReviewDetailResponse(
+public sealed record IfoodReviewDetailResponse(
     string Id,
     DateTime? CreatedAt,
     bool Discarded,
@@ -32,9 +32,9 @@ public sealed record IFoodReviewDetailResponse(
     string? ModerationStatus,
     string? Reply,
     double? Score,
-    IFoodReviewOrderResponse? Order,
-    IReadOnlyCollection<IFoodReviewQuestionResponse> Questions);
+    IfoodReviewOrderResponse? Order,
+    IReadOnlyCollection<IfoodReviewQuestionResponse> Questions);
 
-public sealed record IFoodReviewReplyResponse(DateTime? CreatedAt, string Text, string ReviewId);
+public sealed record IfoodReviewReplyResponse(DateTime? CreatedAt, string Text, string ReviewId);
 
-public sealed record IFoodReviewSummaryResponse(double? Score, long TotalReviewsCount, long ValidReviewsCount);
+public sealed record IfoodReviewSummaryResponse(double? Score, long TotalReviewsCount, long ValidReviewsCount);

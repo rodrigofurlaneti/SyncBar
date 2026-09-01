@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -8,12 +8,12 @@ namespace SyncBar.Application.Features.Catalog.Complements.DeactivateComplementG
 internal sealed class DeactivateComplementGroupCommandHandler : BaseCommandHandler<DeactivateComplementGroupCommand>
 {
     private readonly IComplementGroupRepository _complementGroupRepository;
-    private readonly IIFoodCatalogSyncTrigger _catalogSyncTrigger;
+    private readonly IIfoodCatalogSyncTrigger _catalogSyncTrigger;
     private readonly IUnitOfWork _unitOfWork;
 
     public DeactivateComplementGroupCommandHandler(
         IComplementGroupRepository complementGroupRepository,
-        IIFoodCatalogSyncTrigger catalogSyncTrigger,
+        IIfoodCatalogSyncTrigger catalogSyncTrigger,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
@@ -37,7 +37,7 @@ internal sealed class DeactivateComplementGroupCommandHandler : BaseCommandHandl
                 complementGroup.Deactivate();
                 await _unitOfWork.CommitAsync(cancellationToken);
 
-                // Grupo desativado precisa sumir/pausar no catálogo do iFood pros produtos que o usam.
+                // Grupo desativado precisa sumir/pausar no catálogo do Ifood pros produtos que o usam.
                 _catalogSyncTrigger.TriggerCompanySync(complementGroup.CompanyId);
 
                 return Result.Success();

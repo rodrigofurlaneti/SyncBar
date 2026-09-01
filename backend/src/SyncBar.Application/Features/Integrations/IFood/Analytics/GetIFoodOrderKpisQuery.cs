@@ -1,6 +1,6 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Analytics;
+namespace SyncBar.Application.Features.Integrations.Ifood.Analytics;
 
-public sealed record GetIFoodOrderKpisQuery(long BranchId, DateTime? PeriodStart, DateTime? PeriodEnd, int Page)
-    : IQuery<IFoodOrderKpisResponse>;
+public sealed record GetIfoodOrderKpisQuery(long BranchId, DateTime? PeriodStart, DateTime? PeriodEnd, int Page)
+    : IQuery<IfoodOrderKpisResponse>;

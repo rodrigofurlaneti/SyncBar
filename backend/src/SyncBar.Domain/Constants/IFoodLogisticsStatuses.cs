@@ -1,12 +1,12 @@
-namespace SyncBar.Domain.Constants;
+﻿namespace SyncBar.Domain.Constants;
 
 // Status da entrega do LADO DA LOGÍSTICA PRÓPRIA (frota própria) — máquina de estados separada
-// do IFoodOrderStatuses (que é sobre confirmação/preparo perante o iFood) e do OrderStatusIds
+// do IfoodOrderStatuses (que é sobre confirmação/preparo perante o Ifood) e do OrderStatusIds
 // (cozinha/pagamento, interno do SyncBar). Ciclo de vida documentado no módulo Logistics:
 // DRIVER_ASSIGNED → GOING_TO_ORIGIN → ARRIVED_AT_ORIGIN → DISPATCHED → ARRIVED_AT_DESTINATION →
 // DELIVERY_CODE_VERIFIED (esta última só quando o pedido não é self-delivery — ver ressalva em
-// IIFoodLogisticsClient/verifyDeliveryCode, que pode devolver 412 nesse caso).
-public static class IFoodLogisticsStatuses
+// IIfoodLogisticsClient/verifyDeliveryCode, que pode devolver 412 nesse caso).
+public static class IfoodLogisticsStatuses
 {
     public const string DriverAssigned = "DRIVER_ASSIGNED";
     public const string GoingToOrigin = "GOING_TO_ORIGIN";

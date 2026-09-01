@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Merchant;
+namespace SyncBar.Application.Features.Integrations.Ifood.Merchant;
 
-public sealed class SaveIFoodOpeningHoursCommandValidator : AbstractValidator<SaveIFoodOpeningHoursCommand>
+public sealed class SaveIfoodOpeningHoursCommandValidator : AbstractValidator<SaveIfoodOpeningHoursCommand>
 {
-    public SaveIFoodOpeningHoursCommandValidator()
+    public SaveIfoodOpeningHoursCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleForEach(x => x.Shifts).ChildRules(shift =>

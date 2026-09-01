@@ -1,49 +1,49 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Review;
+namespace SyncBar.Application.Features.Integrations.Ifood.Review;
 
-internal sealed class GetIFoodReviewByIdQueryHandler(
+internal sealed class GetIfoodReviewByIdQueryHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodReviewClient reviewClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodReviewClient reviewClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodReviewByIdQuery, IFoodReviewDetailResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodReviewByIdQuery, IfoodReviewDetailResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodReviewDetailResponse>> Handle(
-        GetIFoodReviewByIdQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodReviewDetailResponse>> Handle(
+        GetIfoodReviewByIdQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodReviewByIdQueryHandler),
+            nameof(GetIfoodReviewByIdQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodReviewDetailResponse>(resolved.Error);
+                    return Result.Failure<IfoodReviewDetailResponse>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
                 var review = await reviewClient.GetReviewByIdAsync(token, merchantId, request.ReviewId, cancellationToken);
                 if (review is null)
-                    return Result.Failure<IFoodReviewDetailResponse>(new Error("IFoodReview.NotFound", "Review not found on iFood."));
+                    return Result.Failure<IfoodReviewDetailResponse>(new Error("IfoodReview.NotFound", "Review not found on Ifood."));
 
                 var questions = review.Questions
-                    .Select(q => new IFoodReviewQuestionResponse(
-                        q.Id, q.Type, q.Title, q.Answers.Select(a => new IFoodReviewAnswerOptionResponse(a.Id, a.Title)).ToList()))
+                    .Select(q => new IfoodReviewQuestionResponse(
+                        q.Id, q.Type, q.Title, q.Answers.Select(a => new IfoodReviewAnswerOptionResponse(a.Id, a.Title)).ToList()))
                     .ToList();
 
-                var response = new IFoodReviewDetailResponse(
+                var response = new IfoodReviewDetailResponse(
                     review.Id, review.CreatedAt, review.Discarded, review.Published, review.Comment, review.CustomerName,
                     review.Moderated, review.ModerationStatus, review.Reply, review.Score,
-                    review.Order is null ? null : new IFoodReviewOrderResponse(review.Order.CreatedAt, review.Order.Id, review.Order.ShortId),
+                    review.Order is null ? null : new IfoodReviewOrderResponse(review.Order.CreatedAt, review.Order.Id, review.Order.ShortId),
                     questions);
 
                 return Result.Success(response);

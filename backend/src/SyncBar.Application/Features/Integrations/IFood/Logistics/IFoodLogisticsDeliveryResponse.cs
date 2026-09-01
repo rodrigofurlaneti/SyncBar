@@ -1,9 +1,9 @@
-namespace SyncBar.Application.Features.Integrations.IFood.Logistics;
+﻿namespace SyncBar.Application.Features.Integrations.Ifood.Logistics;
 
-public sealed record IFoodLogisticsDeliveryResponse(
+public sealed record IfoodLogisticsDeliveryResponse(
     long Id,
-    long IFoodOrderId,
-    string? IFoodOrderDisplayId,
+    long IfoodOrderId,
+    string? IfoodOrderDisplayId,
     string DriverName,
     string DriverPhone,
     string DriverVehicleType,

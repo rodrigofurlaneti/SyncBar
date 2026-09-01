@@ -1,17 +1,17 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
-using DomainIFoodMerchantMapping = SyncBar.Domain.Entities.IFoodMerchantMapping;
+using DomainIfoodMerchantMapping = SyncBar.Domain.Entities.IfoodMerchantMapping;
 
-namespace SyncBar.Application.Features.Integrations.IFood;
+namespace SyncBar.Application.Features.Integrations.Ifood;
 
-internal sealed class SetIFoodMerchantMappingCommandHandler : BaseCommandHandler<SetIFoodMerchantMappingCommand>
+internal sealed class SetIfoodMerchantMappingCommandHandler : BaseCommandHandler<SetIfoodMerchantMappingCommand>
 {
-    private readonly IIFoodMerchantMappingRepository _mappingRepository;
+    private readonly IIfoodMerchantMappingRepository _mappingRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public SetIFoodMerchantMappingCommandHandler(
-        IIFoodMerchantMappingRepository mappingRepository,
+    public SetIfoodMerchantMappingCommandHandler(
+        IIfoodMerchantMappingRepository mappingRepository,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
@@ -20,10 +20,10 @@ internal sealed class SetIFoodMerchantMappingCommandHandler : BaseCommandHandler
         _unitOfWork = unitOfWork;
     }
 
-    public override async Task<Result> Handle(SetIFoodMerchantMappingCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(SetIfoodMerchantMappingCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(SetIFoodMerchantMappingCommandHandler),
+            nameof(SetIfoodMerchantMappingCommandHandler),
             nameof(Handle),
             null, // Substitua pelo IP presente no request, caso aplicável
             async (userIdBox) =>
@@ -32,7 +32,7 @@ internal sealed class SetIFoodMerchantMappingCommandHandler : BaseCommandHandler
                 var mapping = await _mappingRepository.GetByBranchForUpdateAsync(request.BranchId, cancellationToken);
                 if (mapping is null)
                 {
-                    var created = DomainIFoodMerchantMapping.Create(request.BranchId);
+                    var created = DomainIfoodMerchantMapping.Create(request.BranchId);
                     if (created.IsFailure)
                         return Result.Failure(created.Error);
 

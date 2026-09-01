@@ -1,19 +1,19 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using SyncBar.Application.Abstractions.Integrations.IFood;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
 
-namespace SyncBar.Infrastructure.Integrations.IFood;
+namespace SyncBar.Infrastructure.Integrations.Ifood;
 
 /// <summary>
-/// Cliente HTTP real do módulo Review do iFood (Fase 9) — review/v1.0, 4 endpoints. Nomes de
+/// Cliente HTTP real do módulo Review do Ifood (Fase 9) — review/v1.0, 4 endpoints. Nomes de
 /// campo confirmados contra o response de exemplo da coleção Postman oficial.
 /// </summary>
-internal sealed class IFoodReviewClient(HttpClient httpClient) : IIFoodReviewClient
+internal sealed class IfoodReviewClient(HttpClient httpClient) : IIfoodReviewClient
 {
-    private const string BaseUrl = "https://merchant-api.ifood.com.br/review/v1.0/merchants";
+    private const string BaseUrl = "https://merchant-api.Ifood.com.br/review/v1.0/merchants";
 
-    public async Task<IFoodReviewListResultDto> GetReviewsAsync(
+    public async Task<IfoodReviewListResultDto> GetReviewsAsync(
         string accessToken, string merchantId, int page, int pageSize, bool addCount,
         DateTime? dateFrom, DateTime? dateTo, string sort, string sortBy, CancellationToken cancellationToken = default)
     {
@@ -37,13 +37,13 @@ internal sealed class IFoodReviewClient(HttpClient httpClient) : IIFoodReviewCli
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
-            return new IFoodReviewListResultDto(page, pageSize, 0, 0, []);
+            return new IfoodReviewListResultDto(page, pageSize, 0, 0, []);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
         var root = document.RootElement;
 
-        var reviews = new List<IFoodReviewListItemDto>();
+        var reviews = new List<IfoodReviewListItemDto>();
         if (root.TryGetProperty("reviews", out var reviewsArray) && reviewsArray.ValueKind == JsonValueKind.Array)
         {
             foreach (var item in reviewsArray.EnumerateArray())
@@ -54,7 +54,7 @@ internal sealed class IFoodReviewClient(HttpClient httpClient) : IIFoodReviewCli
             }
         }
 
-        return new IFoodReviewListResultDto(
+        return new IfoodReviewListResultDto(
             GetLong(root, "page") ?? page,
             GetLong(root, "size") ?? pageSize,
             GetLong(root, "total") ?? reviews.Count,
@@ -62,7 +62,7 @@ internal sealed class IFoodReviewClient(HttpClient httpClient) : IIFoodReviewCli
             reviews);
     }
 
-    public async Task<IFoodReviewDetailDto?> GetReviewByIdAsync(
+    public async Task<IfoodReviewDetailDto?> GetReviewByIdAsync(
         string accessToken, string merchantId, string reviewId, CancellationToken cancellationToken = default)
     {
         var url = $"{BaseUrl}/{Uri.EscapeDataString(merchantId)}/reviews/{Uri.EscapeDataString(reviewId)}";
@@ -78,24 +78,24 @@ internal sealed class IFoodReviewClient(HttpClient httpClient) : IIFoodReviewCli
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
         var root = document.RootElement;
 
-        var questions = new List<IFoodReviewQuestionDto>();
+        var questions = new List<IfoodReviewQuestionDto>();
         if (root.TryGetProperty("questions", out var questionsArray) && questionsArray.ValueKind == JsonValueKind.Array)
         {
             foreach (var q in questionsArray.EnumerateArray())
             {
-                var answers = new List<IFoodReviewAnswerOptionDto>();
+                var answers = new List<IfoodReviewAnswerOptionDto>();
                 if (q.TryGetProperty("answers", out var answersArray) && answersArray.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var a in answersArray.EnumerateArray())
-                        answers.Add(new IFoodReviewAnswerOptionDto(GetString(a, "id") ?? string.Empty, GetString(a, "title")));
+                        answers.Add(new IfoodReviewAnswerOptionDto(GetString(a, "id") ?? string.Empty, GetString(a, "title")));
                 }
 
-                questions.Add(new IFoodReviewQuestionDto(
+                questions.Add(new IfoodReviewQuestionDto(
                     GetString(q, "id") ?? string.Empty, GetString(q, "type"), GetString(q, "title"), answers));
             }
         }
 
-        return new IFoodReviewDetailDto(
+        return new IfoodReviewDetailDto(
             GetString(root, "id") ?? reviewId,
             GetDate(root, "createdAt"),
             GetBool(root, "discarded") ?? false,
@@ -111,7 +111,7 @@ internal sealed class IFoodReviewClient(HttpClient httpClient) : IIFoodReviewCli
             questions);
     }
 
-    public async Task<IFoodReviewReplyResultDto> ReplyReviewAsync(
+    public async Task<IfoodReviewReplyResultDto> ReplyReviewAsync(
         string accessToken, string merchantId, string reviewId, string text, CancellationToken cancellationToken = default)
     {
         var url = $"{BaseUrl}/{Uri.EscapeDataString(merchantId)}/reviews/{Uri.EscapeDataString(reviewId)}/answers";
@@ -124,21 +124,21 @@ internal sealed class IFoodReviewClient(HttpClient httpClient) : IIFoodReviewCli
         using var response = await httpClient.SendAsync(request, cancellationToken);
         var raw = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"iFood review reply failed ({(int)response.StatusCode}): {raw}");
+            throw new InvalidOperationException($"Ifood review reply failed ({(int)response.StatusCode}): {raw}");
 
         try
         {
             using var document = JsonDocument.Parse(raw);
             var root = document.RootElement;
-            return new IFoodReviewReplyResultDto(GetDate(root, "createdAt"), GetString(root, "text") ?? text, GetString(root, "reviewId") ?? reviewId);
+            return new IfoodReviewReplyResultDto(GetDate(root, "createdAt"), GetString(root, "text") ?? text, GetString(root, "reviewId") ?? reviewId);
         }
         catch
         {
-            return new IFoodReviewReplyResultDto(null, text, reviewId);
+            return new IfoodReviewReplyResultDto(null, text, reviewId);
         }
     }
 
-    public async Task<IFoodReviewSummaryDto?> GetSummaryAsync(
+    public async Task<IfoodReviewSummaryDto?> GetSummaryAsync(
         string accessToken, string merchantId, CancellationToken cancellationToken = default)
     {
         var url = $"{BaseUrl}/{Uri.EscapeDataString(merchantId)}/summary";
@@ -154,14 +154,14 @@ internal sealed class IFoodReviewClient(HttpClient httpClient) : IIFoodReviewCli
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
         var root = document.RootElement;
 
-        return new IFoodReviewSummaryDto(GetDouble(root, "score"), GetLong(root, "totalReviewsCount") ?? 0, GetLong(root, "validReviewsCount") ?? 0);
+        return new IfoodReviewSummaryDto(GetDouble(root, "score"), GetLong(root, "totalReviewsCount") ?? 0, GetLong(root, "validReviewsCount") ?? 0);
     }
 
-    private static IFoodReviewListItemDto? TryParseListItem(JsonElement item)
+    private static IfoodReviewListItemDto? TryParseListItem(JsonElement item)
     {
         try
         {
-            return new IFoodReviewListItemDto(
+            return new IfoodReviewListItemDto(
                 GetString(item, "id") ?? Guid.NewGuid().ToString(),
                 GetDate(item, "createdAt"),
                 GetBool(item, "discarded") ?? false,
@@ -180,12 +180,12 @@ internal sealed class IFoodReviewClient(HttpClient httpClient) : IIFoodReviewCli
         }
     }
 
-    private static IFoodReviewOrderDto? TryParseOrder(JsonElement parent)
+    private static IfoodReviewOrderDto? TryParseOrder(JsonElement parent)
     {
         if (!parent.TryGetProperty("order", out var order) || order.ValueKind != JsonValueKind.Object)
             return null;
 
-        return new IFoodReviewOrderDto(GetDate(order, "createdAt"), GetString(order, "id"), GetString(order, "shortId"));
+        return new IfoodReviewOrderDto(GetDate(order, "createdAt"), GetString(order, "id"), GetString(order, "shortId"));
     }
 
     private static string? GetString(JsonElement element, string propertyName)

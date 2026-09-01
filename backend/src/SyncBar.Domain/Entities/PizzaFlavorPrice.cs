@@ -1,9 +1,9 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
 // Fase 17 — o preço de um PizzaFlavor (sabor) num PizzaSize (tamanho) específico, dentro de uma
-// PizzaConfiguration — espelha toppings[].prices[sizeId] da API de pizza do iFood (vínculo à
+// PizzaConfiguration — espelha toppings[].prices[sizeId] da API de pizza do Ifood (vínculo à
 // categoria). A EXISTÊNCIA de uma linha aqui é o que torna o sabor "vendável" naquele tamanho —
 // não há uma tabela de vínculo separada: se não tem preço para o tamanho, o sabor não aparece
 // como opção para aquele tamanho (mesma decisão que evita uma entidade extra sem necessidade).

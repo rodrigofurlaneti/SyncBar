@@ -1,36 +1,36 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
-// Liga um Product do SyncBar ao item correspondente no catálogo do iFood, por FILIAL — assim
-// como IFoodCategoryMapping, o catálogo do iFood é por merchant, então cada filial tem o "seu"
-// item mesmo sendo o mesmo Product. IFoodItemId/IFoodProductId são GUIDs gerados por nós (o
-// iFood exige UUID v4 no campo `id` de item e produto — Guid.NewGuid() já gera nesse formato) e
+// Liga um Product do SyncBar ao item correspondente no catálogo do Ifood, por FILIAL — assim
+// como IfoodCategoryMapping, o catálogo do Ifood é por merchant, então cada filial tem o "seu"
+// item mesmo sendo o mesmo Product. IfoodItemId/IfoodProductId são GUIDs gerados por nós (o
+// Ifood exige UUID v4 no campo `id` de item e produto — Guid.NewGuid() já gera nesse formato) e
 // persistidos aqui pra todo PUT /items seguinte ser idempotente (reenvia os mesmos ids, nunca
-// cria item duplicado). IFoodProductId é o id do objeto "products[0]" dentro do payload do item —
-// diferente do IFoodItemId (id do "item" em si), conforme a hierarquia da Catalog API.
-public sealed class IFoodProductMapping : AggregateRoot
+// cria item duplicado). IfoodProductId é o id do objeto "products[0]" dentro do payload do item —
+// diferente do IfoodItemId (id do "item" em si), conforme a hierarquia da Catalog API.
+public sealed class IfoodProductMapping : AggregateRoot
 {
     public long ProductId { get; private set; }
     public long BranchId { get; private set; }
-    public Guid IFoodItemId { get; private set; }
-    public Guid IFoodProductId { get; private set; }
+    public Guid IfoodItemId { get; private set; }
+    public Guid IfoodProductId { get; private set; }
     public DateTime CreatedAt { get; private set; }
-    public DateTime? UpdatedAt { get; private set; }
+    public DateTime? UpdatedAt { get; }
     public bool IsActive { get; private set; }
 
-    private IFoodProductMapping() : base(0) { }
+    private IfoodProductMapping() : base(0) { }
 
-    private IFoodProductMapping(long productId, long branchId, Guid ifoodItemId, Guid ifoodProductId) : base(0)
+    private IfoodProductMapping(long productId, long branchId, Guid IfoodItemId, Guid IfoodProductId) : base(0)
     {
         ProductId = productId;
         BranchId = branchId;
-        IFoodItemId = ifoodItemId;
-        IFoodProductId = ifoodProductId;
+        IfoodItemId = IfoodItemId;
+        IfoodProductId = IfoodProductId;
         IsActive = true;
         CreatedAt = DateTime.Now;
     }
 
-    public static Result<IFoodProductMapping> Create(long productId, long branchId)
-        => Result.Success(new IFoodProductMapping(productId, branchId, Guid.NewGuid(), Guid.NewGuid()));
+    public static Result<IfoodProductMapping> Create(long productId, long branchId)
+        => Result.Success(new IfoodProductMapping(productId, branchId, Guid.NewGuid(), Guid.NewGuid()));
 }

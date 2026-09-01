@@ -1,26 +1,26 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using NSubstitute;
-using SyncBar.Application.Abstractions.Integrations.IFood;
-using SyncBar.Application.Features.Integrations.IFood.Orders;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
+using SyncBar.Application.Features.Integrations.Ifood.Orders;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
 using Xunit;
 
-namespace SyncBar.Tests.Application.Features.Integrations.IFood.Orders;
+namespace SyncBar.Tests.Application.Features.Integrations.Ifood.Orders;
 
-public sealed class RequestIFoodDisputeAlternativeCommandHandlerTests
+public sealed class RequestIfoodDisputeAlternativeCommandHandlerTests
 {
     private const string ValidToken = "valid-token";
     private const long BranchId = 10;
     private const long CompanyId = 1;
 
     private readonly IBranchRepository _branchRepository = Substitute.For<IBranchRepository>();
-    private readonly IIFoodTokenProvider _tokenProvider = Substitute.For<IIFoodTokenProvider>();
-    private readonly IIFoodOrderClient _orderClient = Substitute.For<IIFoodOrderClient>();
+    private readonly IIfoodTokenProvider _tokenProvider = Substitute.For<IIfoodTokenProvider>();
+    private readonly IIfoodOrderClient _orderClient = Substitute.For<IIfoodOrderClient>();
     private readonly ILogTrackerRepository _logRepository = Substitute.For<ILogTrackerRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
-    private RequestIFoodDisputeAlternativeCommandHandler CreateSut() =>
+    private RequestIfoodDisputeAlternativeCommandHandler CreateSut() =>
         new(_branchRepository, _tokenProvider, _orderClient, _logRepository, _unitOfWork);
 
     private static Branch CreateBranch(long companyId = CompanyId) =>
@@ -33,7 +33,7 @@ public sealed class RequestIFoodDisputeAlternativeCommandHandlerTests
         var sut = CreateSut();
 
         var result = await sut.Handle(
-            new RequestIFoodDisputeAlternativeCommand(BranchId, "dispute-1", "alt-1", "REFUND_ITEMS", 10m, "BRL"),
+            new RequestIfoodDisputeAlternativeCommand(BranchId, "dispute-1", "alt-1", "REFUND_ITEMS", 10m, "BRL"),
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
@@ -41,48 +41,48 @@ public sealed class RequestIFoodDisputeAlternativeCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenIFoodTokenUnavailable_ShouldFailWithNotConnected()
+    public async Task Handle_WhenIfoodTokenUnavailable_ShouldFailWithNotConnected()
     {
         _branchRepository.GetByIdAsync(BranchId, Arg.Any<CancellationToken>()).Returns(CreateBranch());
         _tokenProvider.GetAccessTokenAsync(CompanyId, Arg.Any<CancellationToken>()).Returns((string?)null);
         var sut = CreateSut();
 
         var result = await sut.Handle(
-            new RequestIFoodDisputeAlternativeCommand(BranchId, "dispute-1", "alt-1", "REFUND_ITEMS", null, null),
+            new RequestIfoodDisputeAlternativeCommand(BranchId, "dispute-1", "alt-1", "REFUND_ITEMS", null, null),
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("IFood.NotConnected");
+        result.Error.Code.Should().Be("Ifood.NotConnected");
     }
 
     [Fact]
-    public async Task Handle_WhenIFoodRejectsTheAlternative_ShouldFailWithDefaultMessage()
+    public async Task Handle_WhenIfoodRejectsTheAlternative_ShouldFailWithDefaultMessage()
     {
         _branchRepository.GetByIdAsync(BranchId, Arg.Any<CancellationToken>()).Returns(CreateBranch());
         _tokenProvider.GetAccessTokenAsync(CompanyId, Arg.Any<CancellationToken>()).Returns(ValidToken);
         _orderClient.RequestDisputeAlternativeAsync(ValidToken, "dispute-1", "alt-1", "REFUND_ITEMS", 10m, "BRL", Arg.Any<CancellationToken>())
-            .Returns(new IFoodDisputeActionResult(false, null, null));
+            .Returns(new IfoodDisputeActionResult(false, null, null));
         var sut = CreateSut();
 
         var result = await sut.Handle(
-            new RequestIFoodDisputeAlternativeCommand(BranchId, "dispute-1", "alt-1", "REFUND_ITEMS", 10m, "BRL"),
+            new RequestIfoodDisputeAlternativeCommand(BranchId, "dispute-1", "alt-1", "REFUND_ITEMS", 10m, "BRL"),
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Message.Should().Be("Falha ao propor a alternativa da disputa no iFood.");
+        result.Error.Message.Should().Be("Falha ao propor a alternativa da disputa no Ifood.");
     }
 
     [Fact]
-    public async Task Handle_WhenIFoodAcceptsTheAlternative_ShouldForwardOptionalAmountAndCurrency()
+    public async Task Handle_WhenIfoodAcceptsTheAlternative_ShouldForwardOptionalAmountAndCurrency()
     {
         _branchRepository.GetByIdAsync(BranchId, Arg.Any<CancellationToken>()).Returns(CreateBranch());
         _tokenProvider.GetAccessTokenAsync(CompanyId, Arg.Any<CancellationToken>()).Returns(ValidToken);
         _orderClient.RequestDisputeAlternativeAsync(ValidToken, "dispute-1", "alt-1", "REFUND_ITEMS", 10m, "BRL", Arg.Any<CancellationToken>())
-            .Returns(new IFoodDisputeActionResult(true, "PENDING", null));
+            .Returns(new IfoodDisputeActionResult(true, "PENDING", null));
         var sut = CreateSut();
 
         var result = await sut.Handle(
-            new RequestIFoodDisputeAlternativeCommand(BranchId, "dispute-1", "alt-1", "REFUND_ITEMS", 10m, "BRL"),
+            new RequestIfoodDisputeAlternativeCommand(BranchId, "dispute-1", "alt-1", "REFUND_ITEMS", 10m, "BRL"),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -97,11 +97,11 @@ public sealed class RequestIFoodDisputeAlternativeCommandHandlerTests
         _branchRepository.GetByIdAsync(BranchId, Arg.Any<CancellationToken>()).Returns(CreateBranch());
         _tokenProvider.GetAccessTokenAsync(CompanyId, Arg.Any<CancellationToken>()).Returns(ValidToken);
         _orderClient.RequestDisputeAlternativeAsync(ValidToken, "dispute-1", "alt-2", "RESCHEDULE", null, null, Arg.Any<CancellationToken>())
-            .Returns(new IFoodDisputeActionResult(true, "PENDING", null));
+            .Returns(new IfoodDisputeActionResult(true, "PENDING", null));
         var sut = CreateSut();
 
         var result = await sut.Handle(
-            new RequestIFoodDisputeAlternativeCommand(BranchId, "dispute-1", "alt-2", "RESCHEDULE", null, null),
+            new RequestIfoodDisputeAlternativeCommand(BranchId, "dispute-1", "alt-2", "RESCHEDULE", null, null),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();

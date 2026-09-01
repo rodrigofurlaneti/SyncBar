@@ -1,31 +1,31 @@
-using System.Text.Json;
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using System.Text.Json;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.Pizza;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.Pizza;
 
-internal sealed class SyncIFoodPizzaCommandHandler(
+internal sealed class SyncIfoodPizzaCommandHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodCatalogClient catalogClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodCatalogClient catalogClient,
     IPizzaConfigurationRepository pizzaConfigurationRepository,
     IPizzaFlavorRepository pizzaFlavorRepository,
     IProductRepository productRepository,
-    IIFoodPizzaMappingRepository ifoodPizzaMappingRepository,
+    IIfoodPizzaMappingRepository IfoodPizzaMappingRepository,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseCommandHandler<SyncIFoodPizzaCommand, SyncIFoodPizzaResult>(logRepository, unitOfWork)
+    : BaseCommandHandler<SyncIfoodPizzaCommand, SyncIfoodPizzaResult>(logRepository, unitOfWork)
 {
     // Campo explícito: capturar o parâmetro primário que também vai para a base dispara CS9107.
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
-    // Prefixos usados no externalCode de cada elemento — é assim que casamos a resposta do iFood
+    // Prefixos usados no externalCode de cada elemento — é assim que casamos a resposta do Ifood
     // (que devolve os elementos sem garantia de ordem) de volta com o id local que os gerou, já
     // que a API não deixa a gente propor o id do elemento no create (só o externalCode).
     private const string SizePrefix = "pizzasize-";
@@ -44,49 +44,49 @@ internal sealed class SyncIFoodPizzaCommandHandler(
         List<long> FlavorIds,
         Dictionary<long, PizzaFlavor> FlavorsById);
 
-    public override async Task<Result<SyncIFoodPizzaResult>> Handle(SyncIFoodPizzaCommand request, CancellationToken cancellationToken)
+    public override async Task<Result<SyncIfoodPizzaResult>> Handle(SyncIfoodPizzaCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(SyncIFoodPizzaCommandHandler),
+            nameof(SyncIfoodPizzaCommandHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
                 var contextResult = await LoadContextAsync(request, cancellationToken);
                 if (contextResult.IsFailure)
-                    return Result.Failure<SyncIFoodPizzaResult>(contextResult.Error);
+                    return Result.Failure<SyncIfoodPizzaResult>(contextResult.Error);
                 var context = contextResult.Value;
 
                 var jsonBody = BuildPayloadJson(context);
 
-                var existingMapping = await ifoodPizzaMappingRepository.GetByPizzaConfigurationAndBranchForUpdateAsync(
+                var existingMapping = await IfoodPizzaMappingRepository.GetByPizzaConfigurationAndBranchForUpdateAsync(
                     request.PizzaConfigurationId, request.BranchId, cancellationToken);
 
-                var syncResult = await SyncPizzaWithIFoodAsync(
+                var syncResult = await SyncPizzaWithIfoodAsync(
                     context.Token, context.MerchantId, existingMapping, jsonBody, cancellationToken);
                 if (syncResult.IsFailure)
-                    return Result.Failure<SyncIFoodPizzaResult>(syncResult.Error);
+                    return Result.Failure<SyncIfoodPizzaResult>(syncResult.Error);
 
                 using var document = syncResult.Value.Document;
-                var ifoodPizzaId = syncResult.Value.IFoodPizzaId;
+                var IfoodPizzaId = syncResult.Value.IfoodPizzaId;
 
                 var mappingResult = await UpsertMappingAsync(
-                    request, existingMapping, ifoodPizzaId, document.RootElement, cancellationToken);
+                    request, existingMapping, IfoodPizzaId, document.RootElement, cancellationToken);
                 if (mappingResult.IsFailure)
-                    return Result.Failure<SyncIFoodPizzaResult>(mappingResult.Error);
+                    return Result.Failure<SyncIfoodPizzaResult>(mappingResult.Error);
 
                 await _unitOfWork.CommitAsync(cancellationToken);
 
-                return Result.Success(new SyncIFoodPizzaResult(ifoodPizzaId));
+                return Result.Success(new SyncIfoodPizzaResult(IfoodPizzaId));
             });
     }
 
     // Resolve o merchant e carrega/valida a configuração de pizza, o produto dono dela, os
     // tamanhos ativos e os sabores com preço ativo — tudo que precisa existir antes de montar o
-    // payload e chamar o iFood. Qualquer falha aqui aborta a sincronização.
-    private async Task<Result<PizzaSyncContext>> LoadContextAsync(SyncIFoodPizzaCommand request, CancellationToken cancellationToken)
+    // payload e chamar o Ifood. Qualquer falha aqui aborta a sincronização.
+    private async Task<Result<PizzaSyncContext>> LoadContextAsync(SyncIfoodPizzaCommand request, CancellationToken cancellationToken)
     {
-        var resolved = await IFoodMerchantResolution.ResolveAsync(
+        var resolved = await IfoodMerchantResolution.ResolveAsync(
             request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
         if (resolved.IsFailure)
             return Result.Failure<PizzaSyncContext>(resolved.Error);
@@ -149,8 +149,8 @@ internal sealed class SyncIFoodPizzaCommandHandler(
             // ⚠️ RISCO CONHECIDO: image/imagePath do topping não são enviados aqui —
             // PizzaFlavor.ImageUrl guarda uma URL, mas o schema oficial não deixa claro se
             // "image" espera uma URL ou um base64 (mesma ressalva já registrada em
-            // IFoodImageUploadResult pra upload de imagem de produto). Até confirmar contra
-            // o sandbox, o sabor sincroniza sem imagem — o iFood aceita o topping normalmente.
+            // IfoodImageUploadResult pra upload de imagem de produto). Até confirmar contra
+            // o sandbox, o sabor sincroniza sem imagem — o Ifood aceita o topping normalmente.
             toppings = context.FlavorIds.Select((id, index) =>
             {
                 var flavor = context.FlavorsById.GetValueOrDefault(id);
@@ -169,76 +169,76 @@ internal sealed class SyncIFoodPizzaCommandHandler(
     }
 
     // Decide create vs update (com base em já existir mapeamento pra essa pizza nessa filial),
-    // chama o catálogo v1 do iFood e extrai o id da pizza da resposta. Devolve o JsonDocument pro
+    // chama o catálogo v1 do Ifood e extrai o id da pizza da resposta. Devolve o JsonDocument pro
     // chamador ler os elementos (sizes/crusts/edges/toppings) — quem chama é responsável por
     // dar dispose (via using) depois de consumir o RootElement.
-    private async Task<Result<(JsonDocument Document, string IFoodPizzaId)>> SyncPizzaWithIFoodAsync(
+    private async Task<Result<(JsonDocument Document, string IfoodPizzaId)>> SyncPizzaWithIfoodAsync(
         string token,
         string merchantId,
-        IFoodPizzaMapping? existingMapping,
+        IfoodPizzaMapping? existingMapping,
         string jsonBody,
         CancellationToken cancellationToken)
     {
         var operation = existingMapping is null
-            ? IFoodCatalogV1Operation.CreatePizza
-            : IFoodCatalogV1Operation.UpdatePizza;
+            ? IfoodCatalogV1Operation.CreatePizza
+            : IfoodCatalogV1Operation.UpdatePizza;
         var routeParams = existingMapping is null
             ? null
-            : new Dictionary<string, string> { ["pizzaId"] = existingMapping.IFoodPizzaId };
+            : new Dictionary<string, string> { ["pizzaId"] = existingMapping.IfoodPizzaId };
 
         var apiResult = await catalogClient.InvokeCatalogV1Async(
             token, merchantId, operation, routeParams, null, jsonBody, cancellationToken);
         if (!apiResult.Success || apiResult.ResponseBody is null)
-            return Result.Failure<(JsonDocument Document, string IFoodPizzaId)>(new Error("IFoodCatalog.PizzaSyncFailed",
-                apiResult.ErrorMessage ?? $"iFood retornou {apiResult.StatusCode} ao sincronizar a pizza."));
+            return Result.Failure<(JsonDocument Document, string IfoodPizzaId)>(new Error("IfoodCatalog.PizzaSyncFailed",
+                apiResult.ErrorMessage ?? $"Ifood retornou {apiResult.StatusCode} ao sincronizar a pizza."));
 
         var document = JsonDocument.Parse(apiResult.ResponseBody);
-        if (!document.RootElement.TryGetProperty("id", out var idProp) || idProp.GetString() is not { Length: > 0 } ifoodPizzaId)
+        if (!document.RootElement.TryGetProperty("id", out var idProp) || idProp.GetString() is not { Length: > 0 } IfoodPizzaId)
         {
             document.Dispose();
-            return Result.Failure<(JsonDocument Document, string IFoodPizzaId)>(new Error("IFoodCatalog.PizzaSyncNoId", "iFood não retornou o id da pizza."));
+            return Result.Failure<(JsonDocument Document, string IfoodPizzaId)>(new Error("IfoodCatalog.PizzaSyncNoId", "Ifood não retornou o id da pizza."));
         }
 
-        return Result.Success((document, ifoodPizzaId));
+        return Result.Success((document, IfoodPizzaId));
     }
 
-    // Cria ou atualiza o IFoodPizzaMapping local com o id devolvido pelo iFood e casa cada
+    // Cria ou atualiza o IfoodPizzaMapping local com o id devolvido pelo Ifood e casa cada
     // elemento (tamanho/borda/sabor) da resposta de volta com o id local via ExtractElements.
     private async Task<Result> UpsertMappingAsync(
-        SyncIFoodPizzaCommand request,
-        IFoodPizzaMapping? existingMapping,
-        string ifoodPizzaId,
+        SyncIfoodPizzaCommand request,
+        IfoodPizzaMapping? existingMapping,
+        string IfoodPizzaId,
         JsonElement root,
         CancellationToken cancellationToken)
     {
-        IFoodPizzaMapping mapping;
+        IfoodPizzaMapping mapping;
         if (existingMapping is null)
         {
-            var created = IFoodPizzaMapping.Create(request.PizzaConfigurationId, request.BranchId, ifoodPizzaId);
+            var created = IfoodPizzaMapping.Create(request.PizzaConfigurationId, request.BranchId, IfoodPizzaId);
             if (created.IsFailure)
                 return Result.Failure(created.Error);
 
             mapping = created.Value;
-            await ifoodPizzaMappingRepository.AddAsync(mapping, cancellationToken);
+            await IfoodPizzaMappingRepository.AddAsync(mapping, cancellationToken);
         }
         else
         {
             mapping = existingMapping;
-            mapping.UpdateIFoodPizzaId(ifoodPizzaId);
+            mapping.UpdateIfoodPizzaId(IfoodPizzaId);
         }
 
-        ExtractElements(root, "sizes", SizePrefix, IFoodPizzaElementKind.Size, mapping);
-        ExtractElements(root, "crusts", CrustPrefix, IFoodPizzaElementKind.Crust, mapping);
-        ExtractElements(root, "edges", EdgePrefix, IFoodPizzaElementKind.Edge, mapping);
-        ExtractElements(root, "toppings", ToppingPrefix, IFoodPizzaElementKind.Topping, mapping);
+        ExtractElements(root, "sizes", SizePrefix, IfoodPizzaElementKind.Size, mapping);
+        ExtractElements(root, "crusts", CrustPrefix, IfoodPizzaElementKind.Crust, mapping);
+        ExtractElements(root, "edges", EdgePrefix, IfoodPizzaElementKind.Edge, mapping);
+        ExtractElements(root, "toppings", ToppingPrefix, IfoodPizzaElementKind.Topping, mapping);
 
         return Result.Success();
     }
 
-    // Lê o array de elementos da resposta do iFood (sizes/crusts/edges/toppings) e casa cada um de
+    // Lê o array de elementos da resposta do Ifood (sizes/crusts/edges/toppings) e casa cada um de
     // volta com o id local via externalCode (formato "{prefix}{localId}") — a resposta não garante
     // a mesma ordem do request, então não dá pra casar por índice.
-    private static void ExtractElements(JsonElement root, string arrayName, string prefix, byte kind, IFoodPizzaMapping mapping)
+    private static void ExtractElements(JsonElement root, string arrayName, string prefix, byte kind, IfoodPizzaMapping mapping)
     {
         if (!root.TryGetProperty(arrayName, out var array) || array.ValueKind != JsonValueKind.Array)
             return;

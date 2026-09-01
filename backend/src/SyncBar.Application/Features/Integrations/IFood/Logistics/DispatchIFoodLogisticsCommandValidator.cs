@@ -1,11 +1,11 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Logistics;
+namespace SyncBar.Application.Features.Integrations.Ifood.Logistics;
 
-public sealed class DispatchIFoodLogisticsCommandValidator : AbstractValidator<DispatchIFoodLogisticsCommand>
+public sealed class DispatchIfoodLogisticsCommandValidator : AbstractValidator<DispatchIfoodLogisticsCommand>
 {
-    public DispatchIFoodLogisticsCommandValidator()
+    public DispatchIfoodLogisticsCommandValidator()
     {
-        RuleFor(x => x.IFoodOrderId).GreaterThan(0);
+        RuleFor(x => x.IfoodOrderId).GreaterThan(0);
     }
 }

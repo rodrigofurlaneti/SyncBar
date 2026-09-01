@@ -1,39 +1,39 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-internal sealed class GetIFoodShippingTrackingQueryHandler(
-    IIFoodShippingDeliveryRepository deliveryRepository,
+internal sealed class GetIfoodShippingTrackingQueryHandler(
+    IIfoodShippingDeliveryRepository deliveryRepository,
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodShippingClient shippingClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodShippingClient shippingClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodShippingTrackingQuery, IFoodShippingTrackingResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodShippingTrackingQuery, IfoodShippingTrackingResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodShippingTrackingResponse>> Handle(GetIFoodShippingTrackingQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodShippingTrackingResponse>> Handle(GetIfoodShippingTrackingQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodShippingTrackingQueryHandler),
+            nameof(GetIfoodShippingTrackingQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodShippingTokenResolution.ResolveAsync(
+                var resolved = await IfoodShippingTokenResolution.ResolveAsync(
                     request.Id, deliveryRepository, branchRepository, tokenProvider, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodShippingTrackingResponse>(resolved.Error);
+                    return Result.Failure<IfoodShippingTrackingResponse>(resolved.Error);
 
                 var (delivery, token) = resolved.Value;
-                var tracking = await shippingClient.GetTrackingAsync(token, delivery.IFoodDeliveryId, cancellationToken);
+                var tracking = await shippingClient.GetTrackingAsync(token, delivery.IfoodDeliveryId, cancellationToken);
                 if (!tracking.Success)
-                    return Result.Failure<IFoodShippingTrackingResponse>(new Error("IFoodShipping.TrackingFailed",
-                        tracking.ErrorMessage ?? "Não foi possível obter o rastreamento no iFood."));
+                    return Result.Failure<IfoodShippingTrackingResponse>(new Error("IfoodShipping.TrackingFailed",
+                        tracking.ErrorMessage ?? "Não foi possível obter o rastreamento no Ifood."));
 
-                return Result.Success(new IFoodShippingTrackingResponse(
+                return Result.Success(new IfoodShippingTrackingResponse(
                     tracking.Latitude, tracking.Longitude, tracking.ExpectedDelivery, tracking.DeliveryEtaEndMinutes, tracking.PickupEtaStartMinutes));
             });
     }

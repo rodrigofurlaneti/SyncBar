@@ -1,46 +1,46 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Logistics;
+namespace SyncBar.Application.Features.Integrations.Ifood.Logistics;
 
-internal sealed class GetIFoodLogisticsOrderDetailsQueryHandler(
-    IIFoodOrderRepository ifoodOrderRepository,
+internal sealed class GetIfoodLogisticsOrderDetailsQueryHandler(
+    IIfoodOrderRepository IfoodOrderRepository,
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodLogisticsClient logisticsClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodLogisticsClient logisticsClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodLogisticsOrderDetailsQuery, IFoodLogisticsOrderDetailsResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodLogisticsOrderDetailsQuery, IfoodLogisticsOrderDetailsResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodLogisticsOrderDetailsResponse>> Handle(
-        GetIFoodLogisticsOrderDetailsQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodLogisticsOrderDetailsResponse>> Handle(
+        GetIfoodLogisticsOrderDetailsQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodLogisticsOrderDetailsQueryHandler),
+            nameof(GetIfoodLogisticsOrderDetailsQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var ifoodOrder = await ifoodOrderRepository.GetByIdForUpdateAsync(request.IFoodOrderId, cancellationToken);
-                if (ifoodOrder is null)
-                    return Result.Failure<IFoodLogisticsOrderDetailsResponse>(new Error("IFoodOrder.NotFound", "Pedido iFood não encontrado."));
+                var IfoodOrder = await IfoodOrderRepository.GetByIdForUpdateAsync(request.IfoodOrderId, cancellationToken);
+                if (IfoodOrder is null)
+                    return Result.Failure<IfoodLogisticsOrderDetailsResponse>(new Error("IfoodOrder.NotFound", "Pedido Ifood não encontrado."));
 
-                var branch = await branchRepository.GetByIdAsync(ifoodOrder.BranchId, cancellationToken);
+                var branch = await branchRepository.GetByIdAsync(IfoodOrder.BranchId, cancellationToken);
                 if (branch is null)
-                    return Result.Failure<IFoodLogisticsOrderDetailsResponse>(new Error("Branch.NotFound", "Filial não encontrada."));
+                    return Result.Failure<IfoodLogisticsOrderDetailsResponse>(new Error("Branch.NotFound", "Filial não encontrada."));
 
                 var token = await tokenProvider.GetAccessTokenAsync(branch.CompanyId, cancellationToken);
                 if (token is null)
-                    return Result.Failure<IFoodLogisticsOrderDetailsResponse>(new Error("IFood.NotConnected",
-                        "Não foi possível autenticar com o iFood — confira as credenciais em Integrações."));
+                    return Result.Failure<IfoodLogisticsOrderDetailsResponse>(new Error("Ifood.NotConnected",
+                        "Não foi possível autenticar com o Ifood — confira as credenciais em Integrações."));
 
-                var details = await logisticsClient.GetOrderDetailsAsync(token, ifoodOrder.IFoodOrderId, cancellationToken);
+                var details = await logisticsClient.GetOrderDetailsAsync(token, IfoodOrder.IfoodOrderId, cancellationToken);
                 if (!details.Success)
-                    return Result.Failure<IFoodLogisticsOrderDetailsResponse>(new Error("IFood.LogisticsOrderDetailsFailed", details.ErrorMessage ?? "Falha ao buscar os detalhes da entrega no iFood."));
+                    return Result.Failure<IfoodLogisticsOrderDetailsResponse>(new Error("Ifood.LogisticsOrderDetailsFailed", details.ErrorMessage ?? "Falha ao buscar os detalhes da entrega no Ifood."));
 
-                return Result.Success(new IFoodLogisticsOrderDetailsResponse(details.RawPayload));
+                return Result.Success(new IfoodLogisticsOrderDetailsResponse(details.RawPayload));
             });
     }
 }

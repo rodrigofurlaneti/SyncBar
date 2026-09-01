@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.OptionGroups;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.OptionGroups;
 
-public sealed class UpdateIFoodOptionGroupStatusCommandValidator : AbstractValidator<UpdateIFoodOptionGroupStatusCommand>
+public sealed class UpdateIfoodOptionGroupStatusCommandValidator : AbstractValidator<UpdateIfoodOptionGroupStatusCommand>
 {
-    public UpdateIFoodOptionGroupStatusCommandValidator()
+    public UpdateIfoodOptionGroupStatusCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.OptionGroupId).NotEmpty();

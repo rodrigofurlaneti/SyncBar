@@ -1,22 +1,22 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Security;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
-using DomainIFoodSetting = SyncBar.Domain.Entities.IFoodIntegrationSetting;
+using DomainIfoodSetting = SyncBar.Domain.Entities.IfoodIntegrationSetting;
 
-namespace SyncBar.Application.Features.Integrations.IFood;
+namespace SyncBar.Application.Features.Integrations.Ifood;
 
-internal sealed class SaveIFoodSettingsCommandHandler : BaseCommandHandler<SaveIFoodSettingsCommand>
+internal sealed class SaveIfoodSettingsCommandHandler : BaseCommandHandler<SaveIfoodSettingsCommand>
 {
     // Purpose fixo — trocar essa string quebra a descriptografia de segredos já salvos.
-    private const string ProtectorPurpose = "SyncBar.Integrations.IFood.ClientSecret.v1";
+    private const string ProtectorPurpose = "SyncBar.Integrations.Ifood.ClientSecret.v1";
 
-    private readonly IIFoodIntegrationSettingRepository _settingRepository;
+    private readonly IIfoodIntegrationSettingRepository _settingRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ISecretProtector _secretProtector;
 
-    public SaveIFoodSettingsCommandHandler(
-        IIFoodIntegrationSettingRepository settingRepository,
+    public SaveIfoodSettingsCommandHandler(
+        IIfoodIntegrationSettingRepository settingRepository,
         ISecretProtector secretProtector,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
@@ -27,18 +27,18 @@ internal sealed class SaveIFoodSettingsCommandHandler : BaseCommandHandler<SaveI
         _secretProtector = secretProtector;
     }
 
-    public override async Task<Result> Handle(SaveIFoodSettingsCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(SaveIfoodSettingsCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(SaveIFoodSettingsCommandHandler),
+            nameof(SaveIfoodSettingsCommandHandler),
             nameof(Handle),
             null, // Substitua pelo IP presente no request, caso aplicável
             async (userIdBox) =>
             {
                 var encryptedSecret = EncryptClientSecret(request.ClientSecret);
-                var ifoodCustomerId = NormalizeCustomerId(request.IFoodCustomerId);
+                var IfoodCustomerId = NormalizeCustomerId(request.IfoodCustomerId);
 
-                var upsertResult = await UpsertSettingAsync(request, encryptedSecret, ifoodCustomerId, cancellationToken);
+                var upsertResult = await UpsertSettingAsync(request, encryptedSecret, IfoodCustomerId, cancellationToken);
                 if (upsertResult.IsFailure)
                     return upsertResult;
 
@@ -48,23 +48,23 @@ internal sealed class SaveIFoodSettingsCommandHandler : BaseCommandHandler<SaveI
     }
 
     // Upsert por empresa — mesmo padrão do ServiceFeeSetting/ComandaSetting, só que
-    // por CompanyId em vez de BranchId (o app do iFood é centralizado por empresa).
+    // por CompanyId em vez de BranchId (o app do Ifood é centralizado por empresa).
     private async Task<Result> UpsertSettingAsync(
-        SaveIFoodSettingsCommand request,
+        SaveIfoodSettingsCommand request,
         string? encryptedSecret,
-        string? ifoodCustomerId,
+        string? IfoodCustomerId,
         CancellationToken cancellationToken)
     {
         var setting = await _settingRepository.GetByCompanyForUpdateAsync(request.CompanyId, cancellationToken);
 
         if (setting is not null)
-            return setting.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled, ifoodCustomerId);
+            return setting.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled, IfoodCustomerId);
 
-        var created = DomainIFoodSetting.Create(request.CompanyId);
+        var created = DomainIfoodSetting.Create(request.CompanyId);
         if (created.IsFailure)
             return Result.Failure(created.Error);
 
-        var saved = created.Value.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled, ifoodCustomerId);
+        var saved = created.Value.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled, IfoodCustomerId);
         if (saved.IsFailure)
             return saved;
 
@@ -77,6 +77,6 @@ internal sealed class SaveIFoodSettingsCommandHandler : BaseCommandHandler<SaveI
             ? null
             : _secretProtector.Protect(ProtectorPurpose, clientSecret);
 
-    private static string? NormalizeCustomerId(string? ifoodCustomerId)
-        => string.IsNullOrWhiteSpace(ifoodCustomerId) ? null : ifoodCustomerId.Trim();
+    private static string? NormalizeCustomerId(string? IfoodCustomerId)
+        => string.IsNullOrWhiteSpace(IfoodCustomerId) ? null : IfoodCustomerId.Trim();
 }

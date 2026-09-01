@@ -16,10 +16,10 @@ internal static class MenuComplementsBuilder
         IProductComplementGroupRepository productComplementGroupRepository,
         IComplementGroupRepository complementGroupRepository,
         IComplementItemRepository complementItemRepository,
-        CancellationToken cancellationToken,
         // Fase 18 (combos) — resolve a imagem dos produtos vinculados
         // (ComplementItem.LinkedProductId) pra exibir no cardápio (interno/QR Code) em vez de só o nome.
-        IProductRepository productRepository)
+        IProductRepository productRepository,
+        CancellationToken cancellationToken)
     {
         if (productIds.Count == 0)
             return new Dictionary<long, IReadOnlyCollection<ComplementGroupResponse>>();
@@ -63,7 +63,7 @@ internal static class MenuComplementsBuilder
 
     private static ComplementGroupResponse ToResponse(
         ComplementGroup group,
-        IReadOnlyDictionary<long, ComplementItem> complementItemsById,
+        Dictionary<long, ComplementItem> complementItemsById,
         IReadOnlyDictionary<long, string?> linkedProductImages) =>
         new(
             group.Id,

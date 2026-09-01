@@ -1,41 +1,41 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.Categories;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.Categories;
 
-internal sealed class CreateIFoodCategoryCommandHandler(
+internal sealed class CreateIfoodCategoryCommandHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodCatalogClient catalogClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodCatalogClient catalogClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseCommandHandler<CreateIFoodCategoryCommand, IFoodCategoryCreateResponse>(logRepository, unitOfWork)
+    : BaseCommandHandler<CreateIfoodCategoryCommand, IfoodCategoryCreateResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodCategoryCreateResponse>> Handle(
-        CreateIFoodCategoryCommand request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodCategoryCreateResponse>> Handle(
+        CreateIfoodCategoryCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(CreateIFoodCategoryCommandHandler),
+            nameof(CreateIfoodCategoryCommandHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodCategoryCreateResponse>(resolved.Error);
+                    return Result.Failure<IfoodCategoryCreateResponse>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
                 var result = await catalogClient.CreateCategoryAsync(token, merchantId, request.CatalogId, request.Name, cancellationToken);
                 if (!result.Success)
-                    return Result.Failure<IFoodCategoryCreateResponse>(new Error("IFoodCatalog.CreateCategoryFailed", result.ErrorMessage ?? "Falha ao criar a categoria no iFood."));
+                    return Result.Failure<IfoodCategoryCreateResponse>(new Error("IfoodCatalog.CreateCategoryFailed", result.ErrorMessage ?? "Falha ao criar a categoria no Ifood."));
 
-                return Result.Success(new IFoodCategoryCreateResponse(result.IFoodCategoryId));
+                return Result.Success(new IfoodCategoryCreateResponse(result.IfoodCategoryId));
             });
     }
 }

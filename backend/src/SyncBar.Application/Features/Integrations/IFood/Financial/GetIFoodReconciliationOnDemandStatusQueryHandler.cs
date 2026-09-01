@@ -1,39 +1,39 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Financial;
+namespace SyncBar.Application.Features.Integrations.Ifood.Financial;
 
-internal sealed class GetIFoodReconciliationOnDemandStatusQueryHandler(
+internal sealed class GetIfoodReconciliationOnDemandStatusQueryHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodFinancialClient financialClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodFinancialClient financialClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodReconciliationOnDemandStatusQuery, IFoodReconciliationOnDemandStatusResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodReconciliationOnDemandStatusQuery, IfoodReconciliationOnDemandStatusResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodReconciliationOnDemandStatusResponse>> Handle(
-        GetIFoodReconciliationOnDemandStatusQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodReconciliationOnDemandStatusResponse>> Handle(
+        GetIfoodReconciliationOnDemandStatusQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodReconciliationOnDemandStatusQueryHandler),
+            nameof(GetIfoodReconciliationOnDemandStatusQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodReconciliationOnDemandStatusResponse>(resolved.Error);
+                    return Result.Failure<IfoodReconciliationOnDemandStatusResponse>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
                 var raw = await financialClient.GetReconciliationOnDemandStatusAsync(token, merchantId, request.RequestId, cancellationToken);
 
-                return Result.Success(new IFoodReconciliationOnDemandStatusResponse(raw is not null, raw));
+                return Result.Success(new IfoodReconciliationOnDemandStatusResponse(raw is not null, raw));
             });
     }
 }

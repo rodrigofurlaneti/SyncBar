@@ -1,14 +1,14 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SyncBar.Domain.Entities;
 
 namespace SyncBar.Infrastructure.Persistence.Configurations;
 
-internal sealed class IFoodOpeningHoursConfiguration : IEntityTypeConfiguration<IFoodOpeningHours>
+internal sealed class IfoodOpeningHoursConfiguration : IEntityTypeConfiguration<IfoodOpeningHours>
 {
-    public void Configure(EntityTypeBuilder<IFoodOpeningHours> builder)
+    public void Configure(EntityTypeBuilder<IfoodOpeningHours> builder)
     {
-        builder.ToTable("IFoodOpeningHours");
+        builder.ToTable("IfoodOpeningHours");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
@@ -18,9 +18,9 @@ internal sealed class IFoodOpeningHoursConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
 
-        builder.HasIndex(x => new { x.BranchId, x.DayOfWeek }).HasDatabaseName("IX_IFoodOpeningHours_BranchId_DayOfWeek");
+        builder.HasIndex(x => new { x.BranchId, x.DayOfWeek }).HasDatabaseName("IX_IfoodOpeningHours_BranchId_DayOfWeek");
 
         builder.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId)
-            .HasConstraintName("FK_IFoodOpeningHours_Branch").OnDelete(DeleteBehavior.Restrict);
+            .HasConstraintName("FK_IfoodOpeningHours_Branch").OnDelete(DeleteBehavior.Restrict);
     }
 }

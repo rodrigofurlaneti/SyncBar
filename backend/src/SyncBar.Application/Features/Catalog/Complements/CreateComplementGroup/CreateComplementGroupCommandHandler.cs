@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -37,7 +37,7 @@ internal sealed class CreateComplementGroupCommandHandler : BaseCommandHandler<C
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Sem TriggerCompanySync aqui: grupo recém-criado ainda não tem Complements nem
-                // está vinculado a nenhum Product — não afeta o catálogo do iFood ainda.
+                // está vinculado a nenhum Product — não afeta o catálogo do Ifood ainda.
                 return Result.Success(complementGroup.Value.Id);
             });
 }

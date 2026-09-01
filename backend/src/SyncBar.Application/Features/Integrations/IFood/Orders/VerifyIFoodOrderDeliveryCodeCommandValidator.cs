@@ -1,12 +1,12 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Orders;
+namespace SyncBar.Application.Features.Integrations.Ifood.Orders;
 
-public sealed class VerifyIFoodOrderDeliveryCodeCommandValidator : AbstractValidator<VerifyIFoodOrderDeliveryCodeCommand>
+public sealed class VerifyIfoodOrderDeliveryCodeCommandValidator : AbstractValidator<VerifyIfoodOrderDeliveryCodeCommand>
 {
-    public VerifyIFoodOrderDeliveryCodeCommandValidator()
+    public VerifyIfoodOrderDeliveryCodeCommandValidator()
     {
-        RuleFor(x => x.IFoodOrderId).GreaterThan(0);
+        RuleFor(x => x.IfoodOrderId).GreaterThan(0);
         RuleFor(x => x.Code).NotEmpty().MaximumLength(20);
     }
 }

@@ -1,6 +1,6 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Logistics;
+namespace SyncBar.Application.Features.Integrations.Ifood.Logistics;
 
 // Entregador chegou no endereço do cliente (destino).
-public sealed record MarkIFoodArrivedAtDestinationCommand(long IFoodOrderId) : ICommand;
+public sealed record MarkIfoodArrivedAtDestinationCommand(long IfoodOrderId) : ICommand;

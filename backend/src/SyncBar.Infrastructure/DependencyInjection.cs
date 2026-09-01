@@ -6,7 +6,7 @@ using SyncBar.Application.Abstractions.Tenancy;
 using SyncBar.Domain.Repositories;
 using SyncBar.Infrastructure.Authentication;
 using SyncBar.Infrastructure.Fiscal;
-using SyncBar.Infrastructure.Integrations.IFood;
+using SyncBar.Infrastructure.Integrations.Ifood;
 using SyncBar.Infrastructure.Payments;
 using SyncBar.Infrastructure.Persistence;
 using SyncBar.Infrastructure.Persistence.Repositories;
@@ -69,24 +69,24 @@ public static class DependencyInjection
         services.AddScoped<IOrderPartialPaymentRepository, OrderPartialPaymentRepository>();
         services.AddScoped<IComandaSettingRepository, ComandaSettingRepository>();
         services.AddScoped<IServiceFeeSettingRepository, ServiceFeeSettingRepository>();
-        services.AddScoped<IIFoodIntegrationSettingRepository, IFoodIntegrationSettingRepository>();
-        services.AddScoped<IIFoodMerchantMappingRepository, IFoodMerchantMappingRepository>();
-        services.AddScoped<IIFoodOrderRepository, IFoodOrderRepository>();
-        services.AddScoped<IIFoodLogisticsDeliveryRepository, IFoodLogisticsDeliveryRepository>();
-        services.AddScoped<IIFoodShippingDeliveryRepository, IFoodShippingDeliveryRepository>();
-        services.AddScoped<IIFoodCategoryMappingRepository, IFoodCategoryMappingRepository>();
-        services.AddScoped<IIFoodProductMappingRepository, IFoodProductMappingRepository>();
-        services.AddScoped<IIFoodFinancialEventRepository, IFoodFinancialEventRepository>();
-        services.AddScoped<IIFoodSettlementRepository, IFoodSettlementRepository>();
-        services.AddScoped<IIFoodOpeningHoursRepository, IFoodOpeningHoursRepository>();
+        services.AddScoped<IIfoodIntegrationSettingRepository, IfoodIntegrationSettingRepository>();
+        services.AddScoped<IIfoodMerchantMappingRepository, IfoodMerchantMappingRepository>();
+        services.AddScoped<IIfoodOrderRepository, IfoodOrderRepository>();
+        services.AddScoped<IIfoodLogisticsDeliveryRepository, IfoodLogisticsDeliveryRepository>();
+        services.AddScoped<IIfoodShippingDeliveryRepository, IfoodShippingDeliveryRepository>();
+        services.AddScoped<IIfoodCategoryMappingRepository, IfoodCategoryMappingRepository>();
+        services.AddScoped<IIfoodProductMappingRepository, IfoodProductMappingRepository>();
+        services.AddScoped<IIfoodFinancialEventRepository, IfoodFinancialEventRepository>();
+        services.AddScoped<IIfoodSettlementRepository, IfoodSettlementRepository>();
+        services.AddScoped<IIfoodOpeningHoursRepository, IfoodOpeningHoursRepository>();
         services.AddScoped<IComplementItemRepository, ComplementItemRepository>();
         services.AddScoped<IComplementGroupRepository, ComplementGroupRepository>();
         services.AddScoped<IProductComplementGroupRepository, ProductComplementGroupRepository>();
-        services.AddScoped<IIFoodComplementGroupMappingRepository, IFoodComplementGroupMappingRepository>();
-        services.AddScoped<IIFoodComplementMappingRepository, IFoodComplementMappingRepository>();
+        services.AddScoped<IIfoodComplementGroupMappingRepository, IfoodComplementGroupMappingRepository>();
+        services.AddScoped<IIfoodComplementMappingRepository, IfoodComplementMappingRepository>();
         services.AddScoped<IPizzaFlavorRepository, PizzaFlavorRepository>();
         services.AddScoped<IPizzaConfigurationRepository, PizzaConfigurationRepository>();
-        services.AddScoped<IIFoodPizzaMappingRepository, IFoodPizzaMappingRepository>();
+        services.AddScoped<IIfoodPizzaMappingRepository, IfoodPizzaMappingRepository>();
         services.AddScoped<IAccessLogRepository, AccessLogRepository>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
         services.AddScoped<IPurchaseRepository, PurchaseRepository>();
@@ -112,31 +112,31 @@ public static class DependencyInjection
         services.AddScoped<SyncBar.Application.Abstractions.Fiscal.IFiscalDocumentService, FakeFiscalDocumentService>();
         services.AddDataProtection();
         services.AddSingleton<SyncBar.Application.Abstractions.Security.ISecretProtector, DataProtectionSecretProtector>();
-        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodAuthClient, IFoodAuthClient>(
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodAuthClient, IfoodAuthClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddMemoryCache();
-        services.AddScoped<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodTokenProvider, IFoodTokenProvider>();
-        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodOrderClient, IFoodOrderClient>(
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodTokenProvider, IfoodTokenProvider>();
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodOrderClient, IfoodOrderClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
-        services.AddHostedService<IFoodOrderPollingBackgroundService>();
-        services.AddScoped<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodCatalogSyncTrigger, IFoodCatalogSyncTrigger>();
-        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodCatalogClient, IFoodCatalogClient>(
+        services.AddHostedService<IfoodOrderPollingBackgroundService>();
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodCatalogSyncTrigger, IfoodCatalogSyncTrigger>();
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodCatalogClient, IfoodCatalogClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
-        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodFinancialClient, IFoodFinancialClient>(
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodFinancialClient, IfoodFinancialClient>(
             client => client.Timeout = TimeSpan.FromSeconds(30));
-        services.AddHostedService<IFoodFinancialSyncBackgroundService>();
-        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodMerchantClient, IFoodMerchantClient>(
+        services.AddHostedService<IfoodFinancialSyncBackgroundService>();
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodMerchantClient, IfoodMerchantClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
-        services.AddSingleton<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodOperationalAlertStore, InMemoryIFoodOperationalAlertStore>();
-        services.AddHostedService<IFoodMerchantStatusWatcherBackgroundService>();
-        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodLogisticsClient, IFoodLogisticsClient>(
+        services.AddSingleton<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodOperationalAlertStore, InMemoryIfoodOperationalAlertStore>();
+        services.AddHostedService<IfoodMerchantStatusWatcherBackgroundService>();
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodLogisticsClient, IfoodLogisticsClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
-        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodShippingClient, IFoodShippingClient>(
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodShippingClient, IfoodShippingClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
-        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodReviewClient, IFoodReviewClient>(
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodReviewClient, IfoodReviewClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
-        services.AddHostedService<IFoodReviewWatcherBackgroundService>();
-        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.IFood.IIFoodAnalyticsClient, IFoodAnalyticsClient>(
+        services.AddHostedService<IfoodReviewWatcherBackgroundService>();
+        services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodAnalyticsClient, IfoodAnalyticsClient>(
             client => client.Timeout = TimeSpan.FromSeconds(20));
 
         return services;

@@ -1,15 +1,15 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using SyncBar.Application.Abstractions.Integrations.IFood;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Infrastructure.Integrations.IFood;
+namespace SyncBar.Infrastructure.Integrations.Ifood;
 
 /// <summary>
-/// Watcher de avaliações novas do iFood (Fase 14 — automação candidata nº3 identificada na
+/// Watcher de avaliações novas do Ifood (Fase 14 — automação candidata nº3 identificada na
 /// revisão de documentação da Fase 13). O módulo Review não tem NENHUM evento/webhook — é o
 /// único jeito de saber de uma avaliação nova é consultar `GET reviews` periodicamente (auditado
 /// contra a coleção Postman oficial "Merchant API — Review" — não existe grupo de evento
@@ -24,9 +24,9 @@ namespace SyncBar.Infrastructure.Integrations.IFood;
 /// baseline sem alertar de novo sobre avaliações já vistas antes do restart (mesmo cuidado do
 /// watcher de status de loja e do sync financeiro).
 /// </summary>
-internal sealed class IFoodReviewWatcherBackgroundService(
+internal sealed class IfoodReviewWatcherBackgroundService(
     IServiceProvider serviceProvider,
-    ILogger<IFoodReviewWatcherBackgroundService> logger) : BackgroundService
+    ILogger<IfoodReviewWatcherBackgroundService> logger) : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromHours(1);
 
@@ -50,7 +50,7 @@ internal sealed class IFoodReviewWatcherBackgroundService(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Ciclo do watcher de avaliações iFood falhou inesperadamente.");
+                logger.LogError(ex, "Ciclo do watcher de avaliações Ifood falhou inesperadamente.");
             }
 
             try { await Task.Delay(PollInterval, stoppingToken); }
@@ -61,24 +61,24 @@ internal sealed class IFoodReviewWatcherBackgroundService(
     private async Task RunCycleAsync(CancellationToken stoppingToken)
     {
         using var scope = serviceProvider.CreateScope();
-        var settingRepository = scope.ServiceProvider.GetRequiredService<IIFoodIntegrationSettingRepository>();
-        var mappingRepository = scope.ServiceProvider.GetRequiredService<IIFoodMerchantMappingRepository>();
+        var settingRepository = scope.ServiceProvider.GetRequiredService<IIfoodIntegrationSettingRepository>();
+        var mappingRepository = scope.ServiceProvider.GetRequiredService<IIfoodMerchantMappingRepository>();
         var branchRepository = scope.ServiceProvider.GetRequiredService<IBranchRepository>();
-        var tokenProvider = scope.ServiceProvider.GetRequiredService<IIFoodTokenProvider>();
-        var reviewClient = scope.ServiceProvider.GetRequiredService<IIFoodReviewClient>();
-        var alertStore = scope.ServiceProvider.GetRequiredService<IIFoodOperationalAlertStore>();
+        var tokenProvider = scope.ServiceProvider.GetRequiredService<IIfoodTokenProvider>();
+        var reviewClient = scope.ServiceProvider.GetRequiredService<IIfoodReviewClient>();
+        var alertStore = scope.ServiceProvider.GetRequiredService<IIfoodOperationalAlertStore>();
 
         var companyIds = await settingRepository.GetEnabledCompanyIdsAsync(stoppingToken);
         foreach (var companyId in companyIds)
         {
-            IReadOnlyDictionary<long, IFoodMerchantMapping> mappings;
+            IReadOnlyDictionary<long, IfoodMerchantMapping> mappings;
             try
             {
                 mappings = await mappingRepository.GetByCompanyAsync(companyId, stoppingToken);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Falha ao carregar mapeamentos iFood da empresa {CompanyId} no watcher de avaliações.", companyId);
+                logger.LogError(ex, "Falha ao carregar mapeamentos Ifood da empresa {CompanyId} no watcher de avaliações.", companyId);
                 continue;
             }
 
@@ -97,7 +97,7 @@ internal sealed class IFoodReviewWatcherBackgroundService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Falha ao verificar avaliações iFood da filial {BranchId}.", branchId);
+                    logger.LogError(ex, "Falha ao verificar avaliações Ifood da filial {BranchId}.", branchId);
                 }
             }
         }
@@ -109,8 +109,8 @@ internal sealed class IFoodReviewWatcherBackgroundService(
         string merchantId,
         string accessToken,
         IBranchRepository branchRepository,
-        IIFoodReviewClient reviewClient,
-        IIFoodOperationalAlertStore alertStore,
+        IIfoodReviewClient reviewClient,
+        IIfoodOperationalAlertStore alertStore,
         CancellationToken cancellationToken)
     {
         // Página 1, mais recentes primeiro — suficiente pra detectar novidade a cada 1h; não
@@ -162,7 +162,7 @@ internal sealed class IFoodReviewWatcherBackgroundService(
         string branchName,
         double? score,
         string? comment,
-        IIFoodOperationalAlertStore alertStore)
+        IIfoodOperationalAlertStore alertStore)
     {
         var isLowScore = score.HasValue && score.Value <= LowScoreThreshold;
         var scoreText = score.HasValue ? $"nota {score.Value:0.#}" : "sem nota";
@@ -175,8 +175,8 @@ internal sealed class IFoodReviewWatcherBackgroundService(
             companyId,
             branchId,
             branchName,
-            isLowScore ? "Avaliação nova com nota baixa no iFood" : "Avaliação nova no iFood",
-            $"{branchName} recebeu uma avaliação nova ({scoreText}): \"{commentPreview}\" — veja e responda em Integrações > iFood > Avaliações.",
-            isLowScore ? IFoodOperationalAlertSeverity.Warning : IFoodOperationalAlertSeverity.Info);
+            isLowScore ? "Avaliação nova com nota baixa no Ifood" : "Avaliação nova no Ifood",
+            $"{branchName} recebeu uma avaliação nova ({scoreText}): \"{commentPreview}\" — veja e responda em Integrações > Ifood > Avaliações.",
+            isLowScore ? IfoodOperationalAlertSeverity.Warning : IfoodOperationalAlertSeverity.Info);
     }
 }

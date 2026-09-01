@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.Products;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.Products;
 
-public sealed class CreateIFoodProductCommandValidator : AbstractValidator<CreateIFoodProductCommand>
+public sealed class CreateIfoodProductCommandValidator : AbstractValidator<CreateIfoodProductCommand>
 {
-    public CreateIFoodProductCommandValidator()
+    public CreateIfoodProductCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(100);

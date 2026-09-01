@@ -1,53 +1,53 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Logistics;
+namespace SyncBar.Application.Features.Integrations.Ifood.Logistics;
 
-internal sealed class GetIFoodLogisticsDeliveriesQueryHandler(
-    IIFoodLogisticsDeliveryRepository deliveryRepository,
-    IIFoodOrderRepository ifoodOrderRepository,
+internal sealed class GetIfoodLogisticsDeliveriesQueryHandler(
+    IIfoodLogisticsDeliveryRepository deliveryRepository,
+    IIfoodOrderRepository IfoodOrderRepository,
     ICustomerOrderRepository customerOrderRepository,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodLogisticsDeliveriesQuery, IReadOnlyCollection<IFoodLogisticsDeliveryResponse>>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodLogisticsDeliveriesQuery, IReadOnlyCollection<IfoodLogisticsDeliveryResponse>>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IReadOnlyCollection<IFoodLogisticsDeliveryResponse>>> Handle(
-        GetIFoodLogisticsDeliveriesQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IReadOnlyCollection<IfoodLogisticsDeliveryResponse>>> Handle(
+        GetIfoodLogisticsDeliveriesQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodLogisticsDeliveriesQueryHandler),
+            nameof(GetIfoodLogisticsDeliveriesQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
                 var deliveries = await deliveryRepository.GetOpenByBranchAsync(request.BranchId, cancellationToken);
                 if (deliveries.Count == 0)
-                    return Result.Success<IReadOnlyCollection<IFoodLogisticsDeliveryResponse>>([]);
+                    return Result.Success<IReadOnlyCollection<IfoodLogisticsDeliveryResponse>>([]);
 
-                // IFoodLogisticsDelivery.IFoodOrderId aponta pro Id LOCAL do IFoodOrder — busca em
+                // IfoodLogisticsDelivery.IfoodOrderId aponta pro Id LOCAL do IfoodOrder — busca em
                 // lote os pedidos "abertos" da filial pra exibir displayId/cliente/endereço na
-                // tela (mesmo padrão de junção usado em GetIFoodOrdersQueryHandler). Um pedido já
-                // concluído no lado do iFood mas com entrega ainda não fechada localmente
-                // simplesmente não aparece no dicionário — a tela cai pra "Cliente iFood" e sem
+                // tela (mesmo padrão de junção usado em GetIfoodOrdersQueryHandler). Um pedido já
+                // concluído no lado do Ifood mas com entrega ainda não fechada localmente
+                // simplesmente não aparece no dicionário — a tela cai pra "Cliente Ifood" e sem
                 // endereço nesse caso raro, sem quebrar a listagem.
-                var ifoodOrders = await ifoodOrderRepository.GetOpenByBranchAsync(request.BranchId, cancellationToken);
-                var ifoodOrdersById = ifoodOrders.ToDictionary(x => x.Id);
+                var IfoodOrders = await IfoodOrderRepository.GetOpenByBranchAsync(request.BranchId, cancellationToken);
+                var IfoodOrdersById = IfoodOrders.ToDictionary(x => x.Id);
 
                 var customerOrders = await customerOrderRepository.GetByIdsAsync(
-                    ifoodOrders.Select(x => x.CustomerOrderId).ToList(), cancellationToken);
+                    IfoodOrders.Select(x => x.CustomerOrderId).ToList(), cancellationToken);
                 var customerOrdersById = customerOrders.ToDictionary(x => x.Id);
 
-                IReadOnlyCollection<IFoodLogisticsDeliveryResponse> responses = deliveries
+                IReadOnlyCollection<IfoodLogisticsDeliveryResponse> responses = deliveries
                     .Select(d =>
                     {
-                        ifoodOrdersById.TryGetValue(d.IFoodOrderId, out var io);
+                        IfoodOrdersById.TryGetValue(d.IfoodOrderId, out var io);
                         Domain.Entities.CustomerOrder? co = null;
                         if (io is not null)
                             customerOrdersById.TryGetValue(io.CustomerOrderId, out co);
 
-                        return new IFoodLogisticsDeliveryResponse(
-                            d.Id, d.IFoodOrderId, io?.DisplayId, d.DriverName, d.DriverPhone, d.DriverVehicleType, d.Status,
+                        return new IfoodLogisticsDeliveryResponse(
+                            d.Id, d.IfoodOrderId, io?.DisplayId, d.DriverName, d.DriverPhone, d.DriverVehicleType, d.Status,
                             co?.CustomerName, co?.DeliveryAddress,
                             d.AssignedAt, d.GoingToOriginAt, d.ArrivedAtOriginAt, d.DispatchedAt, d.ArrivedAtDestinationAt,
                             d.DeliveryCodeVerifiedAt);

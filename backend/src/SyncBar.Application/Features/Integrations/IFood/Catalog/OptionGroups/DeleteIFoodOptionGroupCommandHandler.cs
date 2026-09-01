@@ -1,30 +1,30 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.OptionGroups;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.OptionGroups;
 
-internal sealed class DeleteIFoodOptionGroupCommandHandler(
+internal sealed class DeleteIfoodOptionGroupCommandHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodCatalogClient catalogClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodCatalogClient catalogClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseCommandHandler<DeleteIFoodOptionGroupCommand>(logRepository, unitOfWork)
+    : BaseCommandHandler<DeleteIfoodOptionGroupCommand>(logRepository, unitOfWork)
 {
-    public override async Task<Result> Handle(DeleteIFoodOptionGroupCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(DeleteIfoodOptionGroupCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(DeleteIFoodOptionGroupCommandHandler),
+            nameof(DeleteIfoodOptionGroupCommandHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
                     return Result.Failure(resolved.Error);
@@ -32,7 +32,7 @@ internal sealed class DeleteIFoodOptionGroupCommandHandler(
                 var (_, merchantId, token, _) = resolved.Value;
                 var result = await catalogClient.DeleteOptionGroupAsync(token, merchantId, request.OptionGroupId, cancellationToken);
                 if (!result.Success)
-                    return Result.Failure(new Error("IFoodCatalog.DeleteOptionGroupFailed", result.ErrorMessage ?? "Falha ao excluir o grupo de opções no iFood."));
+                    return Result.Failure(new Error("IfoodCatalog.DeleteOptionGroupFailed", result.ErrorMessage ?? "Falha ao excluir o grupo de opções no Ifood."));
 
                 return Result.Success();
             });

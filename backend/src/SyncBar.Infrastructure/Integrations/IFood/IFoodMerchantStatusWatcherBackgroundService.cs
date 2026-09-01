@@ -2,25 +2,25 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using SyncBar.Application.Abstractions.Integrations.IFood;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Infrastructure.Integrations.IFood;
+namespace SyncBar.Infrastructure.Integrations.Ifood;
 
 /// <summary>
-/// Watcher de saúde operacional da loja no iFood (Fase 13 — automação encontrada na revisão de
+/// Watcher de saúde operacional da loja no Ifood (Fase 13 — automação encontrada na revisão de
 /// documentação pedida em 2026-08-22). Antes desta fase, "operação da loja" (módulo Merchant —
 /// disponibilidade, interrupções, horários) só era consultada SOB DEMANDA: alguém precisava abrir
 /// a tela de Integrações e clicar em "Atualizar status" pra descobrir que a loja tinha caído do
-/// iFood (por exemplo, por um "afastamento automático" do próprio iFood — atrasos/cancelamentos
-/// em excesso derrubam a loja e o iFood não avisa por e-mail nem webhook). Esse gap já estava
+/// Ifood (por exemplo, por um "afastamento automático" do próprio Ifood — atrasos/cancelamentos
+/// em excesso derrubam a loja e o Ifood não avisa por e-mail nem webhook). Esse gap já estava
 /// anotado no histórico do projeto desde a Fase 5/9b/9c ("sem polling automático") e é o mesmo
 /// tipo de risco que motivou o usuário a tentar criar um worker próprio (ver Fase 12): pedidos
 /// perdidos silenciosamente, só que aqui por INDISPONIBILIDADE da loja em vez de evento de pedido
 /// não processado.
 ///
-/// Não existe endpoint de evento/webhook pra isso no módulo Events do iFood (auditado nesta
+/// Não existe endpoint de evento/webhook pra isso no módulo Events do Ifood (auditado nesta
 /// mesma revisão — só HANDSHAKE_DISPUTE/HANDSHAKE_SETTLEMENT existem fora do fluxo de pedidos), a
 /// única forma de saber é consultar `GET /merchants/{id}/status` periodicamente. Segue o mesmo
 /// padrão de BackgroundService dos outros workers do módulo (singleton, cria um scope de DI por
@@ -39,19 +39,19 @@ namespace SyncBar.Infrastructure.Integrations.IFood;
 /// loja fechada normalmente fora do horário de funcionamento (fim de expediente) virava um
 /// "Loja indisponível" Crítico, e a reabertura seguinte virava um "voltou a ficar disponível" —
 /// ruído todo santo dia. Não dá pra distinguir isso usando `OperationState`/`Validations` do
-/// próprio iFood (o vocabulário exato desses campos NUNCA foi confirmado contra uma resposta real
-/// de sandbox — ver ressalva em IIFoodMerchantClient — então filtrar por um texto tipo "CLOSED"
-/// seria adivinhação, não uma correção). Em vez disso, usa `IFoodOpeningHours` — a cópia local dos
-/// turnos de funcionamento que o próprio SyncBar mantém sincronizada com o iFood (`PUT
+/// próprio Ifood (o vocabulário exato desses campos NUNCA foi confirmado contra uma resposta real
+/// de sandbox — ver ressalva em IIfoodMerchantClient — então filtrar por um texto tipo "CLOSED"
+/// seria adivinhação, não uma correção). Em vez disso, usa `IfoodOpeningHours` — a cópia local dos
+/// turnos de funcionamento que o próprio SyncBar mantém sincronizada com o Ifood (`PUT
 /// /opening-hours`, Fase 5) — como fonte confiável: se a filial tem turnos configurados e o
 /// momento da checagem está FORA de todos eles, o fechamento é esperado e não gera alerta (nem a
 /// reabertura seguinte). Se a filial não tem nenhum turno configurado, não há como classificar —
 /// mantém o comportamento anterior (alerta sempre), mesmo default conservador já usado no resto do
 /// arquivo quando falta dado confiável.
 /// </summary>
-internal sealed class IFoodMerchantStatusWatcherBackgroundService(
+internal sealed class IfoodMerchantStatusWatcherBackgroundService(
     IServiceProvider serviceProvider,
-    ILogger<IFoodMerchantStatusWatcherBackgroundService> logger) : BackgroundService
+    ILogger<IfoodMerchantStatusWatcherBackgroundService> logger) : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(5);
 
@@ -78,7 +78,7 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Ciclo do watcher de status de loja iFood falhou inesperadamente.");
+                logger.LogError(ex, "Ciclo do watcher de status de loja Ifood falhou inesperadamente.");
             }
 
             try { await Task.Delay(PollInterval, stoppingToken); }
@@ -89,25 +89,25 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
     private async Task RunCycleAsync(CancellationToken stoppingToken)
     {
         using var scope = serviceProvider.CreateScope();
-        var settingRepository = scope.ServiceProvider.GetRequiredService<IIFoodIntegrationSettingRepository>();
-        var mappingRepository = scope.ServiceProvider.GetRequiredService<IIFoodMerchantMappingRepository>();
+        var settingRepository = scope.ServiceProvider.GetRequiredService<IIfoodIntegrationSettingRepository>();
+        var mappingRepository = scope.ServiceProvider.GetRequiredService<IIfoodMerchantMappingRepository>();
         var branchRepository = scope.ServiceProvider.GetRequiredService<IBranchRepository>();
-        var tokenProvider = scope.ServiceProvider.GetRequiredService<IIFoodTokenProvider>();
-        var merchantClient = scope.ServiceProvider.GetRequiredService<IIFoodMerchantClient>();
-        var alertStore = scope.ServiceProvider.GetRequiredService<IIFoodOperationalAlertStore>();
-        var openingHoursRepository = scope.ServiceProvider.GetRequiredService<IIFoodOpeningHoursRepository>();
+        var tokenProvider = scope.ServiceProvider.GetRequiredService<IIfoodTokenProvider>();
+        var merchantClient = scope.ServiceProvider.GetRequiredService<IIfoodMerchantClient>();
+        var alertStore = scope.ServiceProvider.GetRequiredService<IIfoodOperationalAlertStore>();
+        var openingHoursRepository = scope.ServiceProvider.GetRequiredService<IIfoodOpeningHoursRepository>();
 
         var companyIds = await settingRepository.GetEnabledCompanyIdsAsync(stoppingToken);
         foreach (var companyId in companyIds)
         {
-            IReadOnlyDictionary<long, IFoodMerchantMapping> mappings;
+            IReadOnlyDictionary<long, IfoodMerchantMapping> mappings;
             try
             {
                 mappings = await mappingRepository.GetByCompanyAsync(companyId, stoppingToken);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Falha ao carregar mapeamentos iFood da empresa {CompanyId} no watcher de status.", companyId);
+                logger.LogError(ex, "Falha ao carregar mapeamentos Ifood da empresa {CompanyId} no watcher de status.", companyId);
                 continue;
             }
 
@@ -120,7 +120,7 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
                 try
                 {
                     // Um token por empresa, reaproveitado entre as filiais do ciclo (mesma
-                    // instância de IIFoodTokenProvider já cacheia por companyId — isso só evita
+                    // instância de IIfoodTokenProvider já cacheia por companyId — isso só evita
                     // uma chamada redundante quando a empresa tem várias filiais no mesmo ciclo).
                     accessToken ??= await tokenProvider.GetAccessTokenAsync(companyId, stoppingToken);
                     if (accessToken is null)
@@ -130,7 +130,7 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Falha ao verificar status iFood da filial {BranchId}.", branchId);
+                    logger.LogError(ex, "Falha ao verificar status Ifood da filial {BranchId}.", branchId);
                 }
             }
         }
@@ -142,9 +142,9 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
         string merchantId,
         string accessToken,
         IBranchRepository branchRepository,
-        IIFoodMerchantClient merchantClient,
-        IIFoodOperationalAlertStore alertStore,
-        IIFoodOpeningHoursRepository openingHoursRepository,
+        IIfoodMerchantClient merchantClient,
+        IIfoodOperationalAlertStore alertStore,
+        IIfoodOpeningHoursRepository openingHoursRepository,
         CancellationToken cancellationToken)
     {
         var status = await merchantClient.GetStatusAsync(accessToken, merchantId, cancellationToken);
@@ -175,15 +175,15 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
 
             var reason = status.Validations.FirstOrDefault()?.Message
                 ?? status.OperationState
-                ?? "motivo não informado pelo iFood";
+                ?? "motivo não informado pelo Ifood";
 
             alertStore.Raise(
                 companyId,
                 branchId,
                 branchName,
-                "Loja indisponível no iFood",
-                $"{branchName} ficou indisponível para pedidos no iFood — {reason}. Verifique em Integrações > iFood > Operação da loja.",
-                IFoodOperationalAlertSeverity.Critical);
+                "Loja indisponível no Ifood",
+                $"{branchName} ficou indisponível para pedidos no Ifood — {reason}. Verifique em Integrações > Ifood > Operação da loja.",
+                IfoodOperationalAlertSeverity.Critical);
         }
         else if (!wasAvailable.Value && status.Available)
         {
@@ -195,15 +195,15 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
                 companyId,
                 branchId,
                 branchName,
-                "Loja voltou a ficar disponível no iFood",
-                $"{branchName} voltou a receber pedidos pelo iFood normalmente.",
-                IFoodOperationalAlertSeverity.Info);
+                "Loja voltou a ficar disponível no Ifood",
+                $"{branchName} voltou a receber pedidos pelo Ifood normalmente.",
+                IfoodOperationalAlertSeverity.Info);
         }
     }
 
-    // Turnos em horário local do servidor — mesma convenção já usada em IFoodOpeningHours
+    // Turnos em horário local do servidor — mesma convenção já usada em IfoodOpeningHours
     // (CreatedAt = DateTime.Now, não Now). Cobre turno que cruza a meia-noite (ex.: 22h–2h).
-    private static bool IsWithinConfiguredShift(IReadOnlyCollection<IFoodOpeningHours> shifts, DateTime now)
+    private static bool IsWithinConfiguredShift(IReadOnlyCollection<IfoodOpeningHours> shifts, DateTime now)
     {
         var nowTimeOfDay = now.TimeOfDay;
         var nowDayOfWeek = (int)now.DayOfWeek;
@@ -217,7 +217,7 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
         return false;
     }
 
-    private static bool ShiftCoversMoment(IFoodOpeningHours shift, int nowDayOfWeek, TimeSpan nowTimeOfDay)
+    private static bool ShiftCoversMoment(IfoodOpeningHours shift, int nowDayOfWeek, TimeSpan nowTimeOfDay)
     {
         var end = shift.Start + TimeSpan.FromMinutes(shift.DurationMinutes);
 
@@ -226,12 +226,12 @@ internal sealed class IFoodMerchantStatusWatcherBackgroundService(
             : CoversOvernightShift(shift, end, nowDayOfWeek, nowTimeOfDay);
     }
 
-    private static bool CoversSameDayShift(IFoodOpeningHours shift, TimeSpan end, int nowDayOfWeek, TimeSpan nowTimeOfDay)
+    private static bool CoversSameDayShift(IfoodOpeningHours shift, TimeSpan end, int nowDayOfWeek, TimeSpan nowTimeOfDay)
         => shift.DayOfWeek == nowDayOfWeek && nowTimeOfDay >= shift.Start && nowTimeOfDay < end;
 
     // Turno cruza a meia-noite: cobre o restante do dia em que começa e o início do dia
     // seguinte até a hora de término (já normalizada pra menos de 24h).
-    private static bool CoversOvernightShift(IFoodOpeningHours shift, TimeSpan end, int nowDayOfWeek, TimeSpan nowTimeOfDay)
+    private static bool CoversOvernightShift(IfoodOpeningHours shift, TimeSpan end, int nowDayOfWeek, TimeSpan nowTimeOfDay)
     {
         if (shift.DayOfWeek == nowDayOfWeek && nowTimeOfDay >= shift.Start)
             return true;

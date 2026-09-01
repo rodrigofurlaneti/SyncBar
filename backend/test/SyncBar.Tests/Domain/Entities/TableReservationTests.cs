@@ -42,7 +42,7 @@ namespace SyncBar.Tests.Domain.Entities
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void Create_WithEmptyOrWhitespaceCustomerName_ShouldReturnFailureResult(string invalidName)
+        public void Create_WithEmptyOrWhitespaceCustomerName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
             var result = TableReservation.Create(1, null, invalidName, "11999999999", 4, DateTime.Now.AddDays(1), null);

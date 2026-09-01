@@ -1,13 +1,13 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using SyncBar.Application.Abstractions.Integrations.IFood;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
 
-namespace SyncBar.Infrastructure.Integrations.IFood;
+namespace SyncBar.Infrastructure.Integrations.Ifood;
 
 /// <summary>
-/// Cliente HTTP real dos módulos Order + Events do iFood — endpoints e formatos confirmados em
+/// Cliente HTTP real dos módulos Order + Events do Ifood — endpoints e formatos confirmados em
 /// 2026-08-19 contra a documentação oficial colada pelo usuário (Fundamentos, Guia de
 /// implementação, Detalhes de pedido, Eventos de pedido, e — Fase 2.1 — a doc completa do
 /// módulo Events: Introdução, Eventos de pedido, Polling, Webhook, Presença). Cobre o "fluxo
@@ -22,28 +22,28 @@ namespace SyncBar.Infrastructure.Integrations.IFood;
 /// merchant). As demais ações (detalhes, confirmar, avançar status) continuam no módulo Order
 /// (order/v1.0), que não muda nesta fase.
 ///
-/// Fase 6a (extensão): GetOrderDetailsAsync passou a ler item.options (ver IFoodOrderItemOptionDto)
+/// Fase 6a (extensão): GetOrderDetailsAsync passou a ler item.options (ver IfoodOrderItemOptionDto)
 /// — nomes de campo (id/name/quantity/unitPrice) assumidos por analogia com o próprio item
-/// (mesma ressalva de confiança já registrada em IIFoodOrderClient).
+/// (mesma ressalva de confiança já registrada em IIfoodOrderClient).
 ///
 /// Fase 9b: rastreamento (GetOrderTrackingAsync), código de retirada (ValidatePickupCodeAsync) e
 /// disputas Handshake accept/reject (AcceptDisputeAsync/RejectDisputeAsync) — endpoints e
 /// formatos confirmados em 2026-08-20 contra a doc oficial (Postman collection "Order") colada
 /// pelo usuário. Disputas não têm ingestão local de eventos ainda (ver ressalva em
-/// IFoodDisputeActionResult) — a equipe informa o disputeId manualmente.
+/// IfoodDisputeActionResult) — a equipe informa o disputeId manualmente.
 ///
 /// Fase 9c: fecha os gaps restantes do módulo Order da auditoria de 2026-08-20 — virtual bag
 /// (GetVirtualBagAsync), proposta de alternativa em disputa (RequestDisputeAlternativeAsync) e os
 /// requestDriver/cancelRequestDriver/verifyDeliveryCode do PRÓPRIO módulo Order (distintos dos
-/// homônimos em Shipping/Logistics — ver ressalva em IIFoodOrderClient).
+/// homônimos em Shipping/Logistics — ver ressalva em IIfoodOrderClient).
 ///
-/// NÃO implementado nesta fase (fora do escopo "essencial", ver ifood-integration-status no
+/// NÃO implementado nesta fase (fora do escopo "essencial", ver Ifood-integration-status no
 /// projeto claude.ai): cálculo de preparationStartDateTime pra pedidos agendados, Webhook.
 /// </summary>
-internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClient
+internal sealed class IfoodOrderClient(HttpClient httpClient) : IIfoodOrderClient
 {
-    private const string OrderBaseUrl = "https://merchant-api.ifood.com.br/order/v1.0";
-    private const string EventsBaseUrl = "https://merchant-api.ifood.com.br/events/v1.0";
+    private const string OrderBaseUrl = "https://merchant-api.Ifood.com.br/order/v1.0";
+    private const string EventsBaseUrl = "https://merchant-api.Ifood.com.br/events/v1.0";
 
     // SyncBar só vende comida — categorias do módulo Grocery (varejo) ficam de fora.
     private const string Categories = "FOOD,FOOD_SELF_SERVICE";
@@ -52,13 +52,13 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
     // margem segura documentada pra apps centralizados com muitas lojas.
     private const int MerchantBatchSize = 100;
 
-    public async Task<IReadOnlyCollection<IFoodPollingEvent>> PollEventsAsync(
+    public async Task<IReadOnlyCollection<IfoodPollingEvent>> PollEventsAsync(
         string accessToken, IReadOnlyCollection<string> merchantIds, CancellationToken cancellationToken = default)
     {
         if (merchantIds.Count == 0)
             return [];
 
-        var allEvents = new List<IFoodPollingEvent>();
+        var allEvents = new List<IfoodPollingEvent>();
 
         foreach (var batch in merchantIds.Chunk(MerchantBatchSize))
         {
@@ -75,7 +75,7 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
             if (payload?.Events is null)
                 continue;
 
-            allEvents.AddRange(payload.Events.Select(e => new IFoodPollingEvent(e.Id, e.Code, e.FullCode, e.OrderId, e.CreatedAt)));
+            allEvents.AddRange(payload.Events.Select(e => new IfoodPollingEvent(e.Id, e.Code, e.FullCode, e.OrderId, e.CreatedAt)));
         }
 
         return allEvents;
@@ -95,7 +95,7 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
         catch { /* próximo ciclo de polling tenta de novo — evento não confirmado volta sozinho */ }
     }
 
-    public async Task<IFoodOrderDetailsDto?> GetOrderDetailsAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+    public async Task<IfoodOrderDetailsDto?> GetOrderDetailsAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"{OrderBaseUrl}/orders/{orderId}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
@@ -109,7 +109,7 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
         var dto = await response.Content.ReadFromJsonAsync<OrderDetailsResponseDto>(cancellationToken: cancellationToken);
         if (dto is null) return null;
 
-        return new IFoodOrderDetailsDto(
+        return new IfoodOrderDetailsDto(
             dto.Id,
             dto.DisplayId,
             dto.OrderType,
@@ -124,25 +124,25 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
             dto.Delivery?.DeliveredBy,
             dto.Takeout?.Mode,
             dto.Total?.OrderAmount ?? 0m,
-            (dto.Items ?? []).Select(i => new IFoodOrderItemDto(
+            (dto.Items ?? []).Select(i => new IfoodOrderItemDto(
                 i.ExternalCode, i.Ean, i.Name ?? "Item", i.Quantity, i.UnitPrice,
-                (i.Options ?? []).Select(o => new IFoodOrderItemOptionDto(o.Id, o.Name, o.Quantity, o.UnitPrice)).ToList()))
+                (i.Options ?? []).Select(o => new IfoodOrderItemOptionDto(o.Id, o.Name, o.Quantity, o.UnitPrice)).ToList()))
                 .ToList());
     }
 
-    public Task<IFoodOrderActionResult> ConfirmOrderAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+    public Task<IfoodOrderActionResult> ConfirmOrderAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
         => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/confirm", accessToken, cancellationToken);
 
-    public Task<IFoodOrderActionResult> StartPreparationAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+    public Task<IfoodOrderActionResult> StartPreparationAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
         => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/startPreparation", accessToken, cancellationToken);
 
-    public Task<IFoodOrderActionResult> ReadyToPickupAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+    public Task<IfoodOrderActionResult> ReadyToPickupAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
         => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/readyToPickup", accessToken, cancellationToken);
 
-    public Task<IFoodOrderActionResult> DispatchAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+    public Task<IfoodOrderActionResult> DispatchAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
         => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/dispatch", accessToken, cancellationToken);
 
-    public async Task<IReadOnlyCollection<IFoodCancellationReasonDto>> GetCancellationReasonsAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<IfoodCancellationReasonDto>> GetCancellationReasonsAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"{OrderBaseUrl}/orders/{orderId}/cancellationReasons");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
@@ -153,11 +153,11 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
 
         var payload = await response.Content.ReadFromJsonAsync<CancellationReasonsResponseDto>(cancellationToken: cancellationToken);
         return (payload?.Reasons ?? [])
-            .Select(r => new IFoodCancellationReasonDto(r.Code, r.Description))
+            .Select(r => new IfoodCancellationReasonDto(r.Code, r.Description))
             .ToList();
     }
 
-    public async Task<IFoodOrderActionResult> RequestCancellationAsync(string accessToken, string orderId, string reasonCode, CancellationToken cancellationToken = default)
+    public async Task<IfoodOrderActionResult> RequestCancellationAsync(string accessToken, string orderId, string reasonCode, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{OrderBaseUrl}/orders/{orderId}/requestCancellation")
         {
@@ -168,7 +168,7 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
         return await SendActionAsync(request, cancellationToken);
     }
 
-    public async Task<IFoodOrderTrackingDto?> GetOrderTrackingAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+    public async Task<IfoodOrderTrackingDto?> GetOrderTrackingAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"{OrderBaseUrl}/orders/{orderId}/tracking");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
@@ -182,10 +182,10 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
         var dto = await response.Content.ReadFromJsonAsync<TrackingResponseDto>(cancellationToken: cancellationToken);
         if (dto is null) return null;
 
-        return new IFoodOrderTrackingDto(dto.Latitude, dto.Longitude, dto.ExpectedDelivery, dto.DeliveryEtaEnd, dto.PickupEtaStart);
+        return new IfoodOrderTrackingDto(dto.Latitude, dto.Longitude, dto.ExpectedDelivery, dto.DeliveryEtaEnd, dto.PickupEtaStart);
     }
 
-    public async Task<IFoodPickupValidationResult> ValidatePickupCodeAsync(string accessToken, string orderId, string code, CancellationToken cancellationToken = default)
+    public async Task<IfoodPickupValidationResult> ValidatePickupCodeAsync(string accessToken, string orderId, string code, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{OrderBaseUrl}/orders/{orderId}/validatePickupCode")
         {
@@ -199,31 +199,31 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                return new IFoodPickupValidationResult(false, false, $"iFood retornou {(int)response.StatusCode}: {Truncate(errorBody)}");
+                return new IfoodPickupValidationResult(false, false, $"Ifood retornou {(int)response.StatusCode}: {Truncate(errorBody)}");
             }
 
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             if (string.IsNullOrWhiteSpace(body))
-                return new IFoodPickupValidationResult(true, false, null);
+                return new IfoodPickupValidationResult(true, false, null);
 
             var dto = System.Text.Json.JsonSerializer.Deserialize<PickupValidationResponseDto>(
                 body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            return new IFoodPickupValidationResult(true, dto?.Success ?? false, null);
+            return new IfoodPickupValidationResult(true, dto?.Success ?? false, null);
         }
         catch (Exception ex)
         {
-            return new IFoodPickupValidationResult(false, false, ex.Message);
+            return new IfoodPickupValidationResult(false, false, ex.Message);
         }
     }
 
-    public async Task<IFoodDisputeActionResult> AcceptDisputeAsync(string accessToken, string disputeId, CancellationToken cancellationToken = default)
+    public async Task<IfoodDisputeActionResult> AcceptDisputeAsync(string accessToken, string disputeId, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{OrderBaseUrl}/disputes/{disputeId}/accept");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await SendDisputeActionAsync(request, cancellationToken);
     }
 
-    public async Task<IFoodDisputeActionResult> RejectDisputeAsync(string accessToken, string disputeId, string reason, CancellationToken cancellationToken = default)
+    public async Task<IfoodDisputeActionResult> RejectDisputeAsync(string accessToken, string disputeId, string reason, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{OrderBaseUrl}/disputes/{disputeId}/reject")
         {
@@ -233,7 +233,7 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
         return await SendDisputeActionAsync(request, cancellationToken);
     }
 
-    private async Task<IFoodDisputeActionResult> SendDisputeActionAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    private async Task<IfoodDisputeActionResult> SendDisputeActionAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         try
         {
@@ -241,19 +241,19 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                return new IFoodDisputeActionResult(false, null, $"iFood retornou {(int)response.StatusCode}: {Truncate(errorBody)}");
+                return new IfoodDisputeActionResult(false, null, $"Ifood retornou {(int)response.StatusCode}: {Truncate(errorBody)}");
             }
 
             var dto = await response.Content.ReadFromJsonAsync<DisputeActionResponseDto>(cancellationToken: cancellationToken);
-            return new IFoodDisputeActionResult(true, dto?.Status, null);
+            return new IfoodDisputeActionResult(true, dto?.Status, null);
         }
         catch (Exception ex)
         {
-            return new IFoodDisputeActionResult(false, null, ex.Message);
+            return new IfoodDisputeActionResult(false, null, ex.Message);
         }
     }
 
-    public async Task<IFoodDisputeActionResult> RequestDisputeAlternativeAsync(
+    public async Task<IfoodDisputeActionResult> RequestDisputeAlternativeAsync(
         string accessToken, string disputeId, string alternativeId, string alternativeType,
         decimal? amount, string? currency, CancellationToken cancellationToken = default)
     {
@@ -269,7 +269,7 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
         return await SendDisputeActionAsync(request, cancellationToken);
     }
 
-    public async Task<IFoodVirtualBagResult> GetVirtualBagAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+    public async Task<IfoodVirtualBagResult> GetVirtualBagAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -279,13 +279,13 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
             using var response = await httpClient.SendAsync(request, cancellationToken);
             var rawBody = await response.Content.ReadAsStringAsync(cancellationToken);
             if (!response.IsSuccessStatusCode)
-                return new IFoodVirtualBagResult(false, null, null, null, null, null, null, [], null, null, null, $"iFood retornou {(int)response.StatusCode}: {Truncate(rawBody)}");
+                return new IfoodVirtualBagResult(false, null, null, null, null, null, null, [], null, null, null, $"Ifood retornou {(int)response.StatusCode}: {Truncate(rawBody)}");
 
             return ParseVirtualBagResponse(rawBody);
         }
         catch (Exception ex)
         {
-            return new IFoodVirtualBagResult(false, null, null, null, null, null, null, [], null, null, null, ex.Message);
+            return new IfoodVirtualBagResult(false, null, null, null, null, null, null, [], null, null, null, ex.Message);
         }
     }
 
@@ -294,7 +294,7 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
     // pra não quebrar a leitura inteira se um sub-objeto vier faltando ou com nome diferente.
     // Extraído de GetVirtualBagAsync (junto com ParseVirtualBagItems/ParseVirtualBagPrices) só
     // pra reduzir a complexidade cognitiva apontada pelo SonarCloud — mesmo comportamento.
-    private static IFoodVirtualBagResult ParseVirtualBagResponse(string rawBody)
+    private static IfoodVirtualBagResult ParseVirtualBagResponse(string rawBody)
     {
         using var document = JsonDocument.Parse(rawBody);
         var root = document.RootElement;
@@ -307,7 +307,7 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
         var merchantName = GetNestedJsonString(root, "merchant", "name");
         var customerName = GetNestedJsonString(root, "customer", "name");
 
-        var items = new List<IFoodVirtualBagItemDto>();
+        var items = new List<IfoodVirtualBagItemDto>();
         string? grossValueAmount = null;
         string? grossValueCurrency = null;
         if (root.TryGetProperty("bag", out var bagEl) && bagEl.ValueKind == JsonValueKind.Object)
@@ -318,15 +318,15 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
             (grossValueAmount, grossValueCurrency) = ParseVirtualBagGrossValue(bagEl);
         }
 
-        return new IFoodVirtualBagResult(true, id, shortCode, status, createdAt, merchantName, customerName, items, grossValueAmount, grossValueCurrency, rawBody, null);
+        return new IfoodVirtualBagResult(true, id, shortCode, status, createdAt, merchantName, customerName, items, grossValueAmount, grossValueCurrency, rawBody, null);
     }
 
-    private static IEnumerable<IFoodVirtualBagItemDto> ParseVirtualBagItems(JsonElement itemsEl)
+    private static IEnumerable<IfoodVirtualBagItemDto> ParseVirtualBagItems(JsonElement itemsEl)
     {
         foreach (var item in itemsEl.EnumerateArray())
         {
             var quantity = item.TryGetProperty("quantity", out var qtyEl) && qtyEl.ValueKind == JsonValueKind.Number && qtyEl.TryGetInt32(out var qty) ? qty : 0;
-            yield return new IFoodVirtualBagItemDto(GetJsonString(item, "uniqueId"), GetJsonString(item, "name"), quantity, GetJsonString(item, "ean"));
+            yield return new IfoodVirtualBagItemDto(GetJsonString(item, "uniqueId"), GetJsonString(item, "name"), quantity, GetJsonString(item, "ean"));
         }
     }
 
@@ -344,13 +344,13 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
             ? GetJsonString(nestedEl, valuePropertyName)
             : null;
 
-    public Task<IFoodOrderActionResult> RequestOrderDriverAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+    public Task<IfoodOrderActionResult> RequestOrderDriverAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
         => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/requestDriver", accessToken, cancellationToken);
 
-    public Task<IFoodOrderActionResult> CancelOrderRequestDriverAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
+    public Task<IfoodOrderActionResult> CancelOrderRequestDriverAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
         => PostActionAsync($"{OrderBaseUrl}/orders/{orderId}/cancelRequestDriver", accessToken, cancellationToken);
 
-    public async Task<IFoodPickupValidationResult> VerifyOrderDeliveryCodeAsync(string accessToken, string orderId, string code, CancellationToken cancellationToken = default)
+    public async Task<IfoodPickupValidationResult> VerifyOrderDeliveryCodeAsync(string accessToken, string orderId, string code, CancellationToken cancellationToken = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{OrderBaseUrl}/orders/{orderId}/verifyDeliveryCode")
         {
@@ -364,19 +364,19 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                return new IFoodPickupValidationResult(false, false, $"iFood retornou {(int)response.StatusCode}: {Truncate(errorBody)}");
+                return new IfoodPickupValidationResult(false, false, $"Ifood retornou {(int)response.StatusCode}: {Truncate(errorBody)}");
             }
 
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             if (string.IsNullOrWhiteSpace(body))
-                return new IFoodPickupValidationResult(true, false, null);
+                return new IfoodPickupValidationResult(true, false, null);
 
             var dto = JsonSerializer.Deserialize<PickupValidationResponseDto>(body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            return new IFoodPickupValidationResult(true, dto?.Success ?? false, null);
+            return new IfoodPickupValidationResult(true, dto?.Success ?? false, null);
         }
         catch (Exception ex)
         {
-            return new IFoodPickupValidationResult(false, false, ex.Message);
+            return new IfoodPickupValidationResult(false, false, ex.Message);
         }
     }
 
@@ -394,34 +394,34 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
         return null;
     }
 
-    private async Task<IFoodOrderActionResult> PostActionAsync(string url, string accessToken, CancellationToken cancellationToken)
+    private async Task<IfoodOrderActionResult> PostActionAsync(string url, string accessToken, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return await SendActionAsync(request, cancellationToken);
     }
 
-    private async Task<IFoodOrderActionResult> SendActionAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    private async Task<IfoodOrderActionResult> SendActionAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         try
         {
             using var response = await httpClient.SendAsync(request, cancellationToken);
             if (response.IsSuccessStatusCode)
-                return new IFoodOrderActionResult(true, null);
+                return new IfoodOrderActionResult(true, null);
 
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            return new IFoodOrderActionResult(false, $"iFood retornou {(int)response.StatusCode}: {Truncate(body)}");
+            return new IfoodOrderActionResult(false, $"Ifood retornou {(int)response.StatusCode}: {Truncate(body)}");
         }
         catch (Exception ex)
         {
-            return new IFoodOrderActionResult(false, ex.Message);
+            return new IfoodOrderActionResult(false, ex.Message);
         }
     }
 
     private static string Truncate(string value) => value.Length > 300 ? value[..300] + "…" : value;
 
-    // DTOs internos de desserialização — nomes batem com o JSON do iFood; ReadFromJsonAsync sem
-    // options explícitas já é case-insensitive por padrão (mesmo padrão usado em IFoodAuthClient).
+    // DTOs internos de desserialização — nomes batem com o JSON do Ifood; ReadFromJsonAsync sem
+    // options explícitas já é case-insensitive por padrão (mesmo padrão usado em IfoodAuthClient).
     private sealed record PollingResponseDto(List<PollingEventDto>? Events);
     private sealed record PollingEventDto(string Id, string Code, string? FullCode, string OrderId, DateTime CreatedAt);
     private sealed record OrderDetailsResponseDto(
@@ -433,7 +433,7 @@ internal sealed class IFoodOrderClient(HttpClient httpClient) : IIFoodOrderClien
     private sealed record CustomerDto(string? Name, PhoneDto? Phone);
     private sealed record PhoneDto(string? Number);
     // Fase 6a (extensão): Options — lista de complementos escolhidos pra este item (ver ressalva
-    // de confiança em IIFoodOrderClient/IFoodOrderItemOptionDto).
+    // de confiança em IIfoodOrderClient/IfoodOrderItemOptionDto).
     private sealed record ItemDto(string? ExternalCode, string? Ean, string? Name, decimal Quantity, decimal UnitPrice, List<ItemOptionDto>? Options);
     private sealed record ItemOptionDto(string? Id, string? Name, decimal Quantity, decimal UnitPrice);
     private sealed record TotalDto(decimal OrderAmount);

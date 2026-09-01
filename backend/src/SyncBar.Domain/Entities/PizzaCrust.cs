@@ -1,10 +1,10 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
 // Fase 17 — uma borda (ex.: "Borda Fina", "Borda Grossa") dentro de uma PizzaConfiguration —
-// espelha crusts[] da API de pizza do iFood. ExtraPrice é o preço único do crust (não varia por
-// tamanho — mesma simplificação usada pelo iFood no payload de vínculo à categoria, já que o
+// espelha crusts[] da API de pizza do Ifood. ExtraPrice é o preço único do crust (não varia por
+// tamanho — mesma simplificação usada pelo Ifood no payload de vínculo à categoria, já que o
 // SyncBar tem um catálogo por filial).
 public sealed class PizzaCrust : Entity
 {

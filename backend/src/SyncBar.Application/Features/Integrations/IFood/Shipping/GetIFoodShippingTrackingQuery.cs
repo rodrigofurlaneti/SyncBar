@@ -1,10 +1,10 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-public sealed record IFoodShippingTrackingResponse(
+public sealed record IfoodShippingTrackingResponse(
     double? Latitude, double? Longitude, DateTime? ExpectedDelivery, double? DeliveryEtaEndMinutes, double? PickupEtaStartMinutes);
 
-// Id aqui é o Id LOCAL (long) do IFoodShippingDelivery — o handler resolve o IFoodDeliveryId
-// (string do iFood) internamente antes de chamar o cliente HTTP.
-public sealed record GetIFoodShippingTrackingQuery(long Id) : IQuery<IFoodShippingTrackingResponse>;
+// Id aqui é o Id LOCAL (long) do IfoodShippingDelivery — o handler resolve o IfoodDeliveryId
+// (string do Ifood) internamente antes de chamar o cliente HTTP.
+public sealed record GetIfoodShippingTrackingQuery(long Id) : IQuery<IfoodShippingTrackingResponse>;

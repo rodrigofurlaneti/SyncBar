@@ -1,7 +1,7 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-public sealed record IFoodShippingCancellationReasonResponse(string CancelCodeId, string Description);
+public sealed record IfoodShippingCancellationReasonResponse(string CancelCodeId, string Description);
 
-public sealed record GetIFoodShippingCancellationReasonsQuery(long Id) : IQuery<IReadOnlyCollection<IFoodShippingCancellationReasonResponse>>;
+public sealed record GetIfoodShippingCancellationReasonsQuery(long Id) : IQuery<IReadOnlyCollection<IfoodShippingCancellationReasonResponse>>;

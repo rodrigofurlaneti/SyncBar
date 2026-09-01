@@ -1,9 +1,9 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
 // Fase 17 — um tamanho de pizza (ex.: "Grande", "Broto") dentro de uma PizzaConfiguration —
-// espelha sizes[] da API de pizza do iFood (name/slices/acceptedFractions/index). Entity filha
+// espelha sizes[] da API de pizza do Ifood (name/slices/acceptedFractions/index). Entity filha
 // de PizzaConfiguration, mesmo padrão de Complement filho de ComplementGroup.
 public sealed class PizzaSize : Entity
 {

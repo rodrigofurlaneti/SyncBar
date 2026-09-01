@@ -1,22 +1,22 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Infrastructure.Persistence.Repositories;
 
-internal sealed class IFoodFinancialEventRepository(AppDbContext context) : IIFoodFinancialEventRepository
+internal sealed class IfoodFinancialEventRepository(AppDbContext context) : IIfoodFinancialEventRepository
 {
-    public async Task<bool> ExistsByIFoodEventIdAsync(long branchId, string ifoodEventId, CancellationToken cancellationToken = default)
-        => await context.IFoodFinancialEvents.AsNoTracking()
-            .AnyAsync(x => x.BranchId == branchId && x.IFoodEventId == ifoodEventId, cancellationToken);
+    public async Task<bool> ExistsByIfoodEventIdAsync(long branchId, string IfoodEventId, CancellationToken cancellationToken = default)
+        => await context.IfoodFinancialEvents.AsNoTracking()
+            .AnyAsync(x => x.BranchId == branchId && x.IfoodEventId == IfoodEventId, cancellationToken);
 
-    public async Task<IReadOnlyCollection<IFoodFinancialEvent>> GetByBranchAndPeriodAsync(
+    public async Task<IReadOnlyCollection<IfoodFinancialEvent>> GetByBranchAndPeriodAsync(
         long branchId, DateTime periodStart, DateTime periodEnd, CancellationToken cancellationToken = default)
-        => await context.IFoodFinancialEvents.AsNoTracking()
+        => await context.IfoodFinancialEvents.AsNoTracking()
             .Where(x => x.BranchId == branchId && x.IsActive && x.CompetenceDate >= periodStart && x.CompetenceDate <= periodEnd)
             .OrderBy(x => x.CompetenceDate)
             .ToListAsync(cancellationToken);
 
-    public async Task AddAsync(IFoodFinancialEvent entity, CancellationToken cancellationToken = default)
-        => await context.IFoodFinancialEvents.AddAsync(entity, cancellationToken);
+    public async Task AddAsync(IfoodFinancialEvent entity, CancellationToken cancellationToken = default)
+        => await context.IfoodFinancialEvents.AddAsync(entity, cancellationToken);
 }

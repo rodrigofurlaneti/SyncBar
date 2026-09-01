@@ -1,22 +1,22 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using SyncBar.Application.Features.Integrations.IFood.Orders;
+using SyncBar.Application.Features.Integrations.Ifood.Orders;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Infrastructure.Integrations.IFood;
+namespace SyncBar.Infrastructure.Integrations.Ifood;
 
 /// <summary>
-/// Loop de polling do módulo Order/Events do iFood — a cada 30s (recomendação oficial da doc:
+/// Loop de polling do módulo Order/Events do Ifood — a cada 30s (recomendação oficial da doc:
 /// "comece com polling, migre pra webhook só acima de 1000 pedidos/dia" — não é o caso do
 /// SyncBar ainda), para cada empresa com integração habilitada, dispara um ciclo de sincronização
-/// (SyncIFoodOrdersCommand). Um BackgroundService é singleton — cria um scope de DI por ciclo
+/// (SyncIfoodOrdersCommand). Um BackgroundService é singleton — cria um scope de DI por ciclo
 /// pra resolver serviços scoped (DbContext, repositórios, MediatR).
 /// </summary>
-internal sealed class IFoodOrderPollingBackgroundService(
+internal sealed class IfoodOrderPollingBackgroundService(
     IServiceProvider serviceProvider,
-    ILogger<IFoodOrderPollingBackgroundService> logger) : BackgroundService
+    ILogger<IfoodOrderPollingBackgroundService> logger) : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(30);
 
@@ -34,7 +34,7 @@ internal sealed class IFoodOrderPollingBackgroundService(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Ciclo de polling do iFood falhou inesperadamente.");
+                logger.LogError(ex, "Ciclo de polling do Ifood falhou inesperadamente.");
             }
 
             try { await Task.Delay(PollInterval, stoppingToken); }
@@ -45,7 +45,7 @@ internal sealed class IFoodOrderPollingBackgroundService(
     private async Task RunCycleAsync(CancellationToken stoppingToken)
     {
         using var scope = serviceProvider.CreateScope();
-        var settingRepository = scope.ServiceProvider.GetRequiredService<IIFoodIntegrationSettingRepository>();
+        var settingRepository = scope.ServiceProvider.GetRequiredService<IIfoodIntegrationSettingRepository>();
         var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
 
         var companyIds = await settingRepository.GetEnabledCompanyIdsAsync(stoppingToken);
@@ -53,11 +53,11 @@ internal sealed class IFoodOrderPollingBackgroundService(
         {
             try
             {
-                await mediator.Send(new SyncIFoodOrdersCommand(companyId), stoppingToken);
+                await mediator.Send(new SyncIfoodOrdersCommand(companyId), stoppingToken);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Falha ao sincronizar pedidos iFood da empresa {CompanyId}.", companyId);
+                logger.LogError(ex, "Falha ao sincronizar pedidos Ifood da empresa {CompanyId}.", companyId);
             }
         }
     }

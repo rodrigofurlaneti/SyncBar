@@ -1,5 +1,5 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Orders;
+namespace SyncBar.Application.Features.Integrations.Ifood.Orders;
 
-public sealed record CancelIFoodOrderCommand(long IFoodOrderId, string ReasonCode) : ICommand;
+public sealed record CancelIfoodOrderCommand(long IfoodOrderId, string ReasonCode) : ICommand;

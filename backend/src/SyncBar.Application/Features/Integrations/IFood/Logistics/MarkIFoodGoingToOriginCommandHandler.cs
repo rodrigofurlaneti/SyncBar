@@ -1,32 +1,32 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Logistics;
+namespace SyncBar.Application.Features.Integrations.Ifood.Logistics;
 
-internal sealed class MarkIFoodGoingToOriginCommandHandler : BaseCommandHandler<MarkIFoodGoingToOriginCommand>
+internal sealed class MarkIfoodGoingToOriginCommandHandler : BaseCommandHandler<MarkIfoodGoingToOriginCommand>
 {
-    private readonly IIFoodOrderRepository _ifoodOrderRepository;
-    private readonly IIFoodLogisticsDeliveryRepository _deliveryRepository;
+    private readonly IIfoodOrderRepository _IfoodOrderRepository;
+    private readonly IIfoodLogisticsDeliveryRepository _deliveryRepository;
     private readonly IBranchRepository _branchRepository;
-    private readonly IIFoodTokenProvider _tokenProvider;
-    private readonly IIFoodLogisticsClient _logisticsClient;
+    private readonly IIfoodTokenProvider _tokenProvider;
+    private readonly IIfoodLogisticsClient _logisticsClient;
     private readonly TimeProvider _timeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
-    public MarkIFoodGoingToOriginCommandHandler(
-        IIFoodOrderRepository ifoodOrderRepository,
-        IIFoodLogisticsDeliveryRepository deliveryRepository,
+    public MarkIfoodGoingToOriginCommandHandler(
+        IIfoodOrderRepository IfoodOrderRepository,
+        IIfoodLogisticsDeliveryRepository deliveryRepository,
         IBranchRepository branchRepository,
-        IIFoodTokenProvider tokenProvider,
-        IIFoodLogisticsClient logisticsClient,
+        IIfoodTokenProvider tokenProvider,
+        IIfoodLogisticsClient logisticsClient,
         TimeProvider timeProviderCustom,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
     {
-        _ifoodOrderRepository = ifoodOrderRepository;
+        _IfoodOrderRepository = IfoodOrderRepository;
         _deliveryRepository = deliveryRepository;
         _branchRepository = branchRepository;
         _tokenProvider = tokenProvider;
@@ -35,34 +35,34 @@ internal sealed class MarkIFoodGoingToOriginCommandHandler : BaseCommandHandler<
         _unitOfWork = unitOfWork;
     }
 
-    public override async Task<Result> Handle(MarkIFoodGoingToOriginCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(MarkIfoodGoingToOriginCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(MarkIFoodGoingToOriginCommandHandler),
+            nameof(MarkIfoodGoingToOriginCommandHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var ifoodOrder = await _ifoodOrderRepository.GetByIdForUpdateAsync(request.IFoodOrderId, cancellationToken);
-                if (ifoodOrder is null)
-                    return Result.Failure(new Error("IFoodOrder.NotFound", "Pedido iFood não encontrado."));
+                var IfoodOrder = await _IfoodOrderRepository.GetByIdForUpdateAsync(request.IfoodOrderId, cancellationToken);
+                if (IfoodOrder is null)
+                    return Result.Failure(new Error("IfoodOrder.NotFound", "Pedido Ifood não encontrado."));
 
-                var delivery = await _deliveryRepository.GetByIFoodOrderIdForUpdateAsync(ifoodOrder.Id, cancellationToken);
+                var delivery = await _deliveryRepository.GetByIfoodOrderIdForUpdateAsync(IfoodOrder.Id, cancellationToken);
                 if (delivery is null)
-                    return Result.Failure(new Error("IFoodLogisticsDelivery.NotFound", "Nenhum entregador atribuído a este pedido."));
+                    return Result.Failure(new Error("IfoodLogisticsDelivery.NotFound", "Nenhum entregador atribuído a este pedido."));
 
-                var branch = await _branchRepository.GetByIdAsync(ifoodOrder.BranchId, cancellationToken);
+                var branch = await _branchRepository.GetByIdAsync(IfoodOrder.BranchId, cancellationToken);
                 if (branch is null)
                     return Result.Failure(new Error("Branch.NotFound", "Filial não encontrada."));
 
                 var token = await _tokenProvider.GetAccessTokenAsync(branch.CompanyId, cancellationToken);
                 if (token is null)
-                    return Result.Failure(new Error("IFood.NotConnected",
-                        "Não foi possível autenticar com o iFood — confira as credenciais em Integrações."));
+                    return Result.Failure(new Error("Ifood.NotConnected",
+                        "Não foi possível autenticar com o Ifood — confira as credenciais em Integrações."));
 
-                var actionResult = await _logisticsClient.GoingToOriginAsync(token, ifoodOrder.IFoodOrderId, cancellationToken);
+                var actionResult = await _logisticsClient.GoingToOriginAsync(token, IfoodOrder.IfoodOrderId, cancellationToken);
                 if (!actionResult.Success)
-                    return Result.Failure(new Error("IFood.ActionFailed", actionResult.ErrorMessage ?? "Falha ao registrar saída para a origem no iFood."));
+                    return Result.Failure(new Error("Ifood.ActionFailed", actionResult.ErrorMessage ?? "Falha ao registrar saída para a origem no Ifood."));
 
                 var now = _timeProviderCustom.GetLocalNow().DateTime;
                 var transition = delivery.MarkGoingToOrigin(now);

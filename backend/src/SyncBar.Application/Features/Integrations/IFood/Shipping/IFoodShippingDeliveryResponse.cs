@@ -1,6 +1,6 @@
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+﻿namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-public sealed record IFoodShippingDeliveryResponse(
+public sealed record IfoodShippingDeliveryResponse(
     long Id,
     string? OrderReference,
     string CustomerName,

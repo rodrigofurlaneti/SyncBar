@@ -1,3 +1,3 @@
-namespace SyncBar.Application.Features.Integrations.IFood;
+﻿namespace SyncBar.Application.Features.Integrations.Ifood;
 
-public sealed record IFoodMerchantMappingResponse(long BranchId, string BranchName, string? MerchantId, string? MerchantUuid);
+public sealed record IfoodMerchantMappingResponse(long BranchId, string BranchName, string? MerchantId, string? MerchantUuid);

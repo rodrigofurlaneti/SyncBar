@@ -1,9 +1,9 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.Products;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.Products;
 
 // Fase 10 — edita um produto (PUT catalog/v2.0/merchants/{merchantId}/products/{productId}).
-public sealed record EditIFoodProductCommand(
+public sealed record EditIfoodProductCommand(
     long BranchId, Guid ProductId, string Name, string? Description, string? AdditionalInformation,
-    string? ExternalCode, string? Ean, string? Image, IReadOnlyCollection<IFoodProductShiftInput>? Shifts)
-    : ICommand<IFoodProductResponse>;
+    string? ExternalCode, string? Ean, string? Image, IReadOnlyCollection<IfoodProductShiftInput>? Shifts)
+    : ICommand<IfoodProductResponse>;

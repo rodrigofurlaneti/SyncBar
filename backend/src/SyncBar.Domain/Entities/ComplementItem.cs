@@ -1,9 +1,9 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
 // Cadastro LEVE pra complementos puramente descritivos (ex.: "sem cebola", "bacon extra") que o
-// iFood exige apontarem pra um "produto", mas que o SyncBar nunca vende sozinho no balcão — por
+// Ifood exige apontarem pra um "produto", mas que o SyncBar nunca vende sozinho no balcão — por
 // isso é uma entidade própria, separada de Product (que carrega categoria/estoque/preço de
 // balcão, irrelevantes aqui). Decisão tomada com o usuário na Fase 6a: ComplementItem leve em
 // vez de forçar todo complemento a virar um Product completo.
@@ -13,9 +13,9 @@ namespace SyncBar.Domain.Entities;
 // grupo "Escolha o sanduíche" dentro do combo precisa mostrar X-Salada com a MESMA imagem/estoque
 // do produto avulso), este ComplementItem aponta pro Product em vez de ser só um texto solto.
 // Continua sendo o MESMO ComplementItem/Complement/ComplementGroup já usado desde a Fase 6a — só
-// ganhou um campo opcional. Nenhuma mudança na sincronização com o iFood (optionGroup/option
-// continuam mapeados do mesmo jeito, ver IFoodComplementMapping) além de, quando presente, usar a
-// imagem/descrição do produto vinculado (ver MenuComplementsBuilder e SyncIFoodCatalogCommandHandler).
+// ganhou um campo opcional. Nenhuma mudança na sincronização com o Ifood (optionGroup/option
+// continuam mapeados do mesmo jeito, ver IfoodComplementMapping) além de, quando presente, usar a
+// imagem/descrição do produto vinculado (ver MenuComplementsBuilder e SyncIfoodCatalogCommandHandler).
 public sealed class ComplementItem : AggregateRoot
 {
     public long CompanyId { get; private set; }

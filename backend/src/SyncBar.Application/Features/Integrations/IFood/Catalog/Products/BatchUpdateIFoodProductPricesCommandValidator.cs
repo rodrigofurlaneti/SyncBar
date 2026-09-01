@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.Products;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.Products;
 
-public sealed class BatchUpdateIFoodProductPricesCommandValidator : AbstractValidator<BatchUpdateIFoodProductPricesCommand>
+public sealed class BatchUpdateIfoodProductPricesCommandValidator : AbstractValidator<BatchUpdateIfoodProductPricesCommand>
 {
-    public BatchUpdateIFoodProductPricesCommandValidator()
+    public BatchUpdateIfoodProductPricesCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.Items).NotEmpty();

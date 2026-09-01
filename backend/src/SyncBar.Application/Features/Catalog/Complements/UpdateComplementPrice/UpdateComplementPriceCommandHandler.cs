@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -8,12 +8,12 @@ namespace SyncBar.Application.Features.Catalog.Complements.UpdateComplementPrice
 internal sealed class UpdateComplementPriceCommandHandler : BaseCommandHandler<UpdateComplementPriceCommand>
 {
     private readonly IComplementGroupRepository _complementGroupRepository;
-    private readonly IIFoodCatalogSyncTrigger _catalogSyncTrigger;
+    private readonly IIfoodCatalogSyncTrigger _catalogSyncTrigger;
     private readonly IUnitOfWork _unitOfWork;
 
     public UpdateComplementPriceCommandHandler(
         IComplementGroupRepository complementGroupRepository,
-        IIFoodCatalogSyncTrigger catalogSyncTrigger,
+        IIfoodCatalogSyncTrigger catalogSyncTrigger,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)

@@ -1,8 +1,8 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-// Variante "pedido já existente no iFood" do módulo Shipping — cotação de entrega sob demanda
-// pra um IFoodOrder que o lojista decidiu não entregar nem pela logística padrão do iFood nem
-// pela frota própria (fase 7). IFoodOrderId é o Id LOCAL (long), mesmo padrão de todo o módulo.
-public sealed record GetIFoodOrderShippingQuoteQuery(long IFoodOrderId) : IQuery<IFoodShippingQuoteResponse>;
+// Variante "pedido já existente no Ifood" do módulo Shipping — cotação de entrega sob demanda
+// pra um IfoodOrder que o lojista decidiu não entregar nem pela logística padrão do Ifood nem
+// pela frota própria (fase 7). IfoodOrderId é o Id LOCAL (long), mesmo padrão de todo o módulo.
+public sealed record GetIfoodOrderShippingQuoteQuery(long IfoodOrderId) : IQuery<IfoodShippingQuoteResponse>;

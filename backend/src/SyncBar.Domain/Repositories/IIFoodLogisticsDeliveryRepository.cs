@@ -1,16 +1,16 @@
-using SyncBar.Domain.Entities;
+﻿using SyncBar.Domain.Entities;
 
 namespace SyncBar.Domain.Repositories;
 
-public interface IIFoodLogisticsDeliveryRepository
+public interface IIfoodLogisticsDeliveryRepository
 {
-    // ifoodOrderId aqui é o Id LOCAL (long) do IFoodOrder — não a string do iFood.
-    Task<IFoodLogisticsDelivery?> GetByIFoodOrderIdAsync(long ifoodOrderId, CancellationToken cancellationToken = default);
-    Task<IFoodLogisticsDelivery?> GetByIFoodOrderIdForUpdateAsync(long ifoodOrderId, CancellationToken cancellationToken = default);
-    // "Abertas" = o PEDIDO (IFoodOrder) associado ainda não foi concluído/cancelado no iFood —
+    // IfoodOrderId aqui é o Id LOCAL (long) do IfoodOrder — não a string do Ifood.
+    Task<IfoodLogisticsDelivery?> GetByIfoodOrderIdAsync(long IfoodOrderId, CancellationToken cancellationToken = default);
+    Task<IfoodLogisticsDelivery?> GetByIfoodOrderIdForUpdateAsync(long IfoodOrderId, CancellationToken cancellationToken = default);
+    // "Abertas" = o PEDIDO (IfoodOrder) associado ainda não foi concluído/cancelado no Ifood —
     // não o status da própria entrega, pra continuar mostrando entregas já com código verificado
     // enquanto o pedido segue aberto (ver comentário na implementação). Para a tela "Pedidos
-    // iFood"/"Logística" (fase 7).
-    Task<IReadOnlyCollection<IFoodLogisticsDelivery>> GetOpenByBranchAsync(long branchId, CancellationToken cancellationToken = default);
-    Task AddAsync(IFoodLogisticsDelivery entity, CancellationToken cancellationToken = default);
+    // Ifood"/"Logística" (fase 7).
+    Task<IReadOnlyCollection<IfoodLogisticsDelivery>> GetOpenByBranchAsync(long branchId, CancellationToken cancellationToken = default);
+    Task AddAsync(IfoodLogisticsDelivery entity, CancellationToken cancellationToken = default);
 }

@@ -1,15 +1,15 @@
-using SyncBar.Domain.Primitives;
+﻿using SyncBar.Domain.Primitives;
 
 namespace SyncBar.Domain.Entities;
 
-// Fase 4 (financeiro) — um registro por título retornado pela API Settlement do iFood: o
+// Fase 4 (financeiro) — um registro por título retornado pela API Settlement do Ifood: o
 // repasse consolidado semanal (apuração segunda-domingo, consolidada toda segunda-feira) —
 // REPASSE (transferência normal), BOLETO (saldo devedor), REGISTRO_RECEBIVEIS (antecipação
-// registrada) ou RENEGOCIADA. Por BranchId, mesmo padrão de IFoodFinancialEvent.
-public sealed class IFoodSettlement : AggregateRoot
+// registrada) ou RENEGOCIADA. Por BranchId, mesmo padrão de IfoodFinancialEvent.
+public sealed class IfoodSettlement : AggregateRoot
 {
     public long BranchId { get; private set; }
-    public string IFoodSettlementId { get; private set; } = null!;
+    public string IfoodSettlementId { get; private set; } = null!;
     public string Type { get; private set; } = null!;
     public string? Product { get; private set; }
     public decimal Amount { get; private set; }
@@ -24,16 +24,16 @@ public sealed class IFoodSettlement : AggregateRoot
     public DateTime? UpdatedAt { get; private set; }
     public bool IsActive { get; private set; }
 
-    private IFoodSettlement() : base(0) { }
+    private IfoodSettlement() : base(0) { }
 
-    private IFoodSettlement(
-        long branchId, string ifoodSettlementId, string type, string? product, decimal amount,
+    private IfoodSettlement(
+        long branchId, string IfoodSettlementId, string type, string? product, decimal amount,
         string status, DateTime? paymentDate, string? bankCode, string? bankAgency, string? bankAccount,
         string rawPayload)
         : base(0)
     {
         BranchId = branchId;
-        IFoodSettlementId = ifoodSettlementId;
+        IfoodSettlementId = IfoodSettlementId;
         Type = type;
         Product = product;
         Amount = amount;
@@ -47,21 +47,21 @@ public sealed class IFoodSettlement : AggregateRoot
         CreatedAt = DateTime.Now;
     }
 
-    public static Result<IFoodSettlement> Create(
-        long branchId, string ifoodSettlementId, string type, string? product, decimal amount,
+    public static Result<IfoodSettlement> Create(
+        long branchId, string IfoodSettlementId, string type, string? product, decimal amount,
         string status, DateTime? paymentDate, string? bankCode, string? bankAgency, string? bankAccount,
         string rawPayload)
     {
-        if (string.IsNullOrWhiteSpace(ifoodSettlementId))
-            return Result.Failure<IFoodSettlement>(
-                new Error("IFoodSettlement.MissingSettlementId", "Settlement requires an iFood settlement id."));
+        if (string.IsNullOrWhiteSpace(IfoodSettlementId))
+            return Result.Failure<IfoodSettlement>(
+                new Error("IfoodSettlement.MissingSettlementId", "Settlement requires an Ifood settlement id."));
 
-        return Result.Success(new IFoodSettlement(
-            branchId, ifoodSettlementId, type, product, amount, status, paymentDate,
+        return Result.Success(new IfoodSettlement(
+            branchId, IfoodSettlementId, type, product, amount, status, paymentDate,
             bankCode, bankAgency, bankAccount, rawPayload));
     }
 
-    // Status/dados bancários mudam conforme o iFood processa o título (ex.: PENDING → SUCCEED)
+    // Status/dados bancários mudam conforme o Ifood processa o título (ex.: PENDING → SUCCEED)
     // — reflete uma atualização de sincronização sem recriar o registro.
     public void UpdateFromSync(string status, DateTime? paymentDate, string? bankCode, string? bankAgency, string? bankAccount, string rawPayload)
     {

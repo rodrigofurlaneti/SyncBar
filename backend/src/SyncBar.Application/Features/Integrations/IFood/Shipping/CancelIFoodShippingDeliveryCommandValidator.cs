@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-public sealed class CancelIFoodShippingDeliveryCommandValidator : AbstractValidator<CancelIFoodShippingDeliveryCommand>
+public sealed class CancelIfoodShippingDeliveryCommandValidator : AbstractValidator<CancelIfoodShippingDeliveryCommand>
 {
-    public CancelIFoodShippingDeliveryCommandValidator()
+    public CancelIfoodShippingDeliveryCommandValidator()
     {
         RuleFor(x => x.Id).GreaterThan(0);
         RuleFor(x => x.Reason).NotEmpty().MaximumLength(300);

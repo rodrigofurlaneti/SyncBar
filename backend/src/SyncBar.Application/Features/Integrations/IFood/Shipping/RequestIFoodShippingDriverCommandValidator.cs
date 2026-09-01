@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-public sealed class RequestIFoodShippingDriverCommandValidator : AbstractValidator<RequestIFoodShippingDriverCommand>
+public sealed class RequestIfoodShippingDriverCommandValidator : AbstractValidator<RequestIfoodShippingDriverCommand>
 {
-    public RequestIFoodShippingDriverCommandValidator()
+    public RequestIfoodShippingDriverCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.OrderReference).MaximumLength(150);

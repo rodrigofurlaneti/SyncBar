@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -38,7 +38,7 @@ internal sealed class CreatePizzaConfigurationCommandHandler(
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 // Sem TriggerCompanySync aqui: uma configuração recém-criada ainda não tem
-                // tamanho/preço nenhum — não é vendável, não afeta o catálogo do iFood ainda.
+                // tamanho/preço nenhum — não é vendável, não afeta o catálogo do Ifood ainda.
                 return Result.Success(configuration.Value.Id);
             });
 }

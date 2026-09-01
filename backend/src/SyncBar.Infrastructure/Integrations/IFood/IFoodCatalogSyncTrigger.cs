@@ -1,11 +1,11 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.Extensions.DependencyInjection;
-using SyncBar.Application.Abstractions.Integrations.IFood;
-using SyncBar.Application.Features.Integrations.IFood.Catalog;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
+using SyncBar.Application.Features.Integrations.Ifood.Catalog;
 
-namespace SyncBar.Infrastructure.Integrations.IFood;
+namespace SyncBar.Infrastructure.Integrations.Ifood;
 
-internal sealed class IFoodCatalogSyncTrigger(IServiceScopeFactory scopeFactory) : IIFoodCatalogSyncTrigger
+internal sealed class IfoodCatalogSyncTrigger(IServiceScopeFactory scopeFactory) : IIfoodCatalogSyncTrigger
 {
     public void TriggerCompanySync(long companyId)
     {
@@ -14,11 +14,11 @@ internal sealed class IFoodCatalogSyncTrigger(IServiceScopeFactory scopeFactory)
             try
             {
                 // Escopo próprio (não o da requisição HTTP que disparou isso) — a sincronização
-                // faz várias chamadas HTTP pro iFood e pode demorar mais que o tempo de vida do
-                // escopo original. Mesmo padrão usado por IFoodOrderPollingBackgroundService.
+                // faz várias chamadas HTTP pro Ifood e pode demorar mais que o tempo de vida do
+                // escopo original. Mesmo padrão usado por IfoodOrderPollingBackgroundService.
                 using var scope = scopeFactory.CreateScope();
                 var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
-                await mediator.Send(new SyncIFoodCatalogCommand(companyId));
+                await mediator.Send(new SyncIfoodCatalogCommand(companyId));
             }
             catch
             {

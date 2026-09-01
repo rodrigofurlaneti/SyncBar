@@ -271,7 +271,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         decimal primaryQuantity,
         long complementId,
         long complementItemId,
-        IReadOnlyDictionary<long, long> linkedProductIdsByComplementItemId,
+        Dictionary<long, long> linkedProductIdsByComplementItemId,
         Dictionary<long, ProductStock?> linkedStocksByProductId,
         long? employeeId,
         DateTime currentTime,
@@ -332,7 +332,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
     private void TriggerPrinting(CustomerOrder order, int itemCountBefore)
     {
         var newItemIds = order.Items.Skip(itemCountBefore).Select(i => i.Id).ToList();
-        if (newItemIds.Any())
+        if (newItemIds.Count > 0)
         {
             _ = _printingService.PrintOrderItemsAsync(order.Id, newItemIds, CancellationToken.None);
         }

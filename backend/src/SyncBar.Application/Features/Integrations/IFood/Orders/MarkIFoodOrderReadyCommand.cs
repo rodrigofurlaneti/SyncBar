@@ -1,8 +1,8 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Orders;
+namespace SyncBar.Application.Features.Integrations.Ifood.Orders;
 
 // Marca o pedido como pronto (readyToPickup) — obrigatório para Retirada/DINE_IN, e uma opção
-// válida também para Delivery com entregador iFood (ver Guia de implementação, "Pedido pronto
+// válida também para Delivery com entregador Ifood (ver Guia de implementação, "Pedido pronto
 // para entrega"). Entrega com FROTA PRÓPRIA (dispatch) fica fora do fluxo essencial desta fase.
-public sealed record MarkIFoodOrderReadyCommand(long IFoodOrderId) : ICommand;
+public sealed record MarkIfoodOrderReadyCommand(long IfoodOrderId) : ICommand;

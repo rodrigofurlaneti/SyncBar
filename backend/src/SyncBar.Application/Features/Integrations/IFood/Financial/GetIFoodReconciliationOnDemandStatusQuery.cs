@@ -1,6 +1,6 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Financial;
+namespace SyncBar.Application.Features.Integrations.Ifood.Financial;
 
-public sealed record GetIFoodReconciliationOnDemandStatusQuery(long BranchId, string RequestId)
-    : IQuery<IFoodReconciliationOnDemandStatusResponse>;
+public sealed record GetIfoodReconciliationOnDemandStatusQuery(long BranchId, string RequestId)
+    : IQuery<IfoodReconciliationOnDemandStatusResponse>;

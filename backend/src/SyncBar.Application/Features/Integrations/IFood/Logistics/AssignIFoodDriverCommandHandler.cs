@@ -1,33 +1,33 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Logistics;
+namespace SyncBar.Application.Features.Integrations.Ifood.Logistics;
 
-internal sealed class AssignIFoodDriverCommandHandler : BaseCommandHandler<AssignIFoodDriverCommand>
+internal sealed class AssignIfoodDriverCommandHandler : BaseCommandHandler<AssignIfoodDriverCommand>
 {
-    private readonly IIFoodOrderRepository _ifoodOrderRepository;
-    private readonly IIFoodLogisticsDeliveryRepository _deliveryRepository;
+    private readonly IIfoodOrderRepository _IfoodOrderRepository;
+    private readonly IIfoodLogisticsDeliveryRepository _deliveryRepository;
     private readonly IBranchRepository _branchRepository;
-    private readonly IIFoodTokenProvider _tokenProvider;
-    private readonly IIFoodLogisticsClient _logisticsClient;
+    private readonly IIfoodTokenProvider _tokenProvider;
+    private readonly IIfoodLogisticsClient _logisticsClient;
     private readonly TimeProvider _timeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
 
-    public AssignIFoodDriverCommandHandler(
-        IIFoodOrderRepository ifoodOrderRepository,
-        IIFoodLogisticsDeliveryRepository deliveryRepository,
+    public AssignIfoodDriverCommandHandler(
+        IIfoodOrderRepository IfoodOrderRepository,
+        IIfoodLogisticsDeliveryRepository deliveryRepository,
         IBranchRepository branchRepository,
-        IIFoodTokenProvider tokenProvider,
-        IIFoodLogisticsClient logisticsClient,
+        IIfoodTokenProvider tokenProvider,
+        IIfoodLogisticsClient logisticsClient,
         TimeProvider timeProviderCustom,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
     {
-        _ifoodOrderRepository = ifoodOrderRepository;
+        _IfoodOrderRepository = IfoodOrderRepository;
         _deliveryRepository = deliveryRepository;
         _branchRepository = branchRepository;
         _tokenProvider = tokenProvider;
@@ -36,39 +36,39 @@ internal sealed class AssignIFoodDriverCommandHandler : BaseCommandHandler<Assig
         _unitOfWork = unitOfWork;
     }
 
-    public override async Task<Result> Handle(AssignIFoodDriverCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(AssignIfoodDriverCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(AssignIFoodDriverCommandHandler),
+            nameof(AssignIfoodDriverCommandHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var ifoodOrder = await _ifoodOrderRepository.GetByIdForUpdateAsync(request.IFoodOrderId, cancellationToken);
-                if (ifoodOrder is null)
-                    return Result.Failure(new Error("IFoodOrder.NotFound", "Pedido iFood não encontrado."));
+                var IfoodOrder = await _IfoodOrderRepository.GetByIdForUpdateAsync(request.IfoodOrderId, cancellationToken);
+                if (IfoodOrder is null)
+                    return Result.Failure(new Error("IfoodOrder.NotFound", "Pedido Ifood não encontrado."));
 
-                var existing = await _deliveryRepository.GetByIFoodOrderIdAsync(ifoodOrder.Id, cancellationToken);
+                var existing = await _deliveryRepository.GetByIfoodOrderIdAsync(IfoodOrder.Id, cancellationToken);
                 if (existing is not null)
-                    return Result.Failure(new Error("IFoodLogisticsDelivery.AlreadyAssigned", "Este pedido já tem um entregador atribuído."));
+                    return Result.Failure(new Error("IfoodLogisticsDelivery.AlreadyAssigned", "Este pedido já tem um entregador atribuído."));
 
-                var branch = await _branchRepository.GetByIdAsync(ifoodOrder.BranchId, cancellationToken);
+                var branch = await _branchRepository.GetByIdAsync(IfoodOrder.BranchId, cancellationToken);
                 if (branch is null)
                     return Result.Failure(new Error("Branch.NotFound", "Filial não encontrada."));
 
                 var token = await _tokenProvider.GetAccessTokenAsync(branch.CompanyId, cancellationToken);
                 if (token is null)
-                    return Result.Failure(new Error("IFood.NotConnected",
-                        "Não foi possível autenticar com o iFood — confira as credenciais em Integrações."));
+                    return Result.Failure(new Error("Ifood.NotConnected",
+                        "Não foi possível autenticar com o Ifood — confira as credenciais em Integrações."));
 
                 var actionResult = await _logisticsClient.AssignDriverAsync(
-                    token, ifoodOrder.IFoodOrderId, request.DriverName, request.DriverPhone, request.DriverVehicleType, cancellationToken);
+                    token, IfoodOrder.IfoodOrderId, request.DriverName, request.DriverPhone, request.DriverVehicleType, cancellationToken);
                 if (!actionResult.Success)
-                    return Result.Failure(new Error("IFood.ActionFailed", actionResult.ErrorMessage ?? "Falha ao atribuir entregador no iFood."));
+                    return Result.Failure(new Error("Ifood.ActionFailed", actionResult.ErrorMessage ?? "Falha ao atribuir entregador no Ifood."));
 
                 var now = _timeProviderCustom.GetLocalNow().DateTime;
-                var deliveryResult = IFoodLogisticsDelivery.Create(
-                    ifoodOrder.Id, ifoodOrder.BranchId, request.DriverName, request.DriverPhone, request.DriverVehicleType, now);
+                var deliveryResult = IfoodLogisticsDelivery.Create(
+                    IfoodOrder.Id, IfoodOrder.BranchId, request.DriverName, request.DriverPhone, request.DriverVehicleType, now);
                 if (deliveryResult.IsFailure)
                     return Result.Failure(deliveryResult.Error);
 

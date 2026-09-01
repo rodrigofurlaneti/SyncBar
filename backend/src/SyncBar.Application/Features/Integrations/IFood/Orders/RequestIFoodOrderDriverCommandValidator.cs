@@ -1,11 +1,11 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Orders;
+namespace SyncBar.Application.Features.Integrations.Ifood.Orders;
 
-public sealed class RequestIFoodOrderDriverCommandValidator : AbstractValidator<RequestIFoodOrderDriverCommand>
+public sealed class RequestIfoodOrderDriverCommandValidator : AbstractValidator<RequestIfoodOrderDriverCommand>
 {
-    public RequestIFoodOrderDriverCommandValidator()
+    public RequestIfoodOrderDriverCommandValidator()
     {
-        RuleFor(x => x.IFoodOrderId).GreaterThan(0);
+        RuleFor(x => x.IfoodOrderId).GreaterThan(0);
     }
 }

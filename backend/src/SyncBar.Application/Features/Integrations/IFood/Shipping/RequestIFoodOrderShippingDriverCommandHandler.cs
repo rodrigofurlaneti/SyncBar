@@ -1,56 +1,56 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-internal sealed class RequestIFoodOrderShippingDriverCommandHandler : BaseCommandHandler<RequestIFoodOrderShippingDriverCommand>
+internal sealed class RequestIfoodOrderShippingDriverCommandHandler : BaseCommandHandler<RequestIfoodOrderShippingDriverCommand>
 {
-    private readonly IIFoodOrderRepository _ifoodOrderRepository;
+    private readonly IIfoodOrderRepository _IfoodOrderRepository;
     private readonly IBranchRepository _branchRepository;
-    private readonly IIFoodTokenProvider _tokenProvider;
-    private readonly IIFoodShippingClient _shippingClient;
+    private readonly IIfoodTokenProvider _tokenProvider;
+    private readonly IIfoodShippingClient _shippingClient;
 
-    public RequestIFoodOrderShippingDriverCommandHandler(
-        IIFoodOrderRepository ifoodOrderRepository,
+    public RequestIfoodOrderShippingDriverCommandHandler(
+        IIfoodOrderRepository IfoodOrderRepository,
         IBranchRepository branchRepository,
-        IIFoodTokenProvider tokenProvider,
-        IIFoodShippingClient shippingClient,
+        IIfoodTokenProvider tokenProvider,
+        IIfoodShippingClient shippingClient,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)
     {
-        _ifoodOrderRepository = ifoodOrderRepository;
+        _IfoodOrderRepository = IfoodOrderRepository;
         _branchRepository = branchRepository;
         _tokenProvider = tokenProvider;
         _shippingClient = shippingClient;
     }
 
-    public override async Task<Result> Handle(RequestIFoodOrderShippingDriverCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(RequestIfoodOrderShippingDriverCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(RequestIFoodOrderShippingDriverCommandHandler),
+            nameof(RequestIfoodOrderShippingDriverCommandHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var ifoodOrder = await _ifoodOrderRepository.GetByIdForUpdateAsync(request.IFoodOrderId, cancellationToken);
-                if (ifoodOrder is null)
-                    return Result.Failure(new Error("IFoodOrder.NotFound", "Pedido iFood não encontrado."));
+                var IfoodOrder = await _IfoodOrderRepository.GetByIdForUpdateAsync(request.IfoodOrderId, cancellationToken);
+                if (IfoodOrder is null)
+                    return Result.Failure(new Error("IfoodOrder.NotFound", "Pedido Ifood não encontrado."));
 
-                var branch = await _branchRepository.GetByIdAsync(ifoodOrder.BranchId, cancellationToken);
+                var branch = await _branchRepository.GetByIdAsync(IfoodOrder.BranchId, cancellationToken);
                 if (branch is null)
                     return Result.Failure(new Error("Branch.NotFound", "Filial não encontrada."));
 
                 var token = await _tokenProvider.GetAccessTokenAsync(branch.CompanyId, cancellationToken);
                 if (token is null)
-                    return Result.Failure(new Error("IFood.NotConnected",
-                        "Não foi possível autenticar com o iFood — confira as credenciais em Integrações."));
+                    return Result.Failure(new Error("Ifood.NotConnected",
+                        "Não foi possível autenticar com o Ifood — confira as credenciais em Integrações."));
 
-                var result = await _shippingClient.RequestDriverForOrderAsync(token, ifoodOrder.IFoodOrderId, request.QuoteId, cancellationToken);
+                var result = await _shippingClient.RequestDriverForOrderAsync(token, IfoodOrder.IfoodOrderId, request.QuoteId, cancellationToken);
                 if (!result.Success)
-                    return Result.Failure(new Error("IFoodShipping.RequestDriverFailed", result.ErrorMessage ?? "Falha ao solicitar entregador no iFood."));
+                    return Result.Failure(new Error("IfoodShipping.RequestDriverFailed", result.ErrorMessage ?? "Falha ao solicitar entregador no Ifood."));
 
                 return Result.Success();
             });

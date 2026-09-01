@@ -1,5 +1,5 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood;
+namespace SyncBar.Application.Features.Integrations.Ifood;
 
-public sealed record SetIFoodMerchantMappingCommand(long BranchId, string? MerchantId, string? MerchantUuid) : ICommand;
+public sealed record SetIfoodMerchantMappingCommand(long BranchId, string? MerchantId, string? MerchantUuid) : ICommand;

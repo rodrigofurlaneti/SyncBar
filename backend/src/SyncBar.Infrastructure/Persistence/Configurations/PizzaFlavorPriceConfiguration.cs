@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SyncBar.Domain.Entities;
 
@@ -20,7 +20,7 @@ internal sealed class PizzaFlavorPriceConfiguration : IEntityTypeConfiguration<P
         builder.HasIndex(x => x.PizzaFlavorId).HasDatabaseName("IX_PizzaFlavorPrice_PizzaFlavorId");
         // Sem índice único filtrado (MySQL sem índice parcial) — "1 preço ativo por sabor x
         // tamanho" é garantido pelo handler (PizzaConfiguration.SetFlavorPrice já faz upsert
-        // in-memory antes de persistir), mesmo padrão de IFoodComplementGroupMapping.
+        // in-memory antes de persistir), mesmo padrão de IfoodComplementGroupMapping.
         builder.HasIndex(x => new { x.PizzaFlavorId, x.PizzaSizeId }).HasDatabaseName("IX_PizzaFlavorPrice_PizzaFlavorId_PizzaSizeId");
 
         // FK pra PizzaConfiguration é criada por PizzaConfigurationConfiguration (HasMany/dono da coleção).

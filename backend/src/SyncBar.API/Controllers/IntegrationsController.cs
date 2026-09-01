@@ -2,22 +2,22 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SyncBar.Application.Abstractions.Integrations.IFood;
-using SyncBar.Application.Features.Integrations.IFood;
-using SyncBar.Application.Features.Integrations.IFood.Analytics;
-using SyncBar.Application.Features.Integrations.IFood.Catalog;
-using SyncBar.Application.Features.Integrations.IFood.Catalog.Admin;
-using SyncBar.Application.Features.Integrations.IFood.Catalog.Categories;
-using SyncBar.Application.Features.Integrations.IFood.Catalog.Items;
-using SyncBar.Application.Features.Integrations.IFood.Catalog.OptionGroups;
-using SyncBar.Application.Features.Integrations.IFood.Catalog.Products;
-using SyncBar.Application.Features.Integrations.IFood.Catalog.V1Legacy;
-using SyncBar.Application.Features.Integrations.IFood.Financial;
-using SyncBar.Application.Features.Integrations.IFood.Logistics;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
-using SyncBar.Application.Features.Integrations.IFood.Orders;
-using SyncBar.Application.Features.Integrations.IFood.Review;
-using SyncBar.Application.Features.Integrations.IFood.Shipping;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
+using SyncBar.Application.Features.Integrations.Ifood;
+using SyncBar.Application.Features.Integrations.Ifood.Analytics;
+using SyncBar.Application.Features.Integrations.Ifood.Catalog;
+using SyncBar.Application.Features.Integrations.Ifood.Catalog.Admin;
+using SyncBar.Application.Features.Integrations.Ifood.Catalog.Categories;
+using SyncBar.Application.Features.Integrations.Ifood.Catalog.Items;
+using SyncBar.Application.Features.Integrations.Ifood.Catalog.OptionGroups;
+using SyncBar.Application.Features.Integrations.Ifood.Catalog.Products;
+using SyncBar.Application.Features.Integrations.Ifood.Catalog.V1Legacy;
+using SyncBar.Application.Features.Integrations.Ifood.Financial;
+using SyncBar.Application.Features.Integrations.Ifood.Logistics;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Orders;
+using SyncBar.Application.Features.Integrations.Ifood.Review;
+using SyncBar.Application.Features.Integrations.Ifood.Shipping;
 using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
@@ -28,179 +28,179 @@ public sealed class IntegrationsController(
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
-    [HttpGet("ifood/company/{companyId:long}")]
-    public Task<IActionResult> GetIFoodSettings(long companyId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodSettings), async () =>
+    [HttpGet("Ifood/company/{companyId:long}")]
+    public Task<IActionResult> GetIfoodSettings(long companyId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodSettings), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodSettingsQuery(companyId), ct);
+            var result = await Mediator.Send(new GetIfoodSettingsQuery(companyId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPut("ifood")]
-    public Task<IActionResult> SaveIFoodSettings([FromBody] SaveIFoodSettingsCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SaveIFoodSettings), async () =>
+    [HttpPut("Ifood")]
+    public Task<IActionResult> SaveIfoodSettings([FromBody] SaveIfoodSettingsCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SaveIfoodSettings), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/test-connection")]
-    public Task<IActionResult> TestIFoodConnection([FromBody] TestIFoodConnectionCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(TestIFoodConnection), async () =>
+    [HttpPost("Ifood/test-connection")]
+    public Task<IActionResult> TestIfoodConnection([FromBody] TestIfoodConnectionCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(TestIfoodConnection), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/merchants/company/{companyId:long}")]
-    public Task<IActionResult> GetIFoodMerchantMappings(long companyId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodMerchantMappings), async () =>
+    [HttpGet("Ifood/merchants/company/{companyId:long}")]
+    public Task<IActionResult> GetIfoodMerchantMappings(long companyId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodMerchantMappings), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodMerchantMappingsQuery(companyId), ct);
+            var result = await Mediator.Send(new GetIfoodMerchantMappingsQuery(companyId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPut("ifood/merchants")]
-    public Task<IActionResult> SetIFoodMerchantMapping([FromBody] SetIFoodMerchantMappingCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIFoodMerchantMapping), async () =>
+    [HttpPut("Ifood/merchants")]
+    public Task<IActionResult> SetIfoodMerchantMapping([FromBody] SetIfoodMerchantMappingCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIfoodMerchantMapping), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Pedidos iFood ("fluxo essencial", fase 2) — a sincronização em si roda sozinha em segundo
-    // plano (IFoodOrderPollingBackgroundService); estes endpoints são só pra tela acompanhar e
+    // Pedidos Ifood ("fluxo essencial", fase 2) — a sincronização em si roda sozinha em segundo
+    // plano (IfoodOrderPollingBackgroundService); estes endpoints são só pra tela acompanhar e
     // avançar o status manualmente (confirmar já é automático).
-    [HttpGet("ifood/orders/branch/{branchId:long}")]
-    public Task<IActionResult> GetIFoodOrders(long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodOrders), async () =>
+    [HttpGet("Ifood/orders/branch/{branchId:long}")]
+    public Task<IActionResult> GetIfoodOrders(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodOrders), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodOrdersQuery(branchId), ct);
+            var result = await Mediator.Send(new GetIfoodOrdersQuery(branchId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/orders/{ifoodOrderId:long}/start-preparation")]
-    public Task<IActionResult> StartIFoodOrderPreparation(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(StartIFoodOrderPreparation), async () =>
+    [HttpPost("Ifood/orders/{IfoodOrderId:long}/start-preparation")]
+    public Task<IActionResult> StartIfoodOrderPreparation(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(StartIfoodOrderPreparation), async () =>
         {
-            var result = await Mediator.Send(new StartIFoodOrderPreparationCommand(ifoodOrderId), ct);
+            var result = await Mediator.Send(new StartIfoodOrderPreparationCommand(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/orders/{ifoodOrderId:long}/ready")]
-    public Task<IActionResult> MarkIFoodOrderReady(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(MarkIFoodOrderReady), async () =>
+    [HttpPost("Ifood/orders/{IfoodOrderId:long}/ready")]
+    public Task<IActionResult> MarkIfoodOrderReady(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(MarkIfoodOrderReady), async () =>
         {
-            var result = await Mediator.Send(new MarkIFoodOrderReadyCommand(ifoodOrderId), ct);
+            var result = await Mediator.Send(new MarkIfoodOrderReadyCommand(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpGet("ifood/orders/{ifoodOrderId:long}/cancellation-reasons")]
-    public Task<IActionResult> GetIFoodCancellationReasons(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodCancellationReasons), async () =>
+    [HttpGet("Ifood/orders/{IfoodOrderId:long}/cancellation-reasons")]
+    public Task<IActionResult> GetIfoodCancellationReasons(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodCancellationReasons), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodCancellationReasonsQuery(ifoodOrderId), ct);
+            var result = await Mediator.Send(new GetIfoodCancellationReasonsQuery(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/orders/{ifoodOrderId:long}/cancel")]
-    public Task<IActionResult> CancelIFoodOrder(long ifoodOrderId, [FromBody] CancelIFoodOrderRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CancelIFoodOrder), async () =>
+    [HttpPost("Ifood/orders/{IfoodOrderId:long}/cancel")]
+    public Task<IActionResult> CancelIfoodOrder(long IfoodOrderId, [FromBody] CancelIfoodOrderRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CancelIfoodOrder), async () =>
         {
-            var result = await Mediator.Send(new CancelIFoodOrderCommand(ifoodOrderId, request.ReasonCode), ct);
+            var result = await Mediator.Send(new CancelIfoodOrderCommand(IfoodOrderId, request.ReasonCode), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
     // Fase 9b — rastreamento do entregador e código de retirada do módulo Order (pedidos que
-    // vieram do iFood), mais aceite/rejeição de disputas Handshake informadas manualmente pela
-    // equipe (ver ressalva em AcceptIFoodDisputeCommand).
-    [HttpGet("ifood/orders/{ifoodOrderId:long}/tracking")]
-    public Task<IActionResult> GetIFoodOrderTracking(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodOrderTracking), async () =>
+    // vieram do Ifood), mais aceite/rejeição de disputas Handshake informadas manualmente pela
+    // equipe (ver ressalva em AcceptIfoodDisputeCommand).
+    [HttpGet("Ifood/orders/{IfoodOrderId:long}/tracking")]
+    public Task<IActionResult> GetIfoodOrderTracking(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodOrderTracking), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodOrderTrackingQuery(ifoodOrderId), ct);
+            var result = await Mediator.Send(new GetIfoodOrderTrackingQuery(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/orders/{ifoodOrderId:long}/validate-pickup-code")]
-    public Task<IActionResult> ValidateIFoodPickupCode(long ifoodOrderId, [FromBody] ValidateIFoodPickupCodeRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ValidateIFoodPickupCode), async () =>
+    [HttpPost("Ifood/orders/{IfoodOrderId:long}/validate-pickup-code")]
+    public Task<IActionResult> ValidateIfoodPickupCode(long IfoodOrderId, [FromBody] ValidateIfoodPickupCodeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ValidateIfoodPickupCode), async () =>
         {
-            var result = await Mediator.Send(new ValidateIFoodPickupCodeCommand(ifoodOrderId, request.Code), ct);
+            var result = await Mediator.Send(new ValidateIfoodPickupCodeCommand(IfoodOrderId, request.Code), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(new { codeMatched = result.Value });
         });
 
-    [HttpPost("ifood/disputes/{disputeId}/accept")]
-    public Task<IActionResult> AcceptIFoodDispute(string disputeId, [FromBody] IFoodDisputeActionRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(AcceptIFoodDispute), async () =>
+    [HttpPost("Ifood/disputes/{disputeId}/accept")]
+    public Task<IActionResult> AcceptIfoodDispute(string disputeId, [FromBody] IfoodDisputeActionRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(AcceptIfoodDispute), async () =>
         {
-            var result = await Mediator.Send(new AcceptIFoodDisputeCommand(request.BranchId, disputeId), ct);
+            var result = await Mediator.Send(new AcceptIfoodDisputeCommand(request.BranchId, disputeId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/disputes/{disputeId}/reject")]
-    public Task<IActionResult> RejectIFoodDispute(string disputeId, [FromBody] RejectIFoodDisputeRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RejectIFoodDispute), async () =>
+    [HttpPost("Ifood/disputes/{disputeId}/reject")]
+    public Task<IActionResult> RejectIfoodDispute(string disputeId, [FromBody] RejectIfoodDisputeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RejectIfoodDispute), async () =>
         {
-            var result = await Mediator.Send(new RejectIFoodDisputeCommand(request.BranchId, disputeId, request.Reason), ct);
+            var result = await Mediator.Send(new RejectIfoodDisputeCommand(request.BranchId, disputeId, request.Reason), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
     // Fase 9c — fecha os gaps restantes do módulo Order da auditoria de 2026-08-20: proposta de
     // alternativa em disputa, virtual bag e requestDriver/cancelRequestDriver/verifyDeliveryCode
     // do PRÓPRIO módulo Order (distintos dos homônimos em Shipping/Logistics já implementados —
-    // ver comentário em IIFoodOrderClient).
-    [HttpPost("ifood/disputes/{disputeId}/alternatives/{alternativeId}")]
-    public Task<IActionResult> RequestIFoodDisputeAlternative(
-        string disputeId, string alternativeId, [FromBody] RequestIFoodDisputeAlternativeRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIFoodDisputeAlternative), async () =>
+    // ver comentário em IIfoodOrderClient).
+    [HttpPost("Ifood/disputes/{disputeId}/alternatives/{alternativeId}")]
+    public Task<IActionResult> RequestIfoodDisputeAlternative(
+        string disputeId, string alternativeId, [FromBody] RequestIfoodDisputeAlternativeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIfoodDisputeAlternative), async () =>
         {
-            var result = await Mediator.Send(new RequestIFoodDisputeAlternativeCommand(
+            var result = await Mediator.Send(new RequestIfoodDisputeAlternativeCommand(
                 request.BranchId, disputeId, alternativeId, request.AlternativeType, request.Amount, request.Currency), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/orders/{ifoodOrderId:long}/virtual-bag")]
-    public Task<IActionResult> GetIFoodOrderVirtualBag(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodOrderVirtualBag), async () =>
+    [HttpGet("Ifood/orders/{IfoodOrderId:long}/virtual-bag")]
+    public Task<IActionResult> GetIfoodOrderVirtualBag(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodOrderVirtualBag), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodOrderVirtualBagQuery(ifoodOrderId), ct);
+            var result = await Mediator.Send(new GetIfoodOrderVirtualBagQuery(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/orders/{ifoodOrderId:long}/request-driver")]
-    public Task<IActionResult> RequestIFoodOrderDriver(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIFoodOrderDriver), async () =>
+    [HttpPost("Ifood/orders/{IfoodOrderId:long}/request-driver")]
+    public Task<IActionResult> RequestIfoodOrderDriver(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIfoodOrderDriver), async () =>
         {
-            var result = await Mediator.Send(new RequestIFoodOrderDriverCommand(ifoodOrderId), ct);
+            var result = await Mediator.Send(new RequestIfoodOrderDriverCommand(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/orders/{ifoodOrderId:long}/cancel-request-driver")]
-    public Task<IActionResult> CancelIFoodOrderDriverRequest(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CancelIFoodOrderDriverRequest), async () =>
+    [HttpPost("Ifood/orders/{IfoodOrderId:long}/cancel-request-driver")]
+    public Task<IActionResult> CancelIfoodOrderDriverRequest(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CancelIfoodOrderDriverRequest), async () =>
         {
-            var result = await Mediator.Send(new CancelIFoodOrderDriverRequestCommand(ifoodOrderId), ct);
+            var result = await Mediator.Send(new CancelIfoodOrderDriverRequestCommand(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/orders/{ifoodOrderId:long}/verify-delivery-code")]
-    public Task<IActionResult> VerifyIFoodOrderDeliveryCode(long ifoodOrderId, [FromBody] VerifyIFoodOrderDeliveryCodeRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(VerifyIFoodOrderDeliveryCode), async () =>
+    [HttpPost("Ifood/orders/{IfoodOrderId:long}/verify-delivery-code")]
+    public Task<IActionResult> VerifyIfoodOrderDeliveryCode(long IfoodOrderId, [FromBody] VerifyIfoodOrderDeliveryCodeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(VerifyIfoodOrderDeliveryCode), async () =>
         {
-            var result = await Mediator.Send(new VerifyIFoodOrderDeliveryCodeCommand(ifoodOrderId, request.Code), ct);
+            var result = await Mediator.Send(new VerifyIfoodOrderDeliveryCodeCommand(IfoodOrderId, request.Code), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(new { codeMatched = result.Value });
         });
 
-    // Cardápio iFood ("fluxo essencial", fase 3) — assim como os pedidos, a sincronização roda
+    // Cardápio Ifood ("fluxo essencial", fase 3) — assim como os pedidos, a sincronização roda
     // sozinha (disparada automaticamente a cada produto/categoria criado/editado/desativado, ver
-    // IIFoodCatalogSyncTrigger); este endpoint é só o botão "Sincronizar agora" da tela, pra
+    // IIfoodCatalogSyncTrigger); este endpoint é só o botão "Sincronizar agora" da tela, pra
     // reenviar tudo de uma vez (carga inicial ou recuperação de falha).
-    [HttpPost("ifood/catalog/sync")]
-    public Task<IActionResult> SyncIFoodCatalog([FromBody] SyncIFoodCatalogRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SyncIFoodCatalog), async () =>
+    [HttpPost("Ifood/catalog/sync")]
+    public Task<IActionResult> SyncIfoodCatalog([FromBody] SyncIfoodCatalogRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SyncIfoodCatalog), async () =>
         {
-            var result = await Mediator.Send(new SyncIFoodCatalogCommand(request.CompanyId), ct);
+            var result = await Mediator.Send(new SyncIfoodCatalogCommand(request.CompanyId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
@@ -208,438 +208,438 @@ public sealed class IntegrationsController(
     // automática desde a fase 3): CRUD tipado dedicado pra catálogos/categorias, produtos, itens
     // (formato "flat" v2), grupos de opções/opções e operações administrativas (estoque, lote,
     // versão, imagem). Tier 2 (v1, legado): um único endpoint despachante genérico — ver
-    // InvokeIFoodCatalogV1Operation — que cobre os 56 endpoints da v1 sem duplicar tipagem pra uma
+    // InvokeIfoodCatalogV1Operation — que cobre os 56 endpoints da v1 sem duplicar tipagem pra uma
     // API que nenhum merchant do SyncBar usa hoje (todo merchant está em v1 OU v2, nunca nos dois).
     // Ressalva importante: os nomes de campo abaixo foram confirmados contra a collection oficial
-    // do Postman (iFood), mas os VALORES de exemplo da doc são placeholders gerados pelo Postman
+    // do Postman (Ifood), mas os VALORES de exemplo da doc são placeholders gerados pelo Postman
     // (schema mock), não tráfego real capturado — tratar como "estrutura confirmada, valores não
     // confirmados" até testar contra o sandbox.
 
     // --- Categories --------------------------------------------------------------------------
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/catalogs")]
-    public Task<IActionResult> GetIFoodCatalogs(long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodCatalogs), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/catalogs")]
+    public Task<IActionResult> GetIfoodCatalogs(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodCatalogs), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodCatalogsQuery(branchId), ct);
+            var result = await Mediator.Send(new GetIfoodCatalogsQuery(branchId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/catalogs/{catalogId}/categories")]
-    public Task<IActionResult> ListIFoodCategories(long branchId, string catalogId, [FromQuery] bool includeItems, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ListIFoodCategories), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/catalogs/{catalogId}/categories")]
+    public Task<IActionResult> ListIfoodCategories(long branchId, string catalogId, [FromQuery] bool includeItems, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ListIfoodCategories), async () =>
         {
-            var result = await Mediator.Send(new ListIFoodCategoriesQuery(branchId, catalogId, includeItems), ct);
+            var result = await Mediator.Send(new ListIfoodCategoriesQuery(branchId, catalogId, includeItems), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/catalogs/{catalogId}/categories/{categoryId}")]
-    public Task<IActionResult> GetIFoodCategory(long branchId, string catalogId, string categoryId, [FromQuery] bool includeItems, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodCategory), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/catalogs/{catalogId}/categories/{categoryId}")]
+    public Task<IActionResult> GetIfoodCategory(long branchId, string catalogId, string categoryId, [FromQuery] bool includeItems, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodCategory), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodCategoryQuery(branchId, catalogId, categoryId, includeItems), ct);
+            var result = await Mediator.Send(new GetIfoodCategoryQuery(branchId, catalogId, categoryId, includeItems), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/catalog/branch/{branchId:long}/catalogs/{catalogId}/categories")]
-    public Task<IActionResult> CreateIFoodCategory(long branchId, string catalogId, [FromBody] CreateIFoodCategoryRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CreateIFoodCategory), async () =>
+    [HttpPost("Ifood/catalog/branch/{branchId:long}/catalogs/{catalogId}/categories")]
+    public Task<IActionResult> CreateIfoodCategory(long branchId, string catalogId, [FromBody] CreateIfoodCategoryRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CreateIfoodCategory), async () =>
         {
-            var result = await Mediator.Send(new CreateIFoodCategoryCommand(branchId, catalogId, request.Name), ct);
+            var result = await Mediator.Send(new CreateIfoodCategoryCommand(branchId, catalogId, request.Name), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPut("ifood/catalog/branch/{branchId:long}/catalogs/{catalogId}/categories/{categoryId}")]
-    public Task<IActionResult> EditIFoodCategory(long branchId, string catalogId, string categoryId, [FromBody] EditIFoodCategoryRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(EditIFoodCategory), async () =>
+    [HttpPut("Ifood/catalog/branch/{branchId:long}/catalogs/{catalogId}/categories/{categoryId}")]
+    public Task<IActionResult> EditIfoodCategory(long branchId, string catalogId, string categoryId, [FromBody] EditIfoodCategoryRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(EditIfoodCategory), async () =>
         {
-            var result = await Mediator.Send(new EditIFoodCategoryCommand(branchId, catalogId, categoryId, request.Name, request.ExternalCode, request.Status, request.Index), ct);
+            var result = await Mediator.Send(new EditIfoodCategoryCommand(branchId, catalogId, categoryId, request.Name, request.ExternalCode, request.Status, request.Index), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpDelete("ifood/catalog/branch/{branchId:long}/categories/{categoryId}")]
-    public Task<IActionResult> DeleteIFoodCategory(long branchId, string categoryId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIFoodCategory), async () =>
+    [HttpDelete("Ifood/catalog/branch/{branchId:long}/categories/{categoryId}")]
+    public Task<IActionResult> DeleteIfoodCategory(long branchId, string categoryId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIfoodCategory), async () =>
         {
-            var result = await Mediator.Send(new DeleteIFoodCategoryCommand(branchId, categoryId), ct);
+            var result = await Mediator.Send(new DeleteIfoodCategoryCommand(branchId, categoryId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/sellable-items")]
-    public Task<IActionResult> ListIFoodSellableItems(long branchId, [FromQuery] string groupId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ListIFoodSellableItems), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/sellable-items")]
+    public Task<IActionResult> ListIfoodSellableItems(long branchId, [FromQuery] string groupId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ListIfoodSellableItems), async () =>
         {
-            var result = await Mediator.Send(new ListIFoodSellableItemsQuery(branchId, groupId), ct);
+            var result = await Mediator.Send(new ListIfoodSellableItemsQuery(branchId, groupId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
     // --- Products ------------------------------------------------------------------------------
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/products")]
-    public Task<IActionResult> ListIFoodProducts(long branchId, [FromQuery] int? limit, [FromQuery] int? page, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ListIFoodProducts), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/products")]
+    public Task<IActionResult> ListIfoodProducts(long branchId, [FromQuery] int? limit, [FromQuery] int? page, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ListIfoodProducts), async () =>
         {
-            var result = await Mediator.Send(new ListIFoodProductsQuery(branchId, limit, page), ct);
+            var result = await Mediator.Send(new ListIfoodProductsQuery(branchId, limit, page), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/catalog/branch/{branchId:long}/products")]
-    public Task<IActionResult> CreateIFoodProduct(long branchId, [FromBody] CreateIFoodProductRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CreateIFoodProduct), async () =>
+    [HttpPost("Ifood/catalog/branch/{branchId:long}/products")]
+    public Task<IActionResult> CreateIfoodProduct(long branchId, [FromBody] CreateIfoodProductRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CreateIfoodProduct), async () =>
         {
-            var result = await Mediator.Send(new CreateIFoodProductCommand(
+            var result = await Mediator.Send(new CreateIfoodProductCommand(
                 branchId, request.Id, request.Name, request.Description, request.AdditionalInformation,
                 request.ExternalCode, request.Ean, request.Image, request.Shifts), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPut("ifood/catalog/branch/{branchId:long}/products/{productId:guid}")]
-    public Task<IActionResult> EditIFoodProduct(long branchId, Guid productId, [FromBody] EditIFoodProductRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(EditIFoodProduct), async () =>
+    [HttpPut("Ifood/catalog/branch/{branchId:long}/products/{productId:guid}")]
+    public Task<IActionResult> EditIfoodProduct(long branchId, Guid productId, [FromBody] EditIfoodProductRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(EditIfoodProduct), async () =>
         {
-            var result = await Mediator.Send(new EditIFoodProductCommand(
+            var result = await Mediator.Send(new EditIfoodProductCommand(
                 branchId, productId, request.Name, request.Description, request.AdditionalInformation,
                 request.ExternalCode, request.Ean, request.Image, request.Shifts), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpDelete("ifood/catalog/branch/{branchId:long}/products/{productId:guid}")]
-    public Task<IActionResult> DeleteIFoodProduct(long branchId, Guid productId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIFoodProduct), async () =>
+    [HttpDelete("Ifood/catalog/branch/{branchId:long}/products/{productId:guid}")]
+    public Task<IActionResult> DeleteIfoodProduct(long branchId, Guid productId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIfoodProduct), async () =>
         {
-            var result = await Mediator.Send(new DeleteIFoodProductCommand(branchId, productId), ct);
+            var result = await Mediator.Send(new DeleteIfoodProductCommand(branchId, productId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPatch("ifood/catalog/branch/{branchId:long}/products/status")]
-    public Task<IActionResult> BatchUpdateIFoodProductStatuses(long branchId, [FromBody] BatchUpdateIFoodProductStatusesRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(BatchUpdateIFoodProductStatuses), async () =>
+    [HttpPatch("Ifood/catalog/branch/{branchId:long}/products/status")]
+    public Task<IActionResult> BatchUpdateIfoodProductStatuses(long branchId, [FromBody] BatchUpdateIfoodProductStatusesRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(BatchUpdateIfoodProductStatuses), async () =>
         {
-            var result = await Mediator.Send(new BatchUpdateIFoodProductStatusesCommand(branchId, request.Items, request.CatalogContext), ct);
+            var result = await Mediator.Send(new BatchUpdateIfoodProductStatusesCommand(branchId, request.Items, request.CatalogContext), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/catalog/branch/{branchId:long}/products/price")]
-    public Task<IActionResult> BatchUpdateIFoodProductPrices(long branchId, [FromBody] BatchUpdateIFoodProductPricesRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(BatchUpdateIFoodProductPrices), async () =>
+    [HttpPost("Ifood/catalog/branch/{branchId:long}/products/price")]
+    public Task<IActionResult> BatchUpdateIfoodProductPrices(long branchId, [FromBody] BatchUpdateIfoodProductPricesRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(BatchUpdateIfoodProductPrices), async () =>
         {
-            var result = await Mediator.Send(new BatchUpdateIFoodProductPricesCommand(branchId, request.Items, request.CatalogContext), ct);
+            var result = await Mediator.Send(new BatchUpdateIfoodProductPricesCommand(branchId, request.Items, request.CatalogContext), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/products/externalCode/{externalCode}")]
-    public Task<IActionResult> ListIFoodProductsByExternalCode(long branchId, string externalCode, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ListIFoodProductsByExternalCode), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/products/externalCode/{externalCode}")]
+    public Task<IActionResult> ListIfoodProductsByExternalCode(long branchId, string externalCode, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ListIfoodProductsByExternalCode), async () =>
         {
-            var result = await Mediator.Send(new ListIFoodProductsByExternalCodeQuery(branchId, externalCode), ct);
+            var result = await Mediator.Send(new ListIfoodProductsByExternalCodeQuery(branchId, externalCode), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/products/{productId:guid}")]
-    public Task<IActionResult> GetIFoodProductById(long branchId, Guid productId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodProductById), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/products/{productId:guid}")]
+    public Task<IActionResult> GetIfoodProductById(long branchId, Guid productId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodProductById), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodProductByIdQuery(branchId, productId), ct);
+            var result = await Mediator.Send(new GetIfoodProductByIdQuery(branchId, productId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
     // --- Items (v2 — flat) ----------------------------------------------------------------------
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/items/{itemId:guid}")]
-    public Task<IActionResult> GetIFoodItemFlat(long branchId, Guid itemId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodItemFlat), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/items/{itemId:guid}")]
+    public Task<IActionResult> GetIfoodItemFlat(long branchId, Guid itemId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodItemFlat), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodItemFlatQuery(branchId, itemId), ct);
+            var result = await Mediator.Send(new GetIfoodItemFlatQuery(branchId, itemId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPut("ifood/catalog/branch/{branchId:long}/items/{itemId:guid}/price")]
-    public Task<IActionResult> SetIFoodItemPrice(long branchId, Guid itemId, [FromBody] SetIFoodItemPriceRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIFoodItemPrice), async () =>
+    [HttpPut("Ifood/catalog/branch/{branchId:long}/items/{itemId:guid}/price")]
+    public Task<IActionResult> SetIfoodItemPrice(long branchId, Guid itemId, [FromBody] SetIfoodItemPriceRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIfoodItemPrice), async () =>
         {
-            var result = await Mediator.Send(new SetIFoodItemPriceCommand(branchId, itemId, request.Value, request.OriginalValue, request.PriceByCatalog), ct);
+            var result = await Mediator.Send(new SetIfoodItemPriceCommand(branchId, itemId, request.Value, request.OriginalValue, request.PriceByCatalog), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPut("ifood/catalog/branch/{branchId:long}/items/{itemId:guid}/externalCode")]
-    public Task<IActionResult> SetIFoodItemExternalCode(long branchId, Guid itemId, [FromBody] SetIFoodItemExternalCodeRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIFoodItemExternalCode), async () =>
+    [HttpPut("Ifood/catalog/branch/{branchId:long}/items/{itemId:guid}/externalCode")]
+    public Task<IActionResult> SetIfoodItemExternalCode(long branchId, Guid itemId, [FromBody] SetIfoodItemExternalCodeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIfoodItemExternalCode), async () =>
         {
-            var result = await Mediator.Send(new SetIFoodItemExternalCodeCommand(branchId, itemId, request.ExternalCode, request.ByCatalog), ct);
+            var result = await Mediator.Send(new SetIfoodItemExternalCodeCommand(branchId, itemId, request.ExternalCode, request.ByCatalog), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpDelete("ifood/catalog/branch/{branchId:long}/categories/{categoryId}/items/{productId:guid}")]
-    public Task<IActionResult> DeleteIFoodItem(long branchId, string categoryId, Guid productId, [FromQuery] string? catalogContext, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIFoodItem), async () =>
+    [HttpDelete("Ifood/catalog/branch/{branchId:long}/categories/{categoryId}/items/{productId:guid}")]
+    public Task<IActionResult> DeleteIfoodItem(long branchId, string categoryId, Guid productId, [FromQuery] string? catalogContext, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIfoodItem), async () =>
         {
-            var result = await Mediator.Send(new DeleteIFoodItemCommand(branchId, categoryId, productId, catalogContext), ct);
+            var result = await Mediator.Send(new DeleteIfoodItemCommand(branchId, categoryId, productId, catalogContext), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/categories/{categoryId}/items")]
-    public Task<IActionResult> ListIFoodCategoryItems(long branchId, string categoryId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ListIFoodCategoryItems), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/categories/{categoryId}/items")]
+    public Task<IActionResult> ListIfoodCategoryItems(long branchId, string categoryId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ListIfoodCategoryItems), async () =>
         {
-            var result = await Mediator.Send(new ListIFoodCategoryItemsQuery(branchId, categoryId), ct);
+            var result = await Mediator.Send(new ListIfoodCategoryItemsQuery(branchId, categoryId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
     // --- Option groups / options -----------------------------------------------------------------
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/option-groups")]
-    public Task<IActionResult> ListIFoodOptionGroups(long branchId, [FromQuery] bool includeOptions, [FromQuery] string? catalogContext, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ListIFoodOptionGroups), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/option-groups")]
+    public Task<IActionResult> ListIfoodOptionGroups(long branchId, [FromQuery] bool includeOptions, [FromQuery] string? catalogContext, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ListIfoodOptionGroups), async () =>
         {
-            var result = await Mediator.Send(new ListIFoodOptionGroupsQuery(branchId, includeOptions, catalogContext), ct);
+            var result = await Mediator.Send(new ListIfoodOptionGroupsQuery(branchId, includeOptions, catalogContext), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPatch("ifood/catalog/branch/{branchId:long}/option-groups/{optionGroupId:guid}")]
-    public Task<IActionResult> UpdateIFoodOptionGroup(long branchId, Guid optionGroupId, [FromBody] UpdateIFoodOptionGroupRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(UpdateIFoodOptionGroup), async () =>
+    [HttpPatch("Ifood/catalog/branch/{branchId:long}/option-groups/{optionGroupId:guid}")]
+    public Task<IActionResult> UpdateIfoodOptionGroup(long branchId, Guid optionGroupId, [FromBody] UpdateIfoodOptionGroupRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(UpdateIfoodOptionGroup), async () =>
         {
-            var result = await Mediator.Send(new UpdateIFoodOptionGroupCommand(branchId, optionGroupId, request.Name), ct);
+            var result = await Mediator.Send(new UpdateIfoodOptionGroupCommand(branchId, optionGroupId, request.Name), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpDelete("ifood/catalog/branch/{branchId:long}/option-groups/{optionGroupId:guid}")]
-    public Task<IActionResult> DeleteIFoodOptionGroup(long branchId, Guid optionGroupId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIFoodOptionGroup), async () =>
+    [HttpDelete("Ifood/catalog/branch/{branchId:long}/option-groups/{optionGroupId:guid}")]
+    public Task<IActionResult> DeleteIfoodOptionGroup(long branchId, Guid optionGroupId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIfoodOptionGroup), async () =>
         {
-            var result = await Mediator.Send(new DeleteIFoodOptionGroupCommand(branchId, optionGroupId), ct);
+            var result = await Mediator.Send(new DeleteIfoodOptionGroupCommand(branchId, optionGroupId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpDelete("ifood/catalog/branch/{branchId:long}/option-groups/{optionGroupId:guid}/products/{productId:guid}")]
-    public Task<IActionResult> DisassociateIFoodOptionGroup(long branchId, Guid optionGroupId, Guid productId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DisassociateIFoodOptionGroup), async () =>
+    [HttpDelete("Ifood/catalog/branch/{branchId:long}/option-groups/{optionGroupId:guid}/products/{productId:guid}")]
+    public Task<IActionResult> DisassociateIfoodOptionGroup(long branchId, Guid optionGroupId, Guid productId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DisassociateIfoodOptionGroup), async () =>
         {
-            var result = await Mediator.Send(new DisassociateIFoodOptionGroupCommand(branchId, optionGroupId, productId), ct);
+            var result = await Mediator.Send(new DisassociateIfoodOptionGroupCommand(branchId, optionGroupId, productId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpDelete("ifood/catalog/branch/{branchId:long}/option-groups/{optionGroupId:guid}/options/{productId:guid}")]
-    public Task<IActionResult> DeleteIFoodOption(long branchId, Guid optionGroupId, Guid productId, [FromQuery] string? catalogContext, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIFoodOption), async () =>
+    [HttpDelete("Ifood/catalog/branch/{branchId:long}/option-groups/{optionGroupId:guid}/options/{productId:guid}")]
+    public Task<IActionResult> DeleteIfoodOption(long branchId, Guid optionGroupId, Guid productId, [FromQuery] string? catalogContext, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIfoodOption), async () =>
         {
-            var result = await Mediator.Send(new DeleteIFoodOptionCommand(branchId, optionGroupId, productId, catalogContext), ct);
+            var result = await Mediator.Send(new DeleteIfoodOptionCommand(branchId, optionGroupId, productId, catalogContext), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPatch("ifood/catalog/branch/{branchId:long}/option-groups/{optionGroupId:guid}/status")]
-    public Task<IActionResult> UpdateIFoodOptionGroupStatus(long branchId, Guid optionGroupId, [FromBody] UpdateIFoodOptionGroupStatusRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(UpdateIFoodOptionGroupStatus), async () =>
+    [HttpPatch("Ifood/catalog/branch/{branchId:long}/option-groups/{optionGroupId:guid}/status")]
+    public Task<IActionResult> UpdateIfoodOptionGroupStatus(long branchId, Guid optionGroupId, [FromBody] UpdateIfoodOptionGroupStatusRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(UpdateIfoodOptionGroupStatus), async () =>
         {
-            var result = await Mediator.Send(new UpdateIFoodOptionGroupStatusCommand(branchId, optionGroupId, request.Available), ct);
+            var result = await Mediator.Send(new UpdateIfoodOptionGroupStatusCommand(branchId, optionGroupId, request.Available), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPut("ifood/catalog/branch/{branchId:long}/options/{optionId:guid}/price")]
-    public Task<IActionResult> SetIFoodOptionPrice(long branchId, Guid optionId, [FromBody] SetIFoodOptionPriceRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIFoodOptionPrice), async () =>
+    [HttpPut("Ifood/catalog/branch/{branchId:long}/options/{optionId:guid}/price")]
+    public Task<IActionResult> SetIfoodOptionPrice(long branchId, Guid optionId, [FromBody] SetIfoodOptionPriceRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIfoodOptionPrice), async () =>
         {
-            var result = await Mediator.Send(new SetIFoodOptionPriceCommand(branchId, optionId, request.Value, request.OriginalValue, request.ParentCustomizationOptionId), ct);
+            var result = await Mediator.Send(new SetIfoodOptionPriceCommand(branchId, optionId, request.Value, request.OriginalValue, request.ParentCustomizationOptionId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPut("ifood/catalog/branch/{branchId:long}/options/{optionId:guid}/externalCode")]
-    public Task<IActionResult> SetIFoodOptionExternalCode(long branchId, Guid optionId, [FromBody] SetIFoodOptionExternalCodeRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIFoodOptionExternalCode), async () =>
+    [HttpPut("Ifood/catalog/branch/{branchId:long}/options/{optionId:guid}/externalCode")]
+    public Task<IActionResult> SetIfoodOptionExternalCode(long branchId, Guid optionId, [FromBody] SetIfoodOptionExternalCodeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIfoodOptionExternalCode), async () =>
         {
-            var result = await Mediator.Send(new SetIFoodOptionExternalCodeCommand(branchId, optionId, request.ExternalCode, request.ParentCustomizationOptionId), ct);
+            var result = await Mediator.Send(new SetIfoodOptionExternalCodeCommand(branchId, optionId, request.ExternalCode, request.ParentCustomizationOptionId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPatch("ifood/catalog/branch/{branchId:long}/options/{optionId:guid}/status")]
-    public Task<IActionResult> SetIFoodOptionStatus(long branchId, Guid optionId, [FromBody] SetIFoodOptionStatusRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIFoodOptionStatus), async () =>
+    [HttpPatch("Ifood/catalog/branch/{branchId:long}/options/{optionId:guid}/status")]
+    public Task<IActionResult> SetIfoodOptionStatus(long branchId, Guid optionId, [FromBody] SetIfoodOptionStatusRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIfoodOptionStatus), async () =>
         {
-            var result = await Mediator.Send(new SetIFoodOptionStatusCommand(branchId, optionId, request.Available, request.ParentCustomizationOptionId), ct);
+            var result = await Mediator.Send(new SetIfoodOptionStatusCommand(branchId, optionId, request.Available, request.ParentCustomizationOptionId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
     // --- Admin (estoque, lote, versão do catálogo, imagem) --------------------------------------
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/inventory/{productId:guid}")]
-    public Task<IActionResult> GetIFoodInventory(long branchId, Guid productId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodInventory), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/inventory/{productId:guid}")]
+    public Task<IActionResult> GetIfoodInventory(long branchId, Guid productId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodInventory), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodInventoryQuery(branchId, productId), ct);
+            var result = await Mediator.Send(new GetIfoodInventoryQuery(branchId, productId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpDelete("ifood/catalog/branch/{branchId:long}/inventory/batch")]
-    public Task<IActionResult> DeleteIFoodInventoryBatch(long branchId, [FromBody] DeleteIFoodInventoryBatchRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIFoodInventoryBatch), async () =>
+    [HttpDelete("Ifood/catalog/branch/{branchId:long}/inventory/batch")]
+    public Task<IActionResult> DeleteIfoodInventoryBatch(long branchId, [FromBody] DeleteIfoodInventoryBatchRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIfoodInventoryBatch), async () =>
         {
-            var result = await Mediator.Send(new DeleteIFoodInventoryBatchCommand(branchId, request.ProductIds), ct);
+            var result = await Mediator.Send(new DeleteIfoodInventoryBatchCommand(branchId, request.ProductIds), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/batch/{batchId}")]
-    public Task<IActionResult> GetIFoodBatchResult(long branchId, string batchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodBatchResult), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/batch/{batchId}")]
+    public Task<IActionResult> GetIfoodBatchResult(long branchId, string batchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodBatchResult), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodBatchResultQuery(branchId, batchId), ct);
+            var result = await Mediator.Send(new GetIfoodBatchResultQuery(branchId, batchId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/catalog/branch/{branchId:long}/version")]
-    public Task<IActionResult> CheckIFoodCatalogVersion(long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CheckIFoodCatalogVersion), async () =>
+    [HttpGet("Ifood/catalog/branch/{branchId:long}/version")]
+    public Task<IActionResult> CheckIfoodCatalogVersion(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CheckIfoodCatalogVersion), async () =>
         {
-            var result = await Mediator.Send(new CheckIFoodCatalogVersionQuery(branchId), ct);
+            var result = await Mediator.Send(new CheckIfoodCatalogVersionQuery(branchId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
     // ⚠️ Upgrade/downgrade são operações destrutivas e irreversíveis no catálogo real do merchant —
-    // ver comentário completo em UpgradeIFoodCatalogVersionCommand/DowngradeIFoodCatalogVersionCommand.
+    // ver comentário completo em UpgradeIfoodCatalogVersionCommand/DowngradeIfoodCatalogVersionCommand.
     // A UI precisa confirmar explicitamente com o usuário antes de chamar estes dois endpoints.
-    [HttpPost("ifood/catalog/branch/{branchId:long}/upgrade")]
-    public Task<IActionResult> UpgradeIFoodCatalogVersion(long branchId, [FromBody] UpgradeIFoodCatalogVersionRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(UpgradeIFoodCatalogVersion), async () =>
+    [HttpPost("Ifood/catalog/branch/{branchId:long}/upgrade")]
+    public Task<IActionResult> UpgradeIfoodCatalogVersion(long branchId, [FromBody] UpgradeIfoodCatalogVersionRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(UpgradeIfoodCatalogVersion), async () =>
         {
-            var result = await Mediator.Send(new UpgradeIFoodCatalogVersionCommand(branchId, request.CleanMigration), ct);
+            var result = await Mediator.Send(new UpgradeIfoodCatalogVersionCommand(branchId, request.CleanMigration), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/catalog/branch/{branchId:long}/downgrade")]
-    public Task<IActionResult> DowngradeIFoodCatalogVersion(long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DowngradeIFoodCatalogVersion), async () =>
+    [HttpPost("Ifood/catalog/branch/{branchId:long}/downgrade")]
+    public Task<IActionResult> DowngradeIfoodCatalogVersion(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DowngradeIfoodCatalogVersion), async () =>
         {
-            var result = await Mediator.Send(new DowngradeIFoodCatalogVersionCommand(branchId), ct);
+            var result = await Mediator.Send(new DowngradeIfoodCatalogVersionCommand(branchId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // ⚠️ Schema de corpo/resposta não documentado pelo iFood (Postman mostra "<object>" cru) — ver
-    // ressalva completa em UploadIFoodImageCommand. Repassa o JSON cru fornecido pelo chamador.
-    [HttpPost("ifood/catalog/branch/{branchId:long}/image")]
-    public Task<IActionResult> UploadIFoodImage(long branchId, [FromBody] UploadIFoodImageRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(UploadIFoodImage), async () =>
+    // ⚠️ Schema de corpo/resposta não documentado pelo Ifood (Postman mostra "<object>" cru) — ver
+    // ressalva completa em UploadIfoodImageCommand. Repassa o JSON cru fornecido pelo chamador.
+    [HttpPost("Ifood/catalog/branch/{branchId:long}/image")]
+    public Task<IActionResult> UploadIfoodImage(long branchId, [FromBody] UploadIfoodImageRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(UploadIfoodImage), async () =>
         {
-            var result = await Mediator.Send(new UploadIFoodImageCommand(branchId, request.JsonBody), ct);
+            var result = await Mediator.Send(new UploadIfoodImageCommand(branchId, request.JsonBody), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
     // --- v1 (legado) — console genérico ----------------------------------------------------------
     // Um único endpoint despachante pros 56 endpoints do Catalog v1 sem tipagem dedicada — ver
-    // comentário completo em InvokeIFoodCatalogV1OperationCommand sobre a decisão de escopo.
-    [HttpPost("ifood/catalog/branch/{branchId:long}/v1/invoke")]
-    public Task<IActionResult> InvokeIFoodCatalogV1Operation(long branchId, [FromBody] InvokeIFoodCatalogV1OperationRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(InvokeIFoodCatalogV1Operation), async () =>
+    // comentário completo em InvokeIfoodCatalogV1OperationCommand sobre a decisão de escopo.
+    [HttpPost("Ifood/catalog/branch/{branchId:long}/v1/invoke")]
+    public Task<IActionResult> InvokeIfoodCatalogV1Operation(long branchId, [FromBody] InvokeIfoodCatalogV1OperationRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(InvokeIfoodCatalogV1Operation), async () =>
         {
-            var result = await Mediator.Send(new InvokeIFoodCatalogV1OperationCommand(
+            var result = await Mediator.Send(new InvokeIfoodCatalogV1OperationCommand(
                 branchId, request.Operation, request.RouteParams, request.QueryParams, request.JsonBody), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Financeiro iFood (fase 4) — a sincronização em si roda sozinha em segundo plano 1x/dia
-    // (IFoodFinancialSyncBackgroundService); estes endpoints são pra tela "Financeiro" ler o
+    // Financeiro Ifood (fase 4) — a sincronização em si roda sozinha em segundo plano 1x/dia
+    // (IfoodFinancialSyncBackgroundService); estes endpoints são pra tela "Financeiro" ler o
     // resumo do período e pro botão "Sincronizar agora" reenviar sob demanda.
-    [HttpGet("ifood/financial/branch/{branchId:long}")]
-    public Task<IActionResult> GetIFoodFinancialSummary(long branchId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodFinancialSummary), async () =>
+    [HttpGet("Ifood/financial/branch/{branchId:long}")]
+    public Task<IActionResult> GetIfoodFinancialSummary(long branchId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodFinancialSummary), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodFinancialSummaryQuery(branchId, from, to), ct);
+            var result = await Mediator.Send(new GetIfoodFinancialSummaryQuery(branchId, from, to), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/financial/sync")]
-    public Task<IActionResult> SyncIFoodFinancial([FromBody] SyncIFoodFinancialRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SyncIFoodFinancial), async () =>
+    [HttpPost("Ifood/financial/sync")]
+    public Task<IActionResult> SyncIfoodFinancial([FromBody] SyncIfoodFinancialRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SyncIfoodFinancial), async () =>
         {
-            var result = await Mediator.Send(new SyncIFoodFinancialCommand(request.CompanyId), ct);
+            var result = await Mediator.Send(new SyncIfoodFinancialCommand(request.CompanyId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
     // Fase 9 — cobertura dos 13 relatórios financeiros restantes (financial/v2.0 ×12 +
     // financial/v2.1 ×1), mais anticipations/sales (financial/v3.0) via o mesmo catálogo
-    // genérico. reportType é o nome do enum IFoodFinancialReportType (ex.: "SalesAdjustments").
-    [HttpGet("ifood/financial/branch/{branchId:long}/reports/{reportType}")]
-    public Task<IActionResult> GetIFoodFinancialReport(
-        long branchId, IFoodFinancialReportType reportType, [FromQuery] string? periodId,
+    // genérico. reportType é o nome do enum IfoodFinancialReportType (ex.: "SalesAdjustments").
+    [HttpGet("Ifood/financial/branch/{branchId:long}/reports/{reportType}")]
+    public Task<IActionResult> GetIfoodFinancialReport(
+        long branchId, IfoodFinancialReportType reportType, [FromQuery] string? periodId,
         [FromQuery] DateTime? rangeStart, [FromQuery] DateTime? rangeEnd, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodFinancialReport), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodFinancialReport), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodFinancialReportQuery(branchId, reportType, periodId, rangeStart, rangeEnd), ct);
+            var result = await Mediator.Send(new GetIfoodFinancialReportQuery(branchId, reportType, periodId, rangeStart, rangeEnd), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
     // Fase 9 — apuração sob demanda (financial/v3.0/.../reconciliation/on-demand), pra quando a
     // apuração automática do período ainda não foi gerada. Competence no formato "yyyy-MM".
-    [HttpPost("ifood/financial/branch/{branchId:long}/reconciliation-on-demand")]
-    public Task<IActionResult> RequestIFoodReconciliationOnDemand(
-        long branchId, [FromBody] RequestIFoodReconciliationOnDemandRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIFoodReconciliationOnDemand), async () =>
+    [HttpPost("Ifood/financial/branch/{branchId:long}/reconciliation-on-demand")]
+    public Task<IActionResult> RequestIfoodReconciliationOnDemand(
+        long branchId, [FromBody] RequestIfoodReconciliationOnDemandRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIfoodReconciliationOnDemand), async () =>
         {
-            var result = await Mediator.Send(new RequestIFoodReconciliationOnDemandCommand(branchId, request.Competence), ct);
+            var result = await Mediator.Send(new RequestIfoodReconciliationOnDemandCommand(branchId, request.Competence), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/financial/branch/{branchId:long}/reconciliation-on-demand/{requestId}")]
-    public Task<IActionResult> GetIFoodReconciliationOnDemandStatus(long branchId, string requestId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodReconciliationOnDemandStatus), async () =>
+    [HttpGet("Ifood/financial/branch/{branchId:long}/reconciliation-on-demand/{requestId}")]
+    public Task<IActionResult> GetIfoodReconciliationOnDemandStatus(long branchId, string requestId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodReconciliationOnDemandStatus), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodReconciliationOnDemandStatusQuery(branchId, requestId), ct);
+            var result = await Mediator.Send(new GetIfoodReconciliationOnDemandStatusQuery(branchId, requestId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Operação da loja iFood (fase 5, módulo Merchant) — tudo sob demanda (sem sincronização
+    // Operação da loja Ifood (fase 5, módulo Merchant) — tudo sob demanda (sem sincronização
     // automática em segundo plano): status é lido ao vivo, interrupções são criadas/removidas
-    // direto na API do iFood, horários e tempo de preparo são editados numa cópia local e
-    // reenviados ao salvar (ver comentário nos handlers em Features/Integrations/IFood/Merchant).
-    [HttpGet("ifood/merchant/status/branch/{branchId:long}")]
-    public Task<IActionResult> GetIFoodMerchantStatus(long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodMerchantStatus), async () =>
+    // direto na API do Ifood, horários e tempo de preparo são editados numa cópia local e
+    // reenviados ao salvar (ver comentário nos handlers em Features/Integrations/Ifood/Merchant).
+    [HttpGet("Ifood/merchant/status/branch/{branchId:long}")]
+    public Task<IActionResult> GetIfoodMerchantStatus(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodMerchantStatus), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodMerchantStatusQuery(branchId), ct);
+            var result = await Mediator.Send(new GetIfoodMerchantStatusQuery(branchId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/merchant/interruptions/branch/{branchId:long}")]
-    public Task<IActionResult> GetIFoodInterruptions(long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodInterruptions), async () =>
+    [HttpGet("Ifood/merchant/interruptions/branch/{branchId:long}")]
+    public Task<IActionResult> GetIfoodInterruptions(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodInterruptions), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodInterruptionsQuery(branchId), ct);
+            var result = await Mediator.Send(new GetIfoodInterruptionsQuery(branchId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/merchant/interruptions")]
-    public Task<IActionResult> CreateIFoodInterruption([FromBody] CreateIFoodInterruptionCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CreateIFoodInterruption), async () =>
+    [HttpPost("Ifood/merchant/interruptions")]
+    public Task<IActionResult> CreateIfoodInterruption([FromBody] CreateIfoodInterruptionCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CreateIfoodInterruption), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpDelete("ifood/merchant/interruptions/{interruptionId}")]
-    public Task<IActionResult> DeleteIFoodInterruption(string interruptionId, [FromQuery] long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIFoodInterruption), async () =>
+    [HttpDelete("Ifood/merchant/interruptions/{interruptionId}")]
+    public Task<IActionResult> DeleteIfoodInterruption(string interruptionId, [FromQuery] long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DeleteIfoodInterruption), async () =>
         {
-            var result = await Mediator.Send(new DeleteIFoodInterruptionCommand(branchId, interruptionId), ct);
+            var result = await Mediator.Send(new DeleteIfoodInterruptionCommand(branchId, interruptionId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpGet("ifood/merchant/opening-hours/branch/{branchId:long}")]
-    public Task<IActionResult> GetIFoodOpeningHours(long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodOpeningHours), async () =>
+    [HttpGet("Ifood/merchant/opening-hours/branch/{branchId:long}")]
+    public Task<IActionResult> GetIfoodOpeningHours(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodOpeningHours), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodOpeningHoursQuery(branchId), ct);
+            var result = await Mediator.Send(new GetIfoodOpeningHoursQuery(branchId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPut("ifood/merchant/opening-hours")]
-    public Task<IActionResult> SaveIFoodOpeningHours([FromBody] SaveIFoodOpeningHoursCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SaveIFoodOpeningHours), async () =>
+    [HttpPut("Ifood/merchant/opening-hours")]
+    public Task<IActionResult> SaveIfoodOpeningHours([FromBody] SaveIfoodOpeningHoursCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SaveIfoodOpeningHours), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPut("ifood/merchant/preparation-time")]
-    public Task<IActionResult> SetIFoodPreparationTime([FromBody] SetIFoodPreparationTimeCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIFoodPreparationTime), async () =>
+    [HttpPut("Ifood/merchant/preparation-time")]
+    public Task<IActionResult> SetIfoodPreparationTime([FromBody] SetIfoodPreparationTimeCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SetIfoodPreparationTime), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
@@ -648,286 +648,286 @@ public sealed class IntegrationsController(
     // Fase 9c — fecha os gaps restantes do módulo Merchant da auditoria de 2026-08-20: listar
     // lojas do client_id, ver detalhes de uma loja específica e consultar status por operação
     // (ex.: DELIVERY, TAKEOUT — diferente do status geral já coberto acima).
-    [HttpGet("ifood/merchant/list/company/{companyId:long}")]
-    public Task<IActionResult> GetIFoodMerchantsList(long companyId, [FromQuery] int page, [FromQuery] int size, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodMerchantsList), async () =>
+    [HttpGet("Ifood/merchant/list/company/{companyId:long}")]
+    public Task<IActionResult> GetIfoodMerchantsList(long companyId, [FromQuery] int page, [FromQuery] int size, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodMerchantsList), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodMerchantsListQuery(companyId, page <= 0 ? 1 : page, size <= 0 ? 100 : size), ct);
+            var result = await Mediator.Send(new GetIfoodMerchantsListQuery(companyId, page <= 0 ? 1 : page, size <= 0 ? 100 : size), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/merchant/details/branch/{branchId:long}")]
-    public Task<IActionResult> GetIFoodMerchantDetails(long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodMerchantDetails), async () =>
+    [HttpGet("Ifood/merchant/details/branch/{branchId:long}")]
+    public Task<IActionResult> GetIfoodMerchantDetails(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodMerchantDetails), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodMerchantDetailsQuery(branchId), ct);
+            var result = await Mediator.Send(new GetIfoodMerchantDetailsQuery(branchId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/merchant/status/branch/{branchId:long}/operation/{operation}")]
-    public Task<IActionResult> GetIFoodMerchantStatusByOperation(long branchId, string operation, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodMerchantStatusByOperation), async () =>
+    [HttpGet("Ifood/merchant/status/branch/{branchId:long}/operation/{operation}")]
+    public Task<IActionResult> GetIfoodMerchantStatusByOperation(long branchId, string operation, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodMerchantStatusByOperation), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodMerchantStatusByOperationQuery(branchId, operation), ct);
+            var result = await Mediator.Send(new GetIfoodMerchantStatusByOperationQuery(branchId, operation), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
     // Logística por frota própria (fase 7, módulo Logistics) — só se aplica a pedidos DELIVERY
-    // com deliveredBy diferente de "IFOOD" (ver IFoodOrder.DeliveredBy); tudo sob demanda, cada
+    // com deliveredBy diferente de "Ifood" (ver IfoodOrder.DeliveredBy); tudo sob demanda, cada
     // passo é acionado manualmente pela equipe conforme o entregador avança (atribuir → saiu pra
     // origem → chegou na origem → despachou → chegou no destino → verificar código de entrega).
-    [HttpGet("ifood/logistics/branch/{branchId:long}")]
-    public Task<IActionResult> GetIFoodLogisticsDeliveries(long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodLogisticsDeliveries), async () =>
+    [HttpGet("Ifood/logistics/branch/{branchId:long}")]
+    public Task<IActionResult> GetIfoodLogisticsDeliveries(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodLogisticsDeliveries), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodLogisticsDeliveriesQuery(branchId), ct);
+            var result = await Mediator.Send(new GetIfoodLogisticsDeliveriesQuery(branchId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/logistics/order/{ifoodOrderId:long}/assign-driver")]
-    public Task<IActionResult> AssignIFoodDriver(long ifoodOrderId, [FromBody] AssignIFoodDriverRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(AssignIFoodDriver), async () =>
+    [HttpPost("Ifood/logistics/order/{IfoodOrderId:long}/assign-driver")]
+    public Task<IActionResult> AssignIfoodDriver(long IfoodOrderId, [FromBody] AssignIfoodDriverRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(AssignIfoodDriver), async () =>
         {
-            var result = await Mediator.Send(new AssignIFoodDriverCommand(ifoodOrderId, request.DriverName, request.DriverPhone, request.DriverVehicleType), ct);
+            var result = await Mediator.Send(new AssignIfoodDriverCommand(IfoodOrderId, request.DriverName, request.DriverPhone, request.DriverVehicleType), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/logistics/order/{ifoodOrderId:long}/going-to-origin")]
-    public Task<IActionResult> MarkIFoodGoingToOrigin(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(MarkIFoodGoingToOrigin), async () =>
+    [HttpPost("Ifood/logistics/order/{IfoodOrderId:long}/going-to-origin")]
+    public Task<IActionResult> MarkIfoodGoingToOrigin(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(MarkIfoodGoingToOrigin), async () =>
         {
-            var result = await Mediator.Send(new MarkIFoodGoingToOriginCommand(ifoodOrderId), ct);
+            var result = await Mediator.Send(new MarkIfoodGoingToOriginCommand(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/logistics/order/{ifoodOrderId:long}/arrived-at-origin")]
-    public Task<IActionResult> MarkIFoodArrivedAtOrigin(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(MarkIFoodArrivedAtOrigin), async () =>
+    [HttpPost("Ifood/logistics/order/{IfoodOrderId:long}/arrived-at-origin")]
+    public Task<IActionResult> MarkIfoodArrivedAtOrigin(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(MarkIfoodArrivedAtOrigin), async () =>
         {
-            var result = await Mediator.Send(new MarkIFoodArrivedAtOriginCommand(ifoodOrderId), ct);
+            var result = await Mediator.Send(new MarkIfoodArrivedAtOriginCommand(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/logistics/order/{ifoodOrderId:long}/dispatch")]
-    public Task<IActionResult> DispatchIFoodLogistics(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DispatchIFoodLogistics), async () =>
+    [HttpPost("Ifood/logistics/order/{IfoodOrderId:long}/dispatch")]
+    public Task<IActionResult> DispatchIfoodLogistics(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DispatchIfoodLogistics), async () =>
         {
-            var result = await Mediator.Send(new DispatchIFoodLogisticsCommand(ifoodOrderId), ct);
+            var result = await Mediator.Send(new DispatchIfoodLogisticsCommand(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/logistics/order/{ifoodOrderId:long}/arrived-at-destination")]
-    public Task<IActionResult> MarkIFoodArrivedAtDestination(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(MarkIFoodArrivedAtDestination), async () =>
+    [HttpPost("Ifood/logistics/order/{IfoodOrderId:long}/arrived-at-destination")]
+    public Task<IActionResult> MarkIfoodArrivedAtDestination(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(MarkIfoodArrivedAtDestination), async () =>
         {
-            var result = await Mediator.Send(new MarkIFoodArrivedAtDestinationCommand(ifoodOrderId), ct);
+            var result = await Mediator.Send(new MarkIfoodArrivedAtDestinationCommand(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/logistics/order/{ifoodOrderId:long}/verify-delivery-code")]
-    public Task<IActionResult> VerifyIFoodDeliveryCode(long ifoodOrderId, [FromBody] VerifyIFoodDeliveryCodeRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(VerifyIFoodDeliveryCode), async () =>
+    [HttpPost("Ifood/logistics/order/{IfoodOrderId:long}/verify-delivery-code")]
+    public Task<IActionResult> VerifyIfoodDeliveryCode(long IfoodOrderId, [FromBody] VerifyIfoodDeliveryCodeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(VerifyIfoodDeliveryCode), async () =>
         {
-            var result = await Mediator.Send(new VerifyIFoodDeliveryCodeCommand(ifoodOrderId, request.Code), ct);
+            var result = await Mediator.Send(new VerifyIfoodDeliveryCodeCommand(IfoodOrderId, request.Code), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(new { codeMatched = result.Value });
         });
 
     // Fase 9c — fecha o gap restante do módulo Logistics da auditoria de 2026-08-20: detalhes da
-    // entrega direto no iFood (resposta sem schema documentado — ver IFoodLogisticsOrderDetailsResult).
-    [HttpGet("ifood/logistics/order/{ifoodOrderId:long}/details")]
-    public Task<IActionResult> GetIFoodLogisticsOrderDetails(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodLogisticsOrderDetails), async () =>
+    // entrega direto no Ifood (resposta sem schema documentado — ver IfoodLogisticsOrderDetailsResult).
+    [HttpGet("Ifood/logistics/order/{IfoodOrderId:long}/details")]
+    public Task<IActionResult> GetIfoodLogisticsOrderDetails(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodLogisticsOrderDetails), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodLogisticsOrderDetailsQuery(ifoodOrderId), ct);
+            var result = await Mediator.Send(new GetIfoodLogisticsOrderDetailsQuery(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Shipping (fase 8, módulo Shipping) — entrega, via malha de entregadores do iFood, de
-    // pedidos que NÃO vieram do iFood (telefone, WhatsApp, site próprio). Tudo sob demanda: a
+    // Shipping (fase 8, módulo Shipping) — entrega, via malha de entregadores do Ifood, de
+    // pedidos que NÃO vieram do Ifood (telefone, WhatsApp, site próprio). Tudo sob demanda: a
     // equipe cota o endereço, confirma o pedido de motorista, acompanha o rastreamento e cancela
-    // se preciso. Também cobre a variante "pedido já existente no iFood" (quote/requestDriver/
-    // cancelRequestDriver sobre um ifoodOrderId), que fecha uma lacuna do módulo Order.
-    [HttpGet("ifood/shipping/branch/{branchId:long}")]
-    public Task<IActionResult> GetIFoodShippingDeliveries(long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodShippingDeliveries), async () =>
+    // se preciso. Também cobre a variante "pedido já existente no Ifood" (quote/requestDriver/
+    // cancelRequestDriver sobre um IfoodOrderId), que fecha uma lacuna do módulo Order.
+    [HttpGet("Ifood/shipping/branch/{branchId:long}")]
+    public Task<IActionResult> GetIfoodShippingDeliveries(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodShippingDeliveries), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodShippingDeliveriesQuery(branchId), ct);
+            var result = await Mediator.Send(new GetIfoodShippingDeliveriesQuery(branchId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/shipping/branch/{branchId:long}/quote")]
-    public Task<IActionResult> GetIFoodShippingQuote(long branchId, [FromQuery] double latitude, [FromQuery] double longitude, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodShippingQuote), async () =>
+    [HttpGet("Ifood/shipping/branch/{branchId:long}/quote")]
+    public Task<IActionResult> GetIfoodShippingQuote(long branchId, [FromQuery] double latitude, [FromQuery] double longitude, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodShippingQuote), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodShippingQuoteQuery(branchId, latitude, longitude), ct);
+            var result = await Mediator.Send(new GetIfoodShippingQuoteQuery(branchId, latitude, longitude), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/shipping")]
-    public Task<IActionResult> RequestIFoodShippingDriver([FromBody] RequestIFoodShippingDriverCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIFoodShippingDriver), async () =>
+    [HttpPost("Ifood/shipping")]
+    public Task<IActionResult> RequestIfoodShippingDriver([FromBody] RequestIfoodShippingDriverCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIfoodShippingDriver), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : Ok(new { id = result.Value });
         });
 
-    [HttpGet("ifood/shipping/{id:long}/tracking")]
-    public Task<IActionResult> GetIFoodShippingTracking(long id, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodShippingTracking), async () =>
+    [HttpGet("Ifood/shipping/{id:long}/tracking")]
+    public Task<IActionResult> GetIfoodShippingTracking(long id, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodShippingTracking), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodShippingTrackingQuery(id), ct);
+            var result = await Mediator.Send(new GetIfoodShippingTrackingQuery(id), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/shipping/{id:long}/cancellation-reasons")]
-    public Task<IActionResult> GetIFoodShippingCancellationReasons(long id, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodShippingCancellationReasons), async () =>
+    [HttpGet("Ifood/shipping/{id:long}/cancellation-reasons")]
+    public Task<IActionResult> GetIfoodShippingCancellationReasons(long id, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodShippingCancellationReasons), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodShippingCancellationReasonsQuery(id), ct);
+            var result = await Mediator.Send(new GetIfoodShippingCancellationReasonsQuery(id), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/shipping/{id:long}/cancel")]
-    public Task<IActionResult> CancelIFoodShippingDelivery(long id, [FromBody] CancelIFoodShippingDeliveryRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CancelIFoodShippingDelivery), async () =>
+    [HttpPost("Ifood/shipping/{id:long}/cancel")]
+    public Task<IActionResult> CancelIfoodShippingDelivery(long id, [FromBody] CancelIfoodShippingDeliveryRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CancelIfoodShippingDelivery), async () =>
         {
-            var result = await Mediator.Send(new CancelIFoodShippingDeliveryCommand(id, request.Reason, request.CancellationCode), ct);
+            var result = await Mediator.Send(new CancelIfoodShippingDeliveryCommand(id, request.Reason, request.CancellationCode), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpGet("ifood/shipping/{id:long}/safe-delivery-score")]
-    public Task<IActionResult> GetIFoodSafeDeliveryScore(long id, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodSafeDeliveryScore), async () =>
+    [HttpGet("Ifood/shipping/{id:long}/safe-delivery-score")]
+    public Task<IActionResult> GetIfoodSafeDeliveryScore(long id, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodSafeDeliveryScore), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodSafeDeliveryScoreQuery(id), ct);
+            var result = await Mediator.Send(new GetIfoodSafeDeliveryScoreQuery(id), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Variante "pedido já existente no iFood" (mesmo módulo Shipping, atua sobre um ifoodOrderId).
-    [HttpGet("ifood/shipping/order/{ifoodOrderId:long}/quote")]
-    public Task<IActionResult> GetIFoodOrderShippingQuote(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodOrderShippingQuote), async () =>
+    // Variante "pedido já existente no Ifood" (mesmo módulo Shipping, atua sobre um IfoodOrderId).
+    [HttpGet("Ifood/shipping/order/{IfoodOrderId:long}/quote")]
+    public Task<IActionResult> GetIfoodOrderShippingQuote(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodOrderShippingQuote), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodOrderShippingQuoteQuery(ifoodOrderId), ct);
+            var result = await Mediator.Send(new GetIfoodOrderShippingQuoteQuery(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/shipping/order/{ifoodOrderId:long}/request-driver")]
-    public Task<IActionResult> RequestIFoodOrderShippingDriver(long ifoodOrderId, [FromBody] RequestIFoodOrderShippingDriverRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIFoodOrderShippingDriver), async () =>
+    [HttpPost("Ifood/shipping/order/{IfoodOrderId:long}/request-driver")]
+    public Task<IActionResult> RequestIfoodOrderShippingDriver(long IfoodOrderId, [FromBody] RequestIfoodOrderShippingDriverRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIfoodOrderShippingDriver), async () =>
         {
-            var result = await Mediator.Send(new RequestIFoodOrderShippingDriverCommand(ifoodOrderId, request.QuoteId), ct);
+            var result = await Mediator.Send(new RequestIfoodOrderShippingDriverCommand(IfoodOrderId, request.QuoteId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/shipping/order/{ifoodOrderId:long}/cancel-request-driver")]
-    public Task<IActionResult> CancelIFoodOrderShippingDriver(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CancelIFoodOrderShippingDriver), async () =>
+    [HttpPost("Ifood/shipping/order/{IfoodOrderId:long}/cancel-request-driver")]
+    public Task<IActionResult> CancelIfoodOrderShippingDriver(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(CancelIfoodOrderShippingDriver), async () =>
         {
-            var result = await Mediator.Send(new CancelIFoodOrderShippingDriverCommand(ifoodOrderId), ct);
+            var result = await Mediator.Send(new CancelIfoodOrderShippingDriverCommand(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
     // Fase 11 — fecha os últimos 4 endpoints da auditoria (troca de endereço de entrega em
-    // andamento, mesma variante "pedido já existente no iFood" acima).
-    [HttpPost("ifood/shipping/order/{ifoodOrderId:long}/delivery-address-change")]
-    public Task<IActionResult> RequestIFoodDeliveryAddressChange(long ifoodOrderId, [FromBody] RequestIFoodDeliveryAddressChangeRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIFoodDeliveryAddressChange), async () =>
+    // andamento, mesma variante "pedido já existente no Ifood" acima).
+    [HttpPost("Ifood/shipping/order/{IfoodOrderId:long}/delivery-address-change")]
+    public Task<IActionResult> RequestIfoodDeliveryAddressChange(long IfoodOrderId, [FromBody] RequestIfoodDeliveryAddressChangeRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIfoodDeliveryAddressChange), async () =>
         {
             var result = await Mediator.Send(new RequestDeliveryAddressChangeCommand(
-                ifoodOrderId, request.StreetNumber, request.StreetName, request.Complement, request.Neighborhood,
+                IfoodOrderId, request.StreetNumber, request.StreetName, request.Complement, request.Neighborhood,
                 request.City, request.State, request.Country, request.Reference, request.Latitude, request.Longitude), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/shipping/order/{ifoodOrderId:long}/delivery-address-change/accept")]
-    public Task<IActionResult> AcceptIFoodDeliveryAddressChange(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(AcceptIFoodDeliveryAddressChange), async () =>
+    [HttpPost("Ifood/shipping/order/{IfoodOrderId:long}/delivery-address-change/accept")]
+    public Task<IActionResult> AcceptIfoodDeliveryAddressChange(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(AcceptIfoodDeliveryAddressChange), async () =>
         {
-            var result = await Mediator.Send(new AcceptDeliveryAddressChangeCommand(ifoodOrderId), ct);
+            var result = await Mediator.Send(new AcceptDeliveryAddressChangeCommand(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/shipping/order/{ifoodOrderId:long}/delivery-address-change/deny")]
-    public Task<IActionResult> DenyIFoodDeliveryAddressChange(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DenyIFoodDeliveryAddressChange), async () =>
+    [HttpPost("Ifood/shipping/order/{IfoodOrderId:long}/delivery-address-change/deny")]
+    public Task<IActionResult> DenyIfoodDeliveryAddressChange(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(DenyIfoodDeliveryAddressChange), async () =>
         {
-            var result = await Mediator.Send(new DenyDeliveryAddressChangeCommand(ifoodOrderId), ct);
+            var result = await Mediator.Send(new DenyDeliveryAddressChangeCommand(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [HttpPost("ifood/shipping/order/{ifoodOrderId:long}/user-confirm-address")]
-    public Task<IActionResult> ConfirmIFoodUserAddress(long ifoodOrderId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ConfirmIFoodUserAddress), async () =>
+    [HttpPost("Ifood/shipping/order/{IfoodOrderId:long}/user-confirm-address")]
+    public Task<IActionResult> ConfirmIfoodUserAddress(long IfoodOrderId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ConfirmIfoodUserAddress), async () =>
         {
-            var result = await Mediator.Send(new ConfirmUserAddressCommand(ifoodOrderId), ct);
+            var result = await Mediator.Send(new ConfirmUserAddressCommand(IfoodOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
     // Avaliações (fase 9, módulo Review v1.0) — sem persistência local, sempre lido/escrito
-    // direto no iFood (ver comentário em IIFoodReviewClient).
-    [HttpGet("ifood/reviews/branch/{branchId:long}")]
-    public Task<IActionResult> GetIFoodReviews(
+    // direto no Ifood (ver comentário em IIfoodReviewClient).
+    [HttpGet("Ifood/reviews/branch/{branchId:long}")]
+    public Task<IActionResult> GetIfoodReviews(
         long branchId, [FromQuery] int page, [FromQuery] int pageSize, [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo, [FromQuery] string? sort, [FromQuery] string? sortBy, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodReviews), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodReviews), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodReviewsQuery(
+            var result = await Mediator.Send(new GetIfoodReviewsQuery(
                 branchId, page <= 0 ? 1 : page, pageSize <= 0 ? 10 : pageSize, dateFrom, dateTo,
                 string.IsNullOrWhiteSpace(sort) ? "DESC" : sort, string.IsNullOrWhiteSpace(sortBy) ? "CREATED_AT" : sortBy), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/reviews/branch/{branchId:long}/{reviewId}")]
-    public Task<IActionResult> GetIFoodReviewById(long branchId, string reviewId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodReviewById), async () =>
+    [HttpGet("Ifood/reviews/branch/{branchId:long}/{reviewId}")]
+    public Task<IActionResult> GetIfoodReviewById(long branchId, string reviewId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodReviewById), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodReviewByIdQuery(branchId, reviewId), ct);
+            var result = await Mediator.Send(new GetIfoodReviewByIdQuery(branchId, reviewId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/reviews/branch/{branchId:long}/{reviewId}/reply")]
-    public Task<IActionResult> ReplyIFoodReview(long branchId, string reviewId, [FromBody] ReplyIFoodReviewRequest request, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ReplyIFoodReview), async () =>
+    [HttpPost("Ifood/reviews/branch/{branchId:long}/{reviewId}/reply")]
+    public Task<IActionResult> ReplyIfoodReview(long branchId, string reviewId, [FromBody] ReplyIfoodReviewRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(ReplyIfoodReview), async () =>
         {
-            var result = await Mediator.Send(new ReplyIFoodReviewCommand(branchId, reviewId, request.Text), ct);
+            var result = await Mediator.Send(new ReplyIfoodReviewCommand(branchId, reviewId, request.Text), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpGet("ifood/reviews/branch/{branchId:long}/summary")]
-    public Task<IActionResult> GetIFoodReviewsSummary(long branchId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodReviewsSummary), async () =>
+    [HttpGet("Ifood/reviews/branch/{branchId:long}/summary")]
+    public Task<IActionResult> GetIfoodReviewsSummary(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodReviewsSummary), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodReviewsSummaryQuery(branchId), ct);
+            var result = await Mediator.Send(new GetIfoodReviewsSummaryQuery(branchId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
     // Indicadores (fase 9, módulo Analytics v1.0) — 1 endpoint (KPIs de pedidos); ver ressalva
-    // sobre o payload padrão usado em IIFoodAnalyticsClient.
-    [HttpGet("ifood/analytics/branch/{branchId:long}/order-kpis")]
-    public Task<IActionResult> GetIFoodOrderKpis(
+    // sobre o payload padrão usado em IIfoodAnalyticsClient.
+    [HttpGet("Ifood/analytics/branch/{branchId:long}/order-kpis")]
+    public Task<IActionResult> GetIfoodOrderKpis(
         long branchId, [FromQuery] DateTime? periodStart, [FromQuery] DateTime? periodEnd, [FromQuery] int page, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodOrderKpis), async () =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodOrderKpis), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodOrderKpisQuery(branchId, periodStart, periodEnd, page), ct);
+            var result = await Mediator.Send(new GetIfoodOrderKpisQuery(branchId, periodStart, periodEnd, page), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Alertas operacionais do iFood (fase 13) — hoje só populados pelo
-    // IFoodMerchantStatusWatcherBackgroundService (loja indisponível/disponível), guardados em
-    // memória (IIFoodOperationalAlertStore). GET traz os não reconhecidos da empresa pra tela
+    // Alertas operacionais do Ifood (fase 13) — hoje só populados pelo
+    // IfoodMerchantStatusWatcherBackgroundService (loja indisponível/disponível), guardados em
+    // memória (IIfoodOperationalAlertStore). GET traz os não reconhecidos da empresa pra tela
     // mostrar em um sino no topo; ACK remove da lista (idempotente — reconhecer de novo não é erro).
-    [HttpGet("ifood/alerts/company/{companyId:long}")]
-    public Task<IActionResult> GetIFoodOperationalAlerts(long companyId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIFoodOperationalAlerts), async () =>
+    [HttpGet("Ifood/alerts/company/{companyId:long}")]
+    public Task<IActionResult> GetIfoodOperationalAlerts(long companyId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodOperationalAlerts), async () =>
         {
-            var result = await Mediator.Send(new GetIFoodOperationalAlertsQuery(companyId), ct);
+            var result = await Mediator.Send(new GetIfoodOperationalAlertsQuery(companyId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [HttpPost("ifood/alerts/ack")]
-    public Task<IActionResult> AcknowledgeIFoodOperationalAlert([FromBody] AcknowledgeIFoodOperationalAlertCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(AcknowledgeIFoodOperationalAlert), async () =>
+    [HttpPost("Ifood/alerts/ack")]
+    public Task<IActionResult> AcknowledgeIfoodOperationalAlert([FromBody] AcknowledgeIfoodOperationalAlertCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(AcknowledgeIfoodOperationalAlert), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
@@ -936,80 +936,80 @@ public sealed class IntegrationsController(
 
 // Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor para
 // evitar under-posting.
-public sealed record SyncIFoodCatalogRequest([property: JsonRequired] long CompanyId);
+public sealed record SyncIfoodCatalogRequest([property: JsonRequired] long CompanyId);
 
-public sealed record CancelIFoodOrderRequest(string ReasonCode);
+public sealed record CancelIfoodOrderRequest(string ReasonCode);
 
-public sealed record ValidateIFoodPickupCodeRequest(string Code);
+public sealed record ValidateIfoodPickupCodeRequest(string Code);
 
-public sealed record IFoodDisputeActionRequest([property: JsonRequired] long BranchId);
+public sealed record IfoodDisputeActionRequest([property: JsonRequired] long BranchId);
 
-public sealed record RejectIFoodDisputeRequest([property: JsonRequired] long BranchId, string Reason);
+public sealed record RejectIfoodDisputeRequest([property: JsonRequired] long BranchId, string Reason);
 
-public sealed record RequestIFoodDisputeAlternativeRequest(
+public sealed record RequestIfoodDisputeAlternativeRequest(
     [property: JsonRequired] long BranchId, string AlternativeType, decimal? Amount, string? Currency);
 
-public sealed record VerifyIFoodOrderDeliveryCodeRequest(string Code);
+public sealed record VerifyIfoodOrderDeliveryCodeRequest(string Code);
 
-public sealed record SyncIFoodFinancialRequest([property: JsonRequired] long CompanyId);
+public sealed record SyncIfoodFinancialRequest([property: JsonRequired] long CompanyId);
 
-public sealed record AssignIFoodDriverRequest(string DriverName, string DriverPhone, string DriverVehicleType);
+public sealed record AssignIfoodDriverRequest(string DriverName, string DriverPhone, string DriverVehicleType);
 
-public sealed record VerifyIFoodDeliveryCodeRequest(string Code);
+public sealed record VerifyIfoodDeliveryCodeRequest(string Code);
 
-public sealed record CancelIFoodShippingDeliveryRequest(string Reason, [property: JsonRequired] int CancellationCode);
+public sealed record CancelIfoodShippingDeliveryRequest(string Reason, [property: JsonRequired] int CancellationCode);
 
-public sealed record RequestIFoodOrderShippingDriverRequest(string QuoteId);
+public sealed record RequestIfoodOrderShippingDriverRequest(string QuoteId);
 
-// Fase 11 — payload do request de troca de endereço de entrega (ver IFoodShippingDeliveryAddressChangePayload).
-public sealed record RequestIFoodDeliveryAddressChangeRequest(
+// Fase 11 — payload do request de troca de endereço de entrega (ver IfoodShippingDeliveryAddressChangePayload).
+public sealed record RequestIfoodDeliveryAddressChangeRequest(
     string StreetNumber, string StreetName, string? Complement, string Neighborhood, string City,
     string State, string? Country, string? Reference, double? Latitude, double? Longitude);
 
-public sealed record RequestIFoodReconciliationOnDemandRequest(string Competence);
+public sealed record RequestIfoodReconciliationOnDemandRequest(string Competence);
 
 // Fase 10 — Catalog (ver seção correspondente em IntegrationsController acima).
 
-public sealed record CreateIFoodCategoryRequest(string Name);
+public sealed record CreateIfoodCategoryRequest(string Name);
 
-public sealed record EditIFoodCategoryRequest(string? Name, string? ExternalCode, string? Status, int? Index);
+public sealed record EditIfoodCategoryRequest(string? Name, string? ExternalCode, string? Status, int? Index);
 
-public sealed record CreateIFoodProductRequest(
+public sealed record CreateIfoodProductRequest(
     string? Id, string Name, string? Description, string? AdditionalInformation, string? ExternalCode,
-    string? Ean, string? Image, IReadOnlyCollection<IFoodProductShiftInput>? Shifts);
+    string? Ean, string? Image, IReadOnlyCollection<IfoodProductShiftInput>? Shifts);
 
-public sealed record EditIFoodProductRequest(
+public sealed record EditIfoodProductRequest(
     string Name, string? Description, string? AdditionalInformation, string? ExternalCode,
-    string? Ean, string? Image, IReadOnlyCollection<IFoodProductShiftInput>? Shifts);
+    string? Ean, string? Image, IReadOnlyCollection<IfoodProductShiftInput>? Shifts);
 
-public sealed record BatchUpdateIFoodProductStatusesRequest(IReadOnlyCollection<IFoodBatchProductStatusInput> Items, string? CatalogContext);
+public sealed record BatchUpdateIfoodProductStatusesRequest(IReadOnlyCollection<IfoodBatchProductStatusInput> Items, string? CatalogContext);
 
-public sealed record BatchUpdateIFoodProductPricesRequest(IReadOnlyCollection<IFoodBatchProductPriceInput> Items, string? CatalogContext);
+public sealed record BatchUpdateIfoodProductPricesRequest(IReadOnlyCollection<IfoodBatchProductPriceInput> Items, string? CatalogContext);
 
-public sealed record SetIFoodItemPriceRequest(
-    [property: JsonRequired] decimal Value, decimal? OriginalValue, IReadOnlyCollection<IFoodItemPriceByCatalogInput>? PriceByCatalog);
+public sealed record SetIfoodItemPriceRequest(
+    [property: JsonRequired] decimal Value, decimal? OriginalValue, IReadOnlyCollection<IfoodItemPriceByCatalogInput>? PriceByCatalog);
 
-public sealed record SetIFoodItemExternalCodeRequest(string? ExternalCode, IReadOnlyCollection<IFoodItemExternalCodeByCatalogInput>? ByCatalog);
+public sealed record SetIfoodItemExternalCodeRequest(string? ExternalCode, IReadOnlyCollection<IfoodItemExternalCodeByCatalogInput>? ByCatalog);
 
-public sealed record UpdateIFoodOptionGroupRequest(string Name);
+public sealed record UpdateIfoodOptionGroupRequest(string Name);
 
-public sealed record UpdateIFoodOptionGroupStatusRequest([property: JsonRequired] bool Available);
+public sealed record UpdateIfoodOptionGroupStatusRequest([property: JsonRequired] bool Available);
 
-public sealed record SetIFoodOptionPriceRequest(
+public sealed record SetIfoodOptionPriceRequest(
     [property: JsonRequired] decimal Value, decimal? OriginalValue, string? ParentCustomizationOptionId);
 
-public sealed record SetIFoodOptionExternalCodeRequest(string ExternalCode, string? ParentCustomizationOptionId);
+public sealed record SetIfoodOptionExternalCodeRequest(string ExternalCode, string? ParentCustomizationOptionId);
 
-public sealed record SetIFoodOptionStatusRequest([property: JsonRequired] bool Available, string? ParentCustomizationOptionId);
+public sealed record SetIfoodOptionStatusRequest([property: JsonRequired] bool Available, string? ParentCustomizationOptionId);
 
-public sealed record DeleteIFoodInventoryBatchRequest(IReadOnlyCollection<Guid> ProductIds);
+public sealed record DeleteIfoodInventoryBatchRequest(IReadOnlyCollection<Guid> ProductIds);
 
-public sealed record UpgradeIFoodCatalogVersionRequest(bool? CleanMigration);
+public sealed record UpgradeIfoodCatalogVersionRequest(bool? CleanMigration);
 
-public sealed record UploadIFoodImageRequest(string JsonBody);
+public sealed record UploadIfoodImageRequest(string JsonBody);
 
-public sealed record InvokeIFoodCatalogV1OperationRequest(
-    [property: JsonRequired] IFoodCatalogV1Operation Operation,
+public sealed record InvokeIfoodCatalogV1OperationRequest(
+    [property: JsonRequired] IfoodCatalogV1Operation Operation,
     Dictionary<string, string>? RouteParams, Dictionary<string, string>? QueryParams, string? JsonBody);
 
-public sealed record ReplyIFoodReviewRequest(string Text);
+public sealed record ReplyIfoodReviewRequest(string Text);

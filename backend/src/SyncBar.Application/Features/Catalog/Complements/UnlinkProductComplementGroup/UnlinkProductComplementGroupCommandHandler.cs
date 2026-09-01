@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -9,13 +9,13 @@ internal sealed class UnlinkProductComplementGroupCommandHandler : BaseCommandHa
 {
     private readonly IProductComplementGroupRepository _productComplementGroupRepository;
     private readonly IProductRepository _productRepository;
-    private readonly IIFoodCatalogSyncTrigger _catalogSyncTrigger;
+    private readonly IIfoodCatalogSyncTrigger _catalogSyncTrigger;
     private readonly IUnitOfWork _unitOfWork;
 
     public UnlinkProductComplementGroupCommandHandler(
         IProductComplementGroupRepository productComplementGroupRepository,
         IProductRepository productRepository,
-        IIFoodCatalogSyncTrigger catalogSyncTrigger,
+        IIfoodCatalogSyncTrigger catalogSyncTrigger,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
         : base(logRepository, unitOfWork)

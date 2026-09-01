@@ -1,21 +1,21 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using SyncBar.Application.Abstractions.Integrations.IFood;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
 
-namespace SyncBar.Infrastructure.Integrations.IFood;
+namespace SyncBar.Infrastructure.Integrations.Ifood;
 
 /// <summary>
-/// Cliente HTTP real do módulo Analytics do iFood (Fase 9) — analytics/v1.0, 1 endpoint (Search
-/// order metrics KPIs). Ver comentário completo em IIFoodAnalyticsClient sobre o payload padrão
+/// Cliente HTTP real do módulo Analytics do Ifood (Fase 9) — analytics/v1.0, 1 endpoint (Search
+/// order metrics KPIs). Ver comentário completo em IIfoodAnalyticsClient sobre o payload padrão
 /// usado (o DSL real de filtro/agregação é enorme e não tem os valores válidos documentados
 /// campo-a-campo na coleção Postman oficial).
 /// </summary>
-internal sealed class IFoodAnalyticsClient(HttpClient httpClient) : IIFoodAnalyticsClient
+internal sealed class IfoodAnalyticsClient(HttpClient httpClient) : IIfoodAnalyticsClient
 {
-    private const string BaseUrl = "https://merchant-api.ifood.com.br/analytics/v1.0/merchants";
+    private const string BaseUrl = "https://merchant-api.Ifood.com.br/analytics/v1.0/merchants";
 
-    public async Task<IFoodOrderKpisResultDto> GetOrderKpisAsync(
+    public async Task<IfoodOrderKpisResultDto> GetOrderKpisAsync(
         string accessToken, string merchantId, DateTime periodStart, DateTime periodEnd, int page, int size,
         CancellationToken cancellationToken = default)
     {
@@ -56,7 +56,7 @@ internal sealed class IFoodAnalyticsClient(HttpClient httpClient) : IIFoodAnalyt
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
-            return new IFoodOrderKpisResultDto(page, []);
+            return new IfoodOrderKpisResultDto(page, []);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
@@ -73,6 +73,6 @@ internal sealed class IFoodAnalyticsClient(HttpClient httpClient) : IIFoodAnalyt
             ? cpv
             : page;
 
-        return new IFoodOrderKpisResultDto(currentPage, buckets);
+        return new IfoodOrderKpisResultDto(currentPage, buckets);
     }
 }

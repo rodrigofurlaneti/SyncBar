@@ -5,6 +5,11 @@ namespace SyncBar.Domain.Entities;
 
 public sealed class CustomerOrder : AggregateRoot
 {
+    private const string NotOpenErrorCode = "CustomerOrder.NotOpen";
+    private const string OrderNotOpenMessage = "Order is not open.";
+    private const string ItemNotFoundErrorCode = "CustomerOrder.ItemNotFound";
+    private const string ItemNotFoundMessage = "Order item not found.";
+
     private readonly List<OrderItem> _items = [];
     public long BranchId { get; private set; }
     public long? DiningTableId { get; private set; }
@@ -73,10 +78,10 @@ public sealed class CustomerOrder : AggregateRoot
     public Result ForceCancelItemForTransfer(long orderItemId, DateTime Now, long? actorEmployeeId = null)
     {
         if (!IsOpen())
-            return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
+            return Result.Failure(new Error(NotOpenErrorCode, OrderNotOpenMessage));
         var item = _items.FirstOrDefault(i => i.Id == orderItemId && i.IsActive);
         if (item is null)
-            return Result.Failure(new Error("CustomerOrder.ItemNotFound", "Order item not found."));
+            return Result.Failure(new Error(ItemNotFoundErrorCode, ItemNotFoundMessage));
         var result = item.ForceCancelForTransfer(actorEmployeeId, Now);
         if (result.IsFailure)
             return result;
@@ -109,7 +114,7 @@ public sealed class CustomerOrder : AggregateRoot
     public Result AddItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now)
     {
         if (!IsOpen())
-            return Result.Failure(new Error("CustomerOrder.NotOpen", "Items can only be added to an open order."));
+            return Result.Failure(new Error(NotOpenErrorCode, "Items can only be added to an open order."));
         if (quantity <= 0)
             return Result.Failure(new Error("CustomerOrder.InvalidQuantity", "Quantity must be greater than zero."));
         if (CreditLimitAmount.HasValue)
@@ -134,7 +139,7 @@ public sealed class CustomerOrder : AggregateRoot
         long pizzaSizeId, long? pizzaCrustId, long? pizzaEdgeId, IReadOnlyCollection<long> pizzaFlavorIds)
     {
         if (!IsOpen())
-            return Result.Failure(new Error("CustomerOrder.NotOpen", "Items can only be added to an open order."));
+            return Result.Failure(new Error(NotOpenErrorCode, "Items can only be added to an open order."));
         if (quantity <= 0)
             return Result.Failure(new Error("CustomerOrder.InvalidQuantity", "Quantity must be greater than zero."));
         if (CreditLimitAmount.HasValue)
@@ -159,10 +164,10 @@ public sealed class CustomerOrder : AggregateRoot
     public Result AddComplement(long orderItemId, long complementId, decimal unitPriceCharged, DateTime Now)
     {
         if (!IsOpen())
-            return Result.Failure(new Error("CustomerOrder.NotOpen", "Items can only be changed on an open order."));
+            return Result.Failure(new Error(NotOpenErrorCode, "Items can only be changed on an open order."));
         var item = _items.FirstOrDefault(i => i.Id == orderItemId && i.IsActive);
         if (item is null)
-            return Result.Failure(new Error("CustomerOrder.ItemNotFound", "Order item not found."));
+            return Result.Failure(new Error(ItemNotFoundErrorCode, ItemNotFoundMessage));
         var result = item.AddComplement(complementId, unitPriceCharged, Now);
         if (result.IsFailure)
             return result;
@@ -174,10 +179,10 @@ public sealed class CustomerOrder : AggregateRoot
     public Result RemoveComplement(long orderItemId, long orderItemComplementId, DateTime Now)
     {
         if (!IsOpen())
-            return Result.Failure(new Error("CustomerOrder.NotOpen", "Items can only be changed on an open order."));
+            return Result.Failure(new Error(NotOpenErrorCode, "Items can only be changed on an open order."));
         var item = _items.FirstOrDefault(i => i.Id == orderItemId && i.IsActive);
         if (item is null)
-            return Result.Failure(new Error("CustomerOrder.ItemNotFound", "Order item not found."));
+            return Result.Failure(new Error(ItemNotFoundErrorCode, ItemNotFoundMessage));
         var result = item.RemoveComplement(orderItemComplementId, Now);
         if (result.IsFailure)
             return result;
@@ -188,10 +193,10 @@ public sealed class CustomerOrder : AggregateRoot
     public Result UpdateItemStatus(long orderItemId, long orderItemStatusId, DateTime Now, long? actorEmployeeId = null)
     {
         if (!IsOpen())
-            return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
+            return Result.Failure(new Error(NotOpenErrorCode, OrderNotOpenMessage));
         var item = _items.FirstOrDefault(i => i.Id == orderItemId && i.IsActive);
         if (item is null)
-            return Result.Failure(new Error("CustomerOrder.ItemNotFound", "Order item not found."));
+            return Result.Failure(new Error(ItemNotFoundErrorCode, ItemNotFoundMessage));
         var result = item.UpdateStatus(orderItemStatusId, actorEmployeeId, Now);
         if (result.IsFailure)
             return result;
@@ -203,7 +208,7 @@ public sealed class CustomerOrder : AggregateRoot
     public Result ApplyDiscount(decimal discountAmount, DateTime Now)
     {
         if (!IsOpen())
-            return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
+            return Result.Failure(new Error(NotOpenErrorCode, OrderNotOpenMessage));
         if (discountAmount < 0)
             return Result.Failure(new Error("CustomerOrder.InvalidDiscount", "Discount cannot be negative."));
         if (discountAmount > SubtotalAmount)
@@ -217,8 +222,8 @@ public sealed class CustomerOrder : AggregateRoot
     public Result Close(decimal serviceFeeRate, DateTime Now)
     {
         if (!IsOpen())
-            return Result.Failure(new Error("CustomerOrder.NotOpen", "Order is not open."));
-        if (_items.Count(i => i.IsActive && i.OrderItemStatusId != OrderItemStatusIds.Cancelado) == 0)
+            return Result.Failure(new Error(NotOpenErrorCode, OrderNotOpenMessage));
+        if (!_items.Any(i => i.IsActive && i.OrderItemStatusId != OrderItemStatusIds.Cancelado))
             return Result.Failure(new Error("CustomerOrder.NoItems", "Order has no items to close."));
         if (serviceFeeRate < 0)
             return Result.Failure(new Error("CustomerOrder.InvalidServiceFee", "Service fee rate cannot be negative."));

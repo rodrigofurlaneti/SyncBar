@@ -1,41 +1,41 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Review;
+namespace SyncBar.Application.Features.Integrations.Ifood.Review;
 
-internal sealed class GetIFoodReviewsSummaryQueryHandler(
+internal sealed class GetIfoodReviewsSummaryQueryHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodReviewClient reviewClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodReviewClient reviewClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodReviewsSummaryQuery, IFoodReviewSummaryResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodReviewsSummaryQuery, IfoodReviewSummaryResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodReviewSummaryResponse>> Handle(
-        GetIFoodReviewsSummaryQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodReviewSummaryResponse>> Handle(
+        GetIfoodReviewsSummaryQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodReviewsSummaryQueryHandler),
+            nameof(GetIfoodReviewsSummaryQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodReviewSummaryResponse>(resolved.Error);
+                    return Result.Failure<IfoodReviewSummaryResponse>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
                 var summary = await reviewClient.GetSummaryAsync(token, merchantId, cancellationToken);
                 if (summary is null)
-                    return Result.Failure<IFoodReviewSummaryResponse>(new Error("IFoodReview.SummaryFailed", "Failed to fetch review summary from iFood."));
+                    return Result.Failure<IfoodReviewSummaryResponse>(new Error("IfoodReview.SummaryFailed", "Failed to fetch review summary from Ifood."));
 
-                return Result.Success(new IFoodReviewSummaryResponse(summary.Score, summary.TotalReviewsCount, summary.ValidReviewsCount));
+                return Result.Success(new IfoodReviewSummaryResponse(summary.Score, summary.TotalReviewsCount, summary.ValidReviewsCount));
             });
     }
 }

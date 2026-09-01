@@ -30,8 +30,8 @@ internal sealed class GetMenuQueryHandler(
                 var categoryMap = categories.ToDictionary(c => c.Id, c => c.Name);
 
                 var complementsByProduct = await MenuComplementsBuilder.BuildAsync(
-                    productIds, productComplementGroupRepository, complementGroupRepository, complementItemRepository, cancellationToken,
-                    productRepository);
+                    productIds, productComplementGroupRepository, complementGroupRepository, complementItemRepository,
+                    productRepository, cancellationToken);
 
                 IReadOnlyCollection<MenuItemResponse> response = products
                     .OrderBy(p => p.CategoryId).ThenBy(p => p.Name)

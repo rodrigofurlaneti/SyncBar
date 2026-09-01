@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json.Serialization;
 using SyncBar.Application.Features.Dining.Area.Create;
 using SyncBar.Application.Features.Dining.Area.GetByBranchId;
 using SyncBar.Application.Features.Dining.Area.GetById;
@@ -143,8 +144,8 @@ namespace SyncBar.API.Controllers
     }
 
     public sealed record UpdateDiningAreaRequest(string Name);
-    public sealed record AssignTableRequest(long DiningTableId);
-    public sealed record UpdateTableAssignmentRequest(long DiningAreaId, long DiningTableId);
-    public sealed record StartAssignmentRequest(long EmployeeId, DateTime StartAt);
-    public sealed record EndAssignmentRequest(DateTime EndAt);
+    public sealed record AssignTableRequest([property: JsonRequired] long DiningTableId);
+    public sealed record UpdateTableAssignmentRequest([property: JsonRequired] long DiningAreaId, [property: JsonRequired] long DiningTableId);
+    public sealed record StartAssignmentRequest([property: JsonRequired] long EmployeeId, [property: JsonRequired] DateTime StartAt);
+    public sealed record EndAssignmentRequest([property: JsonRequired] DateTime EndAt);
 }

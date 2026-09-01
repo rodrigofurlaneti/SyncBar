@@ -1,42 +1,42 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.OptionGroups;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.OptionGroups;
 
-internal sealed class ListIFoodOptionGroupsQueryHandler(
+internal sealed class ListIfoodOptionGroupsQueryHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodCatalogClient catalogClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodCatalogClient catalogClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<ListIFoodOptionGroupsQuery, IReadOnlyCollection<IFoodOptionGroupResponse>>(logRepository, unitOfWork)
+    : BaseQueryHandler<ListIfoodOptionGroupsQuery, IReadOnlyCollection<IfoodOptionGroupResponse>>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IReadOnlyCollection<IFoodOptionGroupResponse>>> Handle(
-        ListIFoodOptionGroupsQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IReadOnlyCollection<IfoodOptionGroupResponse>>> Handle(
+        ListIfoodOptionGroupsQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(ListIFoodOptionGroupsQueryHandler),
+            nameof(ListIfoodOptionGroupsQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IReadOnlyCollection<IFoodOptionGroupResponse>>(resolved.Error);
+                    return Result.Failure<IReadOnlyCollection<IfoodOptionGroupResponse>>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
                 var result = await catalogClient.ListOptionGroupsAsync(token, merchantId, request.IncludeOptions, request.CatalogContext, cancellationToken);
                 if (!result.Success)
-                    return Result.Failure<IReadOnlyCollection<IFoodOptionGroupResponse>>(new Error("IFoodCatalog.OptionGroupsFetchFailed", result.ErrorMessage ?? "Falha ao listar os grupos de opções no iFood."));
+                    return Result.Failure<IReadOnlyCollection<IfoodOptionGroupResponse>>(new Error("IfoodCatalog.OptionGroupsFetchFailed", result.ErrorMessage ?? "Falha ao listar os grupos de opções no Ifood."));
 
-                IReadOnlyCollection<IFoodOptionGroupResponse> responses = result.OptionGroups
-                    .Select(g => new IFoodOptionGroupResponse(g.Id, g.Name, g.ExternalCode, g.Status, g.Index))
+                IReadOnlyCollection<IfoodOptionGroupResponse> responses = result.OptionGroups
+                    .Select(g => new IfoodOptionGroupResponse(g.Id, g.Name, g.ExternalCode, g.Status, g.Index))
                     .ToList();
 
                 return Result.Success(responses);

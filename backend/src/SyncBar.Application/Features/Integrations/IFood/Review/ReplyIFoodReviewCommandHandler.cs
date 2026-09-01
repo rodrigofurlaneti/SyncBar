@@ -1,39 +1,39 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Review;
+namespace SyncBar.Application.Features.Integrations.Ifood.Review;
 
-internal sealed class ReplyIFoodReviewCommandHandler(
+internal sealed class ReplyIfoodReviewCommandHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodReviewClient reviewClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodReviewClient reviewClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseCommandHandler<ReplyIFoodReviewCommand, IFoodReviewReplyResponse>(logRepository, unitOfWork)
+    : BaseCommandHandler<ReplyIfoodReviewCommand, IfoodReviewReplyResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodReviewReplyResponse>> Handle(
-        ReplyIFoodReviewCommand request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodReviewReplyResponse>> Handle(
+        ReplyIfoodReviewCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(ReplyIFoodReviewCommandHandler),
+            nameof(ReplyIfoodReviewCommandHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
-                    return Result.Failure<IFoodReviewReplyResponse>(resolved.Error);
+                    return Result.Failure<IfoodReviewReplyResponse>(resolved.Error);
 
                 var (_, merchantId, token, _) = resolved.Value;
                 var result = await reviewClient.ReplyReviewAsync(token, merchantId, request.ReviewId, request.Text, cancellationToken);
 
-                return Result.Success(new IFoodReviewReplyResponse(result.CreatedAt, result.Text, result.ReviewId));
+                return Result.Success(new IfoodReviewReplyResponse(result.CreatedAt, result.Text, result.ReviewId));
             });
     }
 }

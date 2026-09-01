@@ -1,30 +1,30 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
-using SyncBar.Application.Features.Integrations.IFood.Merchant;
+using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.Admin;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.Admin;
 
-internal sealed class UpgradeIFoodCatalogVersionCommandHandler(
+internal sealed class UpgradeIfoodCatalogVersionCommandHandler(
     IBranchRepository branchRepository,
-    IIFoodTokenProvider tokenProvider,
-    IIFoodIntegrationSettingRepository settingRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodCatalogClient catalogClient,
+    IIfoodTokenProvider tokenProvider,
+    IIfoodIntegrationSettingRepository settingRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodCatalogClient catalogClient,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseCommandHandler<UpgradeIFoodCatalogVersionCommand>(logRepository, unitOfWork)
+    : BaseCommandHandler<UpgradeIfoodCatalogVersionCommand>(logRepository, unitOfWork)
 {
-    public override async Task<Result> Handle(UpgradeIFoodCatalogVersionCommand request, CancellationToken cancellationToken)
+    public override async Task<Result> Handle(UpgradeIfoodCatalogVersionCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(UpgradeIFoodCatalogVersionCommandHandler),
+            nameof(UpgradeIfoodCatalogVersionCommandHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var resolved = await IFoodMerchantResolution.ResolveAsync(
+                var resolved = await IfoodMerchantResolution.ResolveAsync(
                     request.BranchId, branchRepository, tokenProvider, settingRepository, mappingRepository, cancellationToken);
                 if (resolved.IsFailure)
                     return Result.Failure(resolved.Error);
@@ -32,7 +32,7 @@ internal sealed class UpgradeIFoodCatalogVersionCommandHandler(
                 var (_, merchantId, token, _) = resolved.Value;
                 var result = await catalogClient.UpgradeVersionAsync(token, merchantId, request.CleanMigration, cancellationToken);
                 if (!result.Success)
-                    return Result.Failure(new Error("IFoodCatalog.UpgradeVersionFailed", result.ErrorMessage ?? "Falha ao migrar o catálogo para a versão v2 no iFood."));
+                    return Result.Failure(new Error("IfoodCatalog.UpgradeVersionFailed", result.ErrorMessage ?? "Falha ao migrar o catálogo para a versão v2 no Ifood."));
 
                 return Result.Success();
             });

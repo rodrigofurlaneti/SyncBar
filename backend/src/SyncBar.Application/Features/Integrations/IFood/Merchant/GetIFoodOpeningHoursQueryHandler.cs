@@ -1,26 +1,26 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Merchant;
+namespace SyncBar.Application.Features.Integrations.Ifood.Merchant;
 
-// Leitura é só local (a cópia editável em IFoodOpeningHours) — não chama o iFood, mesma decisão
+// Leitura é só local (a cópia editável em IfoodOpeningHours) — não chama o Ifood, mesma decisão
 // registrada no doc de status (Fase 5): a tela edita a cópia local e sincroniza ao salvar, não
 // busca o estado remoto a cada carregamento de tela.
-internal sealed class GetIFoodOpeningHoursQueryHandler(
-    IIFoodOpeningHoursRepository openingHoursRepository,
-    IIFoodMerchantMappingRepository mappingRepository,
-    IIFoodIntegrationSettingRepository settingRepository,
+internal sealed class GetIfoodOpeningHoursQueryHandler(
+    IIfoodOpeningHoursRepository openingHoursRepository,
+    IIfoodMerchantMappingRepository mappingRepository,
+    IIfoodIntegrationSettingRepository settingRepository,
     IBranchRepository branchRepository,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetIFoodOpeningHoursQuery, IFoodOpeningHoursResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetIfoodOpeningHoursQuery, IfoodOpeningHoursResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<IFoodOpeningHoursResponse>> Handle(
-        GetIFoodOpeningHoursQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<IfoodOpeningHoursResponse>> Handle(
+        GetIfoodOpeningHoursQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetIFoodOpeningHoursQueryHandler),
+            nameof(GetIfoodOpeningHoursQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
@@ -33,11 +33,11 @@ internal sealed class GetIFoodOpeningHoursQueryHandler(
                 if (branch is not null)
                 {
                     var setting = await settingRepository.GetByCompanyAsync(branch.CompanyId, cancellationToken);
-                    hasCustomerId = !string.IsNullOrWhiteSpace(setting?.IFoodCustomerId);
+                    hasCustomerId = !string.IsNullOrWhiteSpace(setting?.IfoodCustomerId);
                 }
 
-                var response = new IFoodOpeningHoursResponse(
-                    shifts.Select(s => new IFoodOpeningHourShiftResponse(s.DayOfWeek, s.Start.ToString(@"hh\:mm"), s.DurationMinutes)).ToList(),
+                var response = new IfoodOpeningHoursResponse(
+                    shifts.Select(s => new IfoodOpeningHourShiftResponse(s.DayOfWeek, s.Start.ToString(@"hh\:mm"), s.DurationMinutes)).ToList(),
                     mapping?.PreparationTimeMinutes,
                     hasCustomerId);
 

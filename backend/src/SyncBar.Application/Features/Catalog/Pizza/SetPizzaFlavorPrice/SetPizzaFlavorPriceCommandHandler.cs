@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Integrations.IFood;
+﻿using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -9,7 +9,7 @@ internal sealed class SetPizzaFlavorPriceCommandHandler(
     IPizzaConfigurationRepository pizzaConfigurationRepository,
     IProductRepository productRepository,
     IPizzaFlavorRepository pizzaFlavorRepository,
-    IIFoodCatalogSyncTrigger catalogSyncTrigger,
+    IIfoodCatalogSyncTrigger catalogSyncTrigger,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
     : BaseCommandHandler<SetPizzaFlavorPriceCommand, long>(logRepository, unitOfWork)

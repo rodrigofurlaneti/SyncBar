@@ -1,10 +1,10 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Catalog.Categories;
+namespace SyncBar.Application.Features.Integrations.Ifood.Catalog.Categories;
 
-public sealed class DeleteIFoodCategoryCommandValidator : AbstractValidator<DeleteIFoodCategoryCommand>
+public sealed class DeleteIfoodCategoryCommandValidator : AbstractValidator<DeleteIfoodCategoryCommand>
 {
-    public DeleteIFoodCategoryCommandValidator()
+    public DeleteIfoodCategoryCommandValidator()
     {
         RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.CategoryId).NotEmpty();

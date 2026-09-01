@@ -1,14 +1,14 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 
-namespace SyncBar.Application.Features.Integrations.IFood.Shipping;
+namespace SyncBar.Application.Features.Integrations.Ifood.Shipping;
 
-public sealed record IFoodShippingItemInput(string Name, string? ExternalCode, int Quantity, decimal UnitPrice);
+public sealed record IfoodShippingItemInput(string Name, string? ExternalCode, int Quantity, decimal UnitPrice);
 
-// Pede um entregador do iFood pra um pedido que NÃO veio do iFood (telefone, WhatsApp, balcão) —
-// fase 8. QuoteId vem de GetIFoodShippingQuoteQuery (expira, então precisa ser obtido pouco antes
+// Pede um entregador do Ifood pra um pedido que NÃO veio do Ifood (telefone, WhatsApp, balcão) —
+// fase 8. QuoteId vem de GetIfoodShippingQuoteQuery (expira, então precisa ser obtido pouco antes
 // de chamar este comando). Itens são um resumo simplificado (nome/quantidade/preço) — sem a
-// árvore de opções/complementos do pedido original, ver ressalva em IFoodShippingDelivery.
-public sealed record RequestIFoodShippingDriverCommand(
+// árvore de opções/complementos do pedido original, ver ressalva em IfoodShippingDelivery.
+public sealed record RequestIfoodShippingDriverCommand(
     long BranchId,
     string? OrderReference,
     string CustomerName,
@@ -27,4 +27,4 @@ public sealed record RequestIFoodShippingDriverCommand(
     string? Reference,
     double? Latitude,
     double? Longitude,
-    IReadOnlyCollection<IFoodShippingItemInput> Items) : ICommand<long>;
+    IReadOnlyCollection<IfoodShippingItemInput> Items) : ICommand<long>;
