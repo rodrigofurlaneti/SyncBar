@@ -125,6 +125,9 @@ export interface TableResponse {
   tableStatusId: number;
   number: number;
   capacity: number | null;
+  isCameraInputEnabled: boolean;
+  isBarcodeEnabled: boolean;
+  isQrCodeEnabled: boolean;
 }
 
 export interface ApiProblem {
@@ -545,6 +548,12 @@ export interface ServiceFeeSettingResponse {
   enabled: boolean;
 }
 
+export interface TableReadingValidationSettingResponse {
+  isCameraInputEnabled: boolean;
+  isBarcodeEnabled: boolean;
+  isQrCodeEnabled: boolean;
+}
+
 export interface TopProductResponse {
   productId: number;
   productName: string;
@@ -683,6 +692,10 @@ export interface PublicMenuResponse {
   branchName: string;
   tableNumber: number;
   items: MenuItemResponse[];
+  isQrViewEnabled: boolean;
+  isCameraInputEnabled: boolean;
+  isBarcodeEnabled: boolean;
+  isQrCodeEnabled: boolean;
 }
 
 export interface BillShareResponse {

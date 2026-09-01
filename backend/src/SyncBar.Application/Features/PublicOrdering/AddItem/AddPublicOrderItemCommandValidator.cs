@@ -10,5 +10,6 @@ public sealed class AddPublicOrderItemCommandValidator : AbstractValidator<AddPu
         RuleFor(x => x.ProductId).GreaterThan(0);
         RuleFor(x => x.Quantity).GreaterThan(0);
         RuleFor(x => x.Notes).MaximumLength(300);
+        RuleFor(x => x.ComandaCode).MaximumLength(50);
     }
 }

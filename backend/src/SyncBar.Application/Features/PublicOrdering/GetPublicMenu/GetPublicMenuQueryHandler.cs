@@ -55,7 +55,9 @@ internal sealed class GetPublicMenuQueryHandler(
                         p.ImageUrl,
                         complementsByProduct.TryGetValue(p.Id, out var groups) ? groups : []))
                     .ToList();
-                return Result.Success(new PublicMenuResponse(branch.Name, table.Number, items));
+                return Result.Success(new PublicMenuResponse(
+                    branch.Name, table.Number, items, table.IsQrViewEnabled,
+                    table.IsCameraInputEnabled, table.IsBarcodeEnabled, table.IsQrCodeEnabled));
             });
     }
 }

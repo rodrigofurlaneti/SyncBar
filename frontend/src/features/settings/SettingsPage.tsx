@@ -1,7 +1,10 @@
 ﻿import { useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getServiceFeeSetting, setSelfServiceEmployee, setServiceFeeEnabled, getQrViewSetting, setQrViewEnabled } from "./api";
+import {
+    getServiceFeeSetting, setSelfServiceEmployee, setServiceFeeEnabled, getQrViewSetting, setQrViewEnabled,
+    getTableReadingValidationSetting, setTableReadingValidation,
+} from "./api";
 import { getComandaSetting, setComandaDefaultLimit } from "../comandas/api";
 import { getEmployeesByBranch } from "../employees/api";
 import { useAuthStore } from "../../stores/authStore";
@@ -71,6 +74,30 @@ export function SettingsPage() {
         onError: () => toast.error("Não foi possível alterar a visualização."),
     });
 
+    const readingValidationQuery = useQuery({
+        queryKey: ["orders", "table-reading-validation-setting", branchId],
+        queryFn: () => getTableReadingValidationSetting(branchId),
+    });
+    const readingValidation = readingValidationQuery.data ?? {
+        isCameraInputEnabled: false,
+        isBarcodeEnabled: false,
+        isQrCodeEnabled: false,
+    };
+
+    const readingValidationMutation = useMutation({
+        mutationFn: (next: typeof readingValidation) => setTableReadingValidation(branchId, next),
+        onSuccess: () => {
+            toast.success("Validação de leitura da comanda atualizada.");
+            void queryClient.invalidateQueries({ queryKey: ["orders", "table-reading-validation-setting"] });
+        },
+        onError: () => toast.error("Não foi possível alterar a validação de leitura."),
+    });
+
+    const toggleReadingValidation = (
+        field: keyof typeof readingValidation,
+        next: boolean,
+    ) => readingValidationMutation.mutate({ ...readingValidation, [field]: next });
+
     const comandaQuery = useQuery({
         queryKey: ["comandas", "setting", branchId],
         queryFn: () => getComandaSetting(branchId),
@@ -106,8 +133,8 @@ export function SettingsPage() {
                 </span>
             </div>
 
-            {(feeQuery.isError || qrViewQuery.isError) && (
-                <QueryError error={feeQuery.error || qrViewQuery.error} what="as configurações" />
+            {(feeQuery.isError || qrViewQuery.isError || readingValidationQuery.isError) && (
+                <QueryError error={feeQuery.error || qrViewQuery.error || readingValidationQuery.error} what="as configurações" />
             )}
 
             <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 18 }}>
@@ -151,6 +178,56 @@ export function SettingsPage() {
                             onChange={(next) => qrViewMutation.mutate(next)}
                             label="Aparece a opção de mesa ou comanda"
                         />
+                    </div>
+                </div>
+
+                <div style={{ borderTop: "1px solid var(--line-soft)" }} />
+
+                <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16 }}>
+                    <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
+                        <span className="display" style={{ fontSize: "1.2rem" }}>Validação de leitura da comanda</span>
+                        <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+                            Exige uma confirmação extra ao abrir a comanda/mesa, pelos cenários ligados abaixo.
+                            Vale para todas as mesas desta filial.
+                        </span>
+                    </div>
+                    <div style={{ display: "grid", gap: 10 }}>
+                        <div className="ui-row" style={{ gap: 12, justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--ink)", fontSize: "0.92rem", minWidth: 130 }}>Câmera</span>
+                            <span className="chip" style={{ "--dot": readingValidation.isCameraInputEnabled ? "var(--ok)" : "var(--ink-faint)" } as CSSProperties}>
+                                {readingValidation.isCameraInputEnabled ? "Ligada" : "Desligada"}
+                            </span>
+                            <Switch
+                                checked={readingValidation.isCameraInputEnabled}
+                                disabled={readingValidationQuery.isLoading || readingValidationMutation.isPending}
+                                onChange={(next) => toggleReadingValidation("isCameraInputEnabled", next)}
+                                label="Exigir captura por câmera na leitura da comanda"
+                            />
+                        </div>
+                        <div className="ui-row" style={{ gap: 12, justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--ink)", fontSize: "0.92rem", minWidth: 130 }}>Código de barras</span>
+                            <span className="chip" style={{ "--dot": readingValidation.isBarcodeEnabled ? "var(--ok)" : "var(--ink-faint)" } as CSSProperties}>
+                                {readingValidation.isBarcodeEnabled ? "Ligada" : "Desligada"}
+                            </span>
+                            <Switch
+                                checked={readingValidation.isBarcodeEnabled}
+                                disabled={readingValidationQuery.isLoading || readingValidationMutation.isPending}
+                                onChange={(next) => toggleReadingValidation("isBarcodeEnabled", next)}
+                                label="Exigir leitura de código de barras na leitura da comanda"
+                            />
+                        </div>
+                        <div className="ui-row" style={{ gap: 12, justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--ink)", fontSize: "0.92rem", minWidth: 130 }}>QR Code</span>
+                            <span className="chip" style={{ "--dot": readingValidation.isQrCodeEnabled ? "var(--ok)" : "var(--ink-faint)" } as CSSProperties}>
+                                {readingValidation.isQrCodeEnabled ? "Ligada" : "Desligada"}
+                            </span>
+                            <Switch
+                                checked={readingValidation.isQrCodeEnabled}
+                                disabled={readingValidationQuery.isLoading || readingValidationMutation.isPending}
+                                onChange={(next) => toggleReadingValidation("isQrCodeEnabled", next)}
+                                label="Exigir leitura de QR Code na leitura da comanda"
+                            />
+                        </div>
                     </div>
                 </div>
 

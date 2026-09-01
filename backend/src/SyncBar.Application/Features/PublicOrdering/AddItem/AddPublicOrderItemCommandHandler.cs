@@ -13,6 +13,8 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
     private readonly IBranchRepository _branchRepository;
     private readonly IProductRepository _productRepository;
     private readonly ICustomerOrderRepository _orderRepository;
+    private readonly IComandaRepository _comandaRepository;
+    private readonly IComandaSettingRepository _comandaSettingRepository;
     private readonly IProductComplementGroupRepository _productComplementGroupRepository;
     private readonly IComplementGroupRepository _complementGroupRepository;
     private readonly IPrintingService _printingService;
@@ -24,6 +26,8 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
         IBranchRepository branchRepository,
         IProductRepository productRepository,
         ICustomerOrderRepository orderRepository,
+        IComandaRepository comandaRepository,
+        IComandaSettingRepository comandaSettingRepository,
         IProductComplementGroupRepository productComplementGroupRepository,
         IComplementGroupRepository complementGroupRepository,
         IPrintingService printingService,
@@ -36,6 +40,8 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
         _branchRepository = branchRepository;
         _productRepository = productRepository;
         _orderRepository = orderRepository;
+        _comandaRepository = comandaRepository;
+        _comandaSettingRepository = comandaSettingRepository;
         _productComplementGroupRepository = productComplementGroupRepository;
         _complementGroupRepository = complementGroupRepository;
         _printingService = printingService;
@@ -71,6 +77,14 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
                     return Result.Failure<long>(productResult.Error);
                 var product = productResult.Value;
 
+                // Quando o cliente escolhe "Na Comanda": resolve a comanda pelo código digitado
+                // (dentro da mesma filial da mesa). O pedido vai ser aberto/atualizado contra a
+                // COMANDA, não a mesa — ver GetOrCreateOrderAsync.
+                var comandaResult = await ResolveComandaAsync(table.BranchId, request.ComandaCode, cancellationToken);
+                if (comandaResult.IsFailure)
+                    return Result.Failure<long>(comandaResult.Error);
+                var comanda = comandaResult.Value;
+
                 var complementsResult = await ResolveComplementsAsync(product, request, cancellationToken);
                 if (complementsResult.IsFailure)
                     return Result.Failure<long>(complementsResult.Error);
@@ -78,13 +92,20 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
 
                 var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
 
-                var orderResult = await GetOrCreateOrderAsync(table, branch, currentTime, cancellationToken);
+                var orderResult = await GetOrCreateOrderAsync(table, branch, comanda, currentTime, cancellationToken);
                 if (orderResult.IsFailure)
                     return Result.Failure<long>(orderResult.Error);
                 var (order, isNewOrder) = orderResult.Value;
 
                 if (isNewOrder)
+                {
+                    // A mesa fica fisicamente ocupada pelo cliente independente do destino do
+                    // pedido (mesa ou comanda) — por isso sempre marca aqui, e não só no ramo
+                    // "Na Mesa". GetByQrTokenAsync devolve a entidade sem tracking, então
+                    // precisa de Update explícito pro EF Core persistir a mudança de status.
                     table.ChangeStatus(TableStatusIds.Ocupada);
+                    _diningTableRepository.Update(table);
+                }
 
                 var addItemResult = AddItemWithComplements(order, product, request, resolvedComplements, currentTime);
                 if (addItemResult.IsFailure)
@@ -131,6 +152,18 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
         return Result.Success(product);
     }
 
+    private async Task<Result<Comanda?>> ResolveComandaAsync(long branchId, string? comandaCode, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(comandaCode))
+            return Result.Success<Comanda?>(null);
+
+        var comanda = await _comandaRepository.GetByCodeAsync(branchId, comandaCode, cancellationToken);
+        if (comanda is null || !comanda.IsActive)
+            return Result.Failure<Comanda?>(new Error("Comanda.NotFound", "Comanda não encontrada."));
+
+        return Result.Success<Comanda?>(comanda);
+    }
+
     // Mesma validação de AddOrderItemCommandHandler: resolve e valida os complementos
     // ANTES de tocar no pedido, pra não deixar o item lançado se um complemento for inválido.
     private async Task<Result<List<(long ComplementId, decimal ExtraPrice)>>> ResolveComplementsAsync(
@@ -164,8 +197,11 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
     }
 
     private async Task<Result<(CustomerOrder Order, bool IsNewOrder)>> GetOrCreateOrderAsync(
-        DiningTable table, Branch branch, DateTime currentTime, CancellationToken cancellationToken)
+        DiningTable table, Branch branch, Comanda? comanda, DateTime currentTime, CancellationToken cancellationToken)
     {
+        if (comanda is not null)
+            return await GetOrCreateComandaOrderAsync(table, branch, comanda, currentTime, cancellationToken);
+
         var order = await _orderRepository.GetOpenByTableForUpdateAsync(table.Id, cancellationToken);
         if (order is not null)
             return Result.Success((order, false));
@@ -176,6 +212,35 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
         var created = CustomerOrder.Create(
             table.BranchId, table.Id, null, branch.SelfServiceEmployeeId.GetValueOrDefault(),
             null, "Pedido via QR Code", currentTime, null, OrderTypeIds.Mesa);
+
+        if (created.IsFailure)
+            return Result.Failure<(CustomerOrder, bool)>(created.Error);
+
+        order = created.Value;
+        await _orderRepository.AddAsync(order, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken);
+
+        return Result.Success((order, true));
+    }
+
+    // Pedido "Na Comanda": abre/reaproveita o pedido em aberto da COMANDA (ComandaId), não da
+    // mesa (DiningTableId fica null) — é o que garante que ele entra na conta da comanda
+    // (GetPublicComandaBill) e NÃO aparece na conta da mesa (GetPublicBill filtra só por
+    // DiningTableId). Como não há vínculo direto com a mesa nesse pedido, o número dela vai
+    // registrado no Notes, pra cozinha/garçom saberem pra onde entregar.
+    private async Task<Result<(CustomerOrder Order, bool IsNewOrder)>> GetOrCreateComandaOrderAsync(
+        DiningTable table, Branch branch, Comanda comanda, DateTime currentTime, CancellationToken cancellationToken)
+    {
+        var order = await _orderRepository.GetOpenByComandaForUpdateAsync(comanda.Id, cancellationToken);
+        if (order is not null)
+            return Result.Success((order, false));
+
+        var comandaSetting = await _comandaSettingRepository.GetByBranchAsync(branch.Id, cancellationToken);
+
+        var created = CustomerOrder.Create(
+            table.BranchId, null, comanda.Id, branch.SelfServiceEmployeeId.GetValueOrDefault(),
+            null, $"Mesa {table.Number} — Pedido via QR Code", currentTime,
+            comandaSetting?.DefaultLimitAmount, OrderTypeIds.Mesa);
 
         if (created.IsFailure)
             return Result.Failure<(CustomerOrder, bool)>(created.Error);

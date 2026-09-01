@@ -10,6 +10,9 @@ public sealed class DiningTable : AggregateRoot
     public int? Capacity { get; private set; }
     public Guid? QrToken { get; private set; }
     public bool IsQrViewEnabled { get; private set; }
+    public bool IsCameraInputEnabled { get; private set; }
+    public bool IsBarcodeEnabled { get; private set; }
+    public bool IsQrCodeEnabled { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public bool IsActive { get; private set; }
@@ -22,6 +25,9 @@ public sealed class DiningTable : AggregateRoot
         Capacity = capacity;
         IsActive = true;
         IsQrViewEnabled = true; // Por padrão, começa ligada
+        IsCameraInputEnabled = false; // Por padrão, desligada — não exige captura por câmera
+        IsBarcodeEnabled = false; // Por padrão, desligada — não exige leitura de código de barras
+        IsQrCodeEnabled = false; // Por padrão, desligada — não exige leitura de QR Code
         CreatedAt = DateTime.Now;
     }
 
@@ -46,6 +52,18 @@ public sealed class DiningTable : AggregateRoot
     public void SetQrViewEnabled(bool enabled)
     {
         IsQrViewEnabled = enabled;
+        UpdatedAt = DateTime.Now;
+    }
+
+    /// <summary>
+    /// Configura os três cenários de validação obrigatória na leitura da comanda/mesa:
+    /// captura por câmera, leitura de código de barras e leitura de QR Code.
+    /// </summary>
+    public void SetReadingValidationSettings(bool isCameraInputEnabled, bool isBarcodeEnabled, bool isQrCodeEnabled)
+    {
+        IsCameraInputEnabled = isCameraInputEnabled;
+        IsBarcodeEnabled = isBarcodeEnabled;
+        IsQrCodeEnabled = isQrCodeEnabled;
         UpdatedAt = DateTime.Now;
     }
 
