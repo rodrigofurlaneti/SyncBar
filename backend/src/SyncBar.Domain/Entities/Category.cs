@@ -31,6 +31,19 @@ public sealed class Category : AggregateRoot
 
     public void Touch() => UpdatedAt = DateTime.Now;
 
+    public Result UpdateDetails(string name, int displayOrder)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return Result.Failure(new Error("Category.EmptyName", "Name is required."));
+        if (displayOrder < 0)
+            return Result.Failure(new Error("Category.InvalidDisplayOrder", "Display order cannot be negative."));
+
+        Name = name;
+        DisplayOrder = displayOrder;
+        UpdatedAt = DateTime.Now;
+        return Result.Success();
+    }
+
     public void Deactivate()
     {
         IsActive = false;

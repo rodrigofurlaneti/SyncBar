@@ -5,13 +5,22 @@ export const getMenu = (companyId: number): Promise<MenuItemResponse[]> =>
   api<MenuItemResponse[]>(`/api/catalog/menu/company/${companyId}`);
 
 export const getCategories = (companyId: number): Promise<CategoryResponse[]> =>
-  api<CategoryResponse[]>(`/api/products/categories/company/${companyId}`);
+  api<CategoryResponse[]>(`/api/categories/company/${companyId}`);
 
 export const createCategory = (companyId: number, name: string, displayOrder: number): Promise<number> =>
-  api<number>("/api/products/categories", {
+  api<number>("/api/categories", {
     method: "POST",
     body: JSON.stringify({ companyId, name, displayOrder }),
   });
+
+export const updateCategory = (id: number, name: string, displayOrder: number): Promise<void> =>
+  api<void>(`/api/categories/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ name, displayOrder }),
+  });
+
+export const deactivateCategory = (id: number): Promise<void> =>
+  api<void>(`/api/categories/${id}/deactivate`, { method: "PUT" });
 
 export interface ProductPayload {
   categoryId: number;

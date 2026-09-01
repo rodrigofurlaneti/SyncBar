@@ -6,10 +6,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using SyncBar.Application.Features.Catalog.CreateCategory;
 using SyncBar.Application.Features.Catalog.CreateProduct;
 using SyncBar.Application.Features.Catalog.DeactivateProduct;
-using SyncBar.Application.Features.Catalog.GetCategories;
 using SyncBar.Application.Features.Catalog.SetProductImage;
 using SyncBar.Application.Features.Catalog.UpdateProduct;
 using SyncBar.Application.Features.Catalog.GetProductById;
@@ -24,23 +22,11 @@ public sealed class ProductsController(
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
-    // 2. AllowAnonymous abre uma exceção APENAS para buscar as categorias (usado no QRCode)
-    [AllowAnonymous]
-    [HttpGet("categories/company/{companyId:long}")]
-    public Task<IActionResult> GetCategories(long companyId, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(GetCategories), async () =>
-        {
-            var result = await Mediator.Send(new GetCategoriesQuery(companyId), ct);
-            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
-        });
-
-    [HttpPost("categories")]
-    public Task<IActionResult> CreateCategory([FromBody] CreateCategoryCommand command, CancellationToken ct) =>
-        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(CreateCategory), async () =>
-        {
-            var result = await Mediator.Send(command, ct);
-            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
-        });
+    // As rotas de categoria (listar/criar/editar/desativar) foram movidas pro
+    // CategoriesController dedicado — ver Cartão "CRUD de Categorias de Produtos". As duas
+    // rotas que viviam aqui (GET categories/company/{id} e POST categories) saíram; o único
+    // consumidor era features/catalog/api.ts no front, que foi atualizado junto para apontar
+    // pra /api/categories/... — não sobrou nenhum outro lugar chamando as rotas antigas.
 
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateProductCommand command, CancellationToken ct) =>

@@ -4,9 +4,11 @@ import { useDialog } from "../../ui/Dialog";
 import {
     createCategory,
     createProduct,
+    deactivateCategory,
     deactivateProduct,
     getCategories,
     getMenu,
+    updateCategory,
     updateProduct,
     uploadProductImage,
     type ProductPayload,
@@ -14,7 +16,7 @@ import {
 import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import { formatBRL, unitOfMeasureLabel } from "../../lib/types";
-import type { MenuItemResponse } from "../../lib/types";
+import type { CategoryResponse, MenuItemResponse } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
 import { ProductComplementLinkPanel } from "./ProductComplementLinkPanel";
 import { Modal } from "../../ui/Modal";
@@ -55,6 +57,9 @@ export function ProductsPage() {
     const [newCategory, setNewCategory] = useState("");
     const [creatingCategory, setCreatingCategory] = useState(false);
     const [modalNewCategory, setModalNewCategory] = useState("");
+    const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+    const [categoryEditName, setCategoryEditName] = useState("");
+    const [categoryEditOrder, setCategoryEditOrder] = useState("");
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [error, setError] = useState<string | null>(null);
     const imagePreviewUrl = useMemo(
@@ -174,6 +179,38 @@ export function ProductsPage() {
         onError: onApiError,
     });
 
+    const startCategoryEdit = (category: CategoryResponse) => {
+        setEditingCategoryId(category.id);
+        setCategoryEditName(category.name);
+        setCategoryEditOrder(String(category.displayOrder));
+    };
+
+    const cancelCategoryEdit = () => {
+        setEditingCategoryId(null);
+        setCategoryEditName("");
+        setCategoryEditOrder("");
+    };
+
+    const updateCategoryMutation = useMutation({
+        mutationFn: () =>
+            updateCategory(editingCategoryId!, categoryEditName.trim(), Number(categoryEditOrder) || 0),
+        onSuccess: () => {
+            toast.success("Categoria atualizada.");
+            cancelCategoryEdit();
+            refresh();
+        },
+        onError: onApiError,
+    });
+
+    const deactivateCategoryMutation = useMutation({
+        mutationFn: (id: number) => deactivateCategory(id),
+        onSuccess: () => {
+            toast.success("Categoria desativada.");
+            refresh();
+        },
+        onError: onApiError,
+    });
+
     return (
         <main style={{ padding: 22, maxWidth: 1100, margin: "0 auto", position: "relative" }}>
             <div className="rise" style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 16 }}>
@@ -182,20 +219,91 @@ export function ProductsPage() {
                 <button type="button" className="btn-primary" onClick={() => openEditor("new")}>+ Novo produto</button>
             </div>
 
-            <div className="rise rise-1" style={{ display: "flex", gap: 8, marginBottom: 18, maxWidth: 460 }}>
-                <input
-                    placeholder="Nova categoria…"
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                />
-                <button
-                    type="button"
-                    className="btn-ghost"
-                    disabled={newCategory.trim() === "" || categoryMutation.isPending}
-                    onClick={() => categoryMutation.mutate()}
-                >
-                    Criar
-                </button>
+            <div className="rise rise-1" style={{ marginBottom: 18, maxWidth: 460 }}>
+                <h3 style={{ fontSize: "0.95rem", color: "var(--ink-dim)", margin: "0 0 8px" }}>Categorias</h3>
+
+                {(categoriesQuery.data ?? []).length > 0 && (
+                    <div style={{ display: "grid", gap: 6, marginBottom: 10 }}>
+                        {(categoriesQuery.data ?? []).map((category) =>
+                            editingCategoryId === category.id ? (
+                                <div key={category.id} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                    <input
+                                        autoFocus
+                                        value={categoryEditName}
+                                        onChange={(e) => setCategoryEditName(e.target.value)}
+                                        style={{ flex: 1, minWidth: 0 }}
+                                    />
+                                    <input
+                                        type="number"
+                                        inputMode="numeric"
+                                        value={categoryEditOrder}
+                                        onChange={(e) => setCategoryEditOrder(e.target.value)}
+                                        title="Ordem de exibição"
+                                        style={{ width: 56 }}
+                                    />
+                                    <Button
+                                        size="sm"
+                                        loading={updateCategoryMutation.isPending}
+                                        disabled={categoryEditName.trim() === ""}
+                                        onClick={() => updateCategoryMutation.mutate()}
+                                    >
+                                        Salvar
+                                    </Button>
+                                    <Button size="sm" iconOnly aria-label="Cancelar edição" onClick={cancelCategoryEdit}>
+                                        ✕
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div key={category.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                    <span style={{ flex: 1 }}>{category.name}</span>
+                                    <span style={{ color: "var(--ink-faint)", fontSize: "0.8rem" }}>#{category.displayOrder}</span>
+                                    <button
+                                        type="button"
+                                        className="btn-ghost"
+                                        style={{ minHeight: 32, padding: "0 10px", fontSize: "0.8rem" }}
+                                        onClick={() => startCategoryEdit(category)}
+                                    >
+                                        Editar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn-danger"
+                                        style={{ minHeight: 32, padding: "0 10px", fontSize: "0.8rem" }}
+                                        onClick={async () => {
+                                            if (
+                                                await dialog.confirm({
+                                                    title: "Desativar categoria",
+                                                    message: `Desativar "${category.name}"? Produtos já cadastrados nela continuam funcionando, mas ela deixa de aparecer como opção para novos cadastros.`,
+                                                    confirmLabel: "Desativar",
+                                                    danger: true,
+                                                })
+                                            )
+                                                deactivateCategoryMutation.mutate(category.id);
+                                        }}
+                                    >
+                                        Desativar
+                                    </button>
+                                </div>
+                            ),
+                        )}
+                    </div>
+                )}
+
+                <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                        placeholder="Nova categoria…"
+                        value={newCategory}
+                        onChange={(e) => setNewCategory(e.target.value)}
+                    />
+                    <button
+                        type="button"
+                        className="btn-ghost"
+                        disabled={newCategory.trim() === "" || categoryMutation.isPending}
+                        onClick={() => categoryMutation.mutate()}
+                    >
+                        Criar
+                    </button>
+                </div>
             </div>
 
             {error && !editing && (

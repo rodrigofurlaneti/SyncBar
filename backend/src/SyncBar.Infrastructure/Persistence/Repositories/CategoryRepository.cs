@@ -9,6 +9,9 @@ internal sealed class CategoryRepository(AppDbContext context) : ICategoryReposi
     public async Task<Category?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         => await context.Categories.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public async Task<Category?> GetByIdForUpdateAsync(long id, CancellationToken cancellationToken = default)
+        => await context.Categories.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
     public async Task<IReadOnlyCollection<Category>> GetByCompanyAsync(long companyId, CancellationToken cancellationToken = default)
         => await context.Categories.AsNoTracking()
             .Where(x => x.CompanyId == companyId && x.IsActive)
