@@ -17,19 +17,12 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-// 1. Protege a classe inteira para garantir que criação/edição exigem login de Gerente/Admin
-[Authorize(Roles = "Administrador,Gerente")]
 public sealed class ProductsController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
-    // As rotas de categoria (listar/criar/editar/desativar) foram movidas pro
-    // CategoriesController dedicado — ver Cartão "CRUD de Categorias de Produtos". As duas
-    // rotas que viviam aqui (GET categories/company/{id} e POST categories) saíram; o único
-    // consumidor era features/catalog/api.ts no front, que foi atualizado junto para apontar
-    // pra /api/categories/... — não sobrou nenhum outro lugar chamando as rotas antigas.
-
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateProductCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(Create), async () =>
@@ -38,6 +31,7 @@ public sealed class ProductsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}")]
     public Task<IActionResult> Update(long id, [FromBody] UpdateProductRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(Update), async () =>
@@ -71,9 +65,6 @@ public sealed class ProductsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Tela de gerenciamento (Cardápio admin, split view) — ao contrário do GetMenu usado
-    // pelo Cardápio Digital do cliente, inclui produtos desativados (com IsActive) para
-    // alimentar o toggle ativo/inativo e o filtro Ativos/Inativos.
     [HttpGet("company/{companyId:long}/management")]
     public Task<IActionResult> GetForManagement(long companyId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(GetForManagement), async () =>
@@ -82,6 +73,7 @@ public sealed class ProductsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/deactivate")]
     public Task<IActionResult> Deactivate(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(Deactivate), async () =>
@@ -90,6 +82,7 @@ public sealed class ProductsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/activate")]
     public Task<IActionResult> Activate(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(Activate), async () =>

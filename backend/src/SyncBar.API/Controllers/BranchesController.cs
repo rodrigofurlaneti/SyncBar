@@ -9,8 +9,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-// Gestão de filiais é prerrogativa do administrador da empresa (multi-loja).
-[Authorize(Roles = "Administrador")]
 public sealed class BranchesController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -24,6 +22,7 @@ public sealed class BranchesController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateBranchCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(BranchesController), nameof(Create), async () =>
@@ -32,7 +31,7 @@ public sealed class BranchesController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Configura qual funcionário "abre" os pedidos lançados pelo autoatendimento via QR Code.
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("self-service-employee")]
     public Task<IActionResult> SetSelfServiceEmployee([FromBody] SetSelfServiceEmployeeCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(BranchesController), nameof(SetSelfServiceEmployee), async () =>

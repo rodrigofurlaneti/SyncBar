@@ -12,7 +12,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Usuarios")]
 public sealed class UsersController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -34,6 +33,7 @@ public sealed class UsersController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateUserCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(UsersController), nameof(Create), async () =>
@@ -44,6 +44,7 @@ public sealed class UsersController(
                 : CreatedAtAction(nameof(GetByCompany), new { companyId = command.CompanyId }, result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost("roles")]
     public Task<IActionResult> CreateRole([FromBody] CreateRoleCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(UsersController), nameof(CreateRole), async () =>
@@ -54,6 +55,7 @@ public sealed class UsersController(
                 : CreatedAtAction(nameof(GetRoles), new { companyId = command.CompanyId }, result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/roles")]
     public Task<IActionResult> UpdateRoles(long id, [FromBody] UpdateUserRolesRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(UsersController), nameof(UpdateRoles), async () =>
@@ -62,6 +64,7 @@ public sealed class UsersController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/deactivate")]
     public Task<IActionResult> Deactivate(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(UsersController), nameof(Deactivate), async () =>

@@ -9,7 +9,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Estoque")]
 public sealed class PurchasesController(
     IMediator mediator,
     ILogTrackerRepository logRepository,

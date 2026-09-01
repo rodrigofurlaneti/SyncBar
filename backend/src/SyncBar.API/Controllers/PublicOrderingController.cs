@@ -57,8 +57,7 @@ public sealed class PublicOrderingController(
             return result.IsFailure ? HandleFailure(result) : Ok(new { orderId = result.Value });
         });
 
-    // Comprovação de leitura da comanda (câmera/código de barras/QR Code) — exigida antes de
-    // consultar ou abrir pedido numa comanda, conforme os flags ligados em DiningTable.
+
     [HttpPost("{token:guid}/comandas/{code}/reading-validation")]
     public Task<IActionResult> ValidateComandaReading(Guid token, string code, [FromBody] ValidateComandaReadingRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PublicOrderingController), nameof(ValidateComandaReading), async () =>
@@ -68,10 +67,6 @@ public sealed class PublicOrderingController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Comprovação de leitura da MESA (câmera/código de barras/QR Code) — exigida antes de
-    // liberar qualquer pedido direto na mesa quando a "Visualização do Cliente (QR Code)"
-    // está desligada (sem fluxo de comanda pro cliente). A mesa já é identificada pelo
-    // token — não tem código de comanda envolvido aqui.
     [HttpPost("{token:guid}/reading-validation")]
     public Task<IActionResult> ValidateTableReading(Guid token, [FromBody] ValidateComandaReadingRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PublicOrderingController), nameof(ValidateTableReading), async () =>
@@ -87,8 +82,6 @@ public sealed record AddPublicOrderItemRequest(
     [property: JsonRequired] decimal Quantity,
     string? Notes,
     IReadOnlyCollection<OrderItemComplementSelection>? Complements = null,
-    // Quando informado, o pedido vai pra conta da COMANDA (não da mesa) — ver
-    // AddPublicOrderItemCommand para o porquê.
     string? ComandaCode = null);
 
 public sealed record ValidateComandaReadingRequest(

@@ -8,7 +8,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Roles = "Administrador,Gerente")]
 public sealed class ComandasController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -30,6 +29,7 @@ public sealed class ComandasController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("settings")]
     public Task<IActionResult> SetDefaultLimit([FromBody] SetComandaDefaultLimitCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ComandasController), nameof(SetDefaultLimit), async () =>

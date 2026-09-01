@@ -15,8 +15,6 @@ namespace SyncBar.API.Controllers;
 [Authorize]
 public sealed class AccessController(IMediator mediator) : ApiController(mediator)
 {
-    private const string ManagerRoles = "Administrador,Gerente";
-
     [HttpGet("my-features")]
     public Task<IActionResult> GetMyFeatures(CancellationToken ct) =>
         ExecuteWithLogAsync(nameof(AccessController), nameof(GetMyFeatures), async () =>
@@ -30,7 +28,6 @@ public sealed class AccessController(IMediator mediator) : ApiController(mediato
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [Authorize(Roles = ManagerRoles)]
     [HttpGet("features")]
     public Task<IActionResult> GetFeatures(CancellationToken ct) =>
         ExecuteWithLogAsync(nameof(AccessController), nameof(GetFeatures), async () =>
@@ -39,7 +36,6 @@ public sealed class AccessController(IMediator mediator) : ApiController(mediato
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [Authorize(Roles = ManagerRoles)]
     [HttpGet("jobtitles/{jobTitleId:long}/features")]
     public Task<IActionResult> GetJobTitleFeatures(long jobTitleId, CancellationToken ct) =>
         ExecuteWithLogAsync(nameof(AccessController), nameof(GetJobTitleFeatures), async () =>
@@ -48,7 +44,6 @@ public sealed class AccessController(IMediator mediator) : ApiController(mediato
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [Authorize(Roles = ManagerRoles)]
     [HttpPut("jobtitles/{jobTitleId:long}/features")]
     public Task<IActionResult> SetJobTitleFeatures(long jobTitleId, [FromBody] SetFeaturesRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(nameof(AccessController), nameof(SetJobTitleFeatures), async () =>
@@ -57,7 +52,6 @@ public sealed class AccessController(IMediator mediator) : ApiController(mediato
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [Authorize(Roles = ManagerRoles)]
     [HttpGet("users/{appUserId:long}/features")]
     public Task<IActionResult> GetUserFeatures(long appUserId, CancellationToken ct) =>
         ExecuteWithLogAsync(nameof(AccessController), nameof(GetUserFeatures), async () =>
@@ -66,7 +60,6 @@ public sealed class AccessController(IMediator mediator) : ApiController(mediato
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [Authorize(Roles = ManagerRoles)]
     [HttpPut("users/{appUserId:long}/features")]
     public Task<IActionResult> SetUserFeatures(long appUserId, [FromBody] SetFeaturesRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(nameof(AccessController), nameof(SetUserFeatures), async () =>

@@ -14,7 +14,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Estoque")]
 public sealed class StockController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -36,6 +35,7 @@ public sealed class StockController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost("movements")]
     public Task<IActionResult> RegisterMovement([FromBody] RegisterStockMovementCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(StockController), nameof(RegisterMovement), async () =>
@@ -44,6 +44,7 @@ public sealed class StockController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost("inventory")]
     public Task<IActionResult> AdjustInventory([FromBody] AdjustInventoryCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(StockController), nameof(AdjustInventory), async () =>
@@ -52,6 +53,7 @@ public sealed class StockController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/limits")]
     public Task<IActionResult> SetLimits(long id, [FromBody] SetStockLimitsRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(StockController), nameof(SetLimits), async () =>

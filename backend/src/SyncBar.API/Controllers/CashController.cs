@@ -14,7 +14,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Caixa")]
 public sealed class CashController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -44,6 +43,7 @@ public sealed class CashController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("sessions/{id:long}/review")]
     public Task<IActionResult> ReviewSession(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CashController), nameof(ReviewSession), async () =>
@@ -52,6 +52,7 @@ public sealed class CashController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost("sessions")]
     public Task<IActionResult> OpenSession([FromBody] OpenCashSessionCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CashController), nameof(OpenSession), async () =>
@@ -62,6 +63,7 @@ public sealed class CashController(
                 : CreatedAtAction(nameof(GetSummary), new { id = result.Value }, result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("sessions/{id:long}/close")]
     public Task<IActionResult> CloseSession(long id, [FromBody] CloseCashSessionRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CashController), nameof(CloseSession), async () =>
@@ -71,6 +73,7 @@ public sealed class CashController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost("sessions/{id:long}/movements")]
     public Task<IActionResult> RegisterMovement(long id, [FromBody] RegisterCashMovementRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CashController), nameof(RegisterMovement), async () =>
@@ -81,10 +84,6 @@ public sealed class CashController(
         });
 }
 
-// Requests separados dos commands quando ha parametro de rota.
-// Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor para
-// evitar under-posting (deserializacao silenciosa com o default do tipo quando o campo nao
-// vem no JSON) — ver GetIfoodMerchantStatusQueryHandler.cs para o padrao analogo em queries.
 public sealed record CloseCashSessionRequest(
     [property: JsonRequired] long ClosedByEmployeeId,
     [property: JsonRequired] decimal ClosingAmount);

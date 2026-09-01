@@ -29,7 +29,6 @@ using System.Text.Json.Serialization;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Roles = "Administrador,Gerente")]
 public sealed class OrdersController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -242,7 +241,6 @@ public sealed class OrdersController(
             });
 }
 
-// RECORDS
 public sealed record TransferComandaItemRequest(
     [property: JsonRequired] long SourceCustomerOrderId,
     [property: JsonRequired] long TargetCustomerOrderId,

@@ -9,7 +9,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Estoque")]
 public sealed class SuppliersController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -23,6 +22,7 @@ public sealed class SuppliersController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateSupplierCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(SuppliersController), nameof(Create), async () =>
@@ -31,6 +31,7 @@ public sealed class SuppliersController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/deactivate")]
     public Task<IActionResult> Deactivate(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(SuppliersController), nameof(Deactivate), async () =>

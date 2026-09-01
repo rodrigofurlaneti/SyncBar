@@ -11,7 +11,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Promocoes")]
 public sealed class PromotionsController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -33,6 +32,7 @@ public sealed class PromotionsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/deactivate")]
     public Task<IActionResult> Deactivate(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PromotionsController), nameof(Deactivate), async () =>

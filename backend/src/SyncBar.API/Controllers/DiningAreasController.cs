@@ -21,7 +21,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers
 {
-    [Authorize(Roles = "Administrador,Gerente")]
     [Route("api/diningareas")]
     public sealed class DiningAreasController(
     IMediator mediator,
@@ -44,6 +43,7 @@ namespace SyncBar.API.Controllers
                 return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
             });
 
+        [Authorize(Roles = ManagerRoles)]
         [HttpPost]
         public Task<IActionResult> CreateArea([FromBody] CreateDiningAreaCommand command, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(DiningAreasController), nameof(CreateArea), async () =>
@@ -54,6 +54,7 @@ namespace SyncBar.API.Controllers
                     : CreatedAtAction(nameof(GetById), new { id = result.Value }, result.Value);
             });
 
+        [Authorize(Roles = ManagerRoles)]
         [HttpPut("{id:long}")]
         public Task<IActionResult> UpdateArea(long id, [FromBody] UpdateDiningAreaRequest request, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(DiningAreasController), nameof(UpdateArea), async () =>
@@ -70,6 +71,7 @@ namespace SyncBar.API.Controllers
                 return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
             });
 
+        [Authorize(Roles = ManagerRoles)]
         [HttpPost("{id:long}/tables")]
         public Task<IActionResult> AssignTableToArea(long id, [FromBody] AssignTableRequest request, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(DiningAreasController), nameof(AssignTableToArea), async () =>
@@ -78,6 +80,7 @@ namespace SyncBar.API.Controllers
                 return result.IsFailure ? HandleFailure(result) : Ok(result.Value); // Retorna o ID do vínculo
             });
 
+        [Authorize(Roles = ManagerRoles)]
         [HttpPut("tables/{assignmentId:long}")]
         public Task<IActionResult> UpdateTableAssignment(long assignmentId, [FromBody] UpdateTableAssignmentRequest request, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(DiningAreasController), nameof(UpdateTableAssignment), async () =>
@@ -86,6 +89,7 @@ namespace SyncBar.API.Controllers
                 return result.IsFailure ? HandleFailure(result) : NoContent();
             });
 
+        [Authorize(Roles = ManagerRoles)]
         [HttpDelete("tables/{assignmentId:long}")]
         public Task<IActionResult> RemoveTableFromArea(long assignmentId, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(DiningAreasController), nameof(RemoveTableFromArea), async () =>
@@ -110,6 +114,7 @@ namespace SyncBar.API.Controllers
                 return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
             });
 
+        [Authorize(Roles = ManagerRoles)]
         [HttpPost("{id:long}/assignments")]
         public Task<IActionResult> StartAssignment(long id, [FromBody] StartAssignmentRequest request, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(DiningAreasController), nameof(StartAssignment), async () =>
@@ -118,6 +123,7 @@ namespace SyncBar.API.Controllers
                 return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
             });
 
+        [Authorize(Roles = ManagerRoles)]
         [HttpPut("assignments/{assignmentId:long}/end")]
         public Task<IActionResult> EndAssignment(long assignmentId, [FromBody] EndAssignmentRequest request, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(DiningAreasController), nameof(EndAssignment), async () =>

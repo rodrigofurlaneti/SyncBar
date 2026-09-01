@@ -35,7 +35,7 @@ public sealed class EmployeesController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [Authorize(Policy = "Feature:Equipe")]
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost("jobtitles")]
     public Task<IActionResult> CreateJobTitle([FromBody] CreateJobTitleCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(CreateJobTitle), async () =>
@@ -46,7 +46,7 @@ public sealed class EmployeesController(
                 : CreatedAtAction(nameof(GetJobTitles), new { companyId = command.CompanyId }, result.Value);
         });
 
-    [Authorize(Policy = "Feature:Equipe")]
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateEmployeeCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(Create), async () =>
@@ -57,7 +57,7 @@ public sealed class EmployeesController(
                 : CreatedAtAction(nameof(GetByBranch), new { branchId = command.BranchId }, result.Value);
         });
 
-    [Authorize(Policy = "Feature:Equipe")]
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}")]
     public Task<IActionResult> Update(long id, [FromBody] UpdateEmployeeRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(Update), async () =>
@@ -67,7 +67,7 @@ public sealed class EmployeesController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [Authorize(Policy = "Feature:Equipe")]
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/dismiss")]
     public Task<IActionResult> Dismiss(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(Dismiss), async () =>
@@ -76,7 +76,7 @@ public sealed class EmployeesController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [Authorize(Roles = "Administrador,Gerente")]
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/commission")]
     public Task<IActionResult> SetCommission(long id, [FromBody] SetCommissionRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(SetCommission), async () =>
