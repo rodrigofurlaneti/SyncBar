@@ -16,7 +16,6 @@ using System.Text;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
-
 ConfigureLogging(builder);
 
 builder.Services.AddApplication();
