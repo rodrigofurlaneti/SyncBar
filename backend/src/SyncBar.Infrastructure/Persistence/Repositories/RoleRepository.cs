@@ -14,6 +14,10 @@ internal sealed class RoleRepository(AppDbContext context) : IRoleRepository
             .Where(x => x.CompanyId == companyId && x.IsActive)
             .ToListAsync(cancellationToken);
 
+    public async Task<bool> ExistsByNameAsync(long companyId, string name, CancellationToken cancellationToken = default)
+        => await context.Roles.AsNoTracking()
+            .AnyAsync(x => x.CompanyId == companyId && x.IsActive && x.Name == name, cancellationToken);
+
     public async Task AddAsync(Role entity, CancellationToken cancellationToken = default)
         => await context.Roles.AddAsync(entity, cancellationToken);
 }

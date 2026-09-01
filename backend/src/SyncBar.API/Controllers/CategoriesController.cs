@@ -2,9 +2,11 @@ using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SyncBar.Application.Features.Catalog.ActivateCategory;
 using SyncBar.Application.Features.Catalog.CreateCategory;
 using SyncBar.Application.Features.Catalog.DeactivateCategory;
 using SyncBar.Application.Features.Catalog.GetCategories;
+using SyncBar.Application.Features.Catalog.GetCategoriesForManagement;
 using SyncBar.Application.Features.Catalog.GetCategoryById;
 using SyncBar.Application.Features.Catalog.UpdateCategory;
 using SyncBar.Domain.Repositories;
@@ -39,6 +41,18 @@ public sealed class CategoriesController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    // Tela de gerenciamento (Cardápio admin, split view) — ao contrário de GetByCompany,
+    // inclui categorias desativadas (com IsActive e contagem de produtos) para alimentar
+    // o toggle ativo/inativo e o filtro Ativos/Inativos. Não é [AllowAnonymous]: só quem
+    // já está autenticado como Gerente/Admin (guarda de classe) deve ver itens desativados.
+    [HttpGet("company/{companyId:long}/management")]
+    public Task<IActionResult> GetForManagement(long companyId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CategoriesController), nameof(GetForManagement), async () =>
+        {
+            var result = await Mediator.Send(new GetCategoriesForManagementQuery(companyId), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateCategoryCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CategoriesController), nameof(Create), async () =>
@@ -60,6 +74,14 @@ public sealed class CategoriesController(
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CategoriesController), nameof(Deactivate), async () =>
         {
             var result = await Mediator.Send(new DeactivateCategoryCommand(id), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPut("{id:long}/activate")]
+    public Task<IActionResult> Activate(long id, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CategoriesController), nameof(Activate), async () =>
+        {
+            var result = await Mediator.Send(new ActivateCategoryCommand(id), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 }

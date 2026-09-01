@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Users.Create;
+using SyncBar.Application.Features.Users.CreateRole;
 using SyncBar.Application.Features.Users.Deactivate;
 using SyncBar.Application.Features.Users.GetByCompany;
 using SyncBar.Application.Features.Users.GetRoles;
@@ -41,6 +42,16 @@ public sealed class UsersController(
             return result.IsFailure
                 ? HandleFailure(result)
                 : CreatedAtAction(nameof(GetByCompany), new { companyId = command.CompanyId }, result.Value);
+        });
+
+    [HttpPost("roles")]
+    public Task<IActionResult> CreateRole([FromBody] CreateRoleCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(UsersController), nameof(CreateRole), async () =>
+        {
+            var result = await Mediator.Send(command, ct);
+            return result.IsFailure
+                ? HandleFailure(result)
+                : CreatedAtAction(nameof(GetRoles), new { companyId = command.CompanyId }, result.Value);
         });
 
     [HttpPut("{id:long}/roles")]

@@ -1,31 +1,40 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDialog } from "../../ui/Dialog";
 import {
+    activateCategory,
+    activateProduct,
     createCategory,
     createProduct,
     deactivateCategory,
     deactivateProduct,
     getCategories,
-    getMenu,
+    getCategoriesForManagement,
+    getMenuForManagement,
     updateCategory,
     updateProduct,
     uploadProductImage,
     type ProductPayload,
 } from "./api";
+import { getStockByBranch } from "../stock/api";
 import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import { formatBRL, unitOfMeasureLabel } from "../../lib/types";
-import type { CategoryResponse, MenuItemResponse } from "../../lib/types";
+import type { CategoryManagementResponse, ProductManagementResponse, StockItemResponse } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
 import { ProductComplementLinkPanel } from "./ProductComplementLinkPanel";
 import { Modal } from "../../ui/Modal";
 import { Button } from "../../ui/Button";
 import { Field, TextField, SelectField } from "../../ui/Field";
 import { Switch } from "../../ui/Switch";
+import { StatusBadge } from "../../ui/StatusBadge";
 import { useToast } from "../../ui/Toast";
 import { EmptyState } from "../../ui/EmptyState";
 import { SkeletonList } from "../../ui/Skeleton";
+
+const PAGE_SIZE = 8;
+const ALL_CATEGORIES = "all" as const;
+type StatusFilter = "all" | "active" | "inactive";
 
 const emptyForm = {
     categoryId: "",
@@ -47,12 +56,37 @@ const parseNum = (raw: string): number | null => {
     return Number.isFinite(value) ? value : null;
 };
 
+/* Ícones inline (sem dependência externa) — traço fino, 1.6px, no estilo do resto da UI. */
+const DragIcon = () => (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <circle cx="8" cy="6" r="1.6" /><circle cx="16" cy="6" r="1.6" />
+        <circle cx="8" cy="12" r="1.6" /><circle cx="16" cy="12" r="1.6" />
+        <circle cx="8" cy="18" r="1.6" /><circle cx="16" cy="18" r="1.6" />
+    </svg>
+);
+const SearchIcon = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+);
+const ChevronLeft = () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+);
+const ChevronRight = () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+);
+
 export function ProductsPage() {
     const queryClient = useQueryClient();
     const dialog = useDialog();
     const toast = useToast();
-    const { companyId } = useAuthStore();
-    const [editing, setEditing] = useState<MenuItemResponse | "new" | null>(null);
+    const { companyId, branchId } = useAuthStore();
+    const [editing, setEditing] = useState<ProductManagementResponse | "new" | null>(null);
     const [form, setForm] = useState<FormState>(emptyForm);
     const [newCategory, setNewCategory] = useState("");
     const [creatingCategory, setCreatingCategory] = useState(false);
@@ -60,8 +94,16 @@ export function ProductsPage() {
     const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
     const [categoryEditName, setCategoryEditName] = useState("");
     const [categoryEditOrder, setCategoryEditOrder] = useState("");
+    const [dragCategoryId, setDragCategoryId] = useState<number | null>(null);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // Painel de produtos: categoria selecionada, busca, filtro de status e paginação.
+    const [selectedCategoryId, setSelectedCategoryId] = useState<number | typeof ALL_CATEGORIES>(ALL_CATEGORIES);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    const [page, setPage] = useState(1);
+
     const imagePreviewUrl = useMemo(
         () => (imageFile !== null ? URL.createObjectURL(imageFile) : null),
         [imageFile],
@@ -72,28 +114,50 @@ export function ProductsPage() {
         };
     }, [imagePreviewUrl]);
 
-    const menuQuery = useQuery({
-        queryKey: ["menu", companyId],
-        queryFn: () => getMenu(companyId ?? 1),
-    });
-
+    // Lista "para pedido" (só ativas) — alimenta o <select> de categoria do modal de produto;
+    // nunca deve ser possível cadastrar um produto numa categoria já desativada.
     const categoriesQuery = useQuery({
         queryKey: ["categories", companyId],
         queryFn: () => getCategories(companyId ?? 1),
     });
 
-    const categoryName = useMemo(() => {
-        const map = new Map<number, string>();
-        for (const c of categoriesQuery.data ?? []) map.set(c.id, c.name);
+    // Lista "de gerenciamento" (ativas + inativas, com contador de itens) — alimenta a coluna
+    // de categorias do split view.
+    const categoriesManagementQuery = useQuery({
+        queryKey: ["categories", "management", companyId],
+        queryFn: () => getCategoriesForManagement(companyId ?? 1),
+    });
+
+    const productsQuery = useQuery({
+        queryKey: ["menu", "management", companyId],
+        queryFn: () => getMenuForManagement(companyId ?? 1),
+    });
+
+    // Estoque real da filial atual — usado só para o selo "Em estoque/Baixo/Sem estoque".
+    // Se falhar ou não tiver branchId, os produtos com controle de estoque caem no selo
+    // neutro "Sem registro" em vez de quebrar a tela.
+    const stockQuery = useQuery({
+        queryKey: ["stock", "branch", branchId],
+        queryFn: () => getStockByBranch(branchId ?? 1),
+        enabled: branchId != null,
+    });
+    const stockByProduct = useMemo(() => {
+        const map = new Map<number, StockItemResponse>();
+        for (const s of stockQuery.data ?? []) map.set(s.productId, s);
         return map;
-    }, [categoriesQuery.data]);
+    }, [stockQuery.data]);
+
+    const sortedCategories = useMemo(
+        () => [...(categoriesManagementQuery.data ?? [])].sort((a, b) => a.displayOrder - b.displayOrder),
+        [categoriesManagementQuery.data],
+    );
 
     const refresh = () => {
         void queryClient.invalidateQueries({ queryKey: ["menu"] });
         void queryClient.invalidateQueries({ queryKey: ["categories"] });
     };
 
-    const openEditor = (product: MenuItemResponse | "new") => {
+    const openEditor = (product: ProductManagementResponse | "new") => {
         setError(null);
         setImageFile(null);
         setCreatingCategory(false);
@@ -134,7 +198,7 @@ export function ProductsPage() {
             const productId =
                 editing === "new"
                     ? await createProduct(companyId ?? 1, buildPayload())
-                    : (editing as MenuItemResponse).id;
+                    : (editing as ProductManagementResponse).id;
             if (editing !== "new") await updateProduct(productId, buildPayload());
             if (imageFile !== null) await uploadProductImage(productId, imageFile);
         },
@@ -146,18 +210,34 @@ export function ProductsPage() {
         onError: onApiError,
     });
 
-    const deactivateMutation = useMutation({
-        mutationFn: (id: number) => deactivateProduct(id),
-        onSuccess: () => {
-            toast.success("Produto desativado.");
+    // Um switch só, duas mutações por trás: liga chama activateProduct, desliga chama
+    // deactivateProduct — mantém o histórico/])soft delete sem precisar de dois botões.
+    const toggleProductMutation = useMutation({
+        mutationFn: ({ id, activate }: { id: number; activate: boolean }) =>
+            activate ? activateProduct(id) : deactivateProduct(id),
+        onSuccess: (_data, vars) => {
+            toast.success(vars.activate ? "Produto ativado." : "Produto desativado.");
             refresh();
         },
         onError: onApiError,
     });
 
+    const toggleProduct = async (product: ProductManagementResponse) => {
+        if (product.isActive) {
+            const confirmed = await dialog.confirm({
+                title: "Desativar produto",
+                message: `Desativar "${product.name}"? Ele deixa de aparecer no cardápio para pedidos.`,
+                confirmLabel: "Desativar",
+                danger: true,
+            });
+            if (!confirmed) return;
+        }
+        toggleProductMutation.mutate({ id: product.id, activate: !product.isActive });
+    };
+
     const categoryMutation = useMutation({
         mutationFn: () =>
-            createCategory(companyId ?? 1, newCategory.trim(), (categoriesQuery.data?.length ?? 0) + 1),
+            createCategory(companyId ?? 1, newCategory.trim(), (categoriesManagementQuery.data?.length ?? 0) + 1),
         onSuccess: () => {
             setNewCategory("");
             refresh();
@@ -167,19 +247,19 @@ export function ProductsPage() {
 
     const modalCategoryMutation = useMutation({
         mutationFn: () =>
-            createCategory(companyId ?? 1, modalNewCategory.trim(), (categoriesQuery.data?.length ?? 0) + 1),
+            createCategory(companyId ?? 1, modalNewCategory.trim(), (categoriesManagementQuery.data?.length ?? 0) + 1),
         onSuccess: (newCategoryId) => {
             toast.success("Categoria criada.");
             setForm((f) => ({ ...f, categoryId: String(newCategoryId) }));
             setModalNewCategory("");
             setCreatingCategory(false);
             setError(null);
-            void queryClient.invalidateQueries({ queryKey: ["categories"] });
+            refresh();
         },
         onError: onApiError,
     });
 
-    const startCategoryEdit = (category: CategoryResponse) => {
+    const startCategoryEdit = (category: CategoryManagementResponse) => {
         setEditingCategoryId(category.id);
         setCategoryEditName(category.name);
         setCategoryEditOrder(String(category.displayOrder));
@@ -202,36 +282,124 @@ export function ProductsPage() {
         onError: onApiError,
     });
 
-    const deactivateCategoryMutation = useMutation({
-        mutationFn: (id: number) => deactivateCategory(id),
-        onSuccess: () => {
-            toast.success("Categoria desativada.");
+    const toggleCategoryMutation = useMutation({
+        mutationFn: ({ id, activate }: { id: number; activate: boolean }) =>
+            activate ? activateCategory(id) : deactivateCategory(id),
+        onSuccess: (_data, vars) => {
+            toast.success(vars.activate ? "Categoria ativada." : "Categoria desativada.");
             refresh();
         },
         onError: onApiError,
     });
 
+    const toggleCategory = async (category: CategoryManagementResponse) => {
+        if (category.isActive) {
+            const confirmed = await dialog.confirm({
+                title: "Desativar categoria",
+                message: `Desativar "${category.name}"? Produtos já cadastrados nela continuam funcionando, mas ela deixa de aparecer como opção para novos cadastros.`,
+                confirmLabel: "Desativar",
+                danger: true,
+            });
+            if (!confirmed) return;
+        }
+        toggleCategoryMutation.mutate({ id: category.id, activate: !category.isActive });
+    };
+
+    // Reordenar arrastando: troca o DisplayOrder das duas categorias envolvidas via o
+    // mesmo endpoint PUT /api/categories/{id} que a edição manual já usa.
+    const reorderMutation = useMutation({
+        mutationFn: async ({ from, to }: { from: CategoryManagementResponse; to: CategoryManagementResponse }) => {
+            await Promise.all([
+                updateCategory(from.id, from.name, to.displayOrder),
+                updateCategory(to.id, to.name, from.displayOrder),
+            ]);
+        },
+        onSuccess: () => refresh(),
+        onError: onApiError,
+    });
+
+    const handleCategoryDrop = (target: CategoryManagementResponse) => {
+        const source = sortedCategories.find((c) => c.id === dragCategoryId);
+        setDragCategoryId(null);
+        if (!source || source.id === target.id) return;
+        reorderMutation.mutate({ from: source, to: target });
+    };
+
+    const selectCategory = (id: number | typeof ALL_CATEGORIES) => {
+        setSelectedCategoryId(id);
+        setPage(1);
+    };
+
+    const filteredProducts = useMemo(() => {
+        let list = productsQuery.data ?? [];
+        if (selectedCategoryId !== ALL_CATEGORIES) list = list.filter((p) => p.categoryId === selectedCategoryId);
+        if (statusFilter === "active") list = list.filter((p) => p.isActive);
+        if (statusFilter === "inactive") list = list.filter((p) => !p.isActive);
+        if (search.trim() !== "") {
+            const q = search.trim().toLowerCase();
+            list = list.filter((p) => p.name.toLowerCase().includes(q));
+        }
+        return list;
+    }, [productsQuery.data, selectedCategoryId, statusFilter, search]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+    const currentPage = Math.min(page, totalPages);
+    const pageStart = (currentPage - 1) * PAGE_SIZE;
+    const pageItems = filteredProducts.slice(pageStart, pageStart + PAGE_SIZE);
+
+    const stockBadge = (product: ProductManagementResponse) => {
+        if (!product.isStockControlled) return <StatusBadge color="var(--ink-faint)">Sem controle</StatusBadge>;
+        const stock = stockByProduct.get(product.id);
+        if (!stock) return <StatusBadge color="var(--ink-faint)">Sem registro</StatusBadge>;
+        if (stock.currentQuantity <= 0) return <StatusBadge color="var(--danger)">Sem estoque</StatusBadge>;
+        if (stock.isBelowMinimum) return <StatusBadge color="var(--amber)">Baixo · {stock.currentQuantity}</StatusBadge>;
+        return <StatusBadge color="var(--ok)">Em estoque · {stock.currentQuantity}</StatusBadge>;
+    };
+
     return (
-        <main style={{ padding: 22, maxWidth: 1100, margin: "0 auto", position: "relative" }}>
-            <div className="rise" style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 16 }}>
+        <main style={{ padding: 22, maxWidth: 1280, margin: "0 auto", position: "relative" }}>
+            <div className="rise" style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 18 }}>
                 <h2 className="display" style={{ fontSize: "1.7rem" }}>Cardápio</h2>
                 <span style={{ flex: 1 }} />
                 <button type="button" className="btn-primary" onClick={() => openEditor("new")}>+ Novo produto</button>
             </div>
 
-            <div className="rise rise-1" style={{ marginBottom: 18, maxWidth: 460 }}>
-                <h3 style={{ fontSize: "0.95rem", color: "var(--ink-dim)", margin: "0 0 8px" }}>Categorias</h3>
+            {categoriesManagementQuery.isError && <QueryError error={categoriesManagementQuery.error} what="as categorias" />}
+            {productsQuery.isError && <QueryError error={productsQuery.error} what="o cardápio" />}
+            {error && !editing && (
+                <p className="error-text" role="alert">
+                    {error}
+                </p>
+            )}
 
-                {(categoriesQuery.data ?? []).length > 0 && (
-                    <div style={{ display: "grid", gap: 6, marginBottom: 10 }}>
-                        {(categoriesQuery.data ?? []).map((category) =>
+            <div className="catalog-split rise rise-1">
+                {/* --- Coluna esquerda: categorias --- */}
+                <div className="catalog-panel">
+                    <div className="catalog-panel-head">
+                        <h3 style={{ fontSize: "0.95rem", color: "var(--ink-dim)" }}>Categorias</h3>
+                        <span className="catalog-count">{sortedCategories.length}</span>
+                    </div>
+
+                    <div className="category-list">
+                        <div
+                            className={`category-row is-pinned ${selectedCategoryId === ALL_CATEGORIES ? "is-selected" : ""}`}
+                            onClick={() => selectCategory(ALL_CATEGORIES)}
+                        >
+                            <span className="category-drag-handle" style={{ visibility: "hidden" }}><DragIcon /></span>
+                            <span className="category-main">
+                                <span className="category-name">Todos os produtos</span>
+                                <span className="category-count-pill">{productsQuery.data?.length ?? 0}</span>
+                            </span>
+                        </div>
+
+                        {sortedCategories.map((category, index) =>
                             editingCategoryId === category.id ? (
-                                <div key={category.id} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                <div key={category.id} style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 8px" }}>
                                     <input
                                         autoFocus
                                         value={categoryEditName}
                                         onChange={(e) => setCategoryEditName(e.target.value)}
-                                        style={{ flex: 1, minWidth: 0 }}
+                                        style={{ flex: 1, minWidth: 0, minHeight: 36 }}
                                     />
                                     <input
                                         type="number"
@@ -239,7 +407,7 @@ export function ProductsPage() {
                                         value={categoryEditOrder}
                                         onChange={(e) => setCategoryEditOrder(e.target.value)}
                                         title="Ordem de exibição"
-                                        style={{ width: 56 }}
+                                        style={{ width: 52, minHeight: 36 }}
                                     />
                                     <Button
                                         size="sm"
@@ -254,144 +422,193 @@ export function ProductsPage() {
                                     </Button>
                                 </div>
                             ) : (
-                                <div key={category.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                    <span style={{ flex: 1 }}>{category.name}</span>
-                                    <span style={{ color: "var(--ink-faint)", fontSize: "0.8rem" }}>#{category.displayOrder}</span>
-                                    <button
-                                        type="button"
-                                        className="btn-ghost"
-                                        style={{ minHeight: 32, padding: "0 10px", fontSize: "0.8rem" }}
-                                        onClick={() => startCategoryEdit(category)}
+                                <div
+                                    key={category.id}
+                                    className={`category-row ${selectedCategoryId === category.id ? "is-selected" : ""} ${!category.isActive ? "is-inactive" : ""} ${dragCategoryId === category.id ? "is-dragging" : ""}`}
+                                    draggable
+                                    onClick={() => selectCategory(category.id)}
+                                    onDragStart={() => setDragCategoryId(category.id)}
+                                    onDragEnd={() => setDragCategoryId(null)}
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => { e.preventDefault(); handleCategoryDrop(category); }}
+                                >
+                                    <span className="category-drag-handle" title="Arraste para reordenar" onClick={(e) => e.stopPropagation()}>
+                                        <DragIcon />
+                                    </span>
+                                    <span className="category-order">{String(index + 1).padStart(2, "0")}</span>
+                                    <span className="category-main">
+                                        <span className="category-name">{category.name}</span>
+                                        <span className="category-count-pill">{category.productCount}</span>
+                                        {!category.isActive && <span className="category-inactive-tag">Inativa</span>}
+                                    </span>
+                                    <Switch
+                                        checked={category.isActive}
+                                        onChange={() => toggleCategory(category)}
+                                        label={category.isActive ? `Desativar categoria ${category.name}` : `Ativar categoria ${category.name}`}
+                                    />
+                                    <Button
+                                        size="sm"
+                                        iconOnly
+                                        aria-label={`Editar categoria ${category.name}`}
+                                        onClick={(e) => { e.stopPropagation(); startCategoryEdit(category); }}
                                     >
-                                        Editar
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn-danger"
-                                        style={{ minHeight: 32, padding: "0 10px", fontSize: "0.8rem" }}
-                                        onClick={async () => {
-                                            if (
-                                                await dialog.confirm({
-                                                    title: "Desativar categoria",
-                                                    message: `Desativar "${category.name}"? Produtos já cadastrados nela continuam funcionando, mas ela deixa de aparecer como opção para novos cadastros.`,
-                                                    confirmLabel: "Desativar",
-                                                    danger: true,
-                                                })
-                                            )
-                                                deactivateCategoryMutation.mutate(category.id);
-                                        }}
-                                    >
-                                        Desativar
-                                    </button>
+                                        ✎
+                                    </Button>
                                 </div>
                             ),
                         )}
                     </div>
-                )}
 
-                <div style={{ display: "flex", gap: 8 }}>
-                    <input
-                        placeholder="Nova categoria…"
-                        value={newCategory}
-                        onChange={(e) => setNewCategory(e.target.value)}
-                    />
-                    <button
-                        type="button"
-                        className="btn-ghost"
-                        disabled={newCategory.trim() === "" || categoryMutation.isPending}
-                        onClick={() => categoryMutation.mutate()}
-                    >
-                        Criar
-                    </button>
+                    <div className="catalog-new-cat">
+                        <input
+                            placeholder="Nova categoria…"
+                            value={newCategory}
+                            onChange={(e) => setNewCategory(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && newCategory.trim() !== "") categoryMutation.mutate();
+                            }}
+                        />
+                        <Button
+                            size="sm"
+                            iconOnly
+                            aria-label="Criar categoria"
+                            disabled={newCategory.trim() === "" || categoryMutation.isPending}
+                            loading={categoryMutation.isPending}
+                            onClick={() => categoryMutation.mutate()}
+                        >
+                            +
+                        </Button>
+                    </div>
+
+                    <p className="catalog-hint">
+                        Arraste para reordenar. Desativar uma categoria não afeta os produtos já vinculados a ela.
+                    </p>
                 </div>
-            </div>
 
-            {error && !editing && (
-                <p className="error-text" role="alert">
-                    {error}
-                </p>
-            )}
-            {menuQuery.isError && <QueryError error={menuQuery.error} what="o cardápio" />}
-            {categoriesQuery.isError && <QueryError error={categoriesQuery.error} what="as categorias" />}
-
-            {menuQuery.isLoading && <SkeletonList rows={5} rowHeight={62} />}
-
-            {!menuQuery.isLoading && menuQuery.data?.length === 0 && (
-                <EmptyState
-                    icon="🍽"
-                    title="Nenhum produto cadastrado"
-                    description="Adicione o primeiro item do cardápio para começar a montar pedidos."
-                    action={
-                        <button type="button" className="btn-primary" onClick={() => openEditor("new")}>
-                            + Novo produto
-                        </button>
-                    }
-                />
-            )}
-
-            {!menuQuery.isLoading && (menuQuery.data?.length ?? 0) > 0 && (
-            <div className="ticket rise rise-2">
-                {(menuQuery.data ?? []).map((product) => (
-                    <div className="ticket-row" key={product.id}>
-                        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                            {product.imageUrl ? (
-                                <img
-                                    src={product.imageUrl}
-                                    alt={product.name}
-                                    width={46}
-                                    height={46}
-                                    loading="lazy"
-                                    style={{ width: 46, height: 46, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line)" }}
-                                />
-                            ) : (
-                                <div style={{ width: 46, height: 46, borderRadius: 8, background: "var(--bg-press)", display: "grid", placeItems: "center", color: "var(--ink-faint)", fontSize: "1.2rem" }}>
-                                    🍽
-                                </div>
-                            )}
-                            <div style={{ display: "grid", gap: 2 }}>
-                                <span>{product.name}</span>
-                                <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
-                                    {categoryName.get(product.categoryId) ?? `Categoria ${product.categoryId}`}
-                                    {product.description ? ` · ${product.description}` : ""}
-                                    {product.isStockControlled ? " · controla estoque" : " · sem controle de estoque"}
-                                </span>
-                            </div>
+                {/* --- Coluna direita: produtos da categoria selecionada --- */}
+                <div className="catalog-panel">
+                    <div className="catalog-toolbar">
+                        <div className="catalog-search">
+                            <SearchIcon />
+                            <input
+                                placeholder="Buscar produto por nome…"
+                                value={search}
+                                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                            />
                         </div>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <span className="mono-num" style={{ color: "var(--amber)" }}>
-                                {formatBRL(product.salePrice)}
-                            </span>
-                            <button
-                                type="button"
-                                className="btn-ghost"
-                                style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
-                                onClick={() => openEditor(product)}
-                            >
-                                Editar
-                            </button>
-                            <button
-                                type="button"
-                                className="btn-danger"
-                                style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
-                                onClick={async () => {
-                                    if (
-                                        await dialog.confirm({
-                                            title: "Desativar produto",
-                                            message: `Desativar "${product.name}"?`,
-                                            confirmLabel: "Desativar",
-                                            danger: true,
-                                        })
-                                    )
-                                        deactivateMutation.mutate(product.id);
-                                }}
-                            >
-                                Desativar
-                            </button>
+                        <div className="segmented" role="group" aria-label="Filtrar por status">
+                            {(["all", "active", "inactive"] as StatusFilter[]).map((s) => (
+                                <button
+                                    key={s}
+                                    type="button"
+                                    className={statusFilter === s ? "is-active" : ""}
+                                    onClick={() => { setStatusFilter(s); setPage(1); }}
+                                >
+                                    {s === "all" ? "Todos" : s === "active" ? "Ativos" : "Inativos"}
+                                </button>
+                            ))}
                         </div>
                     </div>
-                ))}
+
+                    {productsQuery.isLoading && <div style={{ padding: 16 }}><SkeletonList rows={5} rowHeight={62} /></div>}
+
+                    {!productsQuery.isLoading && filteredProducts.length === 0 && (
+                        <EmptyState
+                            icon="🍽"
+                            title="Nenhum produto encontrado"
+                            description={
+                                search.trim() !== ""
+                                    ? `Nenhum resultado para "${search.trim()}". Ajuste a busca ou o filtro de status.`
+                                    : (productsQuery.data?.length ?? 0) === 0
+                                        ? "Adicione o primeiro item do cardápio para começar a montar pedidos."
+                                        : "Nenhum produto nesta categoria com o filtro atual."
+                            }
+                            action={
+                                <button type="button" className="btn-primary" onClick={() => openEditor("new")}>
+                                    + Novo produto
+                                </button>
+                            }
+                        />
+                    )}
+
+                    {!productsQuery.isLoading && filteredProducts.length > 0 && (
+                        <>
+                            <div className="ticket" style={{ border: "none", borderRadius: 0 }}>
+                                {pageItems.map((product) => (
+                                    <div className={`ticket-row product-row ${!product.isActive ? "is-inactive" : ""}`} key={product.id}>
+                                        <div className="product-row-grid" style={{ flex: 1 }}>
+                                            <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
+                                                {product.imageUrl ? (
+                                                    <img
+                                                        src={product.imageUrl}
+                                                        alt={product.name}
+                                                        width={44}
+                                                        height={44}
+                                                        loading="lazy"
+                                                        style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line)", flexShrink: 0 }}
+                                                    />
+                                                ) : (
+                                                    <div style={{ width: 44, height: 44, borderRadius: 8, background: "var(--bg-press)", display: "grid", placeItems: "center", color: "var(--ink-faint)", fontSize: "1.1rem", flexShrink: 0 }}>
+                                                        🍽
+                                                    </div>
+                                                )}
+                                                <div style={{ display: "grid", gap: 2, minWidth: 0 }}>
+                                                    <span style={{ display: "flex", alignItems: "center", gap: 7, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                                        {product.name}
+                                                        {!product.isActive && <span className="category-inactive-tag">Inativo</span>}
+                                                    </span>
+                                                    <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                                        {product.categoryName}
+                                                        {product.description ? ` · ${product.description}` : ""}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <span className="mono-num" style={{ color: "var(--amber)", textAlign: "right" }}>
+                                                {formatBRL(product.salePrice)}
+                                            </span>
+                                            <span className="product-stock-cell">{stockBadge(product)}</span>
+                                            <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end" }}>
+                                                <Button size="sm" iconOnly aria-label={`Editar ${product.name}`} onClick={() => openEditor(product)}>
+                                                    ✎
+                                                </Button>
+                                                <Switch
+                                                    checked={product.isActive}
+                                                    onChange={() => toggleProduct(product)}
+                                                    label={product.isActive ? `Desativar ${product.name}` : `Ativar ${product.name}`}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="catalog-footer">
+                                <span>
+                                    Mostrando {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, filteredProducts.length)} de {filteredProducts.length} produtos
+                                </span>
+                                <div className="pager">
+                                    <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} aria-label="Página anterior">
+                                        <ChevronLeft />
+                                    </button>
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                                        <button
+                                            key={n}
+                                            type="button"
+                                            className={n === currentPage ? "is-current" : ""}
+                                            onClick={() => setPage(n)}
+                                        >
+                                            {n}
+                                        </button>
+                                    ))}
+                                    <button type="button" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)} aria-label="Próxima página">
+                                        <ChevronRight />
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
-            )}
 
             {editing !== null && (
                 <Modal
@@ -550,7 +767,7 @@ export function ProductsPage() {
                         />
                         {(imagePreviewUrl !== null || (editing !== "new" && editing !== null && editing.imageUrl)) && (
                             <img
-                                src={imagePreviewUrl ?? (editing as MenuItemResponse).imageUrl!}
+                                src={imagePreviewUrl ?? (editing as ProductManagementResponse).imageUrl!}
                                 alt="Prévia"
                                 width={90}
                                 height={90}

@@ -78,4 +78,10 @@ public sealed class Product : AggregateRoot
         IsActive = false;
         UpdatedAt = DateTime.Now;
     }
+
+    public void Activate()
+    {
+        IsActive = true;
+        UpdatedAt = DateTime.Now;
+    }
 }

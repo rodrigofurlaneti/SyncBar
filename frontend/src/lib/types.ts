@@ -274,6 +274,32 @@ export interface CategoryResponse {
   displayOrder: number;
 }
 
+/** DTO da tela de gerenciamento de cardápio (admin) — inclui categorias desativadas. */
+export interface CategoryManagementResponse {
+  id: number;
+  name: string;
+  displayOrder: number;
+  isActive: boolean;
+  productCount: number;
+}
+
+/** DTO da tela de gerenciamento de cardápio (admin) — inclui produtos desativados. */
+export interface ProductManagementResponse {
+  id: number;
+  categoryId: number;
+  categoryName: string;
+  unitOfMeasureId: number;
+  name: string;
+  description: string | null;
+  barcode: string | null;
+  salePrice: number;
+  costPrice: number | null;
+  isStockControlled: boolean;
+  preparationTimeMinutes: number | null;
+  isActive: boolean;
+  imageUrl: string | null;
+}
+
 export interface StockItemResponse {
   id: number;
   branchId: number;

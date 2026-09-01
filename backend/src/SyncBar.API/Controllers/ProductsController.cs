@@ -6,8 +6,10 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using SyncBar.Application.Features.Catalog.ActivateProduct;
 using SyncBar.Application.Features.Catalog.CreateProduct;
 using SyncBar.Application.Features.Catalog.DeactivateProduct;
+using SyncBar.Application.Features.Catalog.GetMenuForManagement;
 using SyncBar.Application.Features.Catalog.SetProductImage;
 using SyncBar.Application.Features.Catalog.UpdateProduct;
 using SyncBar.Application.Features.Catalog.GetProductById;
@@ -69,11 +71,30 @@ public sealed class ProductsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    // Tela de gerenciamento (Cardápio admin, split view) — ao contrário do GetMenu usado
+    // pelo Cardápio Digital do cliente, inclui produtos desativados (com IsActive) para
+    // alimentar o toggle ativo/inativo e o filtro Ativos/Inativos.
+    [HttpGet("company/{companyId:long}/management")]
+    public Task<IActionResult> GetForManagement(long companyId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(GetForManagement), async () =>
+        {
+            var result = await Mediator.Send(new GetMenuForManagementQuery(companyId), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
     [HttpPut("{id:long}/deactivate")]
     public Task<IActionResult> Deactivate(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(Deactivate), async () =>
         {
             var result = await Mediator.Send(new DeactivateProductCommand(id), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPut("{id:long}/activate")]
+    public Task<IActionResult> Activate(long id, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ProductsController), nameof(Activate), async () =>
+        {
+            var result = await Mediator.Send(new ActivateProductCommand(id), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 }

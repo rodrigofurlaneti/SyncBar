@@ -49,4 +49,10 @@ public sealed class Category : AggregateRoot
         IsActive = false;
         UpdatedAt = DateTime.Now;
     }
+
+    public void Activate()
+    {
+        IsActive = true;
+        UpdatedAt = DateTime.Now;
+    }
 }
