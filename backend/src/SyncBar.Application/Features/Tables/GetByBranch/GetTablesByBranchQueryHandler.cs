@@ -22,7 +22,9 @@ internal sealed class GetTablesByBranchQueryHandler(
                 var tables = await diningTableRepository.GetByBranchAsync(request.BranchId, cancellationToken);
                 IReadOnlyCollection<TableResponse> response = tables
                     .OrderBy(t => t.Number)
-                    .Select(t => new TableResponse(t.Id, t.BranchId, t.TableStatusId, t.Number, t.Capacity))
+                    .Select(t => new TableResponse(
+                        t.Id, t.BranchId, t.TableStatusId, t.Number, t.Capacity,
+                        t.IsCameraInputEnabled, t.IsBarcodeEnabled, t.IsQrCodeEnabled))
                     .ToList();
                 return Result.Success(response);
             });

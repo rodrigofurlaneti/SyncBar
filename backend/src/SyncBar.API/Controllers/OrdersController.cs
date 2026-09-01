@@ -21,6 +21,8 @@ using SyncBar.Application.Features.Orders.TransferItem;
 using SyncBar.Application.Features.Orders.UpdateItemStatus;
 using SyncBar.Application.Features.Orders.GetQrViewSetting;
 using SyncBar.Application.Features.Orders.SetQrViewEnabled;
+using SyncBar.Application.Features.Orders.GetTableReadingValidationSetting;
+using SyncBar.Application.Features.Orders.SetTableReadingValidation;
 using SyncBar.Domain.Repositories;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
@@ -172,6 +174,22 @@ public sealed class OrdersController(
     [HttpPut("qr-view-setting")]
     public Task<IActionResult> SetQrViewEnabled([FromBody] SetQrViewEnabledCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(SetQrViewEnabled), async () =>
+        {
+            var result = await Mediator.Send(command, ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpGet("table-reading-validation-setting/branch/{branchId:long}")]
+    public Task<IActionResult> GetTableReadingValidationSetting(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(GetTableReadingValidationSetting), async () =>
+        {
+            var result = await Mediator.Send(new GetTableReadingValidationSettingQuery(branchId), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpPut("table-reading-validation-setting")]
+    public Task<IActionResult> SetTableReadingValidation([FromBody] SetTableReadingValidationCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(SetTableReadingValidation), async () =>
         {
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();

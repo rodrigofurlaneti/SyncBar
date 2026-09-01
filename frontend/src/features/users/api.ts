@@ -7,6 +7,13 @@ export const getUsersByCompany = (companyId: number): Promise<UserResponse[]> =>
 export const getRoles = (companyId: number): Promise<RoleResponse[]> =>
   api<RoleResponse[]>(`/api/users/roles/company/${companyId}`);
 
+export const createRole = (payload: {
+  companyId: number;
+  name: string;
+  description?: string | null;
+}): Promise<number> =>
+  api<number>("/api/users/roles", { method: "POST", body: JSON.stringify(payload) });
+
 export const createUser = (payload: {
   companyId: number;
   employeeId: number | null;

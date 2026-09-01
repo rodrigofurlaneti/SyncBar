@@ -9,6 +9,7 @@ namespace SyncBar.Application.Features.Users.Create;
 internal sealed class CreateUserCommandHandler : BaseCommandHandler<CreateUserCommand, long>
 {
     private readonly IAppUserRepository _userRepository;
+    private readonly IEmployeeRepository _employeeRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IPasswordHasher _passwordHasher;
@@ -16,6 +17,7 @@ internal sealed class CreateUserCommandHandler : BaseCommandHandler<CreateUserCo
 
     public CreateUserCommandHandler(
         IAppUserRepository userRepository,
+        IEmployeeRepository employeeRepository,
         IRoleRepository roleRepository,
         IUserRoleRepository userRoleRepository,
         IPasswordHasher passwordHasher,
@@ -24,6 +26,7 @@ internal sealed class CreateUserCommandHandler : BaseCommandHandler<CreateUserCo
         : base(logRepository, unitOfWork)
     {
         _userRepository = userRepository;
+        _employeeRepository = employeeRepository;
         _roleRepository = roleRepository;
         _userRoleRepository = userRoleRepository;
         _passwordHasher = passwordHasher;
@@ -40,11 +43,21 @@ internal sealed class CreateUserCommandHandler : BaseCommandHandler<CreateUserCo
             {
                 // Se o seu request possuir o Id do administrador que está criando o usuário, preencha:
 
+                // AppUser só pode ser vinculado a um Employee existente e ativo (evita FK órfã/exceção de banco).
+                if (request.EmployeeId is not null)
+                {
+                    var employee = await _employeeRepository.GetByIdAsync(request.EmployeeId.Value, cancellationToken);
+                    if (employee is null || !employee.IsActive)
+                        return Result.Failure<long>(new Error("Employee.NotFound", "Employee not found."));
+                }
+
                 if (await _userRepository.ExistsAsync(request.UserName, request.Email, cancellationToken))
                     return Result.Failure<long>(new Error("AppUser.AlreadyExists", "User name or e-mail already in use."));
 
                 // Perfis precisam existir e pertencer a mesma empresa.
-                foreach (var roleId in request.RoleIds.Distinct())
+                // RoleIds materializado uma única vez — evita múltipla enumeração do IEnumerable de entrada.
+                var roleIds = request.RoleIds.Distinct().ToList();
+                foreach (var roleId in roleIds)
                 {
                     var role = await _roleRepository.GetByIdAsync(roleId, cancellationToken);
                     if (role is null || !role.IsActive || role.CompanyId != request.CompanyId)
@@ -61,7 +74,7 @@ internal sealed class CreateUserCommandHandler : BaseCommandHandler<CreateUserCo
                 await _userRepository.AddAsync(user.Value, cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
 
-                foreach (var roleId in request.RoleIds.Distinct())
+                foreach (var roleId in roleIds)
                 {
                     var link = UserRole.Create(user.Value.CompanyId, user.Value.Id, roleId);
                     if (link.IsSuccess)

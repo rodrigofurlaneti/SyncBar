@@ -13,6 +13,9 @@ internal sealed class DiningTableConfiguration : IEntityTypeConfiguration<Dining
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         builder.Property(x => x.QrToken);
         builder.Property(x => x.IsQrViewEnabled).IsRequired().HasDefaultValue(true);
+        builder.Property(x => x.IsCameraInputEnabled).IsRequired().HasDefaultValue(false);
+        builder.Property(x => x.IsBarcodeEnabled).IsRequired().HasDefaultValue(false);
+        builder.Property(x => x.IsQrCodeEnabled).IsRequired().HasDefaultValue(false);
         builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
         builder.HasIndex(x => x.TableStatusId).HasDatabaseName("IX_DiningTable_TableStatusId");

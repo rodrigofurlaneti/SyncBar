@@ -1,4 +1,4 @@
-﻿// Chamadas sem autenticação — o "segredo" é o token do QR Code da mesa.
+// Chamadas sem autenticação — o "segredo" é o token do QR Code da mesa.
 import type { OrderItemComplementSelection, PublicMenuResponse } from "../../lib/types";
 
 async function publicApi<T>(path: string, init?: RequestInit): Promise<T> {
@@ -61,10 +61,13 @@ export const addPublicOrderItem = (
     quantity: number,
     notes: string | null,
     complements?: OrderItemComplementSelection[],
+    // Quando informado, o pedido vai pra conta da COMANDA (não da mesa) — a mesa
+    // continua registrada no pedido pra cozinha/garçom saberem onde entregar.
+    comandaCode?: string,
 ): Promise<{ orderId: number }> =>
     publicApi<{ orderId: number }>(`/api/publicordering/${token}/items`, {
         method: "POST",
-        body: JSON.stringify({ productId, quantity, notes, complements: complements ?? null }),
+        body: JSON.stringify({ productId, quantity, notes, complements: complements ?? null, comandaCode: comandaCode || null }),
     });
 
 export const getPublicBill = (token: string): Promise<PublicBillResponse> =>
@@ -72,3 +75,31 @@ export const getPublicBill = (token: string): Promise<PublicBillResponse> =>
 
 export const getPublicComandaBill = (token: string, comandaCode: string): Promise<PublicComandaBillResponse> =>
     publicApi<PublicComandaBillResponse>(`/api/publicordering/${token}/comandas/${comandaCode}/bill`);
+
+// Comprovação de leitura da comanda (câmera/código de barras/QR Code) — exigida antes de
+// consultar ou abrir pedido numa comanda quando a filial liga algum desses cenários
+// (ver DiningTable.IsCameraInputEnabled/IsBarcodeEnabled/IsQrCodeEnabled, refletidos em
+// PublicMenuResponse). Basta completar UM dos métodos ligados.
+export const validateComandaReading = (
+    token: string,
+    comandaCode: string,
+    payload: { method: "camera" | "barcode" | "qrcode"; scannedValue?: string; photoBase64?: string },
+): Promise<void> =>
+    publicApi<void>(`/api/publicordering/${token}/comandas/${comandaCode}/reading-validation`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+
+// Irmã da validação de comanda acima, mas pra MESA — usada quando a "Visualização do
+// Cliente (QR Code)" está desligada (sem fluxo de comanda pro cliente) e mesmo assim
+// câmera/código de barras/QR Code estão ligados: precisa completar um deles antes de
+// liberar qualquer pedido direto na mesa. Sem código de comanda — a mesa já é
+// identificada pelo próprio token.
+export const validateTableReading = (
+    token: string,
+    payload: { method: "camera" | "barcode" | "qrcode"; scannedValue?: string; photoBase64?: string },
+): Promise<void> =>
+    publicApi<void>(`/api/publicordering/${token}/reading-validation`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });

@@ -125,6 +125,9 @@ export interface TableResponse {
   tableStatusId: number;
   number: number;
   capacity: number | null;
+  isCameraInputEnabled: boolean;
+  isBarcodeEnabled: boolean;
+  isQrCodeEnabled: boolean;
 }
 
 export interface ApiProblem {
@@ -269,6 +272,32 @@ export interface CategoryResponse {
   id: number;
   name: string;
   displayOrder: number;
+}
+
+/** DTO da tela de gerenciamento de cardápio (admin) — inclui categorias desativadas. */
+export interface CategoryManagementResponse {
+  id: number;
+  name: string;
+  displayOrder: number;
+  isActive: boolean;
+  productCount: number;
+}
+
+/** DTO da tela de gerenciamento de cardápio (admin) — inclui produtos desativados. */
+export interface ProductManagementResponse {
+  id: number;
+  categoryId: number;
+  categoryName: string;
+  unitOfMeasureId: number;
+  name: string;
+  description: string | null;
+  barcode: string | null;
+  salePrice: number;
+  costPrice: number | null;
+  isStockControlled: boolean;
+  preparationTimeMinutes: number | null;
+  isActive: boolean;
+  imageUrl: string | null;
 }
 
 export interface StockItemResponse {
@@ -545,6 +574,12 @@ export interface ServiceFeeSettingResponse {
   enabled: boolean;
 }
 
+export interface TableReadingValidationSettingResponse {
+  isCameraInputEnabled: boolean;
+  isBarcodeEnabled: boolean;
+  isQrCodeEnabled: boolean;
+}
+
 export interface TopProductResponse {
   productId: number;
   productName: string;
@@ -683,6 +718,10 @@ export interface PublicMenuResponse {
   branchName: string;
   tableNumber: number;
   items: MenuItemResponse[];
+  isQrViewEnabled: boolean;
+  isCameraInputEnabled: boolean;
+  isBarcodeEnabled: boolean;
+  isQrCodeEnabled: boolean;
 }
 
 export interface BillShareResponse {

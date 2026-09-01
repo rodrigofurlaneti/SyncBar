@@ -11,6 +11,7 @@ public interface ICustomerOrderRepository
     Task<IReadOnlyCollection<CustomerOrder>> GetByBranchAndPeriodAsync(long branchId, DateTime from, DateTime to, CancellationToken cancellationToken = default);
     Task<bool> HasOpenOrderForTableAsync(long diningTableId, CancellationToken cancellationToken = default);
     Task<CustomerOrder?> GetOpenByTableForUpdateAsync(long diningTableId, CancellationToken cancellationToken = default);
+    Task<CustomerOrder?> GetOpenByComandaForUpdateAsync(long comandaId, CancellationToken cancellationToken = default);
     Task<bool> HasOpenOrderForComandaAsync(long comandaId, CancellationToken cancellationToken = default);
     Task AddAsync(CustomerOrder entity, CancellationToken cancellationToken = default);
     Task<CustomerOrder?> GetOpenByComandaAsync(long comandaId, CancellationToken cancellationToken = default);

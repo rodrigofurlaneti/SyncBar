@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDialog } from "../../ui/Dialog";
-import { createUser, deactivateUser, getRoles, getUsersByCompany, updateUserRoles } from "./api";
+import { createRole, createUser, deactivateUser, getRoles, getUsersByCompany, updateUserRoles } from "./api";
 import { getEmployeesByBranch } from "../employees/api";
 import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
@@ -22,6 +22,8 @@ export function UsersPage() {
   const [password, setPassword] = useState("");
   const [employeeId, setEmployeeId] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<number[]>([]);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleDescription, setNewRoleDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const usersQuery = useQuery({
@@ -88,6 +90,25 @@ export function UsersPage() {
     onError: onApiError,
   });
 
+  // Cria um novo perfil (ex.: "Garçom", "Cozinha") sem sair do fluxo de criar/editar usuário —
+  // antes disso não havia nenhuma tela para cadastrar perfil além do único seedado no onboarding.
+  const createRoleMutation = useMutation({
+    mutationFn: () =>
+      createRole({
+        companyId: companyId ?? 1,
+        name: newRoleName.trim(),
+        description: newRoleDescription.trim() === "" ? null : newRoleDescription.trim(),
+      }),
+    onSuccess: async (newRoleId) => {
+      setNewRoleName("");
+      setNewRoleDescription("");
+      setError(null);
+      await queryClient.invalidateQueries({ queryKey: ["roles"] });
+      setSelectedRoles((current) => (current.includes(newRoleId) ? current : [...current, newRoleId]));
+    },
+    onError: onApiError,
+  });
+
   const roleChecklist = (
     <div style={{ display: "grid", gap: 6 }}>
       <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Perfis</span>
@@ -107,6 +128,44 @@ export function UsersPage() {
           </span>
         </label>
       ))}
+
+      <div
+        style={{
+          display: "grid",
+          gap: 6,
+          marginTop: 4,
+          paddingTop: 10,
+          borderTop: "1px solid var(--line)",
+        }}
+      >
+        <span style={{ color: "var(--ink-faint)", fontSize: "0.8rem" }}>
+          Não achou o perfil que precisa? Crie um novo abaixo (ex.: Garçom, Cozinha) — ele já
+          aparece marcado na lista acima.
+        </span>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            placeholder="Nome do novo perfil"
+            value={newRoleName}
+            onChange={(e) => setNewRoleName(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          <input
+            placeholder="Descrição (opcional)"
+            value={newRoleDescription}
+            onChange={(e) => setNewRoleDescription(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          <button
+            type="button"
+            className="btn-ghost"
+            style={{ minHeight: 44, padding: "0 14px", fontSize: "0.85rem", whiteSpace: "nowrap" }}
+            disabled={newRoleName.trim() === "" || createRoleMutation.isPending}
+            onClick={() => createRoleMutation.mutate()}
+          >
+            {createRoleMutation.isPending ? "Criando…" : "+ Novo perfil"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 

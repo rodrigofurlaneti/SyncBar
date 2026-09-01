@@ -1,5 +1,5 @@
 ﻿import { api } from "../../lib/apiClient";
-import type { ServiceFeeSettingResponse } from "../../lib/types";
+import type { ServiceFeeSettingResponse, TableReadingValidationSettingResponse } from "../../lib/types";
 
 export const getServiceFeeSetting = (branchId: number): Promise<ServiceFeeSettingResponse> =>
     api<ServiceFeeSettingResponse>(`/api/orders/service-fee-setting/branch/${branchId}`);
@@ -24,4 +24,17 @@ export const setQrViewEnabled = (branchId: number, enabled: boolean): Promise<vo
     api<void>("/api/orders/qr-view-setting", {
         method: "PUT",
         body: JSON.stringify({ branchId, enabled }),
+    });
+
+// Validação obrigatória na leitura da comanda/mesa: câmera, código de barras e QR Code.
+export const getTableReadingValidationSetting = (branchId: number): Promise<TableReadingValidationSettingResponse> =>
+    api<TableReadingValidationSettingResponse>(`/api/orders/table-reading-validation-setting/branch/${branchId}`);
+
+export const setTableReadingValidation = (
+    branchId: number,
+    settings: { isCameraInputEnabled: boolean; isBarcodeEnabled: boolean; isQrCodeEnabled: boolean },
+): Promise<void> =>
+    api<void>("/api/orders/table-reading-validation-setting", {
+        method: "PUT",
+        body: JSON.stringify({ branchId, ...settings }),
     });

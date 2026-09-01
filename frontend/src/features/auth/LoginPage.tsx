@@ -3,7 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { login } from "./api";
 import { useAuthStore } from "../../stores/authStore";
+import { useThemeStore } from "../../stores/themeStore";
 import { ApiError } from "../../lib/apiClient";
+import logoDark from "../../image/logodark.png";
 import logoLight from "../../image/logoligth.png";
 import bgImage from "../../image/screenbackground_auth.jpeg";
 
@@ -11,6 +13,7 @@ export function LoginPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const setSession = useAuthStore((s) => s.setSession);
+    const { theme, toggleTheme } = useThemeStore();
     const [userName, setUserName] = useState("");
     const [password, setPassword] = useState("");
 
@@ -42,13 +45,6 @@ export function LoginPage() {
                     from { opacity: 0; }
                     to { opacity: 1; }
                 }
-
-                /* Controle de exibição do logo baseado no tema global */
-                .auth-logo-dark { display: block; }
-                .auth-logo-light { display: none; }
-
-                :root[data-theme="light"] .auth-logo-dark { display: none; }
-                :root[data-theme="light"] .auth-logo-light { display: block; }
             `}</style>
 
             <main
@@ -61,8 +57,28 @@ export function LoginPage() {
                     backgroundSize: "cover",
                     backgroundPosition: "center",
                     animation: "fadeInAlpha 1s ease-out forwards",
+                    position: "relative",
                 }}
             >
+                <button
+                    type="button"
+                    className="btn-ghost btn-icon"
+                    aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+                    title={theme === "dark" ? "Tema claro" : "Tema escuro"}
+                    onClick={toggleTheme}
+                    style={{
+                        position: "fixed",
+                        top: 16,
+                        right: 16,
+                        zIndex: 5,
+                        background: "var(--bg-raise)",
+                        borderRadius: 999,
+                        boxShadow: "0 4px 16px rgba(0, 0, 0, 0.35)",
+                    }}
+                >
+                    {theme === "dark" ? "☀" : "🌙"}
+                </button>
+
                 <form
                     className="rise"
                     onSubmit={(e) => {
@@ -77,18 +93,22 @@ export function LoginPage() {
                         padding: "36px 32px 32px",
                         display: "grid",
                         gap: 16,
-                        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+                        boxShadow:
+                            theme === "light"
+                                ? "0 8px 32px rgba(0, 0, 0, 0.15)"
+                                : "0 8px 32px rgba(0, 0, 0, 0.4)",
                     }}
                 >
                     <div style={{ textAlign: "center", marginBottom: 8 }}>
-                        {/* Logo Light - Aparece apenas no modo claro */}
+                        {/* Alternância direta com base no estado 'theme' — mesmo padrão do AppShell */}
                         <img
-                            src={logoLight}
-                            alt="Logo do Sistema (Light)"
-                            className="auth-logo-light"
+                            src={theme === "light" ? logoLight : logoDark}
+                            alt="Logo do Sistema"
                             style={{
                                 height: 100,
                                 margin: "0 auto 16px",
+                                objectFit: "contain",
+                                transition: "opacity 0.2s ease-in-out",
                             }}
                         />
 

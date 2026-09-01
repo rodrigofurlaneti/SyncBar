@@ -5,4 +5,7 @@ public sealed record TableResponse(
     long BranchId,
     long TableStatusId,
     int Number,
-    int? Capacity);
+    int? Capacity,
+    bool IsCameraInputEnabled,
+    bool IsBarcodeEnabled,
+    bool IsQrCodeEnabled);
