@@ -14,9 +14,6 @@ public sealed class Branch : AggregateRoot
     public string? AddressCity { get; private set; }
     public string? AddressState { get; private set; }
     public string? AddressZipCode { get; private set; }
-    // Funcionário "dono" dos pedidos abertos pelo autoatendimento via QR Code — CustomerOrder.EmployeeId
-    // é obrigatório e o cliente final não tem login, então autoatendimento precisa de um funcionário
-    // configurado (normalmente o gerente ou um usuário "Salão"). Nulo = autoatendimento desativado.
     public long? SelfServiceEmployeeId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }

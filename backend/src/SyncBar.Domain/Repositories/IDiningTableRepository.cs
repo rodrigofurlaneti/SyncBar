@@ -9,4 +9,5 @@ public interface IDiningTableRepository
     Task<IReadOnlyCollection<DiningTable>> GetByBranchAsync(long branchId, CancellationToken cancellationToken = default);
     Task<DiningTable?> GetByQrTokenAsync(Guid token, CancellationToken cancellationToken = default);
     Task AddAsync(DiningTable entity, CancellationToken cancellationToken = default);
+    void Update(DiningTable entity);
 }

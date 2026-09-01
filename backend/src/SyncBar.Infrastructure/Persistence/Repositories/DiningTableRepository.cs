@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
 
@@ -24,4 +24,7 @@ internal sealed class DiningTableRepository(AppDbContext context) : IDiningTable
 
     public async Task AddAsync(DiningTable entity, CancellationToken cancellationToken = default)
         => await context.DiningTables.AddAsync(entity, cancellationToken);
+
+    public void Update(DiningTable entity)
+        => context.DiningTables.Update(entity);
 }

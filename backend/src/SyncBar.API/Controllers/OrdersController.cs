@@ -19,6 +19,8 @@ using SyncBar.Application.Features.Orders.SplitBill;
 using SyncBar.Application.Features.Orders.TransferComandaItem;
 using SyncBar.Application.Features.Orders.TransferItem;
 using SyncBar.Application.Features.Orders.UpdateItemStatus;
+using SyncBar.Application.Features.Orders.GetQrViewSetting;
+using SyncBar.Application.Features.Orders.SetQrViewEnabled;
 using SyncBar.Domain.Repositories;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
@@ -159,6 +161,22 @@ public sealed class OrdersController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    [HttpGet("qr-view-setting/branch/{branchId:long}")]
+    public Task<IActionResult> GetQrViewSetting(long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(GetQrViewSetting), async () =>
+        {
+            var result = await Mediator.Send(new GetQrViewSettingQuery(branchId), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpPut("qr-view-setting")]
+    public Task<IActionResult> SetQrViewEnabled([FromBody] SetQrViewEnabledCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(SetQrViewEnabled), async () =>
+        {
+            var result = await Mediator.Send(command, ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
     [HttpGet("{id:long}/split/{peopleCount:int}")]
     public Task<IActionResult> CalculateSplit(long id, int peopleCount, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(CalculateSplit), async () =>
@@ -174,6 +192,7 @@ public sealed class OrdersController(
             var result = await Mediator.Send(new CancelOrderCommand(id), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
+
     [HttpPut("comanda-items/transfer")]
     public Task<IActionResult> TransferComandaItem([FromBody] TransferComandaItemRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(TransferComandaItem), async () =>
@@ -188,6 +207,7 @@ public sealed class OrdersController(
             ), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
+
     [HttpPut("items/transfer")]
     public Task<IActionResult> TransferItem([FromBody] TransferTableItemRequest request, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(TransferItem), async () =>
@@ -203,6 +223,8 @@ public sealed class OrdersController(
                 return result.IsFailure ? HandleFailure(result) : NoContent();
             });
 }
+
+// RECORDS
 public sealed record TransferComandaItemRequest(
     [property: JsonRequired] long SourceCustomerOrderId,
     [property: JsonRequired] long TargetCustomerOrderId,
@@ -211,16 +233,19 @@ public sealed record TransferComandaItemRequest(
     [property: JsonRequired] long TargetComandaId,
     [property: JsonRequired] long ActorEmployeeId
 );
+
 public sealed record AddOrderItemRequest(
     [property: JsonRequired] long ProductId,
     [property: JsonRequired] decimal Quantity,
     string? Notes,
     long? EmployeeId,
     IReadOnlyCollection<OrderItemComplementSelection>? Complements = null);
+
 public sealed record AddOrderItemComplementRequest(
     [property: JsonRequired] long ComplementGroupId,
     [property: JsonRequired] long ComplementId,
     long? EmployeeId);
+
 public sealed record AddPizzaOrderItemRequest(
     [property: JsonRequired] long ProductId,
     [property: JsonRequired] decimal Quantity,
@@ -230,11 +255,16 @@ public sealed record AddPizzaOrderItemRequest(
     long? PizzaCrustId,
     long? PizzaEdgeId,
     IReadOnlyCollection<long> PizzaFlavorIds);
+
 public sealed record RaiseCreditLimitRequest([property: JsonRequired] decimal NewLimitAmount);
+
 public sealed record UpdateOrderItemStatusRequest(
     [property: JsonRequired] long OrderItemStatusId, long? ActorEmployeeId = null);
+
 public sealed record ApplyOrderDiscountRequest([property: JsonRequired] decimal DiscountAmount);
+
 public sealed record CloseOrderRequest(decimal ServiceFeeRate = 0.10m);
+
 public sealed record TransferTableItemRequest(
     [property: JsonRequired] long SourceCustomerOrderId,
     [property: JsonRequired] long TargetCustomerOrderId,
