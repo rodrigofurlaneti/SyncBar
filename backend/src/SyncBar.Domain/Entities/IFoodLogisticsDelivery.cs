@@ -44,9 +44,9 @@ public sealed class IfoodLogisticsDelivery : AggregateRoot
     private IfoodLogisticsDelivery() : base(0) { }
 
     private IfoodLogisticsDelivery(
-        long IfoodOrderId, long branchId, string driverName, string driverPhone, string driverVehicleType, DateTime now) : base(0)
+        long ifoodOrderId, long branchId, string driverName, string driverPhone, string driverVehicleType, DateTime now) : base(0)
     {
-        IfoodOrderId = IfoodOrderId;
+        IfoodOrderId = ifoodOrderId;
         BranchId = branchId;
         DriverName = driverName;
         DriverPhone = driverPhone;

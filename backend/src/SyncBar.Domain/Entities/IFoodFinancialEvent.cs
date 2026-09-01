@@ -36,14 +36,14 @@ public sealed class IfoodFinancialEvent : AggregateRoot
     private IfoodFinancialEvent() : base(0) { }
 
     private IfoodFinancialEvent(
-        long branchId, string IfoodEventId, string name, string? description, string? trigger,
+        long branchId, string ifoodEventId, string name, string? description, string? trigger,
         decimal amount, bool hasTransferImpact, DateTime competenceDate, DateTime periodStart,
         DateTime periodEnd, DateTime? settlementExpectedDate, string? referenceType, string? referenceId,
         string rawPayload)
         : base(0)
     {
         BranchId = branchId;
-        IfoodEventId = IfoodEventId;
+        IfoodEventId = ifoodEventId;
         Name = name;
         Description = description;
         Trigger = trigger;

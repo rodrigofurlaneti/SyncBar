@@ -27,13 +27,13 @@ public sealed class IfoodSettlement : AggregateRoot
     private IfoodSettlement() : base(0) { }
 
     private IfoodSettlement(
-        long branchId, string IfoodSettlementId, string type, string? product, decimal amount,
+        long branchId, string ifoodSettlementId, string type, string? product, decimal amount,
         string status, DateTime? paymentDate, string? bankCode, string? bankAgency, string? bankAccount,
         string rawPayload)
         : base(0)
     {
         BranchId = branchId;
-        IfoodSettlementId = IfoodSettlementId;
+        IfoodSettlementId = ifoodSettlementId;
         Type = type;
         Product = product;
         Amount = amount;

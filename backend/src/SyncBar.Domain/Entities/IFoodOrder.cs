@@ -48,16 +48,16 @@ public sealed class IfoodOrder : AggregateRoot
     private IfoodOrder() : base(0) { }
 
     private IfoodOrder(
-        long customerOrderId, long branchId, string IfoodOrderId, string? displayId, string merchantId,
-        string IfoodOrderType, string? deliveredBy, string orderTiming, DateTime? preparationStartDateTime,
+        long customerOrderId, long branchId, string ifoodOrderId, string? displayId, string merchantId,
+        string ifoodOrderType, string? deliveredBy, string orderTiming, DateTime? preparationStartDateTime,
         DateTime now, bool hasUnmappedItems) : base(0)
     {
         CustomerOrderId = customerOrderId;
         BranchId = branchId;
-        IfoodOrderId = IfoodOrderId;
+        IfoodOrderId = ifoodOrderId;
         DisplayId = displayId;
         MerchantId = merchantId;
-        IfoodOrderType = IfoodOrderType;
+        IfoodOrderType = ifoodOrderType;
         DeliveredBy = deliveredBy;
         OrderTiming = string.IsNullOrWhiteSpace(orderTiming) ? "IMMEDIATE" : orderTiming;
         PreparationStartDateTime = preparationStartDateTime;

@@ -60,7 +60,7 @@ public sealed class IfoodShippingDelivery : AggregateRoot
         long branchId, string? orderReference, string customerName, string customerPhoneAreaCode, string customerPhoneNumber,
         string postalCode, string streetName, string streetNumber, string? complement, string neighborhood,
         string city, string state, string country, string? reference, double? latitude, double? longitude,
-        decimal merchantFee, string quoteId, string IfoodDeliveryId, string? trackingUrl, DateTime now) : base(0)
+        decimal merchantFee, string quoteId, string ifoodDeliveryId, string? trackingUrl, DateTime now) : base(0)
     {
         BranchId = branchId;
         OrderReference = orderReference;
@@ -80,7 +80,7 @@ public sealed class IfoodShippingDelivery : AggregateRoot
         Longitude = longitude;
         MerchantFee = merchantFee;
         QuoteId = quoteId;
-        IfoodDeliveryId = IfoodDeliveryId;
+        IfoodDeliveryId = ifoodDeliveryId;
         TrackingUrl = trackingUrl;
         Status = IfoodShippingStatuses.DriverRequested;
         RequestedAt = now;

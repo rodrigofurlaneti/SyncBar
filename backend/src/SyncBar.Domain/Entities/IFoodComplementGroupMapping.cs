@@ -17,11 +17,11 @@ public sealed class IfoodComplementGroupMapping : AggregateRoot
 
     private IfoodComplementGroupMapping() : base(0) { }
 
-    private IfoodComplementGroupMapping(long complementGroupId, long branchId, Guid IfoodOptionGroupId) : base(0)
+    private IfoodComplementGroupMapping(long complementGroupId, long branchId, Guid ifoodOptionGroupId) : base(0)
     {
         ComplementGroupId = complementGroupId;
         BranchId = branchId;
-        IfoodOptionGroupId = IfoodOptionGroupId;
+        IfoodOptionGroupId = ifoodOptionGroupId;
         IsActive = true;
         CreatedAt = DateTime.Now;
     }

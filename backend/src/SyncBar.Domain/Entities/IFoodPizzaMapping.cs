@@ -24,11 +24,11 @@ public sealed class IfoodPizzaMapping : AggregateRoot
 
     private IfoodPizzaMapping() : base(0) { }
 
-    private IfoodPizzaMapping(long pizzaConfigurationId, long branchId, string IfoodPizzaId) : base(0)
+    private IfoodPizzaMapping(long pizzaConfigurationId, long branchId, string ifoodPizzaId) : base(0)
     {
         PizzaConfigurationId = pizzaConfigurationId;
         BranchId = branchId;
-        IfoodPizzaId = IfoodPizzaId;
+        IfoodPizzaId = ifoodPizzaId;
         IsActive = true;
         CreatedAt = DateTime.Now;
     }
@@ -62,9 +62,9 @@ public sealed class IfoodPizzaMapping : AggregateRoot
     public string? FindIfoodElementId(byte kind, long localId) =>
         _elements.FirstOrDefault(e => e.IsActive && e.Kind == kind && e.LocalId == localId)?.IfoodElementId;
 
-    public void UpdateIfoodPizzaId(string IfoodPizzaId)
+    public void UpdateIfoodPizzaId(string ifoodPizzaId)
     {
-        IfoodPizzaId = IfoodPizzaId;
+        IfoodPizzaId = ifoodPizzaId;
         UpdatedAt = DateTime.Now;
     }
 

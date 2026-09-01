@@ -47,13 +47,13 @@ public sealed class IfoodIntegrationSetting : AggregateRoot
 
     // clientSecretEncrypted em branco/nulo = "manter o segredo já salvo" — o frontend nunca
     // reexibe o valor salvo, então reenviar em branco não pode apagar o que já está lá.
-    public Result SaveCredentials(string? clientId, string? clientSecretEncrypted, bool enabled, string? IfoodCustomerId)
+    public Result SaveCredentials(string? clientId, string? clientSecretEncrypted, bool enabled, string? ifoodCustomerId)
     {
         ClientId = clientId;
         if (!string.IsNullOrWhiteSpace(clientSecretEncrypted))
             ClientSecretEncrypted = clientSecretEncrypted;
         Enabled = enabled;
-        IfoodCustomerId = IfoodCustomerId;
+        IfoodCustomerId = ifoodCustomerId;
         UpdatedAt = DateTime.Now;
         return Result.Success();
     }

@@ -19,12 +19,12 @@ public sealed class IfoodComplementMapping : AggregateRoot
 
     private IfoodComplementMapping() : base(0) { }
 
-    private IfoodComplementMapping(long complementId, long branchId, Guid IfoodOptionId, Guid IfoodProductId) : base(0)
+    private IfoodComplementMapping(long complementId, long branchId, Guid ifoodOptionId, Guid ifoodProductId) : base(0)
     {
         ComplementId = complementId;
         BranchId = branchId;
-        IfoodOptionId = IfoodOptionId;
-        IfoodProductId = IfoodProductId;
+        IfoodOptionId = ifoodOptionId;
+        IfoodProductId = ifoodProductId;
         IsActive = true;
         CreatedAt = DateTime.Now;
     }

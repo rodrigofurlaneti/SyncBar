@@ -17,12 +17,12 @@ public sealed class IfoodPizzaElementMapping : Entity
 
     private IfoodPizzaElementMapping() : base(0) { }
 
-    private IfoodPizzaElementMapping(long IfoodPizzaMappingId, byte kind, long localId, string IfoodElementId) : base(0)
+    private IfoodPizzaElementMapping(long ifoodPizzaMappingId, byte kind, long localId, string ifoodElementId) : base(0)
     {
-        IfoodPizzaMappingId = IfoodPizzaMappingId;
+        IfoodPizzaMappingId = ifoodPizzaMappingId;
         Kind = kind;
         LocalId = localId;
-        IfoodElementId = IfoodElementId;
+        IfoodElementId = ifoodElementId;
         IsActive = true;
         CreatedAt = DateTime.Now;
     }
@@ -30,9 +30,9 @@ public sealed class IfoodPizzaElementMapping : Entity
     internal static IfoodPizzaElementMapping Create(long IfoodPizzaMappingId, byte kind, long localId, string IfoodElementId) =>
         new(IfoodPizzaMappingId, kind, localId, IfoodElementId);
 
-    internal void UpdateIfoodElementId(string IfoodElementId)
+    internal void UpdateIfoodElementId(string ifoodElementId)
     {
-        IfoodElementId = IfoodElementId;
+        IfoodElementId = ifoodElementId;
         UpdatedAt = DateTime.Now;
     }
 }

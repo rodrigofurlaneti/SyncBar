@@ -21,12 +21,12 @@ public sealed class IfoodProductMapping : AggregateRoot
 
     private IfoodProductMapping() : base(0) { }
 
-    private IfoodProductMapping(long productId, long branchId, Guid IfoodItemId, Guid IfoodProductId) : base(0)
+    private IfoodProductMapping(long productId, long branchId, Guid ifoodItemId, Guid ifoodProductId) : base(0)
     {
         ProductId = productId;
         BranchId = branchId;
-        IfoodItemId = IfoodItemId;
-        IfoodProductId = IfoodProductId;
+        IfoodItemId = ifoodItemId;
+        IfoodProductId = ifoodProductId;
         IsActive = true;
         CreatedAt = DateTime.Now;
     }

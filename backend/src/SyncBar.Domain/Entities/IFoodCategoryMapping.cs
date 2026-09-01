@@ -17,11 +17,11 @@ public sealed class IfoodCategoryMapping : AggregateRoot
 
     private IfoodCategoryMapping() : base(0) { }
 
-    private IfoodCategoryMapping(long categoryId, long branchId, string IfoodCategoryId) : base(0)
+    private IfoodCategoryMapping(long categoryId, long branchId, string ifoodCategoryId) : base(0)
     {
         CategoryId = categoryId;
         BranchId = branchId;
-        IfoodCategoryId = IfoodCategoryId;
+        IfoodCategoryId = ifoodCategoryId;
         IsActive = true;
         CreatedAt = DateTime.Now;
     }
