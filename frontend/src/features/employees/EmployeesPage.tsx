@@ -11,6 +11,7 @@ import {
   registerTeamMember,
   updateEmployee,
 } from "./api";
+import type { RegisterTeamMemberResult } from "./api";
 import { getFeatures, getJobTitleFeatures, getUserFeatures, setUserFeatures } from "../access/api";
 import { deactivateUser } from "../users/api";
 import { useAuthStore } from "../../stores/authStore";
@@ -204,7 +205,11 @@ export function EmployeesPage() {
     }));
 
   const saveMutation = useMutation({
-    mutationFn: () => {
+    // Retorno unificado como Promise<RegisterTeamMemberResult | undefined> — updateEmployee e
+    // createEmployee resolvem em void, mas o TS não infere um tipo único de TData a partir de
+    // um corpo com "return" de Promises diferentes; a anotação explícita resolve isso e mantém
+    // onSuccess tipado (em vez de cair em "never").
+    mutationFn: async (): Promise<RegisterTeamMemberResult | undefined> => {
       const shared = {
         jobTitleId: Number(form.jobTitleId),
         name: form.name.trim(),
@@ -213,15 +218,19 @@ export function EmployeesPage() {
         salary: parseNum(form.salary),
       };
 
-      if (editing !== "new") return updateEmployee((editing as EmployeeResponse).id, shared);
+      if (editing !== "new") {
+        await updateEmployee((editing as EmployeeResponse).id, shared);
+        return undefined;
+      }
 
       if (!access.hasSystemAccess) {
-        return createEmployee({
+        await createEmployee({
           branchId,
           cpf: form.cpf.trim(),
           hiredAt: new Date().toISOString(),
           ...shared,
-        }).then(() => undefined);
+        });
+        return undefined;
       }
 
       return registerTeamMember(companyId ?? 1, {
