@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -10,12 +10,14 @@ namespace SyncBar.Application.Features.Orders.TransferComandaItem
     {
         private readonly ICustomerOrderRepository _orderRepository;
         private readonly IComandaItemTransferRepository _transferRepository;
+        private readonly IComandaRepository _comandaRepository;
         private readonly TimeProvider _timeProvider;
         private readonly IUnitOfWork _unitOfWork;
 
         public TransferComandaItemCommandHandler(
             ICustomerOrderRepository orderRepository,
             IComandaItemTransferRepository transferRepository,
+            IComandaRepository comandaRepository,
             TimeProvider timeProvider,
             ILogTrackerRepository logRepository,
             IUnitOfWork unitOfWork)
@@ -23,6 +25,7 @@ namespace SyncBar.Application.Features.Orders.TransferComandaItem
         {
             _orderRepository = orderRepository;
             _transferRepository = transferRepository;
+            _comandaRepository = comandaRepository;
             _timeProvider = timeProvider;
             _unitOfWork = unitOfWork;
         }
@@ -36,11 +39,9 @@ namespace SyncBar.Application.Features.Orders.TransferComandaItem
                 async (userIdBox) =>
                 {
                     userIdBox.Value = request.ActorEmployeeId;
-
                     var contextResult = await LoadTransferContextAsync(request, cancellationToken);
                     if (contextResult.IsFailure)
                         return Result.Failure<long>(contextResult.Error);
-
                     return await ApplyTransferAsync(request, contextResult.Value, cancellationToken);
                 });
         }
@@ -51,18 +52,14 @@ namespace SyncBar.Application.Features.Orders.TransferComandaItem
             var sourceOrder = await _orderRepository.GetByIdForUpdateAsync(request.SourceCustomerOrderId, cancellationToken);
             if (sourceOrder is null || !sourceOrder.IsActive)
                 return Result.Failure<(CustomerOrder, OrderItem, CustomerOrder, long)>(new Error("CustomerOrder.SourceNotFound", "Source order not found."));
-
             var itemToTransfer = sourceOrder.Items.FirstOrDefault(i => i.Id == request.CustomerOrderItemId);
             if (itemToTransfer is null)
                 return Result.Failure<(CustomerOrder, OrderItem, CustomerOrder, long)>(new Error("CustomerOrderItem.NotFound", "Item not found in source order."));
-
             if (itemToTransfer.OrderItemStatusId == OrderItemStatusIds.Cancelado)
                 return Result.Failure<(CustomerOrder, OrderItem, CustomerOrder, long)>(new Error("OrderItem.AlreadyCancelled", "Itens cancelados não podem ser transferidos."));
-
             var targetOrder = await _orderRepository.GetByIdForUpdateAsync(request.TargetCustomerOrderId, cancellationToken);
             if (targetOrder is null || !targetOrder.IsActive)
                 return Result.Failure<(CustomerOrder, OrderItem, CustomerOrder, long)>(new Error("CustomerOrder.TargetNotFound", "Target order not found."));
-
             return Result.Success((sourceOrder, itemToTransfer, targetOrder, itemToTransfer.OrderItemStatusId));
         }
 
@@ -106,6 +103,28 @@ namespace SyncBar.Application.Features.Orders.TransferComandaItem
                 return Result.Failure<long>(transferResult.Error);
 
             await _transferRepository.AddAsync(transferResult.Value, cancellationToken);
+
+            // Valida se restou algum item ativo na comanda de origem
+            bool hasActiveItems = sourceOrder.Items.Any(i => i.OrderItemStatusId != OrderItemStatusIds.Cancelado);
+
+            var sourceComanda = await _comandaRepository.GetByIdForUpdateAsync(request.SourceComandaId, cancellationToken);
+            if (sourceComanda is not null)
+            {
+                if (!hasActiveItems)
+                {
+                    // Se não sobrou nenhum item, define a comanda como Disponível e cancela o pedido vazio
+                    sourceComanda.SetAvailable();
+                    var cancelOrderResult = sourceOrder.Cancel(currentTime);
+                    if (cancelOrderResult.IsFailure)
+                        return Result.Failure<long>(cancelOrderResult.Error);
+                }
+                else
+                {
+                    // Se ainda há produtos na comanda de origem, mantém ela Em Uso
+                    sourceComanda.SetInUse();
+                }
+            }
+
             await _unitOfWork.CommitAsync(cancellationToken);
             return Result.Success(transferResult.Value.Id);
         }
