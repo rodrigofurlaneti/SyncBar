@@ -23,7 +23,6 @@ import { TabPedidos } from "./components/tabs/TabPedidos";
 import { TabMensagens, WaiterMessageResponse } from "./components/tabs/TabMensagens";
 import { CalculatorModal } from "./components/modals/CalculatorModal";
 import { TransferItemModal } from "./components/modals/TransferItemModal";
-import { TransferComandaItemModal } from "./components/modals/TransferComandaItemModal";
 import { WaiterProfileModal } from "./components/modals/WaiterProfileModal";
 import { WaiterOpenTableModal } from "./components/modals/WaiterOpenTableModal";
 import { WaiterOpenComandaModal } from "./components/modals/WaiterOpenComandaModal";
@@ -46,7 +45,8 @@ export function WaiterDashboardPage() {
     const [tableToOpen, setTableToOpen] = useState<TableResponse | null>(null);
     const [comandaToOpen, setComandaToOpen] = useState<ComandaResponse | null>(null);
 
-    const [openModal, setOpenModal] = useState<"calculator" | "transfer" | "transferir-comanda" | "profile" | "cash" | null>(null);
+    // Unificado para um único estado de modal de transferência
+    const [openModal, setOpenModal] = useState<"calculator" | "transfer" | "profile" | "cash" | null>(null);
 
     const [toast, setToast] = useState<string | null>(null);
     const showToast = (message: string) => {
@@ -120,14 +120,11 @@ export function WaiterDashboardPage() {
         else if (key === "turno") setOpenModal("cash");
         else if (key === "calculadora") setOpenModal("calculator");
         else if (key === "transferir") setOpenModal("transfer");
-        else if (key === "transferir-comanda") setOpenModal("transferir-comanda");
     };
 
     return (
         <div className="waiter-view">
             <div className="waiter-shell">
-                {/* Achado: o sino abria a aba "Início" em vez da aba "Mensagens" — quem tocava no
-                    sino de avisos (com o badge de notificação) nunca via a lista de mensagens. */}
                 <WaiterHeader userName={userName} readyItemsCount={readyItemsCount} onBellClick={() => setActiveTab("mensagens")} />
                 <main className="waiter-body">
                     {(tablesQuery.isError || ordersQuery.isError || comandasQuery.isError) && (
@@ -191,12 +188,15 @@ export function WaiterDashboardPage() {
                 {openModal === "calculator" && <CalculatorModal onClose={() => setOpenModal(null)} />}
                 {openModal === "profile" && <WaiterProfileModal userName={userName} branchId={branchId} onClose={() => setOpenModal(null)} onLogout={handleLogout} />}
                 {openModal === "cash" && <CashDrawer onClose={() => setOpenModal(null)} />}
-                {openModal === "transfer" && <TransferItemModal myTables={myTables} ordersByTableId={ordersByTableId} allActiveOrders={allActiveOrders} employeeId={employeeId} onClose={() => setOpenModal(null)} onSuccess={showToast} onError={showToast} />}
 
-                {openModal === "transferir-comanda" && (
-                    <TransferComandaItemModal
+                {/* Modal Unificado de Transferência (Mesas / Comandas) */}
+                {openModal === "transfer" && (
+                    <TransferItemModal
+                        mode="table"
+                        myTables={myTables}
                         comandas={comandasQuery.data ?? []}
                         comandaOrders={comandaOrders}
+                        ordersByTableId={ordersByTableId} 
                         allActiveOrders={allActiveOrders}
                         employeeId={employeeId}
                         onClose={() => setOpenModal(null)}

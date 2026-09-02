@@ -14,22 +14,21 @@ export const badgeToneVar: Record<BadgeTone, string> = {
     waiting: "var(--w-warn, #f59e0b)",
 };
 
-export type QuickActionKey = "mesas" | "comandas" | "turno" | "calculadora" | "transferir" | "transferir-comanda";
+export type QuickActionKey = "transferir" | "mesas" | "comandas" | "turno" | "calculadora";
 
 export const quickActions: { key: QuickActionKey; icon: string; label: string }[] = [
-    { key: "transferir", icon: "🔀", label: "Transferir Mesa" },
+    { key: "transferir", icon: "🔀", label: "Transferir" },
     { key: "mesas", icon: "🍽️", label: "Mesas" },
-    { key: "calculadora", icon: "🔢", label: "Calculadora" },
-    { key: "transferir-comanda", icon: "🔀", label: "Transferir Comanda" },
     { key: "comandas", icon: "📋", label: "Comandas" }
 ];
 
-export type TabKey = "inicio" | "mesas" | "comandas" | "pedidos" | "mensagens" | "perfil";
+export type TabKey = "inicio" | "mesas" | "comandas" | "pedidos" | "mensagens" | "calculadora" | "perfil";
 
 export const tabs: { key: TabKey; icon: string; label: string }[] = [
     { key: "inicio", icon: "🏠", label: "Início" },
     { key: "pedidos", icon: "🧾", label: "Pedidos" },
     { key: "mensagens", icon: "💬", label: "Mensagens" },
+    { key: "calculadora", icon: "🔢", label: "Calculadora" },
     { key: "perfil", icon: "👤", label: "Perfil" },
 ];
 

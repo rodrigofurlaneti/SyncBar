@@ -9,20 +9,22 @@ using SyncBar.Application.Features.Orders.Cancel;
 using SyncBar.Application.Features.Orders.Close;
 using SyncBar.Application.Features.Orders.GetById;
 using SyncBar.Application.Features.Orders.GetOpenByBranch;
+using SyncBar.Application.Features.Orders.GetQrViewSetting;
+using SyncBar.Application.Features.Orders.GetTableReadingValidationSetting;
 using SyncBar.Application.Features.Orders.Open;
 using SyncBar.Application.Features.Orders.RaiseComandaLimit;
 using SyncBar.Application.Features.Orders.RemoveItemComplement;
 using SyncBar.Application.Features.Orders.RemoveServiceFee;
 using SyncBar.Application.Features.Orders.Reopen;
 using SyncBar.Application.Features.Orders.ServiceFeeSetting;
+using SyncBar.Application.Features.Orders.SetQrViewEnabled;
+using SyncBar.Application.Features.Orders.SetTableReadingValidation;
 using SyncBar.Application.Features.Orders.SplitBill;
+using SyncBar.Application.Features.Orders.TransferComandaAllItem;
 using SyncBar.Application.Features.Orders.TransferComandaItem;
 using SyncBar.Application.Features.Orders.TransferItem;
+using SyncBar.Application.Features.Orders.TransferTableItems;
 using SyncBar.Application.Features.Orders.UpdateItemStatus;
-using SyncBar.Application.Features.Orders.GetQrViewSetting;
-using SyncBar.Application.Features.Orders.SetQrViewEnabled;
-using SyncBar.Application.Features.Orders.GetTableReadingValidationSetting;
-using SyncBar.Application.Features.Orders.SetTableReadingValidation;
 using SyncBar.Domain.Repositories;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
@@ -209,6 +211,21 @@ public sealed class OrdersController(
             var result = await Mediator.Send(new CancelOrderCommand(id), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
+    
+    [HttpPut("comanda-items/transfer-batch")]
+    public Task<IActionResult> TransferComandaItems([FromBody] TransferComandaItemsRequest request, CancellationToken ct) =>
+    ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(TransferComandaItems), async () =>
+    {
+        var result = await Mediator.Send(new TransferComandaItemsCommand(
+            request.SourceCustomerOrderId,
+            request.TargetCustomerOrderId,
+            request.CustomerOrderItemIds,
+            request.SourceComandaId,
+            request.TargetComandaId,
+            request.ActorEmployeeId
+        ), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    });
 
     [HttpPut("comanda-items/transfer")]
     public Task<IActionResult> TransferComandaItem([FromBody] TransferComandaItemRequest request, CancellationToken ct) =>
@@ -225,6 +242,21 @@ public sealed class OrdersController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    [HttpPut("items/transfer-batch")]
+    public Task<IActionResult> TransferTableItems([FromBody] TransferTableItemsRequest request, CancellationToken ct) =>
+    ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(TransferTableItems), async () =>
+    {
+        var result = await Mediator.Send(new TransferTableItemsCommand(
+            request.SourceCustomerOrderId,
+            request.TargetCustomerOrderId,
+            request.CustomerOrderItemIds,
+            request.SourceDiningTableId,
+            request.TargetDiningTableId,
+            request.ActorEmployeeId
+        ), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    });
+    
     [HttpPut("items/transfer")]
     public Task<IActionResult> TransferItem([FromBody] TransferTableItemRequest request, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(TransferItem), async () =>
@@ -240,6 +272,14 @@ public sealed class OrdersController(
                 return result.IsFailure ? HandleFailure(result) : NoContent();
             });
 }
+public sealed record TransferTableItemsRequest(
+    [property: JsonRequired] long SourceCustomerOrderId,
+    [property: JsonRequired] long TargetCustomerOrderId,
+    [property: JsonRequired] IReadOnlyCollection<long> CustomerOrderItemIds,
+    [property: JsonRequired] long SourceDiningTableId,
+    [property: JsonRequired] long TargetDiningTableId,
+    [property: JsonRequired] long ActorEmployeeId
+);
 
 public sealed record TransferComandaItemRequest(
     [property: JsonRequired] long SourceCustomerOrderId,
@@ -249,7 +289,14 @@ public sealed record TransferComandaItemRequest(
     [property: JsonRequired] long TargetComandaId,
     [property: JsonRequired] long ActorEmployeeId
 );
-
+public sealed record TransferComandaItemsRequest(
+    [property: JsonRequired] long SourceCustomerOrderId,
+    [property: JsonRequired] long TargetCustomerOrderId,
+    [property: JsonRequired] IReadOnlyCollection<long> CustomerOrderItemIds,
+    [property: JsonRequired] long SourceComandaId,
+    [property: JsonRequired] long TargetComandaId,
+    [property: JsonRequired] long ActorEmployeeId
+);
 public sealed record AddOrderItemRequest(
     [property: JsonRequired] long ProductId,
     [property: JsonRequired] decimal Quantity,
