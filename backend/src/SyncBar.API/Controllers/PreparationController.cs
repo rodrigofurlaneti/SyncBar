@@ -10,7 +10,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Preparo")]
 public sealed class PreparationController(
     IMediator mediator,
     ILogTrackerRepository logRepository,

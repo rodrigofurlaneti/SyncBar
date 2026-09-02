@@ -7,15 +7,12 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-// Emissão de NFC-e. Implementação padrão é fake — troque o registro de
-// IFiscalDocumentService em SyncBar.Infrastructure.DependencyInjection por um provider real
-// (ex.: Focus NFe, eNotas) com certificado digital A1 antes de usar em produção.
-[Authorize(Policy = "Feature:Faturamento")]
 public sealed class FiscalController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost("issue")]
     public Task<IActionResult> Issue([FromBody] IssueFiscalDocumentCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(FiscalController), nameof(Issue), async () =>

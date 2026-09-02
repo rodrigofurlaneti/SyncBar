@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,17 +13,11 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-// Protege a classe inteira (mesmo padrão do ProductsController) — criar/editar/desativar
-// categoria exige login de Gerente/Admin.
-[Authorize(Roles = "Administrador,Gerente")]
 public sealed class CategoriesController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
-    // AllowAnonymous preservado — rota migrada de ProductsController.GetCategories, onde já
-    // tinha essa exceção (usada por telas que listam categorias sem exigir login). Mantido
-    // igual na migração para não mudar comportamento de quem já consome essa rota.
     [AllowAnonymous]
     [HttpGet("company/{companyId:long}")]
     public Task<IActionResult> GetByCompany(long companyId, CancellationToken ct) =>
@@ -41,10 +35,6 @@ public sealed class CategoriesController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Tela de gerenciamento (Cardápio admin, split view) — ao contrário de GetByCompany,
-    // inclui categorias desativadas (com IsActive e contagem de produtos) para alimentar
-    // o toggle ativo/inativo e o filtro Ativos/Inativos. Não é [AllowAnonymous]: só quem
-    // já está autenticado como Gerente/Admin (guarda de classe) deve ver itens desativados.
     [HttpGet("company/{companyId:long}/management")]
     public Task<IActionResult> GetForManagement(long companyId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CategoriesController), nameof(GetForManagement), async () =>
@@ -53,6 +43,7 @@ public sealed class CategoriesController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateCategoryCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CategoriesController), nameof(Create), async () =>
@@ -61,6 +52,7 @@ public sealed class CategoriesController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}")]
     public Task<IActionResult> Update(long id, [FromBody] UpdateCategoryRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CategoriesController), nameof(Update), async () =>
@@ -69,6 +61,7 @@ public sealed class CategoriesController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/deactivate")]
     public Task<IActionResult> Deactivate(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CategoriesController), nameof(Deactivate), async () =>
@@ -77,6 +70,7 @@ public sealed class CategoriesController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/activate")]
     public Task<IActionResult> Activate(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CategoriesController), nameof(Activate), async () =>

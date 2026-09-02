@@ -19,10 +19,9 @@ using SyncBar.Application.Features.Integrations.Ifood.Orders;
 using SyncBar.Application.Features.Integrations.Ifood.Review;
 using SyncBar.Application.Features.Integrations.Ifood.Shipping;
 using SyncBar.Domain.Repositories;
-
 namespace SyncBar.API.Controllers;
 
-[Authorize(Roles = "Administrador,Gerente")]
+
 public sealed class IntegrationsController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -68,9 +67,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Pedidos Ifood ("fluxo essencial", fase 2) — a sincronização em si roda sozinha em segundo
-    // plano (IfoodOrderPollingBackgroundService); estes endpoints são só pra tela acompanhar e
-    // avançar o status manualmente (confirmar já é automático).
     [HttpGet("Ifood/orders/branch/{branchId:long}")]
     public Task<IActionResult> GetIfoodOrders(long branchId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodOrders), async () =>
@@ -111,9 +107,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Fase 9b — rastreamento do entregador e código de retirada do módulo Order (pedidos que
-    // vieram do Ifood), mais aceite/rejeição de disputas Handshake informadas manualmente pela
-    // equipe (ver ressalva em AcceptIfoodDisputeCommand).
     [HttpGet("Ifood/orders/{IfoodOrderId:long}/tracking")]
     public Task<IActionResult> GetIfoodOrderTracking(long IfoodOrderId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodOrderTracking), async () =>
@@ -146,10 +139,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Fase 9c — fecha os gaps restantes do módulo Order da auditoria de 2026-08-20: proposta de
-    // alternativa em disputa, virtual bag e requestDriver/cancelRequestDriver/verifyDeliveryCode
-    // do PRÓPRIO módulo Order (distintos dos homônimos em Shipping/Logistics já implementados —
-    // ver comentário em IIfoodOrderClient).
     [HttpPost("Ifood/disputes/{disputeId}/alternatives/{alternativeId}")]
     public Task<IActionResult> RequestIfoodDisputeAlternative(
         string disputeId, string alternativeId, [FromBody] RequestIfoodDisputeAlternativeRequest request, CancellationToken ct) =>
@@ -192,10 +181,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(new { codeMatched = result.Value });
         });
 
-    // Cardápio Ifood ("fluxo essencial", fase 3) — assim como os pedidos, a sincronização roda
-    // sozinha (disparada automaticamente a cada produto/categoria criado/editado/desativado, ver
-    // IIfoodCatalogSyncTrigger); este endpoint é só o botão "Sincronizar agora" da tela, pra
-    // reenviar tudo de uma vez (carga inicial ou recuperação de falha).
     [HttpPost("Ifood/catalog/sync")]
     public Task<IActionResult> SyncIfoodCatalog([FromBody] SyncIfoodCatalogRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(SyncIfoodCatalog), async () =>
@@ -203,19 +188,6 @@ public sealed class IntegrationsController(
             var result = await Mediator.Send(new SyncIfoodCatalogCommand(request.CompanyId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
-
-    // Fase 10 — módulo Catalog completo. Tier 1 (v2, versão viva, já usada pela sincronização
-    // automática desde a fase 3): CRUD tipado dedicado pra catálogos/categorias, produtos, itens
-    // (formato "flat" v2), grupos de opções/opções e operações administrativas (estoque, lote,
-    // versão, imagem). Tier 2 (v1, legado): um único endpoint despachante genérico — ver
-    // InvokeIfoodCatalogV1Operation — que cobre os 56 endpoints da v1 sem duplicar tipagem pra uma
-    // API que nenhum merchant do SyncBar usa hoje (todo merchant está em v1 OU v2, nunca nos dois).
-    // Ressalva importante: os nomes de campo abaixo foram confirmados contra a collection oficial
-    // do Postman (Ifood), mas os VALORES de exemplo da doc são placeholders gerados pelo Postman
-    // (schema mock), não tráfego real capturado — tratar como "estrutura confirmada, valores não
-    // confirmados" até testar contra o sandbox.
-
-    // --- Categories --------------------------------------------------------------------------
 
     [HttpGet("Ifood/catalog/branch/{branchId:long}/catalogs")]
     public Task<IActionResult> GetIfoodCatalogs(long branchId, CancellationToken ct) =>
@@ -272,8 +244,6 @@ public sealed class IntegrationsController(
             var result = await Mediator.Send(new ListIfoodSellableItemsQuery(branchId, groupId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
-
-    // --- Products ------------------------------------------------------------------------------
 
     [HttpGet("Ifood/catalog/branch/{branchId:long}/products")]
     public Task<IActionResult> ListIfoodProducts(long branchId, [FromQuery] int? limit, [FromQuery] int? page, CancellationToken ct) =>
@@ -343,8 +313,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // --- Items (v2 — flat) ----------------------------------------------------------------------
-
     [HttpGet("Ifood/catalog/branch/{branchId:long}/items/{itemId:guid}")]
     public Task<IActionResult> GetIfoodItemFlat(long branchId, Guid itemId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodItemFlat), async () =>
@@ -384,8 +352,6 @@ public sealed class IntegrationsController(
             var result = await Mediator.Send(new ListIfoodCategoryItemsQuery(branchId, categoryId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
-
-    // --- Option groups / options -----------------------------------------------------------------
 
     [HttpGet("Ifood/catalog/branch/{branchId:long}/option-groups")]
     public Task<IActionResult> ListIfoodOptionGroups(long branchId, [FromQuery] bool includeOptions, [FromQuery] string? catalogContext, CancellationToken ct) =>
@@ -459,8 +425,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // --- Admin (estoque, lote, versão do catálogo, imagem) --------------------------------------
-
     [HttpGet("Ifood/catalog/branch/{branchId:long}/inventory/{productId:guid}")]
     public Task<IActionResult> GetIfoodInventory(long branchId, Guid productId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodInventory), async () =>
@@ -493,9 +457,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // ⚠️ Upgrade/downgrade são operações destrutivas e irreversíveis no catálogo real do merchant —
-    // ver comentário completo em UpgradeIfoodCatalogVersionCommand/DowngradeIfoodCatalogVersionCommand.
-    // A UI precisa confirmar explicitamente com o usuário antes de chamar estes dois endpoints.
     [HttpPost("Ifood/catalog/branch/{branchId:long}/upgrade")]
     public Task<IActionResult> UpgradeIfoodCatalogVersion(long branchId, [FromBody] UpgradeIfoodCatalogVersionRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(UpgradeIfoodCatalogVersion), async () =>
@@ -512,8 +473,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // ⚠️ Schema de corpo/resposta não documentado pelo Ifood (Postman mostra "<object>" cru) — ver
-    // ressalva completa em UploadIfoodImageCommand. Repassa o JSON cru fornecido pelo chamador.
     [HttpPost("Ifood/catalog/branch/{branchId:long}/image")]
     public Task<IActionResult> UploadIfoodImage(long branchId, [FromBody] UploadIfoodImageRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(UploadIfoodImage), async () =>
@@ -522,9 +481,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // --- v1 (legado) — console genérico ----------------------------------------------------------
-    // Um único endpoint despachante pros 56 endpoints do Catalog v1 sem tipagem dedicada — ver
-    // comentário completo em InvokeIfoodCatalogV1OperationCommand sobre a decisão de escopo.
     [HttpPost("Ifood/catalog/branch/{branchId:long}/v1/invoke")]
     public Task<IActionResult> InvokeIfoodCatalogV1Operation(long branchId, [FromBody] InvokeIfoodCatalogV1OperationRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(InvokeIfoodCatalogV1Operation), async () =>
@@ -534,9 +490,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Financeiro Ifood (fase 4) — a sincronização em si roda sozinha em segundo plano 1x/dia
-    // (IfoodFinancialSyncBackgroundService); estes endpoints são pra tela "Financeiro" ler o
-    // resumo do período e pro botão "Sincronizar agora" reenviar sob demanda.
     [HttpGet("Ifood/financial/branch/{branchId:long}")]
     public Task<IActionResult> GetIfoodFinancialSummary(long branchId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodFinancialSummary), async () =>
@@ -553,9 +506,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Fase 9 — cobertura dos 13 relatórios financeiros restantes (financial/v2.0 ×12 +
-    // financial/v2.1 ×1), mais anticipations/sales (financial/v3.0) via o mesmo catálogo
-    // genérico. reportType é o nome do enum IfoodFinancialReportType (ex.: "SalesAdjustments").
     [HttpGet("Ifood/financial/branch/{branchId:long}/reports/{reportType}")]
     public Task<IActionResult> GetIfoodFinancialReport(
         long branchId, IfoodFinancialReportType reportType, [FromQuery] string? periodId,
@@ -566,8 +516,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Fase 9 — apuração sob demanda (financial/v3.0/.../reconciliation/on-demand), pra quando a
-    // apuração automática do período ainda não foi gerada. Competence no formato "yyyy-MM".
     [HttpPost("Ifood/financial/branch/{branchId:long}/reconciliation-on-demand")]
     public Task<IActionResult> RequestIfoodReconciliationOnDemand(
         long branchId, [FromBody] RequestIfoodReconciliationOnDemandRequest request, CancellationToken ct) =>
@@ -585,10 +533,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Operação da loja Ifood (fase 5, módulo Merchant) — tudo sob demanda (sem sincronização
-    // automática em segundo plano): status é lido ao vivo, interrupções são criadas/removidas
-    // direto na API do Ifood, horários e tempo de preparo são editados numa cópia local e
-    // reenviados ao salvar (ver comentário nos handlers em Features/Integrations/Ifood/Merchant).
     [HttpGet("Ifood/merchant/status/branch/{branchId:long}")]
     public Task<IActionResult> GetIfoodMerchantStatus(long branchId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodMerchantStatus), async () =>
@@ -645,9 +589,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Fase 9c — fecha os gaps restantes do módulo Merchant da auditoria de 2026-08-20: listar
-    // lojas do client_id, ver detalhes de uma loja específica e consultar status por operação
-    // (ex.: DELIVERY, TAKEOUT — diferente do status geral já coberto acima).
     [HttpGet("Ifood/merchant/list/company/{companyId:long}")]
     public Task<IActionResult> GetIfoodMerchantsList(long companyId, [FromQuery] int page, [FromQuery] int size, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodMerchantsList), async () =>
@@ -672,10 +613,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Logística por frota própria (fase 7, módulo Logistics) — só se aplica a pedidos DELIVERY
-    // com deliveredBy diferente de "Ifood" (ver IfoodOrder.DeliveredBy); tudo sob demanda, cada
-    // passo é acionado manualmente pela equipe conforme o entregador avança (atribuir → saiu pra
-    // origem → chegou na origem → despachou → chegou no destino → verificar código de entrega).
     [HttpGet("Ifood/logistics/branch/{branchId:long}")]
     public Task<IActionResult> GetIfoodLogisticsDeliveries(long branchId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodLogisticsDeliveries), async () =>
@@ -732,8 +669,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(new { codeMatched = result.Value });
         });
 
-    // Fase 9c — fecha o gap restante do módulo Logistics da auditoria de 2026-08-20: detalhes da
-    // entrega direto no Ifood (resposta sem schema documentado — ver IfoodLogisticsOrderDetailsResult).
     [HttpGet("Ifood/logistics/order/{IfoodOrderId:long}/details")]
     public Task<IActionResult> GetIfoodLogisticsOrderDetails(long IfoodOrderId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodLogisticsOrderDetails), async () =>
@@ -742,11 +677,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Shipping (fase 8, módulo Shipping) — entrega, via malha de entregadores do Ifood, de
-    // pedidos que NÃO vieram do Ifood (telefone, WhatsApp, site próprio). Tudo sob demanda: a
-    // equipe cota o endereço, confirma o pedido de motorista, acompanha o rastreamento e cancela
-    // se preciso. Também cobre a variante "pedido já existente no Ifood" (quote/requestDriver/
-    // cancelRequestDriver sobre um IfoodOrderId), que fecha uma lacuna do módulo Order.
     [HttpGet("Ifood/shipping/branch/{branchId:long}")]
     public Task<IActionResult> GetIfoodShippingDeliveries(long branchId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodShippingDeliveries), async () =>
@@ -803,7 +733,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Variante "pedido já existente no Ifood" (mesmo módulo Shipping, atua sobre um IfoodOrderId).
     [HttpGet("Ifood/shipping/order/{IfoodOrderId:long}/quote")]
     public Task<IActionResult> GetIfoodOrderShippingQuote(long IfoodOrderId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodOrderShippingQuote), async () =>
@@ -828,8 +757,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Fase 11 — fecha os últimos 4 endpoints da auditoria (troca de endereço de entrega em
-    // andamento, mesma variante "pedido já existente no Ifood" acima).
     [HttpPost("Ifood/shipping/order/{IfoodOrderId:long}/delivery-address-change")]
     public Task<IActionResult> RequestIfoodDeliveryAddressChange(long IfoodOrderId, [FromBody] RequestIfoodDeliveryAddressChangeRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(RequestIfoodDeliveryAddressChange), async () =>
@@ -864,8 +791,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Avaliações (fase 9, módulo Review v1.0) — sem persistência local, sempre lido/escrito
-    // direto no Ifood (ver comentário em IIfoodReviewClient).
     [HttpGet("Ifood/reviews/branch/{branchId:long}")]
     public Task<IActionResult> GetIfoodReviews(
         long branchId, [FromQuery] int page, [FromQuery] int pageSize, [FromQuery] DateTime? dateFrom,
@@ -902,8 +827,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Indicadores (fase 9, módulo Analytics v1.0) — 1 endpoint (KPIs de pedidos); ver ressalva
-    // sobre o payload padrão usado em IIfoodAnalyticsClient.
     [HttpGet("Ifood/analytics/branch/{branchId:long}/order-kpis")]
     public Task<IActionResult> GetIfoodOrderKpis(
         long branchId, [FromQuery] DateTime? periodStart, [FromQuery] DateTime? periodEnd, [FromQuery] int page, CancellationToken ct) =>
@@ -913,10 +836,6 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Alertas operacionais do Ifood (fase 13) — hoje só populados pelo
-    // IfoodMerchantStatusWatcherBackgroundService (loja indisponível/disponível), guardados em
-    // memória (IIfoodOperationalAlertStore). GET traz os não reconhecidos da empresa pra tela
-    // mostrar em um sino no topo; ACK remove da lista (idempotente — reconhecer de novo não é erro).
     [HttpGet("Ifood/alerts/company/{companyId:long}")]
     public Task<IActionResult> GetIfoodOperationalAlerts(long companyId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(IntegrationsController), nameof(GetIfoodOperationalAlerts), async () =>
@@ -933,19 +852,11 @@ public sealed class IntegrationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 }
-
-// Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor para
-// evitar under-posting.
 public sealed record SyncIfoodCatalogRequest([property: JsonRequired] long CompanyId);
-
 public sealed record CancelIfoodOrderRequest(string ReasonCode);
-
 public sealed record ValidateIfoodPickupCodeRequest(string Code);
-
 public sealed record IfoodDisputeActionRequest([property: JsonRequired] long BranchId);
-
 public sealed record RejectIfoodDisputeRequest([property: JsonRequired] long BranchId, string Reason);
-
 public sealed record RequestIfoodDisputeAlternativeRequest(
     [property: JsonRequired] long BranchId, string AlternativeType, decimal? Amount, string? Currency);
 

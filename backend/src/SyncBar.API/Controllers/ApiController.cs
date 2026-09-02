@@ -14,7 +14,7 @@ namespace SyncBar.API.Controllers;
 public abstract class ApiController(IMediator mediator) : ControllerBase
 {
     protected readonly IMediator Mediator = mediator;
-
+    public const string ManagerRoles = "Administrador,Gerente";
     protected IActionResult HandleFailure(Result result)
         => result.Error.Code switch
         {

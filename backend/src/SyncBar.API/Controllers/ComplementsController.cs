@@ -20,7 +20,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Roles = "Administrador,Gerente")]
 [Route("api/complements")]
 public sealed class ComplementsController(
     IMediator mediator,

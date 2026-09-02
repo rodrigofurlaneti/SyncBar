@@ -7,6 +7,7 @@ using SyncBar.Application.Features.Employees.CreateJobTitle;
 using SyncBar.Application.Features.Employees.Dismiss;
 using SyncBar.Application.Features.Employees.GetByBranch;
 using SyncBar.Application.Features.Employees.GetJobTitles;
+using SyncBar.Application.Features.Employees.RegisterTeamMember;
 using SyncBar.Application.Features.Employees.SetCommission;
 using SyncBar.Application.Features.Employees.Update;
 using SyncBar.Domain.Repositories;
@@ -35,7 +36,7 @@ public sealed class EmployeesController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [Authorize(Policy = "Feature:Equipe")]
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost("jobtitles")]
     public Task<IActionResult> CreateJobTitle([FromBody] CreateJobTitleCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(CreateJobTitle), async () =>
@@ -46,7 +47,7 @@ public sealed class EmployeesController(
                 : CreatedAtAction(nameof(GetJobTitles), new { companyId = command.CompanyId }, result.Value);
         });
 
-    [Authorize(Policy = "Feature:Equipe")]
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateEmployeeCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(Create), async () =>
@@ -57,7 +58,22 @@ public sealed class EmployeesController(
                 : CreatedAtAction(nameof(GetByBranch), new { branchId = command.BranchId }, result.Value);
         });
 
-    [Authorize(Policy = "Feature:Equipe")]
+    // Cadastro único de Equipe: cria o Employee e, quando marcado "usa o sistema", também o
+    // AppUser (com Perfil auto-provisionado a partir do Cargo) e os acessos extras da pessoa —
+    // substitui o fluxo antigo de preencher Nome/E-mail duas vezes em duas telas separadas
+    // (Equipe e Usuários) e depois criar um "Perfil" manualmente numa terceira tela.
+    [Authorize(Roles = ManagerRoles)]
+    [HttpPost("team")]
+    public Task<IActionResult> RegisterTeamMember([FromBody] RegisterTeamMemberCommand command, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(RegisterTeamMember), async () =>
+        {
+            var result = await Mediator.Send(command, ct);
+            return result.IsFailure
+                ? HandleFailure(result)
+                : CreatedAtAction(nameof(GetByBranch), new { branchId = command.BranchId }, result.Value);
+        });
+
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}")]
     public Task<IActionResult> Update(long id, [FromBody] UpdateEmployeeRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(Update), async () =>
@@ -67,7 +83,7 @@ public sealed class EmployeesController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [Authorize(Policy = "Feature:Equipe")]
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/dismiss")]
     public Task<IActionResult> Dismiss(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(Dismiss), async () =>
@@ -76,7 +92,7 @@ public sealed class EmployeesController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    [Authorize(Roles = "Administrador,Gerente")]
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/commission")]
     public Task<IActionResult> SetCommission(long id, [FromBody] SetCommissionRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(EmployeesController), nameof(SetCommission), async () =>

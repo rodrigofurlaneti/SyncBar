@@ -13,18 +13,12 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-// Fase 17 (pizza) — cadastro de sabores e configuração de pizza (tamanhos/bordas/recheios de
-// borda/preço por sabor×tamanho) de um Product, e o gatilho manual de sincronização com o Ifood.
-// Mesma policy de ComplementsController — é parte do cardápio.
-[Authorize(Policy = "Feature:Cardapio")]
 [Route("api/pizza")]
 public sealed class PizzaController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
-    // --- PizzaFlavor (cadastro de sabor, reaproveitável entre pizzas) ---
-
     [HttpPost("flavors")]
     public Task<IActionResult> CreateFlavor([FromBody] CreatePizzaFlavorCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PizzaController), nameof(CreateFlavor), async () =>
@@ -32,8 +26,6 @@ public sealed class PizzaController(
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
-
-    // --- PizzaConfiguration (1:1 com Product) ---
 
     [HttpPost("configurations")]
     public Task<IActionResult> CreateConfiguration([FromBody] CreatePizzaConfigurationCommand command, CancellationToken ct) =>
@@ -75,8 +67,6 @@ public sealed class PizzaController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // --- Sincronização manual com o Ifood (Catalog v1, legado) ---
-
     [HttpPost("configurations/{id:long}/Ifood-sync")]
     public Task<IActionResult> SyncWithIfood(long id, [FromBody] SyncIfoodPizzaRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PizzaController), nameof(SyncWithIfood), async () =>
@@ -85,10 +75,6 @@ public sealed class PizzaController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 }
-
-// Requests separados dos commands quando há parâmetro de rota.
-// Fase Sonar MEDIUM (2026-08-24): [property: JsonRequired] nos campos de tipo valor para
-// evitar under-posting.
 public sealed record AddPizzaSizeRequest(
     string Name, int? Slices,
     [property: JsonRequired] int AcceptedFractions,

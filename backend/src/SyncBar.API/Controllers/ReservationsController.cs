@@ -13,7 +13,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Salao")]
 public sealed class ReservationsController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -28,6 +27,7 @@ public sealed class ReservationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateReservationCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ReservationsController), nameof(Create), async () =>
@@ -36,6 +36,7 @@ public sealed class ReservationsController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/confirm")]
     public Task<IActionResult> Confirm(long id, [FromBody] ConfirmReservationRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ReservationsController), nameof(Confirm), async () =>
@@ -44,6 +45,7 @@ public sealed class ReservationsController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/cancel")]
     public Task<IActionResult> Cancel(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ReservationsController), nameof(Cancel), async () =>

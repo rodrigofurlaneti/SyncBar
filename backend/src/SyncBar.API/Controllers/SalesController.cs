@@ -11,12 +11,12 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Caixa")]
 public sealed class SalesController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost]
     public Task<IActionResult> Register([FromBody] RegisterSaleCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(SalesController), nameof(Register), async () =>
@@ -33,8 +33,7 @@ public sealed class SalesController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    // Estorno: prerrogativa do gerente, apenas com a sessao de caixa aberta.
-    [Authorize(Roles = "Administrador,Gerente")]
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/refund")]
     public Task<IActionResult> Refund(long id, [FromBody] RefundSaleRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(SalesController), nameof(Refund), async () =>
@@ -43,7 +42,7 @@ public sealed class SalesController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // Pagamento parcial: cliente que sai antes deixa parte paga — SO em mesa.
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost("partial")]
     public Task<IActionResult> RegisterPartial([FromBody] RegisterPartialPaymentCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(SalesController), nameof(RegisterPartial), async () =>
@@ -53,5 +52,4 @@ public sealed class SalesController(
         });
 }
 
-// Request separado do command quando ha parametro de rota.
 public sealed record RefundSaleRequest([property: JsonRequired] long EmployeeId, string? Reason);

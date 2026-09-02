@@ -16,6 +16,7 @@ import { ApiError } from "../../lib/apiClient";
 import {
   CashMovementType,
   DEFAULT_CASH_REGISTER_ID,
+  PaymentMethod,
   formatBRL,
   paymentMethodLabel,
 } from "../../lib/types";
@@ -30,6 +31,13 @@ const parseAmount = (raw: string): number => {
   const value = Number(raw.replace(",", "."));
   return Number.isFinite(value) ? value : 0;
 };
+
+// Conferência de fechamento por modalidade eletrônica — só exibição/comparação no front-end.
+// O único valor de fato enviado ao backend em Fechar caixa continua sendo o Dinheiro contado
+// (é o que a tabela CashSession grava hoje); Crédito/Débito/Pix aqui ajudam o operador a bater
+// o que a maquininha/o extrato Pix mostrou contra o que o sistema já espera, sem exigir mudança
+// de schema para isso.
+const RECONCILE_METHODS = [PaymentMethod.CartaoCredito, PaymentMethod.CartaoDebito, PaymentMethod.Pix];
 
 interface DifferenceState {
   label: string;
@@ -51,6 +59,7 @@ export function CashDrawer({ onClose }: Props) {
   const [movementAmount, setMovementAmount] = useState("");
   const [movementDescription, setMovementDescription] = useState("");
   const [countedAmount, setCountedAmount] = useState("");
+  const [cardCounts, setCardCounts] = useState<Record<number, string>>({});
   const [closeResult, setCloseResult] = useState<CloseCashSessionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -342,6 +351,64 @@ export function CashDrawer({ onClose }: Props) {
 
           <div style={{ display: "grid", gap: 8 }}>
             <div className="display" style={{ fontSize: "1.1rem" }}>Fechar caixa</div>
+
+            {summary && (
+              <div className="ticket">
+                <div className="ticket-head">
+                  <span style={{ fontSize: "0.85rem", color: "var(--ink-dim)" }}>
+                    Conferência por forma de pagamento
+                  </span>
+                </div>
+                {RECONCILE_METHODS.map((methodId) => {
+                  const expected =
+                    summary.paymentTotals.find((t) => t.paymentMethodId === methodId)?.totalAmount ?? 0;
+                  const countedRaw = cardCounts[methodId] ?? "";
+                  const hasCounted = countedRaw.trim() !== "";
+                  const diff = parseAmount(countedRaw) - expected;
+                  return (
+                    <div
+                      className="ticket-row"
+                      key={methodId}
+                      style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
+                        <span>{paymentMethodLabel[methodId]}</span>
+                        <span className="mono-num" style={{ color: "var(--ink-dim)" }}>
+                          Esperado {formatBRL(expected)}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input
+                          placeholder="Conferido (R$)"
+                          inputMode="decimal"
+                          value={countedRaw}
+                          onChange={(e) => setCardCounts((c) => ({ ...c, [methodId]: e.target.value }))}
+                          style={{ flex: 1 }}
+                        />
+                        {hasCounted && (
+                          <span
+                            className="mono-num"
+                            style={{
+                              fontSize: "0.85rem",
+                              minWidth: 96,
+                              textAlign: "right",
+                              color: diff === 0 ? "var(--ok)" : diff > 0 ? "var(--amber)" : "var(--danger)",
+                            }}
+                          >
+                            {diff === 0 ? "Confere" : diff > 0 ? `+ ${formatBRL(diff)}` : `− ${formatBRL(Math.abs(diff))}`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <p style={{ padding: "8px 18px 12px", margin: 0, fontSize: "0.78rem", color: "var(--ink-faint)" }}>
+                  Só o Dinheiro abaixo é enviado ao fechar o caixa — Crédito/Débito/Pix aqui são conferência
+                  visual (o valor esperado já vem das vendas da sessão) e não alteram o fechamento.
+                </p>
+              </div>
+            )}
+
             <input
               placeholder="Dinheiro contado na gaveta (R$)"
               inputMode="decimal"

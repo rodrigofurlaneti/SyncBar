@@ -1,5 +1,6 @@
 ﻿import { useMemo } from "react";
 import { QueryError } from "../../../../components/QueryError";
+import { parseApiDate } from "../../../../lib/types";
 
 export interface WaiterMessageResponse {
     id: number;
@@ -23,7 +24,7 @@ interface TabMensagensProps {
 export function TabMensagens({ activeAreaId, isLoading, isError, error, messages }: TabMensagensProps) {
     const sortedMessages = useMemo(() => {
         return [...messages].sort((a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            parseApiDate(b.createdAt).getTime() - parseApiDate(a.createdAt).getTime()
         );
     }, [messages]);
 
@@ -59,7 +60,7 @@ export function TabMensagens({ activeAreaId, isLoading, isError, error, messages
                                     Aviso Operacional
                                 </span>
                                 <span style={{ fontSize: "0.75rem", color: "var(--w-ink-faint)" }}>
-                                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(msg.createdAt).toLocaleDateString()}
+                                    {parseApiDate(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {parseApiDate(msg.createdAt).toLocaleDateString()}
                                 </span>
                             </div>
                             <p style={{ fontSize: "0.95rem", color: "var(--w-ink)", margin: 0, fontWeight: 500 }}>

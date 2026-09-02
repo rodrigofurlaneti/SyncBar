@@ -13,7 +13,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Roles = "Administrador,Gerente")]
 public sealed class PrintersController(
     IMediator mediator,
     IPrintingService printingService,
@@ -60,7 +59,6 @@ public sealed class PrintersController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
-    // --- WRAPPER DE LOG ---
     private async Task<IActionResult> ExecuteWithLogAsync(string methodName, Func<Task<IActionResult>> action)
     {
         var stopwatch = Stopwatch.StartNew();

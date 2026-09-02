@@ -194,6 +194,12 @@ export function DeliveryBoardPage() {
 
     useEffect(() => { localStorage.setItem(VIEW_MODE_KEY, viewMode); }, [viewMode]);
 
+    useEffect(() => {
+        const previousTitle = document.title;
+        document.title = "Ding.food — Delivery";
+        return () => { document.title = previousTitle; };
+    }, []);
+
     const ordersQuery = useQuery({
         queryKey: ["orders", "open", branchId],
         queryFn: () => getOpenOrdersByBranch(branchId),
@@ -322,7 +328,7 @@ export function DeliveryBoardPage() {
             <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                     <div>
-                        <img src={motorcycleImg} alt="Moto de Delivery" style={{ width: 64, height: 64, objectFit: "contain", mixBlendMode: "multiply" }} />
+                        <img src={motorcycleImg} alt="Moto de Delivery" style={{ width: "clamp(44px, 5vw, 72px)", height: "auto", objectFit: "contain", mixBlendMode: "multiply" }} />
                     </div>
                     <div>
                         <h1 style={{ fontSize: "2.4rem", fontWeight: 900, color: "#1A1A1A", margin: 0, textTransform: "uppercase", letterSpacing: "-1px" }}>Delivery</h1>
@@ -366,7 +372,10 @@ export function DeliveryBoardPage() {
                     <input
                         placeholder="Buscar pedido, cliente ou endereço..."
                         value={search} onChange={(e) => setSearch(e.target.value)}
-                        style={{ width: "100%", padding: "12px 16px 12px 40px", borderRadius: 8, border: "1px solid #EAEAEA", background: "#fff", fontSize: "0.95rem", boxShadow: "0 2px 4px rgba(0,0,0,0.02)", outline: "none" }}
+                        /* Achado: este board usa cores fixas (light) em vez das variáveis de tema,
+                           mas o input não tinha "color" — herdava o texto claro do tema escuro
+                           (--ink), ficando ilegível em cima do fundo branco #fff deste campo. */
+                        style={{ width: "100%", padding: "12px 16px 12px 40px", borderRadius: 8, border: "1px solid #EAEAEA", background: "#fff", color: "#1A1A1A", fontSize: "0.95rem", boxShadow: "0 2px 4px rgba(0,0,0,0.02)", outline: "none" }}
                     />
                     <svg style={{ position: "absolute", left: 14, top: 12, width: 18, color: "#999" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 </div>

@@ -7,10 +7,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-// Cobrança via gateway (Pix/cartão). Implementação padrão é fake — troque o registro de
-// IPaymentGatewayService em SyncBar.Infrastructure.DependencyInjection por um provider real
-// (ex.: Focus NFe, eNotas / MercadoPago) antes de usar em produção.
-[Authorize(Policy = "Feature:Caixa")]
 public sealed class PaymentsController(
     IMediator mediator,
     ILogTrackerRepository logRepository,

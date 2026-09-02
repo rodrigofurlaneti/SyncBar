@@ -13,7 +13,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Faturamento")]
 public sealed class FinanceController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -59,6 +58,7 @@ public sealed class FinanceController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost("costs")]
     public Task<IActionResult> CreateCost([FromBody] CreateOperatingCostCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(FinanceController), nameof(CreateCost), async () =>
@@ -67,6 +67,7 @@ public sealed class FinanceController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("costs/{id:long}/deactivate")]
     public Task<IActionResult> DeactivateCost(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(FinanceController), nameof(DeactivateCost), async () =>
@@ -75,6 +76,7 @@ public sealed class FinanceController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("target")]
     public Task<IActionResult> SetTarget([FromBody] SetRevenueTargetCommand command, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(FinanceController), nameof(SetTarget), async () =>

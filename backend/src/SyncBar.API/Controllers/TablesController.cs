@@ -11,7 +11,6 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Authorize(Policy = "Feature:Salao")]
 public sealed class TablesController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
@@ -25,7 +24,7 @@ public sealed class TablesController(
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-    [Authorize(Roles = "Administrador,Gerente")]
+    [Authorize(Roles = ManagerRoles)]
     [HttpPost("{id:long}/qr-token")]
     public Task<IActionResult> GenerateQrToken(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(TablesController), nameof(GenerateQrToken), async () =>
@@ -34,7 +33,7 @@ public sealed class TablesController(
             return result.IsFailure ? HandleFailure(result) : Ok(new { token = result.Value });
         });
 
-    [Authorize(Roles = "Administrador,Gerente")]
+    [Authorize(Roles = ManagerRoles)]
     [HttpPut("{id:long}/reading-validation")]
     public Task<IActionResult> SetReadingValidation(long id, [FromBody] SetReadingValidationRequest request, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(TablesController), nameof(SetReadingValidation), async () =>
@@ -45,5 +44,4 @@ public sealed class TablesController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 }
-
 public sealed record SetReadingValidationRequest(bool IsCameraInputEnabled, bool IsBarcodeEnabled, bool IsQrCodeEnabled);
