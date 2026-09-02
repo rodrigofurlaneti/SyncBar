@@ -1386,3 +1386,101 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
 }
 .pager button:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-faint); }
 .pager button.is-current { background: var(--amber); color: var(--amber-ink); border-color: var(--amber-deep); }
+
+/* ============================================================
+   Equipe (EmployeesPage) — cadastro unificado de funcionário + usuário
+   do sistema + acessos, numa página só. Achado de UX: a lista antiga
+   era uma pilha de linhas de texto idêntica para quem tem login e quem
+   não tem (limpeza, vigilância nunca usam o sistema), sem nenhuma pista
+   visual de quem já tem acesso, qual o Perfil (sempre derivado do
+   Cargo, nunca escolhido à mão) ou quantos acessos extras a pessoa tem
+   além do que o cargo já libera. Reestruturado em grade de cartões,
+   com o cadastro (modal) e o ajuste de acesso por pessoa (painel
+   lateral) resolvidos sem sair da página.
+   ============================================================ */
+.emp-tabs { display: flex; gap: 4px; margin-bottom: 18px; }
+.emp-tab {
+  font-family: var(--font-cond); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  font-size: 0.82rem; padding: 9px 16px; border-radius: 8px; color: var(--ink-faint);
+  text-decoration: none; display: inline-block;
+}
+.emp-tab.is-active { color: var(--amber-ink); background: var(--amber); }
+.emp-tab:not(.is-active):hover { color: var(--ink); }
+
+.emp-toolbar { display: flex; align-items: center; gap: 12px; margin: 22px 0 4px; flex-wrap: wrap; }
+.emp-search { display: flex; align-items: center; gap: 8px; background: var(--bg-press); border: 1px solid var(--line); border-radius: 10px; padding: 0 14px; height: 44px; flex: 1; min-width: 220px; }
+.emp-search svg { color: var(--ink-faint); flex-shrink: 0; }
+.emp-search input { border: none; background: transparent; min-height: 0; height: auto; padding: 0; flex: 1; min-width: 0; font-size: 0.9rem; }
+.emp-search input:focus { outline: none; }
+.emp-count-line { margin: 12px 0 4px; font-size: 0.8rem; color: var(--ink-faint); }
+.emp-count-line b { color: var(--ink-dim); }
+
+.emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 14px; }
+.emp-card {
+  background: var(--bg-raise); border: 1px solid var(--line); border-radius: 16px; padding: 18px;
+  display: flex; flex-direction: column; gap: 14px; transition: border-color var(--duration-fast) var(--ease-standard);
+}
+.emp-card:hover { border-color: var(--ink-faint); }
+.emp-card.is-no-login { background: var(--bg-press); border-style: dashed; }
+.emp-card-top { display: flex; align-items: flex-start; gap: 12px; }
+.emp-avatar {
+  width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+  font-family: var(--font-cond); font-weight: 700; font-size: 0.95rem; color: #fff; background: var(--amber-deep);
+}
+.emp-name-block { flex: 1; min-width: 0; }
+.emp-name { font-weight: 700; font-size: 1rem; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.emp-role { font-size: 0.8rem; color: var(--ink-faint); margin-top: 2px; }
+.emp-status-pill {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 0.66rem; font-family: var(--font-cond);
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; padding: 5px 9px; border-radius: 999px;
+}
+.emp-status-pill.is-on { background: rgba(63, 178, 127, 0.14); color: var(--ok); }
+.emp-status-pill.is-off { background: var(--bg-press); color: var(--ink-faint); }
+.emp-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.emp-meta { font-size: 0.8rem; color: var(--ink-faint); }
+.emp-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.emp-perfil-chip {
+  display: inline-flex; align-items: center; gap: 5px; background: rgba(245, 165, 36, 0.14);
+  border: 1px solid rgba(196, 125, 9, 0.4); color: var(--amber-deep); border-radius: 999px; padding: 4px 10px;
+  font-size: 0.72rem; font-weight: 700;
+}
+.emp-extra-chip { display: inline-flex; align-items: center; background: var(--bg-press); border: 1px solid var(--line); color: var(--ink-faint); border-radius: 999px; padding: 4px 10px; font-size: 0.72rem; font-weight: 600; }
+.emp-card-footer { display: flex; align-items: center; gap: 8px; border-top: 1px dashed var(--line); padding-top: 12px; margin-top: 2px; position: relative; }
+.emp-kebab-menu { position: absolute; right: 0; bottom: calc(100% + 6px); background: var(--bg-raise); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); padding: 6px; display: grid; gap: 2px; min-width: 150px; z-index: 5; }
+.emp-kebab-menu button { width: 100%; text-align: left; background: transparent; border: none; padding: 8px 10px; border-radius: 6px; font-size: 0.85rem; min-height: auto; color: var(--ink-dim); }
+.emp-kebab-menu button:hover { background: var(--bg-press); color: var(--ink); }
+.emp-kebab-menu button.is-danger { color: var(--danger); }
+.emp-kebab-menu button.is-danger:hover { background: rgba(239, 75, 61, 0.1); }
+
+/* --- Cadastro (modal) — acesso ao sistema + Perfil auto + acessos em chip --- */
+.emp-toggle-row { display: flex; align-items: center; gap: 14px; background: rgba(245, 165, 36, 0.1); border: 1px solid rgba(196, 125, 9, 0.3); border-radius: 12px; padding: 14px 16px; }
+.emp-toggle-copy { flex: 1; }
+.emp-toggle-title { font-weight: 700; font-size: 0.92rem; }
+.emp-toggle-hint { font-size: 0.78rem; color: var(--ink-faint); margin-top: 2px; line-height: 1.4; }
+.emp-divider-label { display: flex; align-items: center; gap: 10px; margin: 4px 0 -2px; }
+.emp-divider-label .emp-divider-line { flex: 1; height: 1px; background: var(--line); }
+.emp-divider-label span { font-family: var(--font-cond); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.74rem; font-weight: 700; color: var(--ink-faint); white-space: nowrap; }
+.emp-perfil-auto-card { display: flex; align-items: center; gap: 12px; background: rgba(245, 165, 36, 0.1); border: 1px solid rgba(196, 125, 9, 0.35); border-radius: 12px; padding: 12px 14px; }
+.emp-perfil-auto-icon { width: 34px; height: 34px; border-radius: 50%; background: var(--amber); color: var(--amber-ink); display: grid; place-items: center; flex-shrink: 0; }
+.emp-perfil-auto-copy b { display: block; font-size: 0.9rem; }
+.emp-perfil-auto-copy span { font-size: 0.76rem; color: var(--ink-faint); line-height: 1.4; }
+.emp-access-group-label { font-size: 0.82rem; color: var(--ink-dim); font-weight: 600; margin-bottom: 2px; }
+.emp-chips-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.emp-access-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; min-height: 0; }
+.emp-access-chip.is-locked { background: var(--bg-press); border: 1px solid var(--line); color: var(--ink-faint); cursor: default; }
+.emp-access-chip.is-on { background: var(--amber); border: 1px solid var(--amber-deep); color: var(--amber-ink); }
+.emp-access-chip.is-off { background: var(--bg-raise); border: 1px solid var(--line); color: var(--ink-dim); }
+
+/* --- Painel de acessos por pessoa (drawer) --- */
+.emp-drawer-head { display: flex; align-items: flex-start; gap: 12px; }
+.emp-locked-list { display: flex; flex-direction: column; gap: 8px; }
+.emp-locked-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; background: var(--bg-press); color: var(--ink-faint); font-size: 0.85rem; }
+.emp-locked-row svg { flex-shrink: 0; color: var(--ok); }
+.emp-toggle-list { display: flex; flex-direction: column; gap: 2px; }
+.emp-toggle-item { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--line-soft); }
+.emp-toggle-item:last-child { border-bottom: none; }
+.emp-toggle-item span { flex: 1; font-size: 0.88rem; font-weight: 600; }
+.emp-info-line { font-size: 0.82rem; color: var(--ink-dim); line-height: 1.5; background: var(--bg-press); border-radius: 10px; padding: 10px 12px; margin: 0; }
+.emp-danger-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.emp-danger-copy b { font-size: 0.88rem; display: block; }
+.emp-danger-copy span { font-size: 0.76rem; color: var(--ink-faint); }

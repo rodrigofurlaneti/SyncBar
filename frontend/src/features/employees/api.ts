@@ -35,3 +35,29 @@ export const updateEmployee = (
 
 export const dismissEmployee = (id: number): Promise<void> =>
   api<void>(`/api/employees/${id}/dismiss`, { method: "PUT" });
+
+// Cadastro único de Equipe (funcionário + usuário do sistema opcional + acessos extras),
+// substituindo o fluxo de preencher Nome/E-mail duas vezes em telas separadas e criar um
+// "Perfil" manualmente — o perfil de acesso é derivado automaticamente do Cargo no backend.
+export interface RegisterTeamMemberPayload extends EmployeePayload {
+  hasSystemAccess: boolean;
+  userName: string | null;
+  userEmail: string | null;
+  password: string | null;
+  extraFeatureIds: number[] | null;
+}
+
+export interface RegisterTeamMemberResult {
+  employeeId: number;
+  appUserId: number | null;
+  accessWarning: string | null;
+}
+
+export const registerTeamMember = (
+  companyId: number,
+  payload: RegisterTeamMemberPayload,
+): Promise<RegisterTeamMemberResult> =>
+  api<RegisterTeamMemberResult>("/api/employees/team", {
+    method: "POST",
+    body: JSON.stringify({ companyId, ...payload }),
+  });

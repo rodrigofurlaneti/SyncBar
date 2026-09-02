@@ -241,6 +241,13 @@ export interface EmployeeResponse {
   name: string;
   cpf: string;
   email: string | null;
+  // Resumo de acesso ao sistema — dispensa buscar em Usuários/Acessos separadamente na
+  // tela Equipe. roleName é o Perfil auto-provisionado a partir do Cargo; extraFeatureCount
+  // conta só os acessos ALÉM do que o Cargo já libera por padrão.
+  hasSystemAccess: boolean;
+  appUserId: number | null;
+  roleName: string | null;
+  extraFeatureCount: number;
   phone: string | null;
   hiredAt: string;
   dismissedAt: string | null;
