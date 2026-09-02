@@ -14,7 +14,7 @@ export const badgeToneVar: Record<BadgeTone, string> = {
     waiting: "var(--w-warn, #f59e0b)",
 };
 
-export type QuickActionKey = "mesas" | "comandas" | "turno" | "calculadora" | "transferir" | "transferir-comanda";
+export type QuickActionKey = "transferir" | "mesas" | "comandas";
 
 export const quickActions: { key: QuickActionKey; icon: string; label: string }[] = [
     { key: "transferir", icon: "🔀", label: "Transferir" },
@@ -22,7 +22,7 @@ export const quickActions: { key: QuickActionKey; icon: string; label: string }[
     { key: "comandas", icon: "📋", label: "Comandas" }
 ];
 
-export type TabKey = "inicio" | "mesas" | "comandas" | "pedidos" | "mensagens" | "perfil";
+export type TabKey = "inicio" | "pedidos" | "mensagens" | "calculadora" | "perfil";
 
 export const tabs: { key: TabKey; icon: string; label: string }[] = [
     { key: "inicio", icon: "🏠", label: "Início" },
