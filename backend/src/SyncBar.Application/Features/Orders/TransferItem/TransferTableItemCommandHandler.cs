@@ -1,4 +1,4 @@
-using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -10,12 +10,14 @@ internal sealed class TransferTableItemCommandHandler : BaseCommandHandler<Trans
 {
     private readonly ICustomerOrderRepository _orderRepository;
     private readonly ITableItemTransferRepository _transferRepository;
+    private readonly IDiningTableRepository _diningTableRepository;
     private readonly TimeProvider _timeProvider;
     private readonly IUnitOfWork _unitOfWork;
 
     public TransferTableItemCommandHandler(
         ICustomerOrderRepository orderRepository,
         ITableItemTransferRepository transferRepository,
+        IDiningTableRepository diningTableRepository,
         TimeProvider timeProvider,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
@@ -23,6 +25,7 @@ internal sealed class TransferTableItemCommandHandler : BaseCommandHandler<Trans
     {
         _orderRepository = orderRepository;
         _transferRepository = transferRepository;
+        _diningTableRepository = diningTableRepository;
         _timeProvider = timeProvider;
         _unitOfWork = unitOfWork;
     }
@@ -74,10 +77,12 @@ internal sealed class TransferTableItemCommandHandler : BaseCommandHandler<Trans
         var (sourceOrder, itemToTransfer, targetOrder, originalStatusId) = context;
         var currentTime = _timeProvider.GetLocalNow().DateTime;
 
+        // 1. Cancela o item na origem para a transferência (bypassa status final com segurança)
         var cancelResult = sourceOrder.ForceCancelItemForTransfer(itemToTransfer.Id, currentTime, request.ActorEmployeeId);
         if (cancelResult.IsFailure)
             return Result.Failure<long>(cancelResult.Error);
 
+        // 2. Adiciona o item no destino (ele nasce com status Lançado)
         var addResult = targetOrder.AddItem(
             itemToTransfer.ProductId,
             itemToTransfer.UnitPrice,
@@ -85,9 +90,11 @@ internal sealed class TransferTableItemCommandHandler : BaseCommandHandler<Trans
             itemToTransfer.Notes,
             request.ActorEmployeeId,
             currentTime);
+
         if (addResult.IsFailure)
             return Result.Failure<long>(addResult.Error);
 
+        // 3. Restaura o status original no destino (permite recuperar o status Entregue caso necessário)
         var newlyAddedItem = targetOrder.Items.Last();
         if (newlyAddedItem.OrderItemStatusId != originalStatusId)
         {
@@ -102,10 +109,33 @@ internal sealed class TransferTableItemCommandHandler : BaseCommandHandler<Trans
             request.SourceDiningTableId,
             request.TargetDiningTableId,
             request.ActorEmployeeId);
+
         if (transferResult.IsFailure)
             return Result.Failure<long>(transferResult.Error);
 
         await _transferRepository.AddAsync(transferResult.Value, cancellationToken);
+
+        // 4. Valida se restou algum item ativo na mesa de origem após transferir este item único
+        bool hasActiveItems = sourceOrder.Items.Any(i => i.OrderItemStatusId != OrderItemStatusIds.Cancelado);
+
+        var sourceTable = await _diningTableRepository.GetByIdForUpdateAsync(request.SourceDiningTableId, cancellationToken);
+        if (sourceTable is not null)
+        {
+            if (!hasActiveItems)
+            {
+                // Se a mesa ficou completamente vazia, libera ela e cancela o pedido
+                sourceTable.SetAvailable();
+                var cancelOrderResult = sourceOrder.Cancel(currentTime);
+                if (cancelOrderResult.IsFailure)
+                    return Result.Failure<long>(cancelOrderResult.Error);
+            }
+            else
+            {
+                // Se ainda sobrou algum item na mesa, garante que ela continue ocupada
+                sourceTable.SetInUse();
+            }
+        }
+
         await _unitOfWork.CommitAsync(cancellationToken);
         return Result.Success(transferResult.Value.Id);
     }
