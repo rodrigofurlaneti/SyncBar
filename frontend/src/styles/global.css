@@ -570,6 +570,18 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
 }
 .modal-head {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  /* Achado (revisão de UX): em drawers longos (ex.: Caixa, Acessos) o título e o botão de
+     fechar rolavam junto com o conteúdo — quem descia a lista perdia o "X" e o contexto de
+     qual painel estava aberto. Gruda o header no topo do .modal-panel (que já rola via
+     overflow-y: auto) sangrando pelas bordas com margin negativa e devolvendo o respiro via
+     padding próprio, com fundo sólido para não deixar o conteúdo por baixo transparecer. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: -22px -22px 0;
+  padding: 22px 22px 16px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--line);
 }
 
 /* --- SweetAlert2 (confirmações/prompts/toasts) — tema SyncBar ------------- */

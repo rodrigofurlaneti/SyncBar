@@ -11,7 +11,7 @@ import { useMyFeatures } from "../access/hooks";
 import { OrderDrawer } from "../orders/OrderDrawer";
 import { CashDrawer } from "../cash/CashDrawer";
 import { QueryError } from "../../components/QueryError";
-import { TableStatus, OrderItemStatus } from "../../lib/types";
+import { TableStatus, OrderItemStatus, parseApiDate } from "../../lib/types";
 import type { ComandaResponse, OrderResponse, TableResponse } from "../../lib/types";
 import { TabKey, QuickActionKey } from "./utils";
 import { WaiterHeader } from "./components/WaiterHeader";
@@ -77,7 +77,7 @@ export function WaiterDashboardPage() {
     });
     const sortedMessages = useMemo(() => {
         const msgs = messagesQuery.data ?? [];
-        return [...msgs].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        return [...msgs].sort((a, b) => parseApiDate(a.createdAt).getTime() - parseApiDate(b.createdAt).getTime());
     }, [messagesQuery.data]);
 
     const refresh = () => {
@@ -126,7 +126,9 @@ export function WaiterDashboardPage() {
     return (
         <div className="waiter-view">
             <div className="waiter-shell">
-                <WaiterHeader userName={userName} readyItemsCount={readyItemsCount} onBellClick={() => setActiveTab("inicio")} />
+                {/* Achado: o sino abria a aba "Início" em vez da aba "Mensagens" — quem tocava no
+                    sino de avisos (com o badge de notificação) nunca via a lista de mensagens. */}
+                <WaiterHeader userName={userName} readyItemsCount={readyItemsCount} onBellClick={() => setActiveTab("mensagens")} />
                 <main className="waiter-body">
                     {(tablesQuery.isError || ordersQuery.isError || comandasQuery.isError) && (
                         <div className="waiter-card">

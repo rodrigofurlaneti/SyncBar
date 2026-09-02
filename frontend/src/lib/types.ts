@@ -172,6 +172,18 @@ export const orderItemStatusLabel: Record<number, string> = {
 export const formatBRL = (value: number): string =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+// O backend grava DateTime "unspecified" (a coluna MySQL datetime(6) não guarda fuso) — na
+// prática um instante UTC, já que o servidor roda com relógio em UTC — mas o JSON chega sem
+// sufixo "Z"/offset (ex.: "2026-09-01T17:19:00"). O construtor `Date` do JS interpreta uma
+// string ISO SEM timezone como horário LOCAL do navegador, não UTC — então um horário das
+// 17:19 (UTC) virava "17:19" já no fuso do cliente, 3h adiantado no horário de Brasília.
+// Usar isto (em vez de `new Date(iso)` cru) em qualquer data/hora vinda da API garante a
+// conversão correta para o fuso local de quem está vendo a tela.
+export const parseApiDate = (value: string): Date => {
+  const hasTimezone = /(Z|[+-]\d{2}:\d{2})$/.test(value);
+  return new Date(hasTimezone ? value : `${value}Z`);
+};
+
 export interface CashSessionResponse {
   id: number;
   cashRegisterId: number;
