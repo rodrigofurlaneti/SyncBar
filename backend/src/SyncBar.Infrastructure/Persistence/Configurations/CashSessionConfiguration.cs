@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SyncBar.Domain.Entities;
 
@@ -8,10 +8,11 @@ internal sealed class CashSessionConfiguration : IEntityTypeConfiguration<CashSe
 {
     public void Configure(EntityTypeBuilder<CashSession> builder)
     {
-        builder.ToTable("CashSession");
+        // Nome da tabela ajustado para minúsculo conforme o padrão do MySQL
+        builder.ToTable("cashsession");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-        
+
         builder.Property(x => x.OpeningAmount).HasColumnType("decimal(18,2)").IsRequired();
         builder.Property(x => x.ClosingAmount).HasColumnType("decimal(18,2)");
         builder.Property(x => x.ExpectedAmount).HasColumnType("decimal(18,2)");
@@ -20,12 +21,17 @@ internal sealed class CashSessionConfiguration : IEntityTypeConfiguration<CashSe
         builder.Property(x => x.ClosedAt).HasColumnType("datetime(6)");
         builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");
-        
+        builder.Property(x => x.IsActive).HasColumnType("tinyint(1)").IsRequired();
+
         builder.HasIndex(x => x.CashRegisterId).HasDatabaseName("IX_CashSession_CashRegisterId");
         builder.HasIndex(x => x.CashSessionStatusId).HasDatabaseName("IX_CashSession_CashSessionStatusId");
         builder.HasIndex(x => x.OpenedByEmployeeId).HasDatabaseName("IX_CashSession_OpenedByEmployeeId");
         builder.HasIndex(x => x.ClosedByEmployeeId).HasDatabaseName("IX_CashSession_ClosedByEmployeeId");
-        
+
+        // Novos índices adicionados para otimização de consultas e relatórios gerenciais por período
+        builder.HasIndex(x => x.OpenedAt).HasDatabaseName("IX_CashSession_OpenedAt");
+        builder.HasIndex(x => x.CreatedAt).HasDatabaseName("IX_CashSession_CreatedAt");
+
         builder.HasOne<CashRegister>().WithMany().HasForeignKey(x => x.CashRegisterId).HasConstraintName("FK_CashSession_CashRegister").OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<CashSessionStatus>().WithMany().HasForeignKey(x => x.CashSessionStatusId).HasConstraintName("FK_CashSession_CashSessionStatus").OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Employee>().WithMany().HasForeignKey(x => x.OpenedByEmployeeId).HasConstraintName("FK_CashSession_OpenedByEmployee").OnDelete(DeleteBehavior.Restrict);
