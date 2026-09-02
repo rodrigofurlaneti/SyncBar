@@ -75,23 +75,17 @@ namespace SyncBar.Application.Features.Orders.TransferComandaItem
             if (cancelResult.IsFailure)
                 return Result.Failure<long>(cancelResult.Error);
 
-            var addResult = targetOrder.AddItem(
+            // Adiciona no destino já com o status original preservado (Lançado, Entregue etc.)
+            var addResult = targetOrder.AddTransferredItem(
                 itemToTransfer.ProductId,
                 itemToTransfer.UnitPrice,
                 itemToTransfer.Quantity,
                 itemToTransfer.Notes,
                 request.ActorEmployeeId,
+                originalStatusId,
                 currentTime);
             if (addResult.IsFailure)
                 return Result.Failure<long>(addResult.Error);
-
-            var newlyAddedItem = targetOrder.Items.Last();
-            if (newlyAddedItem.OrderItemStatusId != originalStatusId)
-            {
-                var statusResult = targetOrder.UpdateItemStatus(newlyAddedItem.Id, originalStatusId, currentTime, request.ActorEmployeeId);
-                if (statusResult.IsFailure)
-                    return Result.Failure<long>(statusResult.Error);
-            }
 
             var transferResult = ComandaItemTransfer.Create(
                 request.SourceCustomerOrderId,

@@ -70,26 +70,19 @@ internal sealed class TransferTableItemsCommandHandler : BaseCommandHandler<Tran
                     if (cancelResult.IsFailure)
                         return Result.Failure<Unit>(cancelResult.Error);
 
-                    // Adiciona no destino
-                    var addResult = targetOrder.AddItem(
+                    // Adiciona no destino já com o status original preservado (evita reprocurar o item
+                    // recém-criado por Id, que ainda é 0 até o SaveChanges e colide entre itens do mesmo lote)
+                    var addResult = targetOrder.AddTransferredItem(
                         itemToTransfer.ProductId,
                         itemToTransfer.UnitPrice,
                         itemToTransfer.Quantity,
                         itemToTransfer.Notes,
                         request.ActorEmployeeId,
+                        originalStatusId,
                         currentTime);
 
                     if (addResult.IsFailure)
                         return Result.Failure<Unit>(addResult.Error);
-
-                    // Restaura o status original no destino
-                    var newlyAddedItem = targetOrder.Items.Last();
-                    if (newlyAddedItem.OrderItemStatusId != originalStatusId)
-                    {
-                        var statusResult = targetOrder.UpdateItemStatus(newlyAddedItem.Id, originalStatusId, currentTime, request.ActorEmployeeId);
-                        if (statusResult.IsFailure)
-                            return Result.Failure<Unit>(statusResult.Error);
-                    }
 
                     var transferResult = TableItemTransfer.Create(
                         request.SourceCustomerOrderId,
