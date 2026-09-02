@@ -196,6 +196,7 @@ export function WaiterDashboardPage() {
                         myTables={myTables}
                         comandas={comandasQuery.data ?? []}
                         comandaOrders={comandaOrders}
+                        ordersByTableId={ordersByTableId} 
                         allActiveOrders={allActiveOrders}
                         employeeId={employeeId}
                         onClose={() => setOpenModal(null)}

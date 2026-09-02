@@ -43,9 +43,9 @@ export function TransferItemModal({
     const [searchTerm, setSearchTerm] = useState("");
     const [isTransferring, setIsTransferring] = useState(false);
 
-    // Garante o mapa de mesas ativo
+    // Mapeamento robusto de pedidos por ID de mesa
     const effectiveOrdersByTableId = useMemo(() => {
-        if (ordersByTableId) return ordersByTableId;
+        if (ordersByTableId && ordersByTableId.size > 0) return ordersByTableId;
         const map = new Map<number, OrderResponse>();
         for (const order of allActiveOrders) {
             if (order.diningTableId !== null) map.set(order.diningTableId, order);
@@ -93,7 +93,7 @@ export function TransferItemModal({
     const availableItems = useMemo(() => {
         if (!sourceOrder) return [];
         return sourceOrder.items.filter((item: any) => {
-            if (item.orderItemStatusId === 6) return false; // Ignora cancelados
+            if (item.orderItemStatusId === 6) return false;
             if (!searchTerm) return true;
             const pId = item.productId || item.ProductId;
             const pName = productsMap.get(pId) || "";
@@ -151,12 +151,10 @@ export function TransferItemModal({
 
         setIsTransferring(true);
         try {
-            // Endpoints corretos mapeados para mesas e comandas
             const endpoint = transferType === "table"
                 ? "/api/orders/items/transfer-batch"
                 : "/api/orders/comanda-items/transfer-batch";
 
-            // Payload rigorosamente ajustado aos records do C#
             const payload = transferType === "table" ? {
                 sourceCustomerOrderId: sourceOrder.id,
                 targetCustomerOrderId: targetOrder.id,
@@ -223,7 +221,7 @@ export function TransferItemModal({
                     border: "1px solid #334155"
                 }}
             >
-                {/* Header & Abas (Apenas um botão de fechar no topo) */}
+                {/* Header & Abas */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px", borderBottom: "1px solid #334155", paddingBottom: "12px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={{ fontSize: "1.1rem", fontWeight: "700" }}>🔀 Transferir Itens</span>
