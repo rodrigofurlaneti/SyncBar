@@ -134,6 +134,41 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+    /// <summary>
+    /// Adiciona ao pedido um item vindo de uma transferência (mesa↔mesa ou comanda↔comanda),
+    /// já nascendo com o status original do item na origem (Lançado, Enviado à Cozinha, Pronto,
+    /// Entregue etc.), em vez de sempre nascer "Lançado" e precisar de um UpdateItemStatus posterior.
+    /// Existe para evitar reprocurar o item recém-criado por Id logo em seguida: como o Id só é
+    /// atribuído pelo EF Core no SaveChanges, todo item novo ainda não salvo tem Id == 0 — ao
+    /// transferir vários itens em lote num único commit, mais de um item novo compartilha Id == 0
+    /// simultaneamente, e um lookup por Id (FirstOrDefault(i => i.Id == 0)) acaba pegando o primeiro
+    /// item com Id 0 da lista, não necessariamente o que acabou de ser adicionado — corrompendo o
+    /// status restaurado (ou falhando com "FinalStatus" quando esse primeiro item já está
+    /// Entregue/Cancelado). Setar o status direto na criação, por referência, elimina esse problema.
+    /// </summary>
+    public Result AddTransferredItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, long originalStatusId, DateTime Now)
+    {
+        if (!IsOpen())
+            return Result.Failure(new Error(NotOpenErrorCode, "Items can only be added to an open order."));
+        if (quantity <= 0)
+            return Result.Failure(new Error("CustomerOrder.InvalidQuantity", "Quantity must be greater than zero."));
+        if (CreditLimitAmount.HasValue)
+        {
+            var prospectiveTotal = TotalAmount + Math.Round(unitPrice * quantity, 2);
+            if (prospectiveTotal > CreditLimitAmount.Value)
+                return Result.Failure(new Error("Comanda.LimitExceeded",
+                    $"Limite da comanda atingido (R$ {CreditLimitAmount.Value:N2}, consumo iria a R$ {prospectiveTotal:N2}). Peça ao gerente para liberar mais limite."));
+        }
+        long? safeEmployeeId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : null;
+        var item = OrderItem.Create(Id, productId, unitPrice, quantity, notes, safeEmployeeId, Now, originalStatusId);
+        if (item.IsFailure)
+            return Result.Failure(item.Error);
+        _items.Add(item.Value);
+        OrderStatusId = OrderStatusIds.EmAndamento;
+        RecalculateTotals();
+        UpdatedAt = Now;
+        return Result.Success();
+    }
     public Result AddPizzaItem(
         long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now,
         long pizzaSizeId, long? pizzaCrustId, long? pizzaEdgeId, IReadOnlyCollection<long> pizzaFlavorIds)

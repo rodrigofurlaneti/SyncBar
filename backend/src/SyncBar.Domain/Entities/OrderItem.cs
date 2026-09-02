@@ -45,14 +45,18 @@ namespace SyncBar.Domain.Entities
             IsActive = true;
             CreatedAt = Now;
         }
-        internal static Result<OrderItem> Create(long customerOrderId, long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now)
+        internal static Result<OrderItem> Create(long customerOrderId, long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now, long? initialStatusId = null)
         {
             if (quantity <= 0)
                 return Result.Failure<OrderItem>(new Error("OrderItem.InvalidQuantity", "Quantity must be greater than zero."));
             if (unitPrice < 0)
                 return Result.Failure<OrderItem>(new Error("OrderItem.InvalidUnitPrice", "Unit price cannot be negative."));
 
-            return Result.Success(new OrderItem(customerOrderId, productId, unitPrice, quantity, notes, employeeId, Now));
+            var item = new OrderItem(customerOrderId, productId, unitPrice, quantity, notes, employeeId, Now);
+            if (initialStatusId.HasValue && initialStatusId.Value != item.OrderItemStatusId)
+                item.ApplyTransferredStatus(initialStatusId.Value, Now);
+
+            return Result.Success(item);
         }
         internal static Result<OrderItem> CreatePizza(
             long customerOrderId, long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now,
@@ -85,6 +89,19 @@ namespace SyncBar.Domain.Entities
             CancelledByEmployeeId = actorEmployeeId;
             UpdatedAt = Now;
             return Result.Success();
+        }
+        /// <summary>
+        /// Aplica, de forma direta e por referência, o status original de um item transferido de outra mesa/comanda.
+        /// Usado só na criação do item de destino (via <see cref="Create"/>), por isso bypassa
+        /// deliberadamente a validação de "status final" de <see cref="UpdateStatus"/> — o item acabou de
+        /// nascer e ainda não tem Id persistido, então não pode (nem precisa) ser localizado de novo por Id.
+        /// </summary>
+        internal void ApplyTransferredStatus(long orderItemStatusId, DateTime Now)
+        {
+            OrderItemStatusId = orderItemStatusId;
+            if (orderItemStatusId == OrderItemStatusIds.EnviadoCozinha) SentToKitchenAt = Now;
+            if (orderItemStatusId == OrderItemStatusIds.Entregue) DeliveredAt = Now;
+            UpdatedAt = Now;
         }
         internal Result UpdateStatus(long orderItemStatusId, long? actorEmployeeId, DateTime Now)
         {
