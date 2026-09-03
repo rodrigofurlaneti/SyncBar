@@ -3,6 +3,7 @@ using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
+using System.Diagnostics;
 
 namespace SyncBar.Application.Features.Integrations.Ifood.Catalog;
 
@@ -78,14 +79,11 @@ internal sealed class SyncIfoodCatalogCommandHandler : BaseCommandHandler<SyncIf
             null, // Substitua por request.IpAddress se o IP estiver disponível no Command
             _ => RunSyncAsync(request, cancellationToken));
 
-    // Sequência linear do fluxo essencial (ver comentário de classe): resolve token, resolve
-    // filiais habilitadas, carrega o contexto de sincronização UMA vez por empresa, sincroniza
-    // cada filial e agrega os totais no resumo final. Cada etapa foi extraída em método próprio
-    // (Sonar: Cognitive Complexity) — o objetivo deste método é permanecer uma leitura direta do
-    // fluxo, sem lógica condicional própria além dos dois retornos antecipados (early exits).
     private async Task<Result<IfoodCatalogSyncSummary>> RunSyncAsync(SyncIfoodCatalogCommand request, CancellationToken cancellationToken)
     {
-        var accessToken = await _tokenProvider.GetAccessTokenAsync(request.CompanyId, cancellationToken);
+        var stopwatch = Stopwatch.StartNew();
+
+        var accessToken = await _tokenProvider.GetAccessTokenAsync(request.CompanyId, stopwatch, cancellationToken);
         if (accessToken is null)
             return Result.Success(EmptySummary());
 

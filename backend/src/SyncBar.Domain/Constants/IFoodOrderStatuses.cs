@@ -14,4 +14,7 @@ public static class IfoodOrderStatuses
     public const string Dispatched = "DISPATCHED";
     public const string Concluded = "CONCLUDED";
     public const string Cancelled = "CANCELLED";
+    public const string CancellationRequested = "CANCELLATION_REQUESTED";
+
+
 }

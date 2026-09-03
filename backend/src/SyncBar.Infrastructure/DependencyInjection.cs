@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SyncBar.Application.Abstractions.Authentication;
@@ -14,6 +15,7 @@ using SyncBar.Infrastructure.Printing;
 using SyncBar.Infrastructure.Security;
 using SyncBar.Infrastructure.Storage;
 using SyncBar.Infrastructure.Tenancy;
+using System.IO;
 
 namespace SyncBar.Infrastructure;
 
@@ -96,7 +98,7 @@ public static class DependencyInjection
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<IProductStockRepository, ProductStockRepository>();
         services.AddScoped<ILogTrackerRepository, LogTrackerRepository>();
-        services.AddScoped<IJobTitleRepository, JobTitleRepository>();
+
         services.AddSingleton<TimeProvider, SyncBar.Infrastructure.Time.TimeProviderCustom>();
         services.AddSingleton<SyncBar.Application.Abstractions.Storage.IImageStorage, LocalImageStorage>();
         services.AddSingleton<IRawPrinterTransport, WindowsRawPrinterTransport>();
@@ -105,37 +107,66 @@ public static class DependencyInjection
         services.AddScoped<IWaiterMessageRepository, WaiterMessageRepository>();
         services.AddScoped<ITableItemTransferRepository, TableItemTransferRepository>();
         services.AddScoped<IComandaItemTransferRepository, ComandaItemTransferRepository>();
+
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IJwtTokenProvider, JwtTokenProvider>();
         services.AddScoped<SyncBar.Application.Abstractions.Payments.IPaymentGatewayService, FakePaymentGatewayService>();
         services.AddScoped<SyncBar.Application.Abstractions.Fiscal.IFiscalDocumentService, FakeFiscalDocumentService>();
-        services.AddDataProtection();
+
+        // -----------------------------------------------------------------
+        // CONFIGURAÇÃO PERSISTENTE DO DATA PROTECTION (FIM DO ERRO DE CHAVE)
+        // -----------------------------------------------------------------
+        var keysFolder = Path.Combine(AppContext.BaseDirectory, "app_data", "protecting-keys");
+        if (!Directory.Exists(keysFolder))
+        {
+            Directory.CreateDirectory(keysFolder);
+        }
+
+        services.AddDataProtection()
+            .PersistKeysToFileSystem(new DirectoryInfo(keysFolder))
+            .SetApplicationName("SyncBar");
+        // -----------------------------------------------------------------
+
         services.AddSingleton<SyncBar.Application.Abstractions.Security.ISecretProtector, DataProtectionSecretProtector>();
+
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodAuthClient, IfoodAuthClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
+
         services.AddMemoryCache();
         services.AddScoped<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodTokenProvider, IfoodTokenProvider>();
+
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodOrderClient, IfoodOrderClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
+
         services.AddHostedService<IfoodOrderPollingBackgroundService>();
         services.AddScoped<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodCatalogSyncTrigger, IfoodCatalogSyncTrigger>();
+
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodCatalogClient, IfoodCatalogClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
+
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodFinancialClient, IfoodFinancialClient>(
             client => client.Timeout = TimeSpan.FromSeconds(30));
+
         services.AddHostedService<IfoodFinancialSyncBackgroundService>();
+
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodMerchantClient, IfoodMerchantClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
+
         services.AddSingleton<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodOperationalAlertStore, InMemoryIfoodOperationalAlertStore>();
         services.AddHostedService<IfoodMerchantStatusWatcherBackgroundService>();
+
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodLogisticsClient, IfoodLogisticsClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
+
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodShippingClient, IfoodShippingClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
+
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodReviewClient, IfoodReviewClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
+
         services.AddHostedService<IfoodReviewWatcherBackgroundService>();
+
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodAnalyticsClient, IfoodAnalyticsClient>(
             client => client.Timeout = TimeSpan.FromSeconds(20));
 
