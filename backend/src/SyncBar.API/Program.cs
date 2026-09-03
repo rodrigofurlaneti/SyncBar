@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -17,7 +18,9 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 ConfigureLogging(builder);
-
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(@"C:\SyncBar\ChavesCriptograficas"))
+    .SetApplicationName("SyncBar");
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 

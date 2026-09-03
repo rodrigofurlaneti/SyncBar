@@ -1,4 +1,5 @@
-﻿namespace SyncBar.Application.Abstractions.Integrations.Ifood;
+﻿using System.Diagnostics;
+namespace SyncBar.Application.Abstractions.Integrations.Ifood;
 
 /// <summary>
 /// Cache de access token OAuth2 por empresa — pedido novo a cada chamada não dá (o polling roda
@@ -9,5 +10,7 @@
 public interface IIfoodTokenProvider
 {
     Task<string?> GetAccessTokenAsync(long companyId, CancellationToken cancellationToken = default);
+
+    Task<string?> GetAccessTokenAsync(long companyId, Stopwatch stopwatch, CancellationToken cancellationToken = default);
     void Invalidate(long companyId);
 }

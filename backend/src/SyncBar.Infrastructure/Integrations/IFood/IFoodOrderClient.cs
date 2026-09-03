@@ -146,16 +146,11 @@ internal sealed class IfoodOrderClient(
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"{OrderBaseUrl}/orders/{orderId}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        // 404 é esperado logo após o evento chegar (detalhes ainda não disponíveis) — quem chama
-        // decide se tenta de novo no próximo ciclo de polling (não fazemos retry aqui dentro).
         if (!response.IsSuccessStatusCode)
             return null;
-
         var dto = await response.Content.ReadFromJsonAsync<OrderDetailsResponseDto>(cancellationToken: cancellationToken);
         if (dto is null) return null;
-
         return new IfoodOrderDetailsDto(
             dto.Id,
             dto.DisplayId,
@@ -172,9 +167,18 @@ internal sealed class IfoodOrderClient(
             dto.Takeout?.Mode,
             dto.Total?.OrderAmount ?? 0m,
             (dto.Items ?? []).Select(i => new IfoodOrderItemDto(
-                i.ExternalCode, i.Ean, i.Name ?? "Item", i.Quantity, i.UnitPrice,
-                (i.Options ?? []).Select(o => new IfoodOrderItemOptionDto(o.Id, o.Name, o.Quantity, o.UnitPrice)).ToList()))
-                .ToList());
+                i.ExternalCode,
+                i.Ean,
+                i.Name ?? "Item",
+                i.Quantity,
+                i.UnitPrice,
+                (i.Options ?? []).Select(o => new IfoodOrderItemOptionDto(
+                    o.Id,
+                    o.Name,
+                    o.Quantity,
+                    o.UnitPrice
+                )).ToList()
+            )).ToList());
     }
 
     public Task<IfoodOrderActionResult> ConfirmOrderAsync(string accessToken, string orderId, CancellationToken cancellationToken = default)
@@ -462,30 +466,61 @@ internal sealed class IfoodOrderClient(
 
     private static string Truncate(string value) => value.Length > 300 ? value[..300] + "…" : value;
 
-    // DTOs internos de desserialização — nomes batem com o JSON do Ifood; ReadFromJsonAsync sem
-    // options explícitas já é case-insensitive por padrão (mesmo padrão usado em IfoodAuthClient).
+    // DTOs internos de desserialização atualizados para o payload real do iFood
     private sealed record PollingEventDto(string Id, string Code, string? FullCode, string OrderId, DateTime CreatedAt);
+
     private sealed record OrderDetailsResponseDto(
         string Id, string? DisplayId, string OrderType, string? OrderTiming, string? Category,
         DateTime CreatedAt, DateTime? PreparationStartDateTime,
         MerchantDto? Merchant, CustomerDto? Customer, List<ItemDto>? Items,
         TotalDto? Total, DeliveryDto? Delivery, TakeoutDto? Takeout);
+
     private sealed record MerchantDto(string Id, string? Name);
+
     private sealed record CustomerDto(string? Name, PhoneDto? Phone);
-    private sealed record PhoneDto(string? Number);
-    // Fase 6a (extensão): Options — lista de complementos escolhidos pra este item (ver ressalva
-    // de confiança em IIfoodOrderClient/IfoodOrderItemOptionDto).
-    private sealed record ItemDto(string? ExternalCode, string? Ean, string? Name, decimal Quantity, decimal UnitPrice, List<ItemOptionDto>? Options);
-    private sealed record ItemOptionDto(string? Id, string? Name, decimal Quantity, decimal UnitPrice);
-    private sealed record TotalDto(decimal OrderAmount);
+
+    private sealed record PhoneDto(string? Number, string? Localizer);
+
+    private sealed record ItemDto(
+        string? ExternalCode,
+        string? Ean,
+        string? Name,
+        decimal Quantity,
+        decimal UnitPrice,
+        List<ItemOptionDto>? Options);
+
+    private sealed record ItemOptionDto(
+        string? Id,
+        string? Name,
+        decimal Quantity,
+        decimal UnitPrice,
+        List<ItemCustomizationDto>? Customizations);
+
+    private sealed record ItemCustomizationDto(
+        string? Id,
+        string? Name,
+        decimal Quantity,
+        decimal UnitPrice);
+
+    private sealed record TotalDto(
+        decimal SubTotal,
+        decimal DeliveryFee,
+        decimal AdditionalFees,
+        decimal OrderAmount);
+
     private sealed record DeliveryDto(string? DeliveredBy, DeliveryAddressDto? DeliveryAddress);
-    private sealed record DeliveryAddressDto(string? FormattedAddress);
+
+    private sealed record DeliveryAddressDto(string? FormattedAddress, string? Neighborhood, string? City, string? State);
+
     private sealed record TakeoutDto(string? Mode);
+
     private sealed record CancellationReasonsResponseDto(List<ReasonDto>? Reasons);
+
     private sealed record ReasonDto(string Code, string Description);
-    // Fase 9b: tracking traz os campos direto na raiz (deliveryEtaEnd/pickupEtaStart em minutos,
-    // trackDate ignorado — não usado na tela).
+
     private sealed record TrackingResponseDto(double? Latitude, double? Longitude, DateTime? ExpectedDelivery, double? DeliveryEtaEnd, double? PickupEtaStart);
+
     private sealed record PickupValidationResponseDto(bool Success);
+
     private sealed record DisputeActionResponseDto(string? Id, string? Status, string? DisputeId, DateTime? CreatedAt);
 }
