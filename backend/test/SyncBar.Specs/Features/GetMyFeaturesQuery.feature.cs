@@ -17,23 +17,23 @@ namespace SyncBar.Specs.Features
     
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Reqnroll", "2.0.0.0")]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    public partial class MarcarPedidoIfoodComoProntoParaRetiradaFeature : object, Xunit.IClassFixture<MarcarPedidoIfoodComoProntoParaRetiradaFeature.FixtureData>, Xunit.IAsyncLifetime
+    public partial class ListarMinhasFeaturesDeAcessoFeature : object, Xunit.IClassFixture<ListarMinhasFeaturesDeAcessoFeature.FixtureData>, Xunit.IAsyncLifetime
     {
         
         private global::Reqnroll.ITestRunner testRunner;
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "Marcar pedido Ifood como pronto para retirada", "    Regras de negocio do MarkIfoodOrderReadyCommandHandler: valida existencia do " +
-                "pedido, da filial\r\n    e do token de integracao antes de notificar o Ifood, e so" +
-                " atualiza o status local se o Ifood\r\n    confirmar a acao.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "Listar minhas features de acesso", @"    Regras de negocio do GetMyFeaturesQueryHandler: gerentes tem acesso total a todas as features
+    cadastradas; demais usuarios precisam existir e estar ativos, e suas features efetivas vem da
+    combinacao dos vinculos do cargo com os vinculos diretos ao usuario.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
-#line 1 "MarkIFoodOrderReady.feature"
+#line 1 "GetMyFeaturesQuery.feature"
 #line hidden
         
-        public MarcarPedidoIfoodComoProntoParaRetiradaFeature(MarcarPedidoIfoodComoProntoParaRetiradaFeature.FixtureData fixtureData, Xunit.Abstractions.ITestOutputHelper testOutputHelper)
+        public ListarMinhasFeaturesDeAcessoFeature(ListarMinhasFeaturesDeAcessoFeature.FixtureData fixtureData, Xunit.Abstractions.ITestOutputHelper testOutputHelper)
         {
             this._testOutputHelper = testOutputHelper;
         }
@@ -129,14 +129,14 @@ namespace SyncBar.Specs.Features
             await this.TestTearDownAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Marcar pedido inexistente como pronto deve falhar")]
-        [Xunit.TraitAttribute("FeatureTitle", "Marcar pedido Ifood como pronto para retirada")]
-        [Xunit.TraitAttribute("Description", "Marcar pedido inexistente como pronto deve falhar")]
-        public async global::System.Threading.Tasks.Task MarcarPedidoInexistenteComoProntoDeveFalhar()
+        [Xunit.SkippableFactAttribute(DisplayName="Gerente deve ter acesso total a todas as features cadastradas")]
+        [Xunit.TraitAttribute("FeatureTitle", "Listar minhas features de acesso")]
+        [Xunit.TraitAttribute("Description", "Gerente deve ter acesso total a todas as features cadastradas")]
+        public async global::System.Threading.Tasks.Task GerenteDeveTerAcessoTotalATodasAsFeaturesCadastradas()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Marcar pedido inexistente como pronto deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Gerente deve ter acesso total a todas as features cadastradas", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 6
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
@@ -148,61 +148,39 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 await this.ScenarioStartAsync();
 #line 7
-    await testRunner.GivenAsync("nao existe nenhum pedido Ifood com o id 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("existe a feature cadastrada \"orders.read\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 8
-    await testRunner.WhenAsync("eu tento marcar o pedido Ifood 1 como pronto", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.AndAsync("existe a feature cadastrada \"orders.write\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 9
-    await testRunner.ThenAsync("a operacao deve falhar com o erro \"IfoodOrder.NotFound\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.WhenAsync("eu busco minhas features como gerente do usuario 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
-        [Xunit.SkippableFactAttribute(DisplayName="Marcar pedido como pronto sem token valido do Ifood deve falhar")]
-        [Xunit.TraitAttribute("FeatureTitle", "Marcar pedido Ifood como pronto para retirada")]
-        [Xunit.TraitAttribute("Description", "Marcar pedido como pronto sem token valido do Ifood deve falhar")]
-        public async global::System.Threading.Tasks.Task MarcarPedidoComoProntoSemTokenValidoDoIfoodDeveFalhar()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Marcar pedido como pronto sem token valido do Ifood deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 10
+    await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
 #line 11
-this.ScenarioInitialize(scenarioInfo);
+    await testRunner.AndAsync("eu devo poder gerenciar o acesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                testRunner.SkipScenario();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
 #line 12
-    await testRunner.GivenAsync("um pedido Ifood aberto com id 1 na filial 10", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.AndAsync("a lista das minhas features deve conter o codigo \"orders.read\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 13
-    await testRunner.AndAsync("a filial 10 nao tem um token valido do Ifood", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 14
-    await testRunner.WhenAsync("eu tento marcar o pedido Ifood 1 como pronto", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 15
-    await testRunner.ThenAsync("a operacao deve falhar com o erro \"Ifood.NotConnected\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.AndAsync("a lista das minhas features deve conter o codigo \"orders.write\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Ifood recusar a chamada de pronto para retirada deve falhar")]
-        [Xunit.TraitAttribute("FeatureTitle", "Marcar pedido Ifood como pronto para retirada")]
-        [Xunit.TraitAttribute("Description", "Ifood recusar a chamada de pronto para retirada deve falhar")]
-        public async global::System.Threading.Tasks.Task IfoodRecusarAChamadaDeProntoParaRetiradaDeveFalhar()
+        [Xunit.SkippableFactAttribute(DisplayName="Usuario nao gerente inexistente deve falhar")]
+        [Xunit.TraitAttribute("FeatureTitle", "Listar minhas features de acesso")]
+        [Xunit.TraitAttribute("Description", "Usuario nao gerente inexistente deve falhar")]
+        public async global::System.Threading.Tasks.Task UsuarioNaoGerenteInexistenteDeveFalhar()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Ifood recusar a chamada de pronto para retirada deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 17
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Usuario nao gerente inexistente deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 15
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -212,34 +190,59 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
+#line 16
+    await testRunner.GivenAsync("nao existe nenhum usuario com o id 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 17
+    await testRunner.WhenAsync("eu busco minhas features do usuario 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
 #line 18
-    await testRunner.GivenAsync("um pedido Ifood aberto com id 1 na filial 10", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.ThenAsync("a operacao deve falhar com o erro \"AppUser.NotFound\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 19
-    await testRunner.AndAsync("a filial 10 esta conectada ao Ifood com um token valido", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [Xunit.SkippableFactAttribute(DisplayName="Usuario nao gerente inativo deve falhar")]
+        [Xunit.TraitAttribute("FeatureTitle", "Listar minhas features de acesso")]
+        [Xunit.TraitAttribute("Description", "Usuario nao gerente inativo deve falhar")]
+        public async global::System.Threading.Tasks.Task UsuarioNaoGerenteInativoDeveFalhar()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Usuario nao gerente inativo deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 20
-    await testRunner.AndAsync("o Ifood recusa a chamada de pronto para retirada", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+this.ScenarioInitialize(scenarioInfo);
 #line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
 #line 21
-    await testRunner.WhenAsync("eu tento marcar o pedido Ifood 1 como pronto", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.GivenAsync("o usuario 1 esta inativo e sem cargo", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 22
-    await testRunner.ThenAsync("a operacao deve falhar com o erro \"Ifood.ActionFailed\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.WhenAsync("eu busco minhas features do usuario 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 23
+    await testRunner.ThenAsync("a operacao deve falhar com o erro \"AppUser.NotFound\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Marcar pedido como pronto com sucesso")]
-        [Xunit.TraitAttribute("FeatureTitle", "Marcar pedido Ifood como pronto para retirada")]
-        [Xunit.TraitAttribute("Description", "Marcar pedido como pronto com sucesso")]
-        public async global::System.Threading.Tasks.Task MarcarPedidoComoProntoComSucesso()
+        [Xunit.SkippableFactAttribute(DisplayName="Usuario nao gerente sem cargo e sem features vinculadas deve ter lista vazia")]
+        [Xunit.TraitAttribute("FeatureTitle", "Listar minhas features de acesso")]
+        [Xunit.TraitAttribute("Description", "Usuario nao gerente sem cargo e sem features vinculadas deve ter lista vazia")]
+        public async global::System.Threading.Tasks.Task UsuarioNaoGerenteSemCargoESemFeaturesVinculadasDeveTerListaVazia()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Marcar pedido como pronto com sucesso", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 24
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Usuario nao gerente sem cargo e sem features vinculadas deve ter lista vazia", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 25
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -249,20 +252,20 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 25
-    await testRunner.GivenAsync("um pedido Ifood aberto com id 1 na filial 10", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
-#line hidden
 #line 26
-    await testRunner.AndAsync("a filial 10 esta conectada ao Ifood com um token valido", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.GivenAsync("o usuario 1 esta ativo sem cargo e sem features vinculadas diretamente", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 27
-    await testRunner.AndAsync("o Ifood aceita a chamada de pronto para retirada", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.WhenAsync("eu busco minhas features do usuario 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 28
-    await testRunner.WhenAsync("eu tento marcar o pedido Ifood 1 como pronto", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 29
-    await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.AndAsync("eu nao devo poder gerenciar o acesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 30
+    await testRunner.AndAsync("a lista das minhas features deve estar vazia", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -275,12 +278,12 @@ this.ScenarioInitialize(scenarioInfo);
             
             async global::System.Threading.Tasks.Task Xunit.IAsyncLifetime.InitializeAsync()
             {
-                await MarcarPedidoIfoodComoProntoParaRetiradaFeature.FeatureSetupAsync();
+                await ListarMinhasFeaturesDeAcessoFeature.FeatureSetupAsync();
             }
             
             async global::System.Threading.Tasks.Task Xunit.IAsyncLifetime.DisposeAsync()
             {
-                await MarcarPedidoIfoodComoProntoParaRetiradaFeature.FeatureTearDownAsync();
+                await ListarMinhasFeaturesDeAcessoFeature.FeatureTearDownAsync();
             }
         }
     }
