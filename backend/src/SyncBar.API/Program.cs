@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -18,9 +17,12 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 ConfigureLogging(builder);
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(@"C:\SyncBar\ChavesCriptograficas"))
-    .SetApplicationName("SyncBar");
+// DataProtection é configurado em AddInfrastructure (caminho multiplataforma, baseado em
+// AppContext.BaseDirectory) — não duplicar aqui. Havia uma segunda chamada a
+// AddDataProtection().PersistKeysToFileSystem() com um caminho absoluto do Windows
+// (C:\SyncBar\ChavesCriptograficas), código morto/perigoso: só "funcionava" em produção
+// (Linux/container) porque o registro de AddInfrastructure roda depois e vence a mesma
+// opção — mas quebraria silenciosamente se a ordem dessas duas chamadas mudasse.
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
