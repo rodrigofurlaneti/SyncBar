@@ -121,3 +121,11 @@ public static class PaymentMethodIds
     public const long ValeAlimentacao = 6;
     public const long Cortesia = 7;
 }
+
+// Fechamento Diário / Turno Comercial — consolidação de todas as CashSession de
+// uma filial num período. Seedado em sql/2026-09-03_add_shift_closing.sql.
+public static class ShiftClosingStatusIds
+{
+    public const long Aberto = 1;
+    public const long Fechado = 2;
+}
