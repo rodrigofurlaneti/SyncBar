@@ -69,16 +69,6 @@ public sealed record IfoodVirtualBagResult(
     string? RawPayload,
     string? ErrorMessage);
 
-// Fase 9c — requestDriver/cancelRequestDriver do PRÓPRIO módulo Order (order/v1.0), distintos dos
-// endpoints de mesmo nome do módulo Shipping (shipping/v1.0, já implementados em
-// IIfoodShippingClient.RequestDriverForOrderAsync/CancelDriverForOrderAsync) — confirmados como
-// paths oficiais separados na auditoria de 2026-08-20 (ver claude/auditoria-endpoints-Ifood.md no
-// projeto). Sem corpo de resposta (202 Accepted).
-//
-// Fase 9c — verifyDeliveryCode do módulo Order (order/v1.0/orders/{id}/verifyDeliveryCode),
-// distinto do endpoint homônimo do módulo Logistics (logistics/v1.0, já implementado em
-// IIfoodLogisticsClient.VerifyDeliveryCodeAsync). Mesmo shape de resposta ({success: bool}) do já
-// existente ValidatePickupCodeAsync — reaproveita IfoodPickupValidationResult.
 /// <summary>
 /// Abstração para o módulo Order/Events do Ifood (polling, detalhes, confirmar, avançar status,
 /// cancelar) — endpoints e formatos confirmados em 2026-08-19 contra a documentação oficial
@@ -102,6 +92,7 @@ public interface IIfoodOrderClient
     // lotes de até 100 por chamada internamente. Lista vazia retorna sem chamar a API.
     Task<IReadOnlyCollection<IfoodPollingEvent>> PollEventsAsync(string accessToken, IReadOnlyCollection<string> merchantIds, CancellationToken cancellationToken = default);
     Task AcknowledgeEventsAsync(string accessToken, IReadOnlyCollection<string> eventIds, CancellationToken cancellationToken = default);
+
     // Retorna null em 404 (detalhes ainda não disponíveis) — quem chama decide se tenta de novo depois.
     Task<IfoodOrderDetailsDto?> GetOrderDetailsAsync(string accessToken, string orderId, CancellationToken cancellationToken = default);
     Task<IfoodOrderActionResult> ConfirmOrderAsync(string accessToken, string orderId, CancellationToken cancellationToken = default);
