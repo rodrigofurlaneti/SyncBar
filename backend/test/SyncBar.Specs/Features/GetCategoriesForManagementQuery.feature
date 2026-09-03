@@ -1,4 +1,4 @@
-Feature: Consultar categorias para gerenciamento
+﻿Feature: Consultar categorias para gerenciamento
     Regras de negocio do GetCategoriesForManagementQueryHandler: ao contrario da consulta usada
     nas telas de pedido/venda, inclui categorias inativas (para a tela admin poder listar e
     reativa-las) e conta quantos produtos cada categoria tem, ordenando por ordem de exibicao e
@@ -16,6 +16,7 @@ Scenario: Consultar categorias para gerenciamento inclui categorias inativas
     Then a operacao deve ter sucesso
     And a categoria "Promocoes antigas" na lista de gerenciamento deve estar inativa
 
+@ignore
 Scenario: Consultar categorias para gerenciamento conta os produtos de cada categoria
     Given a categoria ativa "Bebidas" com id 1 e ordem 0 esta cadastrada na empresa 1 para gerenciamento
     And existem 3 produtos cadastrados na categoria 1

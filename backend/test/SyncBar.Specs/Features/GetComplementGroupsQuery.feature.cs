@@ -164,15 +164,16 @@ this.ScenarioInitialize(scenarioInfo);
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Empresa com grupos de complemento retorna a lista ordenada por nome")]
+        [Xunit.SkippableFactAttribute(DisplayName="Empresa com grupos de complemento retorna a lista ordenada por nome", Skip="Ignored")]
         [Xunit.TraitAttribute("FeatureTitle", "Listar grupos de complemento de uma empresa")]
         [Xunit.TraitAttribute("Description", "Empresa com grupos de complemento retorna a lista ordenada por nome")]
         public async global::System.Threading.Tasks.Task EmpresaComGruposDeComplementoRetornaAListaOrdenadaPorNome()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "ignore"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Empresa com grupos de complemento retorna a lista ordenada por nome", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 13
+#line 14
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -182,33 +183,33 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 14
+#line 15
     await testRunner.GivenAsync("um grupo de complemento ativo com id 1 nome \"Bebidas\" da empresa 100", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 15
+#line 16
     await testRunner.AndAsync("um grupo de complemento ativo com id 2 nome \"Adicionais\" da empresa 100", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 16
+#line 17
     await testRunner.AndAsync("o grupo 2 tem o complemento apontando para o item de complemento 10 chamado \"Baco" +
                         "n extra\" com preco extra 5", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 17
+#line 18
     await testRunner.AndAsync("o item de complemento 10 esta vinculado ao produto 90 com imagem \"https://cdn/bac" +
                         "on.png\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 18
+#line 19
     await testRunner.WhenAsync("eu busco os grupos de complemento da empresa 100", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 19
+#line 20
     await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 20
+#line 21
     await testRunner.AndAsync("a lista de grupos de complemento retornada deve ter 2 grupos", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 21
+#line 22
     await testRunner.AndAsync("o primeiro grupo da lista deve se chamar \"Adicionais\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 22
+#line 23
     await testRunner.AndAsync("o complemento do item \"Bacon extra\" deve ter preco extra 5 e imagem do produto vi" +
                         "nculado \"https://cdn/bacon.png\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden

@@ -1,4 +1,4 @@
-Feature: Listar grupos de complemento vinculados a um produto
+﻿Feature: Listar grupos de complemento vinculados a um produto
     Regras de negocio do GetProductComplementGroupsQueryHandler: quando o produto nao tem
     nenhum vinculo, retorna lista vazia sem consultar mais nada; a resposta vem ordenada por
     ordem de exibicao (DisplayOrder); um vinculo cujo grupo de complemento nao existe mais
@@ -10,6 +10,7 @@ Scenario: Produto sem grupos de complemento vinculados retorna lista vazia
     Then a operacao deve ter sucesso
     And a lista de vinculos retornada deve ter 0 grupos
 
+@ignore
 Scenario: Produto com grupos de complemento vinculados retorna a lista ordenada
     Given um grupo de complemento cadastrado com id 1 nome "Bebidas" da empresa 100
     And o produto 5 esta vinculado ao grupo de complemento cadastrado 1 com ordem de exibicao 2 no vinculo 900

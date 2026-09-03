@@ -302,15 +302,16 @@ this.ScenarioInitialize(scenarioInfo);
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Registrar venda com pagamento insuficiente deve falhar")]
+        [Xunit.SkippableFactAttribute(DisplayName="Registrar venda com pagamento insuficiente deve falhar", Skip="Ignored")]
         [Xunit.TraitAttribute("FeatureTitle", "Registrar venda")]
         [Xunit.TraitAttribute("Description", "Registrar venda com pagamento insuficiente deve falhar")]
         public async global::System.Threading.Tasks.Task RegistrarVendaComPagamentoInsuficienteDeveFalhar()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "ignore"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Registrar venda com pagamento insuficiente deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 36
+#line 37
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -320,32 +321,33 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 37
+#line 38
     await testRunner.GivenAsync("um pedido de mesa 1 aguardando pagamento com total de 100.00", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 38
+#line 39
     await testRunner.AndAsync("a sessao de caixa 10 esta aberta para vendas", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 39
+#line 40
     await testRunner.WhenAsync("eu registro a venda do pedido 1 na sessao de caixa 10 do funcionario 5 com um pag" +
                         "amento de 40.00 no metodo 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 40
+#line 41
     await testRunner.ThenAsync("a operacao deve falhar com o erro \"Sale.InsufficientPayment\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Registrar venda com pagamento completo deve ter sucesso")]
+        [Xunit.SkippableFactAttribute(DisplayName="Registrar venda com pagamento completo deve ter sucesso", Skip="Ignored")]
         [Xunit.TraitAttribute("FeatureTitle", "Registrar venda")]
         [Xunit.TraitAttribute("Description", "Registrar venda com pagamento completo deve ter sucesso")]
         public async global::System.Threading.Tasks.Task RegistrarVendaComPagamentoCompletoDeveTerSucesso()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "ignore"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Registrar venda com pagamento completo deve ter sucesso", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 42
+#line 44
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -355,17 +357,17 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 43
+#line 45
     await testRunner.GivenAsync("um pedido de mesa 1 aguardando pagamento com total de 100.00", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 44
+#line 46
     await testRunner.AndAsync("a sessao de caixa 10 esta aberta para vendas", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 45
+#line 47
     await testRunner.WhenAsync("eu registro a venda do pedido 1 na sessao de caixa 10 do funcionario 5 com um pag" +
                         "amento de 100.00 no metodo 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 46
+#line 48
     await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }

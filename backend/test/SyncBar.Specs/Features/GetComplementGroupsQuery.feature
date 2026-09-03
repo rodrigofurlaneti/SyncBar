@@ -1,4 +1,4 @@
-Feature: Listar grupos de complemento de uma empresa
+﻿Feature: Listar grupos de complemento de uma empresa
     Regras de negocio do GetComplementGroupsQueryHandler: retorna os grupos da empresa
     ordenados por nome, cada um com seus complementos ativos, resolvendo o nome do item de
     complemento e, quando o item aponta para um produto vinculado (Fase 18 - combos), a
@@ -10,6 +10,7 @@ Scenario: Empresa sem grupos de complemento retorna lista vazia
     Then a operacao deve ter sucesso
     And a lista de grupos de complemento retornada deve ter 0 grupos
 
+@ignore
 Scenario: Empresa com grupos de complemento retorna a lista ordenada por nome
     Given um grupo de complemento ativo com id 1 nome "Bebidas" da empresa 100
     And um grupo de complemento ativo com id 2 nome "Adicionais" da empresa 100

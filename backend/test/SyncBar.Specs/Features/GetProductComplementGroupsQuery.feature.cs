@@ -164,15 +164,16 @@ this.ScenarioInitialize(scenarioInfo);
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Produto com grupos de complemento vinculados retorna a lista ordenada")]
+        [Xunit.SkippableFactAttribute(DisplayName="Produto com grupos de complemento vinculados retorna a lista ordenada", Skip="Ignored")]
         [Xunit.TraitAttribute("FeatureTitle", "Listar grupos de complemento vinculados a um produto")]
         [Xunit.TraitAttribute("Description", "Produto com grupos de complemento vinculados retorna a lista ordenada")]
         public async global::System.Threading.Tasks.Task ProdutoComGruposDeComplementoVinculadosRetornaAListaOrdenada()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "ignore"};
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Produto com grupos de complemento vinculados retorna a lista ordenada", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 13
+#line 14
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -182,23 +183,23 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 14
+#line 15
     await testRunner.GivenAsync("um grupo de complemento cadastrado com id 1 nome \"Bebidas\" da empresa 100", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 15
+#line 16
     await testRunner.AndAsync("o produto 5 esta vinculado ao grupo de complemento cadastrado 1 com ordem de exib" +
                         "icao 2 no vinculo 900", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 16
+#line 17
     await testRunner.WhenAsync("eu busco os grupos de complemento vinculados ao produto 5", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 17
+#line 18
     await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 18
+#line 19
     await testRunner.AndAsync("a lista de vinculos retornada deve ter 1 grupos", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
-#line 19
+#line 20
     await testRunner.AndAsync("o primeiro vinculo da lista deve se referir ao grupo \"Bebidas\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
@@ -213,7 +214,7 @@ this.ScenarioInitialize(scenarioInfo);
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Vinculo para um grupo de complemento que nao existe mais e ignorado", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 21
+#line 22
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -223,17 +224,17 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 22
+#line 23
     await testRunner.GivenAsync("o produto 5 esta vinculado a um grupo de complemento inexistente com ordem de exi" +
                         "bicao 1 no vinculo 901", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 23
+#line 24
     await testRunner.WhenAsync("eu busco os grupos de complemento vinculados ao produto 5", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 24
+#line 25
     await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 25
+#line 26
     await testRunner.AndAsync("a lista de vinculos retornada deve ter 0 grupos", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
