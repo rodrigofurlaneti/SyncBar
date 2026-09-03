@@ -1,8 +1,10 @@
+using System.Reflection;
 using FluentAssertions;
 using NSubstitute;
 using SyncBar.Application.Features.Shift.CloseShift;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
+using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 using Xunit;
 
@@ -27,6 +29,14 @@ public sealed class CloseShiftClosingCommandHandlerTests
 
     private static ShiftClosing CreateOpenShift(long branchId = 1)
         => ShiftClosing.Open(branchId, openedByEmployeeId: 10).Value;
+
+    // ShiftClosingSession.Create valida ShiftClosingId > 0 e CashSessionId > 0 (é uma FK real,
+    // não um mero valor comparado — diferente do caso de "productId" em outros handlers). Como a
+    // fábrica pública do Entity/AggregateRoot não expõe forma de fixar o Id (ele só existiria após
+    // o SaveChanges do EF Core), sem isso o loop de consolidação do handler nunca monta nenhum link
+    // em teste. Setamos via reflection, imitando o Id que o EF teria atribuído após persistir.
+    private static void SetId(Entity entity, long id) =>
+        typeof(Entity).GetProperty(nameof(Entity.Id))!.SetValue(entity, id);
 
     [Fact]
     public async Task Handle_ShiftNotFound_ShouldReturnFailureWithoutQueryingCashSessions()
@@ -89,13 +99,16 @@ public sealed class CloseShiftClosingCommandHandlerTests
     public async Task Handle_WithAllCashSessionsClosed_ShouldConsolidateAndPersistLinksAndReturnTotals()
     {
         var shift = CreateOpenShift(branchId: 1);
+        SetId(shift, 1);
         var command = new CloseShiftClosingCommand(ShiftClosingId: 1, ClosedByEmployeeId: 9, Notes: "Ok");
 
         var session1 = CashSession.Open(cashRegisterId: 1, openedByEmployeeId: 10, openingAmount: 100m).Value;
         session1.Close(closedByEmployeeId: 10, closingAmount: 520m, expectedAmount: 500m);
+        SetId(session1, 101);
 
         var session2 = CashSession.Open(cashRegisterId: 2, openedByEmployeeId: 11, openingAmount: 50m).Value;
         session2.Close(closedByEmployeeId: 11, closingAmount: 280m, expectedAmount: 300m);
+        SetId(session2, 102);
 
         _shiftClosingRepository.GetByIdForUpdateAsync(command.ShiftClosingId, Arg.Any<CancellationToken>())
             .Returns(shift);
