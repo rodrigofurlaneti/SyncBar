@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using SyncBar.Application.Abstractions.Integrations.Ifood;
+using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Infrastructure.Integrations.Ifood;
 
@@ -40,7 +41,10 @@ namespace SyncBar.Infrastructure.Integrations.Ifood;
 /// NÃO implementado nesta fase (fora do escopo "essencial", ver Ifood-integration-status no
 /// projeto claude.ai): cálculo de preparationStartDateTime pra pedidos agendados, Webhook.
 /// </summary>
-internal sealed class IfoodOrderClient(HttpClient httpClient) : IIfoodOrderClient
+internal sealed class IfoodOrderClient(
+    HttpClient httpClient,
+    ILogTrackerRepository logRepository,
+    IUnitOfWork unitOfWork) : IIfoodOrderClient
 {
     private const string OrderBaseUrl = "https://merchant-api.Ifood.com.br/order/v1.0";
     private const string EventsBaseUrl = "https://merchant-api.Ifood.com.br/events/v1.0";
@@ -62,23 +66,66 @@ internal sealed class IfoodOrderClient(HttpClient httpClient) : IIfoodOrderClien
 
         foreach (var batch in merchantIds.Chunk(MerchantBatchSize))
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{EventsBaseUrl}/events:polling?categories={Categories}");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-            request.Headers.Add("x-polling-merchants", string.Join(",", batch));
+            await ExecuteWithLogAsync(nameof(IfoodOrderClient), nameof(PollEventsAsync), new { MerchantIds = batch }, async () =>
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"{EventsBaseUrl}/events:polling?categories={Categories}");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                request.Headers.Add("x-polling-merchants", string.Join(",", batch));
 
-            using var response = await httpClient.SendAsync(request, cancellationToken);
-            // 204 No Content é resposta válida (sem eventos novos nesse ciclo pra esse lote).
-            if (!response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NoContent)
-                continue;
+                using var response = await httpClient.SendAsync(request, cancellationToken);
 
-            var payload = await response.Content.ReadFromJsonAsync<PollingResponseDto>(cancellationToken: cancellationToken);
-            if (payload?.Events is null)
-                continue;
+                // 204 No Content é o comportamento natural do iFood quando a fila está vazia.
+                if (response.StatusCode == HttpStatusCode.NoContent)
+                    return;
 
-            allEvents.AddRange(payload.Events.Select(e => new IfoodPollingEvent(e.Id, e.Code, e.FullCode, e.OrderId, e.CreatedAt)));
+                // Tratamento 100% operacional: Lança exceção para cair no log em caso de erro 4xx/5xx
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                    throw new HttpRequestException($"Ifood Polling retornou {(int)response.StatusCode}. Corpo: {Truncate(errorBody)}");
+                }
+                var events = await response.Content.ReadFromJsonAsync<List<PollingEventDto>>(cancellationToken: cancellationToken);
+                if (events is null || events.Count == 0)
+                    return;
+
+                allEvents.AddRange(events.Select(e => new IfoodPollingEvent(e.Id, e.Code, e.FullCode, e.OrderId, e.CreatedAt)));
+            });
         }
 
         return allEvents;
+    }
+
+    private async Task ExecuteWithLogAsync(string className, string methodName, object? payload, Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                var logEntry = new SyncBar.Domain.Entities.LogTracker(0)
+                {
+                    ClassName = className,
+                    MethodName = methodName,
+                    IsSuccess = false,
+                    Message = payload != null ? JsonSerializer.Serialize(payload) : null,
+                    ErrorMessage = ex.Message,
+                    StackTrace = ex.StackTrace,
+                    AppUserId = null
+                };
+                await logRepository.AddAsync(logEntry);
+                await unitOfWork.CommitAsync(CancellationToken.None);
+            }
+            catch
+            {
+            }
+        }
     }
 
     public async Task AcknowledgeEventsAsync(string accessToken, IReadOnlyCollection<string> eventIds, CancellationToken cancellationToken = default)
@@ -289,11 +336,6 @@ internal sealed class IfoodOrderClient(HttpClient httpClient) : IIfoodOrderClien
         }
     }
 
-    // Resposta profundamente aninhada e não confirmada campo-a-campo (ver ressalva na
-    // interface) — parsing defensivo com JsonDocument em vez de um record tipado rígido,
-    // pra não quebrar a leitura inteira se um sub-objeto vier faltando ou com nome diferente.
-    // Extraído de GetVirtualBagAsync (junto com ParseVirtualBagItems/ParseVirtualBagPrices) só
-    // pra reduzir a complexidade cognitiva apontada pelo SonarCloud — mesmo comportamento.
     private static IfoodVirtualBagResult ParseVirtualBagResponse(string rawBody)
     {
         using var document = JsonDocument.Parse(rawBody);
@@ -422,7 +464,6 @@ internal sealed class IfoodOrderClient(HttpClient httpClient) : IIfoodOrderClien
 
     // DTOs internos de desserialização — nomes batem com o JSON do Ifood; ReadFromJsonAsync sem
     // options explícitas já é case-insensitive por padrão (mesmo padrão usado em IfoodAuthClient).
-    private sealed record PollingResponseDto(List<PollingEventDto>? Events);
     private sealed record PollingEventDto(string Id, string Code, string? FullCode, string OrderId, DateTime CreatedAt);
     private sealed record OrderDetailsResponseDto(
         string Id, string? DisplayId, string OrderType, string? OrderTiming, string? Category,
