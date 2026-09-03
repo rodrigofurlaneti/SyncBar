@@ -16,6 +16,7 @@ namespace SyncBar.Specs.StepDefinitions;
 // NSubstitute — inconsistencia pre-existente entre os dois projetos de teste, nao introduzida
 // aqui) — para exercitar o CQRS handler real de ponta a ponta como o MediatR faria em runtime.
 [Binding]
+[Scope(Feature = "Marcar pedido Ifood como pronto para retirada")]
 public sealed class MarkIfoodOrderReadySteps
 {
     private const string IfoodOrderExternalId = "Ifood-order-1";

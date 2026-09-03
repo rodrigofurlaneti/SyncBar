@@ -17,23 +17,24 @@ namespace SyncBar.Specs.Features
     
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Reqnroll", "2.0.0.0")]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    public partial class MarcarPedidoIfoodComoProntoParaRetiradaFeature : object, Xunit.IClassFixture<MarcarPedidoIfoodComoProntoParaRetiradaFeature.FixtureData>, Xunit.IAsyncLifetime
+    public partial class RegistrarEmpresaNoOnboardingFeature : object, Xunit.IClassFixture<RegistrarEmpresaNoOnboardingFeature.FixtureData>, Xunit.IAsyncLifetime
     {
         
         private global::Reqnroll.ITestRunner testRunner;
         
         private static string[] featureTags = ((string[])(null));
         
-        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "Marcar pedido Ifood como pronto para retirada", "    Regras de negocio do MarkIfoodOrderReadyCommandHandler: valida existencia do " +
-                "pedido, da filial\r\n    e do token de integracao antes de notificar o Ifood, e so" +
-                " atualiza o status local se o Ifood\r\n    confirmar a acao.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+        private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "Registrar empresa no onboarding", @"    Regras de negocio do RegisterCompanyCommandHandler: onboarding self-service que cria a empresa,
+    a primeira filial (com mesas, comandas e categorias padrao) e o usuario administrador em uma
+    unica operacao. CNPJ da empresa, usuario/e-mail do administrador e CPF do administrador devem
+    ser unicos no sistema antes de qualquer coisa ser criada.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
-#line 1 "MarkIFoodOrderReady.feature"
+#line 1 "RegisterCompanyCommand.feature"
 #line hidden
         
-        public MarcarPedidoIfoodComoProntoParaRetiradaFeature(MarcarPedidoIfoodComoProntoParaRetiradaFeature.FixtureData fixtureData, Xunit.Abstractions.ITestOutputHelper testOutputHelper)
+        public RegistrarEmpresaNoOnboardingFeature(RegistrarEmpresaNoOnboardingFeature.FixtureData fixtureData, Xunit.Abstractions.ITestOutputHelper testOutputHelper)
         {
             this._testOutputHelper = testOutputHelper;
         }
@@ -129,15 +130,15 @@ namespace SyncBar.Specs.Features
             await this.TestTearDownAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Marcar pedido inexistente como pronto deve falhar")]
-        [Xunit.TraitAttribute("FeatureTitle", "Marcar pedido Ifood como pronto para retirada")]
-        [Xunit.TraitAttribute("Description", "Marcar pedido inexistente como pronto deve falhar")]
-        public async global::System.Threading.Tasks.Task MarcarPedidoInexistenteComoProntoDeveFalhar()
+        [Xunit.SkippableFactAttribute(DisplayName="Registrar empresa com cnpj ja cadastrado deve falhar")]
+        [Xunit.TraitAttribute("FeatureTitle", "Registrar empresa no onboarding")]
+        [Xunit.TraitAttribute("Description", "Registrar empresa com cnpj ja cadastrado deve falhar")]
+        public async global::System.Threading.Tasks.Task RegistrarEmpresaComCnpjJaCadastradoDeveFalhar()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Marcar pedido inexistente como pronto deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 6
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Registrar empresa com cnpj ja cadastrado deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 7
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -147,28 +148,28 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
-    await testRunner.GivenAsync("nao existe nenhum pedido Ifood com o id 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
-#line hidden
 #line 8
-    await testRunner.WhenAsync("eu tento marcar o pedido Ifood 1 como pronto", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.GivenAsync("ja existe uma empresa cadastrada com o mesmo cnpj do onboarding", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 9
-    await testRunner.ThenAsync("a operacao deve falhar com o erro \"IfoodOrder.NotFound\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.WhenAsync("eu registro a nova empresa no onboarding", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 10
+    await testRunner.ThenAsync("a operacao deve falhar com o erro \"Company.AlreadyExists\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Marcar pedido como pronto sem token valido do Ifood deve falhar")]
-        [Xunit.TraitAttribute("FeatureTitle", "Marcar pedido Ifood como pronto para retirada")]
-        [Xunit.TraitAttribute("Description", "Marcar pedido como pronto sem token valido do Ifood deve falhar")]
-        public async global::System.Threading.Tasks.Task MarcarPedidoComoProntoSemTokenValidoDoIfoodDeveFalhar()
+        [Xunit.SkippableFactAttribute(DisplayName="Registrar empresa com usuario ou email do administrador ja em uso deve falhar")]
+        [Xunit.TraitAttribute("FeatureTitle", "Registrar empresa no onboarding")]
+        [Xunit.TraitAttribute("Description", "Registrar empresa com usuario ou email do administrador ja em uso deve falhar")]
+        public async global::System.Threading.Tasks.Task RegistrarEmpresaComUsuarioOuEmailDoAdministradorJaEmUsoDeveFalhar()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Marcar pedido como pronto sem token valido do Ifood deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 11
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Registrar empresa com usuario ou email do administrador ja em uso deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 12
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -178,30 +179,27 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 12
-    await testRunner.GivenAsync("um pedido Ifood aberto com id 1 na filial 10", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
-#line hidden
 #line 13
-    await testRunner.AndAsync("a filial 10 nao tem um token valido do Ifood", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.GivenAsync("o nome de usuario ou email do administrador do onboarding ja esta em uso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 14
-    await testRunner.WhenAsync("eu tento marcar o pedido Ifood 1 como pronto", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+    await testRunner.WhenAsync("eu registro a nova empresa no onboarding", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 15
-    await testRunner.ThenAsync("a operacao deve falhar com o erro \"Ifood.NotConnected\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("a operacao deve falhar com o erro \"AppUser.AlreadyExists\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Ifood recusar a chamada de pronto para retirada deve falhar")]
-        [Xunit.TraitAttribute("FeatureTitle", "Marcar pedido Ifood como pronto para retirada")]
-        [Xunit.TraitAttribute("Description", "Ifood recusar a chamada de pronto para retirada deve falhar")]
-        public async global::System.Threading.Tasks.Task IfoodRecusarAChamadaDeProntoParaRetiradaDeveFalhar()
+        [Xunit.SkippableFactAttribute(DisplayName="Registrar empresa com cpf do administrador ja cadastrado deve falhar")]
+        [Xunit.TraitAttribute("FeatureTitle", "Registrar empresa no onboarding")]
+        [Xunit.TraitAttribute("Description", "Registrar empresa com cpf do administrador ja cadastrado deve falhar")]
+        public async global::System.Threading.Tasks.Task RegistrarEmpresaComCpfDoAdministradorJaCadastradoDeveFalhar()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Ifood recusar a chamada de pronto para retirada deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Registrar empresa com cpf do administrador ja cadastrado deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 17
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
@@ -213,33 +211,27 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 await this.ScenarioStartAsync();
 #line 18
-    await testRunner.GivenAsync("um pedido Ifood aberto com id 1 na filial 10", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.GivenAsync("ja existe um funcionario cadastrado com o cpf do administrador do onboarding", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
 #line 19
-    await testRunner.AndAsync("a filial 10 esta conectada ao Ifood com um token valido", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.WhenAsync("eu registro a nova empresa no onboarding", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 20
-    await testRunner.AndAsync("o Ifood recusa a chamada de pronto para retirada", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 21
-    await testRunner.WhenAsync("eu tento marcar o pedido Ifood 1 como pronto", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 22
-    await testRunner.ThenAsync("a operacao deve falhar com o erro \"Ifood.ActionFailed\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("a operacao deve falhar com o erro \"Employee.AlreadyExists\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Marcar pedido como pronto com sucesso")]
-        [Xunit.TraitAttribute("FeatureTitle", "Marcar pedido Ifood como pronto para retirada")]
-        [Xunit.TraitAttribute("Description", "Marcar pedido como pronto com sucesso")]
-        public async global::System.Threading.Tasks.Task MarcarPedidoComoProntoComSucesso()
+        [Xunit.SkippableFactAttribute(DisplayName="Registrar empresa com dados unicos cria a empresa, a filial e o administrador")]
+        [Xunit.TraitAttribute("FeatureTitle", "Registrar empresa no onboarding")]
+        [Xunit.TraitAttribute("Description", "Registrar empresa com dados unicos cria a empresa, a filial e o administrador")]
+        public async global::System.Threading.Tasks.Task RegistrarEmpresaComDadosUnicosCriaAEmpresaAFilialEOAdministrador()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Marcar pedido como pronto com sucesso", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 24
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Registrar empresa com dados unicos cria a empresa, a filial e o administrador", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 22
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -249,20 +241,23 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
+#line 23
+    await testRunner.GivenAsync("os dados do onboarding ainda nao estao cadastrados no sistema", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 24
+    await testRunner.WhenAsync("eu registro a nova empresa no onboarding", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
 #line 25
-    await testRunner.GivenAsync("um pedido Ifood aberto com id 1 na filial 10", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+    await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
 #line 26
-    await testRunner.AndAsync("a filial 10 esta conectada ao Ifood com um token valido", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("a empresa, a filial e o usuario administrador devem ser criados", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 27
-    await testRunner.AndAsync("o Ifood aceita a chamada de pronto para retirada", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+    await testRunner.AndAsync("as 5 categorias, mesas e comandas padrao devem ser criadas", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 28
-    await testRunner.WhenAsync("eu tento marcar o pedido Ifood 1 como pronto", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 29
-    await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.AndAsync("o usuario administrador deve ser vinculado ao perfil de administrador criado", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
@@ -275,12 +270,12 @@ this.ScenarioInitialize(scenarioInfo);
             
             async global::System.Threading.Tasks.Task Xunit.IAsyncLifetime.InitializeAsync()
             {
-                await MarcarPedidoIfoodComoProntoParaRetiradaFeature.FeatureSetupAsync();
+                await RegistrarEmpresaNoOnboardingFeature.FeatureSetupAsync();
             }
             
             async global::System.Threading.Tasks.Task Xunit.IAsyncLifetime.DisposeAsync()
             {
-                await MarcarPedidoIfoodComoProntoParaRetiradaFeature.FeatureTearDownAsync();
+                await RegistrarEmpresaNoOnboardingFeature.FeatureTearDownAsync();
             }
         }
     }
