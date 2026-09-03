@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Catalog.Complements.DeactivateComplementItem;
@@ -9,6 +9,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Desativar item de complemento")]
 public sealed class DeactivateComplementItemCommandSteps
 {
     private readonly Mock<IComplementItemRepository> _complementItemRepository = new();

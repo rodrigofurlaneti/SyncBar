@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Tenancy;
@@ -10,6 +10,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Criar item de complemento")]
 public sealed class CreateComplementItemCommandSteps
 {
     private readonly Mock<IComplementItemRepository> _complementItemRepository = new();

@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Branches.Create;
@@ -9,6 +9,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Criar filial")]
 public sealed class CreateBranchCommandSteps
 {
     private readonly Mock<IBranchRepository> _branchRepository = new();

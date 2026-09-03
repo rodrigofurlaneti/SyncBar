@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Cash.RegisterMovement;
@@ -9,6 +9,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Registrar movimentacao de caixa")]
 public sealed class RegisterCashMovementCommandSteps
 {
     private readonly Mock<ICashSessionRepository> _cashSessionRepository = new();

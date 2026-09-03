@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Storage;
@@ -10,6 +10,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Definir imagem do produto")]
 public sealed class SetProductImageCommandSteps
 {
     private const long CompanyId = 1;

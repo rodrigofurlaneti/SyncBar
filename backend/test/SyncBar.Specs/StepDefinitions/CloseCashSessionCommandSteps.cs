@@ -10,6 +10,7 @@ using SyncBar.Application.Features.Cash;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Fechar sessao de caixa")]
 public sealed class CloseCashSessionCommandSteps
 {
     private readonly Mock<ICashSessionRepository> _cashSessionRepository = new();

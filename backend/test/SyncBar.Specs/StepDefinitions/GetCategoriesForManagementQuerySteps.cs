@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Catalog;
@@ -10,6 +10,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Consultar categorias para gerenciamento")]
 public sealed class GetCategoriesForManagementQuerySteps
 {
     private readonly Mock<ICategoryRepository> _categoryRepository = new();

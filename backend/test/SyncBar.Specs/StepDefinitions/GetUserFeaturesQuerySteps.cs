@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Access.GetUserFeatures;
@@ -9,6 +9,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Listar features vinculadas a um usuario")]
 public sealed class GetUserFeaturesQuerySteps
 {
     private readonly Mock<IAppUserFeatureRepository> _userFeatureRepository = new();

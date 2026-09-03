@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Catalog.Complements;
@@ -11,6 +11,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Listar grupos de complemento vinculados a um produto")]
 public sealed class GetProductComplementGroupsQuerySteps
 {
     private readonly Mock<IProductComplementGroupRepository> _productComplementGroupRepository = new();

@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Integrations.Ifood;
@@ -11,6 +11,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Vincular grupo de complemento a um produto")]
 public sealed class LinkProductComplementGroupCommandSteps
 {
     private readonly Mock<IProductRepository> _productRepository = new();

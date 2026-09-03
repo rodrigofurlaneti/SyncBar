@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Authentication;
@@ -10,6 +10,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Registrar empresa no onboarding")]
 public sealed class RegisterCompanyCommandSteps
 {
     private readonly Mock<ICompanyRepository> _companyRepository = new();

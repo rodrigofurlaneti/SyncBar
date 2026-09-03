@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Printing;
@@ -10,6 +10,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Registrar pagamento parcial de conta de mesa")]
 public sealed class RegisterPartialPaymentCommandSteps
 {
     private readonly Mock<ICustomerOrderRepository> _orderRepository = new();

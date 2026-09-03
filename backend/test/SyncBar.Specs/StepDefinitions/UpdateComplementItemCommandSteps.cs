@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Integrations.Ifood;
@@ -10,6 +10,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Atualizar nome de um item de complemento")]
 public sealed class UpdateComplementItemCommandSteps
 {
     private readonly Mock<IComplementItemRepository> _complementItemRepository = new();

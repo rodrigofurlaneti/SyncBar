@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Authentication;
@@ -11,6 +11,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Renovar token de acesso")]
 public sealed class RefreshTokenCommandSteps
 {
     private readonly Mock<IRefreshTokenRepository> _refreshTokenRepository = new();

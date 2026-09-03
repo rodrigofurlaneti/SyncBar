@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Access;
@@ -15,6 +15,7 @@ namespace SyncBar.Specs.StepDefinitions;
 // as features cadastradas (essa combinacao so e observavel em teste de integracao); cobrem apenas
 // os ramos que independem dessa limitacao.
 [Binding]
+[Scope(Feature = "Listar minhas features de acesso")]
 public sealed class GetMyFeaturesQuerySteps
 {
     private readonly Mock<IAppUserRepository> _userRepository = new();

@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Branches;
@@ -10,6 +10,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Listar filiais de uma empresa")]
 public sealed class GetBranchesByCompanyQuerySteps
 {
     private readonly Mock<IBranchRepository> _branchRepository = new();

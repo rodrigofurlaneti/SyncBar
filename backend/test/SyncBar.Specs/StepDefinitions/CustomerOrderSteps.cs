@@ -7,6 +7,7 @@ using SyncBar.Domain.Primitives;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Pedido em mesa e comanda")]
 public sealed class CustomerOrderSteps
 {
     private Result<CustomerOrder>? _createResult;

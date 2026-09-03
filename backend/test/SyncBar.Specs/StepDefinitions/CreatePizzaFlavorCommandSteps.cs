@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Tenancy;
@@ -10,6 +10,7 @@ namespace SyncBar.Specs.StepDefinitions;
 
 // Nivel de handler (Application) — ver MarkIfoodOrderReadySteps.cs para o padrao completo.
 [Binding]
+[Scope(Feature = "Criar sabor de pizza")]
 public sealed class CreatePizzaFlavorCommandSteps
 {
     private readonly Mock<IPizzaFlavorRepository> _pizzaFlavorRepository = new();

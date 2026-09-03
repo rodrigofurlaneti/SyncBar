@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Integrations.Ifood;
@@ -11,6 +11,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Atualizar preco extra de uma opcao de complemento")]
 public sealed class UpdateComplementPriceCommandSteps
 {
     private readonly Mock<IComplementGroupRepository> _complementGroupRepository = new();

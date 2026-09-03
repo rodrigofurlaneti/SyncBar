@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Catalog.Complements.CreateComplementGroup;
@@ -9,6 +9,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Criar grupo de complemento")]
 public sealed class CreateComplementGroupCommandSteps
 {
     private readonly Mock<IComplementGroupRepository> _complementGroupRepository = new();

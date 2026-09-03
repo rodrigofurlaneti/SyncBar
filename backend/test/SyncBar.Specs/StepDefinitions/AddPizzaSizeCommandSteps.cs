@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Catalog.Pizza.AddPizzaSize;
@@ -10,6 +10,7 @@ namespace SyncBar.Specs.StepDefinitions;
 
 // Nivel de handler (Application) — ver MarkIfoodOrderReadySteps.cs para o padrao completo.
 [Binding]
+[Scope(Feature = "Adicionar tamanho a uma configuracao de pizza")]
 public sealed class AddPizzaSizeCommandSteps
 {
     private readonly Mock<IPizzaConfigurationRepository> _pizzaConfigurationRepository = new();

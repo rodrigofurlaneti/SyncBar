@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Integrations.Ifood;
@@ -10,6 +10,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Desvincular grupo de complemento de um produto")]
 public sealed class UnlinkProductComplementGroupCommandSteps
 {
     private readonly Mock<IProductComplementGroupRepository> _productComplementGroupRepository = new();

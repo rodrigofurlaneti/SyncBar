@@ -10,6 +10,7 @@ using SyncBar.Application.Features.Cash;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Consultar sessao de caixa aberta")]
 public sealed class GetOpenSessionQuerySteps
 {
     private readonly Mock<ICashSessionRepository> _cashSessionRepository = new();

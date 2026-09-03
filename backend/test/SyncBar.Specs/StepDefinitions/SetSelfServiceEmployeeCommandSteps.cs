@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Branches.SetSelfServiceEmployee;
@@ -9,6 +9,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Definir atendente self-service da filial")]
 public sealed class SetSelfServiceEmployeeCommandSteps
 {
     private readonly Mock<IBranchRepository> _branchRepository = new();

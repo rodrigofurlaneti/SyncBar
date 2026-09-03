@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Comandas;
@@ -10,6 +10,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Consultar comandas de uma filial")]
 public sealed class GetComandasByBranchQuerySteps
 {
     private readonly Mock<IComandaRepository> _comandaRepository = new();

@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Comandas.Settings;
@@ -9,6 +9,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Consultar configuracao de limite de comanda da filial")]
 public sealed class GetComandaSettingQuerySteps
 {
     private readonly Mock<IComandaSettingRepository> _settingRepository = new();

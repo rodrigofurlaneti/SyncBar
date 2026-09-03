@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Access.GetJobTitleFeatures;
@@ -9,6 +9,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Listar features vinculadas a um cargo")]
 public sealed class GetJobTitleFeaturesQuerySteps
 {
     private readonly Mock<IJobTitleFeatureRepository> _jobTitleFeatureRepository = new();

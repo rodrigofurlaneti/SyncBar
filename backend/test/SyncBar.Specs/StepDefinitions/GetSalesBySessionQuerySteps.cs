@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Billing.GetSalesBySession;
@@ -9,6 +9,7 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Specs.StepDefinitions;
 
 [Binding]
+[Scope(Feature = "Consultar vendas de uma sessao de caixa")]
 public sealed class GetSalesBySessionQuerySteps
 {
     private readonly Mock<ISaleRepository> _saleRepository = new();

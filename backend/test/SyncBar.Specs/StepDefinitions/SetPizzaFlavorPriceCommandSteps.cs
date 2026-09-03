@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Integrations.Ifood;
@@ -18,6 +18,7 @@ namespace SyncBar.Specs.StepDefinitions;
 // PizzaConfiguration.CalculateUnitPrice/FindMaxFlavorPrice, usado por AddPizzaOrderItem, fora do
 // escopo deste comando.
 [Binding]
+[Scope(Feature = "Definir preco de um sabor de pizza num tamanho")]
 public sealed class SetPizzaFlavorPriceCommandSteps
 {
     private const long CompanyId = 1;

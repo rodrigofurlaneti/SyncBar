@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Features.Catalog.Pizza.AddPizzaCrust;
@@ -13,6 +13,7 @@ namespace SyncBar.Specs.StepDefinitions;
 // Grossa) — ver comentario da entidade PizzaCrust; nao confundir com PizzaEdge (o recheio da
 // borda, ex.: Catupiry), coberto em AddPizzaEdgeCommandSteps.cs.
 [Binding]
+[Scope(Feature = "Adicionar borda a uma configuracao de pizza")]
 public sealed class AddPizzaCrustCommandSteps
 {
     private readonly Mock<IPizzaConfigurationRepository> _pizzaConfigurationRepository = new();

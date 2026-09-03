@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Integrations.Ifood;
@@ -14,6 +14,7 @@ namespace SyncBar.Specs.StepDefinitions;
 // colaboradores (repositorios, gatilho de sincronizacao com o Ifood) sao dublados com Moq para
 // exercitar o AddComplementCommandHandler real de ponta a ponta.
 [Binding]
+[Scope(Feature = "Adicionar opcao a um grupo de complemento")]
 public sealed class AddComplementCommandSteps
 {
     private readonly Mock<IComplementGroupRepository> _complementGroupRepository = new();
