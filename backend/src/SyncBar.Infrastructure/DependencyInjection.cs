@@ -53,6 +53,8 @@ public static class DependencyInjection
         services.AddScoped<ICashSessionRepository, CashSessionRepository>();
         services.AddScoped<ICashMovementRepository, CashMovementRepository>();
         services.AddScoped<ICashRegisterRepository, CashRegisterRepository>();
+        services.AddScoped<IShiftClosingRepository, ShiftClosingRepository>();
+        services.AddScoped<IShiftClosingSessionRepository, ShiftClosingSessionRepository>();
         services.AddScoped<IStockItemRepository, StockItemRepository>();
         services.AddScoped<IStockMovementRepository, StockMovementRepository>();
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();

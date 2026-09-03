@@ -88,6 +88,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<IfoodPizzaMapping> IfoodPizzaMappings => Set<IfoodPizzaMapping>();
     public DbSet<IfoodPizzaElementMapping> IfoodPizzaElementMappings => Set<IfoodPizzaElementMapping>();
     public DbSet<ComandaItemTransfer> ComandaItemTransfers => Set<ComandaItemTransfer>();
+    public DbSet<ShiftClosingStatus> ShiftClosingStatuses => Set<ShiftClosingStatus>();
+    public DbSet<ShiftClosing> ShiftClosings => Set<ShiftClosing>();
+    public DbSet<ShiftClosingSession> ShiftClosingSessions => Set<ShiftClosingSession>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
@@ -127,6 +130,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
         ConfigureBranchScopedTenantFiltersPart2(modelBuilder);
         ConfigureBranchScopedTenantFiltersPart3(modelBuilder);
         ConfigureBranchScopedTenantFiltersPart4(modelBuilder);
+        ConfigureBranchScopedTenantFiltersPart5(modelBuilder);
     }
 
     private void ConfigureBranchScopedTenantFiltersPart1(ModelBuilder modelBuilder)
@@ -198,6 +202,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
         modelBuilder.Entity<Comanda>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
         modelBuilder.Entity<CashRegister>().HasQueryFilter(e =>
+            !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
+    }
+
+    private void ConfigureBranchScopedTenantFiltersPart5(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ShiftClosing>().HasQueryFilter(e =>
             !_currentTenant!.CompanyId.HasValue || Branchs.Any(b => b.Id == e.BranchId && b.CompanyId == _currentTenant.CompanyId));
     }
 
