@@ -273,15 +273,51 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
     {
         switch (evt.FullCode)
         {
-            case "CONFIRMED":
+            case "PLACED":
                 return await ProcessNewOrderAsync(evt, companyId, token, mappingsByBranch, now, cancellationToken);
+
+            case "CONFIRMED":
+                return await ProcessStatusSyncAsync(evt.OrderId, ifoodOrder => ifoodOrder.MarkConfirmed(now), cancellationToken);
+
+            case "PREPARATION_STARTED":
+                return await ProcessStatusSyncAsync(evt.OrderId, ifoodOrder => ifoodOrder.SetStatus(IfoodOrderStatuses.PreparationStarted, now), cancellationToken);
+
+            case "READY_TO_PICKUP":
+                return await ProcessStatusSyncAsync(evt.OrderId, ifoodOrder => ifoodOrder.SetStatus(IfoodOrderStatuses.ReadyToPickup, now), cancellationToken);
+
+            case "DISPATCHED":
+                return await ProcessStatusSyncAsync(evt.OrderId, ifoodOrder => ifoodOrder.SetStatus(IfoodOrderStatuses.Dispatched, now), cancellationToken);
+
+            case "DELIVERED": // categoria FOOD_SELF_SERVICE
+                return await ProcessStatusSyncAsync(evt.OrderId, ifoodOrder => ifoodOrder.SetStatus(IfoodOrderStatuses.Delivered, now), cancellationToken);
+
+            case "CONCLUDED":
+                return await ProcessStatusSyncAsync(evt.OrderId, ifoodOrder => ifoodOrder.SetStatus(IfoodOrderStatuses.Concluded, now), cancellationToken);
 
             case "CANCELLED":
                 return await ProcessCancelledAsync(evt, companyId, token, stopwatch, now, cancellationToken);
 
+            case "ORDER_PATCHED":
+            case "ASSIGN_DRIVER":
+            case "CANCELLATION_REQUEST_FAILED":
+            case "HANDSHAKE_DISPUTE":
+            case "HANDSHAKE_SETTLEMENT":
+            case "DELIVERY_ADDRESS_CHANGE":
+            case "DELIVERY_PHONE_CHANGE":
             default:
                 return true;
         }
+    }
+
+    private async Task<bool> ProcessStatusSyncAsync(string ifoodOrderId, Action<IfoodOrder> apply, CancellationToken cancellationToken)
+    {
+        var tracked = await _IfoodOrderRepository.GetByIfoodOrderIdForUpdateAsync(ifoodOrderId, cancellationToken);
+        if (tracked is null)
+            return true;
+
+        apply(tracked);
+        await _unitOfWork.CommitAsync(cancellationToken);
+        return true;
     }
 
     private async Task<bool> ProcessNewOrderAsync(
@@ -307,7 +343,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
             }
 
             var assignment = await ResolveBranchAssignmentAsync(details, mappingsByBranch, stopwatch, cancellationToken);
-            if (assignment is null)
+            if (assignment.IsFailure)
             {
                 isSuccess = false;
                 errorMessage = $"Loja do iFood (MerchantId: {details.MerchantId}) não mapeada ou filial sem funcionário de autoatendimento configurado.";
@@ -575,43 +611,50 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
         var ifoodOrder = await _IfoodOrderRepository.GetByIfoodOrderIdForUpdateAsync(evt.OrderId, cancellationToken);
         if (ifoodOrder is null)
         {
+            // Pedido cancelado antes de ter sido sincronizado localmente (ex.: cliente cancelou
+            // entre o PLACED e a confirmação) — cria já nascendo cancelado, pra não perder o
+            // registro em CustomerOrder/IfoodOrder.
             var details = await _orderClient.GetOrderDetailsAsync(token, evt.OrderId, cancellationToken);
             if (details is null)
                 return true;
             var mappings = await _merchantMappingRepository.GetByCompanyAsync(companyId, cancellationToken);
             var assignment = await ResolveBranchAssignmentAsync(details, mappings, stopwatch, cancellationToken);
-            if (assignment is null)
+            if (assignment.IsFailure)
                 return true;
             var orderResult = CreateCustomerOrderFromIfoodDetails(details, evt.OrderId, assignment.Value, now);
             if (orderResult.IsFailure)
                 return true;
             var customerOrder = orderResult.Value;
             customerOrder.Cancel(now);
-            //await _customerOrderRepository.AddAsync(customerOrder, cancellationToken);
-            //await _unitOfWork.CommitAsync(cancellationToken);
-            //var ifoodOrderResult = IfoodOrder.Create(
-            //    customerOrder.Id,
-            //    assignment.Value.BranchId,
-            //    evt.OrderId,
-            //    details.DisplayId,
-            //    details.MerchantId,
-            //    details.OrderType,
-            //    details.DeliveredBy,
-            //    details.OrderTiming,
-            //    details.PreparationStartDateTime,
-            //    now, hasUnmappedItems: false);
-            //if (ifoodOrderResult.IsSuccess)
-            //{
-            //    ifoodOrderResult.Value.SetStatus(IfoodOrderStatuses.Cancelled, now);
-            //    await _IfoodOrderRepository.AddAsync(ifoodOrderResult.Value, cancellationToken);
-            //    await _unitOfWork.CommitAsync(cancellationToken);
-            //}
+            await _customerOrderRepository.AddAsync(customerOrder, cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken); // precisa do Id gerado
+
+            var ifoodOrderResult = IfoodOrder.Create(
+                customerOrder.Id,
+                assignment.Value.BranchId,
+                evt.OrderId,
+                details.DisplayId,
+                details.MerchantId,
+                details.OrderType,
+                details.DeliveredBy,
+                details.OrderTiming,
+                details.PreparationStartDateTime,
+                now, hasUnmappedItems: false);
+            if (ifoodOrderResult.IsSuccess)
+            {
+                ifoodOrderResult.Value.SetStatus(IfoodOrderStatuses.Cancelled, now);
+                await _IfoodOrderRepository.AddAsync(ifoodOrderResult.Value, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
             return true;
         }
-        //IfoodOrder.SetStatus(IfoodOrderStatuses.Cancelled, now);
-        //var customerOrder = await _customerOrderRepository.GetByIdForUpdateAsync(IfoodOrder.CustomerOrderId, cancellationToken);
-        //if (customerOrder is not null && customerOrder.OrderStatusId != OrderStatusIds.Pago)
-        //    customerOrder.Cancel(now);
+
+        // Caminho mais comum: pedido já rastreado (sincronizado via PLACED) que foi cancelado —
+        // marca o IfoodOrder e cancela o CustomerOrder vinculado (se ainda não tiver sido pago).
+        ifoodOrder.SetStatus(IfoodOrderStatuses.Cancelled, now);
+        var trackedCustomerOrder = await _customerOrderRepository.GetByIdForUpdateAsync(ifoodOrder.CustomerOrderId, cancellationToken);
+        if (trackedCustomerOrder is not null && trackedCustomerOrder.OrderStatusId != OrderStatusIds.Pago)
+            trackedCustomerOrder.Cancel(now);
         await _unitOfWork.CommitAsync(cancellationToken);
         return true;
     }
