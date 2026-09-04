@@ -126,11 +126,13 @@ export function StorefrontOrderPage() {
         });
     };
 
-    // Ajustado para capturar endereço e pagamento vindos do Drawer multilinha
+    // CORREÇÃO: Só executa o envio do pedido se o deliveryType for informado (evita enviar direto da tela de revisão)
     const handleCheckoutCart = (
         generalNotes: string,
         activeCustomerData?: CustomerSessionData,
-        _deliveryAddressId?: number,
+        deliveryType?: "PICKUP" | "DELIVERY",
+        addressId?: number | null,
+        newAddress?: any,
         _paymentMethod?: string
     ) => {
         if (cartItems.length === 0) return;
@@ -142,16 +144,26 @@ export function StorefrontOrderPage() {
             return;
         }
 
-        executeSubmitOrder(currentCustomer);
+        // Se o usuário ainda não passou pela etapa de escolha de entrega, o drawer apenas muda de passo.
+        if (!deliveryType) {
+            return;
+        }
+
+        executeSubmitOrder(currentCustomer, deliveryType, addressId, newAddress);
     };
 
     const handleAuthenticatedSuccess = (authenticatedData: CustomerSessionData) => {
         setCustomerData(authenticatedData);
         setIsAuthModalOpen(false);
-        executeSubmitOrder(authenticatedData);
+        // Após logar com sucesso, mantemos o usuário no carrinho para que ele escolha explicitamente entre Retirada ou Motoboy.
     };
 
-    const executeSubmitOrder = (activeCustomer: CustomerSessionData) => {
+    const executeSubmitOrder = (
+        activeCustomer: CustomerSessionData,
+        deliveryType: "PICKUP" | "DELIVERY" = "DELIVERY",
+        addressId?: number | null,
+        newAddress?: any
+    ) => {
         const payloadItems = cartItems.map(cartItem => ({
             productId: cartItem.productId,
             quantity: cartItem.quantity,
@@ -167,6 +179,9 @@ export function StorefrontOrderPage() {
             customerName: activeCustomer.name,
             customerPhone: activeCustomer.phone || null,
             generalNotes: pendingCheckoutNotes || undefined,
+            deliveryType: deliveryType,
+            addressId: addressId || null,
+            newAddress: newAddress || null,
             items: payloadItems
         });
     };
