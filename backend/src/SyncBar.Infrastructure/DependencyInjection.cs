@@ -12,6 +12,7 @@ using SyncBar.Infrastructure.Payments;
 using SyncBar.Infrastructure.Persistence;
 using SyncBar.Infrastructure.Persistence.Repositories;
 using SyncBar.Infrastructure.Printing;
+using SyncBar.Infrastructure.Repositories;
 using SyncBar.Infrastructure.Security;
 using SyncBar.Infrastructure.Storage;
 using SyncBar.Infrastructure.Tenancy;
@@ -100,6 +101,8 @@ public static class DependencyInjection
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<IProductStockRepository, ProductStockRepository>();
         services.AddScoped<ILogTrackerRepository, LogTrackerRepository>();
+        services.AddScoped<ICustomerAppUserRepository, CustomerAppUserRepository>();
+        services.AddScoped<ICustomerAddressRepository, CustomerAddressRepository>();
 
         services.AddSingleton<TimeProvider, SyncBar.Infrastructure.Time.TimeProviderCustom>();
         services.AddSingleton<SyncBar.Application.Abstractions.Storage.IImageStorage, LocalImageStorage>();

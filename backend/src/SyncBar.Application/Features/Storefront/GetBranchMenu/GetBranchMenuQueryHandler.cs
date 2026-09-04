@@ -3,34 +3,30 @@ using SyncBar.Application.Features.Catalog;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
-namespace SyncBar.Application.Features.PublicOrdering.GetPublicMenu;
+namespace SyncBar.Application.Features.Storefront.GetBranchMenu;
 
-internal sealed class GetPublicMenuQueryHandler(
-    IDiningTableRepository diningTableRepository,
+internal sealed class GetBranchMenuQueryHandler(
     IBranchRepository branchRepository,
     IProductRepository productRepository,
-    ICategoryRepository categoryRepository, 
+    ICategoryRepository categoryRepository,
     IProductComplementGroupRepository productComplementGroupRepository,
     IComplementGroupRepository complementGroupRepository,
     IComplementItemRepository complementItemRepository,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
-    : BaseQueryHandler<GetPublicMenuQuery, PublicMenuResponse>(logRepository, unitOfWork)
+    : BaseQueryHandler<GetBranchMenuQuery, BranchMenuResponse>(logRepository, unitOfWork)
 {
-    public override async Task<Result<PublicMenuResponse>> Handle(GetPublicMenuQuery request, CancellationToken cancellationToken)
+    public override async Task<Result<BranchMenuResponse>> Handle(GetBranchMenuQuery request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
-            nameof(GetPublicMenuQueryHandler),
+            nameof(GetBranchMenuQueryHandler),
             nameof(Handle),
             null,
             async (userIdBox) =>
             {
-                var table = await diningTableRepository.GetByQrTokenAsync(request.Token, cancellationToken);
-                if (table is null)
-                    return Result.Failure<PublicMenuResponse>(new Error("DiningTable.InvalidToken", "Invalid or expired QR code."));
-                var branch = await branchRepository.GetByIdAsync(table.BranchId, cancellationToken);
+                var branch = await branchRepository.GetByIdAsync(request.BranchId, cancellationToken);
                 if (branch is null || !branch.IsActive)
-                    return Result.Failure<PublicMenuResponse>(new Error("Branch.NotFound", "Branch not found."));
+                    return Result.Failure<BranchMenuResponse>(new Error("Branch.NotFound", "Branch not found or inactive."));
                 var products = await productRepository.GetByCompanyAsync(branch.CompanyId, cancellationToken);
                 var productIds = products.Select(p => p.Id).ToList();
                 var categories = await categoryRepository.GetByCompanyAsync(branch.CompanyId, cancellationToken);
@@ -43,7 +39,7 @@ internal sealed class GetPublicMenuQueryHandler(
                     .Select(p => new MenuItemResponse(
                         p.Id,
                         p.CategoryId,
-                        categoryMap.TryGetValue(p.CategoryId, out var catName) ? catName : "Geral", 
+                        categoryMap.TryGetValue(p.CategoryId, out var catName) ? catName : "Geral",
                         p.UnitOfMeasureId,
                         p.Name,
                         p.Description,
@@ -55,9 +51,7 @@ internal sealed class GetPublicMenuQueryHandler(
                         p.ImageUrl,
                         complementsByProduct.TryGetValue(p.Id, out var groups) ? groups : []))
                     .ToList();
-                return Result.Success(new PublicMenuResponse(
-                    branch.Name, table.Number, items, table.IsQrViewEnabled,
-                    table.IsCameraInputEnabled, table.IsBarcodeEnabled, table.IsQrCodeEnabled));
+                return Result.Success(new BranchMenuResponse(branch.Name, items));
             });
     }
 }

@@ -1,0 +1,16 @@
+﻿namespace SyncBar.Application.Features.CustomerAddresses.GetByCompanyId
+{
+    public sealed record CustomerAddressResponse(
+        long Id,
+        long CompanyId,
+        long? BranchId,
+        long? CustomerId,
+        long? LastOrderId,
+        string Street,
+        string Number,
+        string Supplement,
+        DateTime? LastOrderAt,
+        bool IsActive,
+        DateTime CreatedAt
+    );
+}

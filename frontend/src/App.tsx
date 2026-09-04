@@ -25,6 +25,7 @@ import { PurchasingPage } from "./features/purchasing/PurchasingPage";
 import { ReservationsPage } from "./features/reservations/ReservationsPage";
 import { CustomersPage } from "./features/customers/CustomersPage";
 import { PublicOrderPage } from "./features/publicOrdering/PublicOrderPage";
+import { StorefrontOrderPage } from "./features/storeFront/StorefrontOrderPage";
 import { IFoodIntegrationPage } from "./features/integrations/IFoodIntegrationPage";
 import { IFoodOrdersPage } from "./features/integrations/IFoodOrdersPage";
 import { IFoodShippingPage } from "./features/integrations/IFoodShippingPage";
@@ -56,9 +57,12 @@ function RequireAuth({ children }: { children: ReactNode }) {
 export default function App() {
     return (
         <Routes>
+            {/* Rotas Públicas */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/cadastro" element={<SignupPage />} />
             <Route path="/pedido/:token" element={<PublicOrderPage />} />
+            <Route path="/cardapio/:branchIdParam" element={<StorefrontOrderPage />} />
+            <Route path="/cardapio" element={<StorefrontOrderPage />} />
 
             {/* Rota do Tablet na Mesa (Sem AppShell para ser tela cheia) */}
             <Route
@@ -72,7 +76,7 @@ export default function App() {
                 }
             />
 
-            {/* 1. Mova a rota do Garçom para CÁ, fora do AppShell, mas com RequireAuth */}
+            {/* Rota do Garçom */}
             <Route
                 path="/garcom"
                 element={
@@ -84,7 +88,7 @@ export default function App() {
                 }
             />
 
-            {/* 2. O restante do sistema continua dentro do AppShell */}
+            {/* O restante do sistema protegido dentro do AppShell */}
             <Route
                 element={
                     <RequireAuth>
@@ -93,9 +97,6 @@ export default function App() {
                 }
             >
                 <Route path="/" element={<FeatureGate code="Salao"><OrdersPage /></FeatureGate>} />
-
-                {/* A rota /garcom foi removida daqui */}
-
                 <Route path="/delivery" element={<FeatureGate code="Salao"><DeliveryBoardPage /></FeatureGate>} />
                 <Route path="/produtos" element={<FeatureGate code="Cardapio"><ProductsPage /></FeatureGate>} />
                 <Route path="/complementos" element={<FeatureGate code="Cardapio"><ComplementsPage /></FeatureGate>} />
