@@ -8,6 +8,7 @@ public interface ICustomerAppUserRepository
     Task<IEnumerable<CustomerAppUser?>> GetByBranchId(long branchId, CancellationToken cancellationToken = default);
     Task<IEnumerable<CustomerAppUser?>> GetByCompanyId(long companyId, CancellationToken cancellationToken = default);
     Task<CustomerAppUser?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+    Task<CustomerAppUser?> GetByEmailForUpdateAsync(string email, long companyId, CancellationToken cancellationToken = default);
     Task AddAsync(CustomerAppUser entity, CancellationToken cancellationToken = default);
     Task UpdateAsync(CustomerAppUser entity, CancellationToken cancellationToken = default);
     Task RemoveAsync(long id, CancellationToken cancellationToken = default);

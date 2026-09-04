@@ -1,6 +1,7 @@
 ﻿import { useState, useId, useEffect } from "react";
 import Swal from "sweetalert2";
 import { api } from "../../lib/apiClient";
+import { loginCustomerAppUser } from "./storefrontApi"; // Adicionado a importação do novo endpoint
 
 type StorefrontAuthModalProps = {
     isOpen: boolean;
@@ -73,6 +74,7 @@ export function StorefrontAuthModal({
 
     if (!isOpen) return null;
 
+    // NOVO FLUXO DE LOGIN
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!loginEmail || !loginPassword) {
@@ -82,20 +84,25 @@ export function StorefrontAuthModal({
 
         setIsLoading(true);
         try {
-            const res = await api<any>(`/api/customerappusers/company/1`, { method: "GET" });
-            const found = Array.isArray(res) ? res.find((u: any) => u.email.toLowerCase() === loginEmail.toLowerCase()) : null;
+            const payload = {
+                email: loginEmail,
+                password: loginPassword,
+                companyId: 1, // Substitua dinamicamente se necessário
+                branchId: branchId
+            };
 
-            if (!found) {
-                throw new Error("E-mail não cadastrado como cliente.");
-            }
+            const res = await loginCustomerAppUser(payload);
+
+            // Se desejar persistir a sessão do cliente, salve o token aqui:
+            // localStorage.setItem("customerToken", res.accessToken);
 
             onAuthenticated({
-                name: found.userName || loginEmail.split("@")[0],
-                customerId: found.customerId
+                name: res.userName,
+                customerId: res.customerId
             });
             onClose();
         } catch (err: any) {
-            Swal.fire("Erro", err.message || "Falha na autenticação.", "error");
+            Swal.fire("Erro", err.message || "E-mail ou senha incorretos.", "error");
         } finally {
             setIsLoading(false);
         }
@@ -126,7 +133,6 @@ export function StorefrontAuthModal({
 
             const newCustomerId = userResult.id;
 
-            // CORREÇÃO: Enviando a propriedade zipCode exigida pela API
             const addressPayload = {
                 companyId: 1,
                 branchId: branchId,
