@@ -34,6 +34,7 @@ namespace SyncBar.Application.Features.CustomerAddresses.GetById
                         entity.Street,
                         entity.Number,
                         entity.Supplement,
+                        entity.ZipCode,
                         entity.LastOrderAt,
                         entity.IsActive,
                         entity.CreatedAt

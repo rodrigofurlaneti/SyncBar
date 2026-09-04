@@ -31,6 +31,7 @@ namespace SyncBar.Application.Features.CustomerAddresses.GetByCompanyId
                             x.Street,
                             x.Number,
                             x.Supplement,
+                            x.ZipCode,
                             x.LastOrderAt,
                             x.IsActive,
                             x.CreatedAt

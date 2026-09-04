@@ -31,7 +31,7 @@ export function StorefrontAuthModal({
     const [regStreet, setRegStreet] = useState("");
     const [regNumber, setRegNumber] = useState("");
     const [regSupplement, setRegSupplement] = useState("");
-
+    const [regZipCode, setRegZipCode] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
     if (!isOpen) return null;
@@ -240,6 +240,18 @@ export function StorefrontAuthModal({
                         <div style={{ borderTop: "1px solid #323238", paddingTop: 10, marginTop: 4, display: "grid", gap: 10 }}>
                             <span style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#f59e0b" }}>Endereço de Entrega</span>
                             <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: 8 }}>
+                                <div style={{ display: "grid", gap: 4 }}>
+                                    <label style={{ fontSize: "0.8rem", color: "#a8a8b3" }}>Cep</label>
+                                        <input
+                                            type="text"
+                                            value={regZipCode}
+                                            onChange={(e) => setRegZipCode(e.target.value)}
+                                            placeholder="00000000"
+                                            style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", boxSizing: "border-box", maxHeight: 9 }}
+                                            required
+                                    />
+                                </div>
+
                                 <div style={{ display: "grid", gap: 4 }}>
                                     <label style={{ fontSize: "0.8rem", color: "#a8a8b3" }}>Rua / Avenida</label>
                                     <input

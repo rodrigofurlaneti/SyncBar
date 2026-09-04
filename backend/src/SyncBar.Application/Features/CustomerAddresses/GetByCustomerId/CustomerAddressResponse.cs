@@ -9,6 +9,7 @@
         string Street,
         string Number,
         string Supplement,
+        string? ZipCode,
         DateTime? LastOrderAt,
         bool IsActive,
         DateTime CreatedAt

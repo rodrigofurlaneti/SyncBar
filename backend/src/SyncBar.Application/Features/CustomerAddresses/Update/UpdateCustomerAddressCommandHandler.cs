@@ -27,7 +27,7 @@ namespace SyncBar.Application.Features.CustomerAddresses.Update
                     if (entity is null || !entity.IsActive)
                         return Result.Failure(new Error("CustomerAddress.NotFound", "Customer address not found."));
 
-                    var updateResult = entity.UpdateDetails(request.Street, request.Number, request.Supplement);
+                    var updateResult = entity.UpdateDetails(request.Street, request.Number, request.Supplement, request.ZipCode);
                     if (updateResult.IsFailure)
                         return Result.Failure(updateResult.Error);
 

@@ -4,7 +4,7 @@ using SyncBar.Domain.Entities;
 
 namespace SyncBar.Infrastructure.Persistence.Configurations
 {
-    public sealed class CustomerAddressConfiguration : IEntityTypeConfiguration<CustomerAddress>
+    internal sealed class CustomerAddressConfiguration : IEntityTypeConfiguration<CustomerAddress>
     {
         public void Configure(EntityTypeBuilder<CustomerAddress> builder)
         {
@@ -37,6 +37,10 @@ namespace SyncBar.Infrastructure.Persistence.Configurations
 
             builder.Property(x => x.Supplement)
                 .HasMaxLength(50)
+                .IsRequired();
+
+            builder.Property(x => x.Supplement)
+                .HasMaxLength(9)
                 .IsRequired();
 
             builder.Property(x => x.LastOrderAt)
