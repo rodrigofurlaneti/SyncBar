@@ -9,13 +9,13 @@ interface TabMesasProps {
 }
 
 export function TabMesas({ activeAreaId, myTables, ordersByTableId, onTableClick }: TabMesasProps) {
-    if (!activeAreaId) return <p className="waiter-empty">Nenhuma praça vinculada a você no momento.</p>;
-    if (myTables.length === 0) return <p className="waiter-empty">Nenhuma mesa foi configurada nesta praça.</p>;
+    if (!activeAreaId) return <p className="waiter-empty" data-testid="no-area-msg">Nenhuma praça vinculada a você no momento.</p>;
+    if (myTables.length === 0) return <p className="waiter-empty" data-testid="no-tables-msg">Nenhuma mesa foi configurada nesta praça.</p>;
 
     return (
-        <section className="waiter-section">
+        <section className="waiter-section" data-testid="tab-mesas-section">
             <h2 className="waiter-section-title" style={{ marginBottom: 16 }}>Minhas Mesas</h2>
-            <div className="waiter-tables-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "14px" }}>
+            <div className="waiter-tables-grid" data-testid="waiter-tables-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "14px" }}>
                 {myTables.map((table) => {
                     const order = ordersByTableId.get(table.id);
 
@@ -42,6 +42,7 @@ export function TabMesas({ activeAreaId, myTables, ordersByTableId, onTableClick
                         <button
                             key={table.id}
                             onClick={() => onTableClick(table.id, table.tableStatusId)}
+                            data-testid={`table-tile-${table.id}`}
                             style={{
                                 display: "flex",
                                 flexDirection: "column",
@@ -58,16 +59,15 @@ export function TabMesas({ activeAreaId, myTables, ordersByTableId, onTableClick
                             }}
                         >
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: "6px" }}>
-                                {/* Mesma tipografia exata aplicada aqui */}
                                 <span style={{ fontFamily: "var(--font-display)", fontSize: "2rem", color: "var(--w-ink)", lineHeight: 1 }}>
                                     {table.number}
                                 </span>
-                                <span style={{ fontSize: "0.65rem", fontWeight: "700", backgroundColor: statusBg, color: statusColor, padding: "4px 8px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase" }}>
+                                <span data-testid={`table-status-${table.id}`} style={{ fontSize: "0.65rem", fontWeight: "700", backgroundColor: statusBg, color: statusColor, padding: "4px 8px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase" }}>
                                     <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: statusColor }} />
                                     {statusText}
                                 </span>
                             </div>
-                            <span style={{ fontSize: "0.85rem", color: "var(--w-ink-dim)", fontWeight: 500 }}>
+                            <span data-testid={`table-subtext-${table.id}`} style={{ fontSize: "0.85rem", color: "var(--w-ink-dim)", fontWeight: 500 }}>
                                 {subText}
                             </span>
                         </button>

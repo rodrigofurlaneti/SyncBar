@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useDialog } from "../../ui/Dialog";
+import Swal from "sweetalert2"; // Adicionado SweetAlert2
 import {
     activateCategory,
     activateProduct,
@@ -28,7 +28,6 @@ import { Button } from "../../ui/Button";
 import { Field, TextField, SelectField } from "../../ui/Field";
 import { Switch } from "../../ui/Switch";
 import { StatusBadge } from "../../ui/StatusBadge";
-import { useToast } from "../../ui/Toast";
 import { EmptyState } from "../../ui/EmptyState";
 import { SkeletonList } from "../../ui/Skeleton";
 
@@ -56,7 +55,16 @@ const parseNum = (raw: string): number | null => {
     return Number.isFinite(value) ? value : null;
 };
 
-/* Ícones inline (sem dependência externa) — traço fino, 1.6px, no estilo do resto da UI. */
+// Configuração base para simular os Toasts no SweetAlert2
+const Toast = Swal.mixin({
+    toast: true,
+    position: "top-end",
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+});
+
+/* Ícones inline */
 const DragIcon = () => (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <circle cx="8" cy="6" r="1.6" /><circle cx="16" cy="6" r="1.6" />
@@ -83,8 +91,6 @@ const ChevronRight = () => (
 
 export function ProductsPage() {
     const queryClient = useQueryClient();
-    const dialog = useDialog();
-    const toast = useToast();
     const { companyId, branchId } = useAuthStore();
     const [editing, setEditing] = useState<ProductManagementResponse | "new" | null>(null);
     const [form, setForm] = useState<FormState>(emptyForm);
@@ -98,7 +104,6 @@ export function ProductsPage() {
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // Painel de produtos: categoria selecionada, busca, filtro de status e paginação.
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | typeof ALL_CATEGORIES>(ALL_CATEGORIES);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -114,15 +119,11 @@ export function ProductsPage() {
         };
     }, [imagePreviewUrl]);
 
-    // Lista "para pedido" (só ativas) — alimenta o <select> de categoria do modal de produto;
-    // nunca deve ser possível cadastrar um produto numa categoria já desativada.
     const categoriesQuery = useQuery({
         queryKey: ["categories", companyId],
         queryFn: () => getCategories(companyId ?? 1),
     });
 
-    // Lista "de gerenciamento" (ativas + inativas, com contador de itens) — alimenta a coluna
-    // de categorias do split view.
     const categoriesManagementQuery = useQuery({
         queryKey: ["categories", "management", companyId],
         queryFn: () => getCategoriesForManagement(companyId ?? 1),
@@ -133,9 +134,6 @@ export function ProductsPage() {
         queryFn: () => getMenuForManagement(companyId ?? 1),
     });
 
-    // Estoque real da filial atual — usado só para o selo "Em estoque/Baixo/Sem estoque".
-    // Se falhar ou não tiver branchId, os produtos com controle de estoque caem no selo
-    // neutro "Sem registro" em vez de quebrar a tela.
     const stockQuery = useQuery({
         queryKey: ["stock", "branch", branchId],
         queryFn: () => getStockByBranch(branchId ?? 1),
@@ -190,8 +188,11 @@ export function ProductsPage() {
         preparationTimeMinutes: form.preparationTimeMinutes.trim() === "" ? null : Number(form.preparationTimeMinutes),
     });
 
-    const onApiError = (e: unknown) =>
-        setError(e instanceof ApiError ? e.message : "Operação falhou.");
+    const onApiError = (e: unknown) => {
+        const msg = e instanceof ApiError ? e.message : "Operação falhou.";
+        setError(msg);
+        Swal.fire("Erro", msg, "error");
+    };
 
     const saveMutation = useMutation({
         mutationFn: async () => {
@@ -203,20 +204,18 @@ export function ProductsPage() {
             if (imageFile !== null) await uploadProductImage(productId, imageFile);
         },
         onSuccess: () => {
-            toast.success(editing === "new" ? "Produto criado." : "Produto atualizado.");
+            Toast.fire({ icon: "success", title: editing === "new" ? "Produto criado." : "Produto atualizado." });
             setEditing(null);
             refresh();
         },
         onError: onApiError,
     });
 
-    // Um switch só, duas mutações por trás: liga chama activateProduct, desliga chama
-    // deactivateProduct — mantém o histórico/])soft delete sem precisar de dois botões.
     const toggleProductMutation = useMutation({
         mutationFn: ({ id, activate }: { id: number; activate: boolean }) =>
             activate ? activateProduct(id) : deactivateProduct(id),
         onSuccess: (_data, vars) => {
-            toast.success(vars.activate ? "Produto ativado." : "Produto desativado.");
+            Toast.fire({ icon: "success", title: vars.activate ? "Produto ativado." : "Produto desativado." });
             refresh();
         },
         onError: onApiError,
@@ -224,13 +223,16 @@ export function ProductsPage() {
 
     const toggleProduct = async (product: ProductManagementResponse) => {
         if (product.isActive) {
-            const confirmed = await dialog.confirm({
+            const { isConfirmed } = await Swal.fire({
                 title: "Desativar produto",
-                message: `Desativar "${product.name}"? Ele deixa de aparecer no cardápio para pedidos.`,
-                confirmLabel: "Desativar",
-                danger: true,
+                text: `Desativar "${product.name}"? Ele deixa de aparecer no cardápio para pedidos.`,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#d33",
+                confirmButtonText: "Desativar",
+                cancelButtonText: "Cancelar"
             });
-            if (!confirmed) return;
+            if (!isConfirmed) return;
         }
         toggleProductMutation.mutate({ id: product.id, activate: !product.isActive });
     };
@@ -239,6 +241,7 @@ export function ProductsPage() {
         mutationFn: () =>
             createCategory(companyId ?? 1, newCategory.trim(), (categoriesManagementQuery.data?.length ?? 0) + 1),
         onSuccess: () => {
+            Toast.fire({ icon: "success", title: "Categoria criada." });
             setNewCategory("");
             refresh();
         },
@@ -249,7 +252,7 @@ export function ProductsPage() {
         mutationFn: () =>
             createCategory(companyId ?? 1, modalNewCategory.trim(), (categoriesManagementQuery.data?.length ?? 0) + 1),
         onSuccess: (newCategoryId) => {
-            toast.success("Categoria criada.");
+            Toast.fire({ icon: "success", title: "Categoria criada." });
             setForm((f) => ({ ...f, categoryId: String(newCategoryId) }));
             setModalNewCategory("");
             setCreatingCategory(false);
@@ -275,7 +278,7 @@ export function ProductsPage() {
         mutationFn: () =>
             updateCategory(editingCategoryId!, categoryEditName.trim(), Number(categoryEditOrder) || 0),
         onSuccess: () => {
-            toast.success("Categoria atualizada.");
+            Toast.fire({ icon: "success", title: "Categoria atualizada." });
             cancelCategoryEdit();
             refresh();
         },
@@ -286,7 +289,7 @@ export function ProductsPage() {
         mutationFn: ({ id, activate }: { id: number; activate: boolean }) =>
             activate ? activateCategory(id) : deactivateCategory(id),
         onSuccess: (_data, vars) => {
-            toast.success(vars.activate ? "Categoria ativada." : "Categoria desativada.");
+            Toast.fire({ icon: "success", title: vars.activate ? "Categoria ativada." : "Categoria desativada." });
             refresh();
         },
         onError: onApiError,
@@ -294,19 +297,20 @@ export function ProductsPage() {
 
     const toggleCategory = async (category: CategoryManagementResponse) => {
         if (category.isActive) {
-            const confirmed = await dialog.confirm({
+            const { isConfirmed } = await Swal.fire({
                 title: "Desativar categoria",
-                message: `Desativar "${category.name}"? Produtos já cadastrados nela continuam funcionando, mas ela deixa de aparecer como opção para novos cadastros.`,
-                confirmLabel: "Desativar",
-                danger: true,
+                text: `Desativar "${category.name}"? Produtos já cadastrados nela continuam funcionando, mas ela deixa de aparecer como opção para novos cadastros.`,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#d33",
+                confirmButtonText: "Desativar",
+                cancelButtonText: "Cancelar"
             });
-            if (!confirmed) return;
+            if (!isConfirmed) return;
         }
         toggleCategoryMutation.mutate({ id: category.id, activate: !category.isActive });
     };
 
-    // Reordenar arrastando: troca o DisplayOrder das duas categorias envolvidas via o
-    // mesmo endpoint PUT /api/categories/{id} que a edição manual já usa.
     const reorderMutation = useMutation({
         mutationFn: async ({ from, to }: { from: CategoryManagementResponse; to: CategoryManagementResponse }) => {
             await Promise.all([
@@ -361,13 +365,13 @@ export function ProductsPage() {
             <div className="rise" style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 18 }}>
                 <h2 className="display" style={{ fontSize: "1.7rem" }}>Cardápio</h2>
                 <span style={{ flex: 1 }} />
-                <button type="button" className="btn-primary" onClick={() => openEditor("new")}>+ Novo produto</button>
+                <button type="button" className="btn-primary" onClick={() => openEditor("new")} data-testid="btn-new-product">+ Novo produto</button>
             </div>
 
             {categoriesManagementQuery.isError && <QueryError error={categoriesManagementQuery.error} what="as categorias" />}
             {productsQuery.isError && <QueryError error={productsQuery.error} what="o cardápio" />}
             {error && !editing && (
-                <p className="error-text" role="alert">
+                <p className="error-text" role="alert" data-testid="error-message">
                     {error}
                 </p>
             )}
@@ -384,6 +388,7 @@ export function ProductsPage() {
                         <div
                             className={`category-row is-pinned ${selectedCategoryId === ALL_CATEGORIES ? "is-selected" : ""}`}
                             onClick={() => selectCategory(ALL_CATEGORIES)}
+                            data-testid="category-row-all"
                         >
                             <span className="category-drag-handle" style={{ visibility: "hidden" }}><DragIcon /></span>
                             <span className="category-main">
@@ -394,12 +399,13 @@ export function ProductsPage() {
 
                         {sortedCategories.map((category, index) =>
                             editingCategoryId === category.id ? (
-                                <div key={category.id} style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 8px" }}>
+                                <div key={category.id} style={{ display: "flex", gap: 6, alignItems: "center", padding: "4px 8px" }} data-testid={`category-edit-row-${category.id}`}>
                                     <input
                                         autoFocus
                                         value={categoryEditName}
                                         onChange={(e) => setCategoryEditName(e.target.value)}
                                         style={{ flex: 1, minWidth: 0, minHeight: 36 }}
+                                        data-testid={`input-edit-cat-name-${category.id}`}
                                     />
                                     <input
                                         type="number"
@@ -408,16 +414,18 @@ export function ProductsPage() {
                                         onChange={(e) => setCategoryEditOrder(e.target.value)}
                                         title="Ordem de exibição"
                                         style={{ width: 52, minHeight: 36 }}
+                                        data-testid={`input-edit-cat-order-${category.id}`}
                                     />
                                     <Button
                                         size="sm"
                                         loading={updateCategoryMutation.isPending}
                                         disabled={categoryEditName.trim() === ""}
                                         onClick={() => updateCategoryMutation.mutate()}
+                                        data-testid={`btn-save-cat-${category.id}`}
                                     >
                                         Salvar
                                     </Button>
-                                    <Button size="sm" iconOnly aria-label="Cancelar edição" onClick={cancelCategoryEdit}>
+                                    <Button size="sm" iconOnly aria-label="Cancelar edição" onClick={cancelCategoryEdit} data-testid={`btn-cancel-cat-${category.id}`}>
                                         ✕
                                     </Button>
                                 </div>
@@ -431,6 +439,7 @@ export function ProductsPage() {
                                     onDragEnd={() => setDragCategoryId(null)}
                                     onDragOver={(e) => e.preventDefault()}
                                     onDrop={(e) => { e.preventDefault(); handleCategoryDrop(category); }}
+                                    data-testid={`category-row-${category.id}`}
                                 >
                                     <span className="category-drag-handle" title="Arraste para reordenar" onClick={(e) => e.stopPropagation()}>
                                         <DragIcon />
@@ -445,12 +454,14 @@ export function ProductsPage() {
                                         checked={category.isActive}
                                         onChange={() => toggleCategory(category)}
                                         label={category.isActive ? `Desativar categoria ${category.name}` : `Ativar categoria ${category.name}`}
+                                        data-testid={`switch-category-${category.id}`}
                                     />
                                     <Button
                                         size="sm"
                                         iconOnly
                                         aria-label={`Editar categoria ${category.name}`}
                                         onClick={(e) => { e.stopPropagation(); startCategoryEdit(category); }}
+                                        data-testid={`btn-edit-category-${category.id}`}
                                     >
                                         ✎
                                     </Button>
@@ -464,6 +475,7 @@ export function ProductsPage() {
                             placeholder="Nova categoria…"
                             value={newCategory}
                             onChange={(e) => setNewCategory(e.target.value)}
+                            data-testid="input-new-category"
                             onKeyDown={(e) => {
                                 if (e.key === "Enter" && newCategory.trim() !== "") categoryMutation.mutate();
                             }}
@@ -475,6 +487,7 @@ export function ProductsPage() {
                             disabled={newCategory.trim() === "" || categoryMutation.isPending}
                             loading={categoryMutation.isPending}
                             onClick={() => categoryMutation.mutate()}
+                            data-testid="btn-add-category"
                         >
                             +
                         </Button>
@@ -494,6 +507,7 @@ export function ProductsPage() {
                                 placeholder="Buscar produto por nome…"
                                 value={search}
                                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                                data-testid="input-search-product"
                             />
                         </div>
                         <div className="segmented" role="group" aria-label="Filtrar por status">
@@ -503,6 +517,7 @@ export function ProductsPage() {
                                     type="button"
                                     className={statusFilter === s ? "is-active" : ""}
                                     onClick={() => { setStatusFilter(s); setPage(1); }}
+                                    data-testid={`filter-status-${s}`}
                                 >
                                     {s === "all" ? "Todos" : s === "active" ? "Ativos" : "Inativos"}
                                 </button>
@@ -513,29 +528,31 @@ export function ProductsPage() {
                     {productsQuery.isLoading && <div style={{ padding: 16 }}><SkeletonList rows={5} rowHeight={62} /></div>}
 
                     {!productsQuery.isLoading && filteredProducts.length === 0 && (
-                        <EmptyState
-                            icon="🍽"
-                            title="Nenhum produto encontrado"
-                            description={
-                                search.trim() !== ""
-                                    ? `Nenhum resultado para "${search.trim()}". Ajuste a busca ou o filtro de status.`
-                                    : (productsQuery.data?.length ?? 0) === 0
-                                        ? "Adicione o primeiro item do cardápio para começar a montar pedidos."
-                                        : "Nenhum produto nesta categoria com o filtro atual."
-                            }
-                            action={
-                                <button type="button" className="btn-primary" onClick={() => openEditor("new")}>
-                                    + Novo produto
-                                </button>
-                            }
-                        />
+                        <div data-testid="empty-products-msg">
+                            <EmptyState
+                                icon="🍽"
+                                title="Nenhum produto encontrado"
+                                description={
+                                    search.trim() !== ""
+                                        ? `Nenhum resultado para "${search.trim()}". Ajuste a busca ou o filtro de status.`
+                                        : (productsQuery.data?.length ?? 0) === 0
+                                            ? "Adicione o primeiro item do cardápio para começar a montar pedidos."
+                                            : "Nenhum produto nesta categoria com o filtro atual."
+                                }
+                                action={
+                                    <button type="button" className="btn-primary" onClick={() => openEditor("new")} data-testid="btn-empty-new-product">
+                                        + Novo produto
+                                    </button>
+                                }
+                            />
+                        </div>
                     )}
 
                     {!productsQuery.isLoading && filteredProducts.length > 0 && (
                         <>
-                            <div className="ticket" style={{ border: "none", borderRadius: 0 }}>
+                            <div className="ticket" style={{ border: "none", borderRadius: 0 }} data-testid="products-list">
                                 {pageItems.map((product) => (
-                                    <div className={`ticket-row product-row ${!product.isActive ? "is-inactive" : ""}`} key={product.id}>
+                                    <div className={`ticket-row product-row ${!product.isActive ? "is-inactive" : ""}`} key={product.id} data-testid={`product-row-${product.id}`}>
                                         <div className="product-row-grid" style={{ flex: 1 }}>
                                             <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
                                                 {product.imageUrl ? (
@@ -568,13 +585,14 @@ export function ProductsPage() {
                                             </span>
                                             <span className="product-stock-cell">{stockBadge(product)}</span>
                                             <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end" }}>
-                                                <Button size="sm" iconOnly aria-label={`Editar ${product.name}`} onClick={() => openEditor(product)}>
+                                                <Button size="sm" iconOnly aria-label={`Editar ${product.name}`} onClick={() => openEditor(product)} data-testid={`btn-edit-product-${product.id}`}>
                                                     ✎
                                                 </Button>
                                                 <Switch
                                                     checked={product.isActive}
                                                     onChange={() => toggleProduct(product)}
                                                     label={product.isActive ? `Desativar ${product.name}` : `Ativar ${product.name}`}
+                                                    data-testid={`switch-product-${product.id}`}
                                                 />
                                             </div>
                                         </div>
@@ -623,12 +641,9 @@ export function ProductsPage() {
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                         autoFocus
+                        data-testid="input-product-name"
                     />
 
-                    {/* alignItems: "end" — o label "Categoria" pode quebrar em 2 linhas por causa
-                        do link "+ nova categoria" embutido nele; alinhando pelo rodapé da linha,
-                        os dois campos (selects) ficam sempre na mesma altura, mesmo quando um
-                        label é mais alto que o outro. */}
                     <div className="ui-row ui-row-wrap" style={{ alignItems: "end" }}>
                         <div style={{ flex: 1, minWidth: 240 }}>
                             <Field
@@ -640,6 +655,7 @@ export function ProductsPage() {
                                                 type="button"
                                                 onClick={() => setCreatingCategory(true)}
                                                 style={{ background: "transparent", border: "none", color: "var(--amber)", cursor: "pointer", fontSize: "0.8rem", padding: 0 }}
+                                                data-testid="btn-inline-new-category"
                                             >
                                                 + nova categoria
                                             </button>
@@ -657,6 +673,7 @@ export function ProductsPage() {
                                                 placeholder="Nome da categoria"
                                                 value={modalNewCategory}
                                                 onChange={(e) => setModalNewCategory(e.target.value)}
+                                                data-testid="input-modal-new-category"
                                                 onKeyDown={(e) => {
                                                     if (e.key === "Enter") {
                                                         e.preventDefault();
@@ -673,6 +690,7 @@ export function ProductsPage() {
                                                 loading={modalCategoryMutation.isPending}
                                                 disabled={modalNewCategory.trim() === ""}
                                                 onClick={() => modalCategoryMutation.mutate()}
+                                                data-testid="btn-modal-add-category"
                                             >
                                                 Criar
                                             </Button>
@@ -690,6 +708,7 @@ export function ProductsPage() {
                                             {...a11y}
                                             value={form.categoryId}
                                             onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                                            data-testid="select-product-category"
                                         >
                                             <option value="">Selecione a categoria…</option>
                                             {(categoriesQuery.data ?? []).map((c) => (
@@ -705,6 +724,7 @@ export function ProductsPage() {
                                 label="Unidade"
                                 value={form.unitOfMeasureId}
                                 onChange={(e) => setForm({ ...form, unitOfMeasureId: e.target.value })}
+                                data-testid="select-product-unit"
                             >
                                 {Object.entries(unitOfMeasureLabel).map(([id, label]) => (
                                     <option key={id} value={id}>{label}</option>
@@ -720,6 +740,7 @@ export function ProductsPage() {
                                 inputMode="decimal"
                                 value={form.salePrice}
                                 onChange={(e) => setForm({ ...form, salePrice: e.target.value })}
+                                data-testid="input-product-price"
                             />
                         </div>
                         <div style={{ flex: 1, minWidth: 160 }}>
@@ -728,6 +749,7 @@ export function ProductsPage() {
                                 inputMode="decimal"
                                 value={form.costPrice}
                                 onChange={(e) => setForm({ ...form, costPrice: e.target.value })}
+                                data-testid="input-product-cost"
                             />
                         </div>
                     </div>
@@ -737,6 +759,7 @@ export function ProductsPage() {
                         type="text"
                         value={form.description}
                         onChange={(e) => setForm({ ...form, description: e.target.value })}
+                        data-testid="input-product-desc"
                     />
 
                     <div className="ui-row ui-row-wrap" style={{ alignItems: "end" }}>
@@ -746,6 +769,7 @@ export function ProductsPage() {
                                 inputMode="numeric"
                                 value={form.preparationTimeMinutes}
                                 onChange={(e) => setForm({ ...form, preparationTimeMinutes: e.target.value })}
+                                data-testid="input-product-prep"
                             />
                         </div>
                         <div className="ui-row" style={{ gap: 10, paddingBottom: 12 }}>
@@ -753,6 +777,7 @@ export function ProductsPage() {
                                 checked={form.isStockControlled}
                                 onChange={(next) => setForm({ ...form, isStockControlled: next })}
                                 label="Controla estoque"
+                                data-testid="switch-product-stock"
                             />
                             <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>Controla estoque</span>
                         </div>
@@ -764,6 +789,7 @@ export function ProductsPage() {
                             type="file"
                             accept="image/jpeg,image/png,image/webp"
                             onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                            data-testid="input-product-image"
                         />
                         {(imagePreviewUrl !== null || (editing !== "new" && editing !== null && editing.imageUrl)) && (
                             <img
@@ -781,7 +807,7 @@ export function ProductsPage() {
                     )}
 
                     {error && (
-                        <p className="error-text" role="alert">
+                        <p className="error-text" role="alert" data-testid="modal-error-message">
                             {error}
                         </p>
                     )}
@@ -797,6 +823,7 @@ export function ProductsPage() {
                         loading={saveMutation.isPending}
                         disabled={form.name.trim() === "" || form.categoryId === ""}
                         onClick={() => saveMutation.mutate()}
+                        data-testid="btn-save-product"
                     >
                         Salvar
                     </Button>

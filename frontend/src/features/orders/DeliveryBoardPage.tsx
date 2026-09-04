@@ -1,16 +1,14 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Swal from "sweetalert2"; // Adicionado SweetAlert2
 import { getOpenOrdersByBranch, getOrder, updateItemStatus } from "./api";
 import { useAuthStore } from "../../stores/authStore";
-import { useToast } from "../../ui/Toast";
 import { ApiError } from "../../lib/apiClient";
 import { OrderDrawer } from "./OrderDrawer";
 import { OpenDeliveryOrderDialog } from "./OpenDeliveryOrderDialog";
 import { OrderItemStatus, OrderStatus, OrderType, formatBRL } from "../../lib/types";
 import type { OrderResponse } from "../../lib/types";
 
-// --- IMPORTAÇÃO DAS IMAGENS ---
-// Ajuste o caminho "../../image/" conforme a localização exata deste arquivo dentro de "src"
 import bagImg from "../../image/bag.png";
 import doorbellImg from "../../image/doorbell.png";
 import packageImg from "../../image/package.png";
@@ -20,7 +18,6 @@ import calendarImg from "../../image/calendar.png";
 import motorcycleImg from "../../image/motorcycle.jpeg";
 import screenBgImg from "../../image/screenbackground.jpeg";
 
-// --- TIPAGENS E CONSTANTES ---
 type Stage = "novo" | "cozinha" | "aguardando" | "rota" | "entregue" | "cancelado";
 type ViewMode = "simples" | "completo";
 type ChannelFilter = "todos" | "delivery" | "retirada";
@@ -35,7 +32,15 @@ const CHANNEL_FILTER_LABELS: Record<ChannelFilter, string> = {
     retirada: "Retirada",
 };
 
-// --- FUNÇÕES UTILITÁRIAS ---
+// Configuração do Toast do SweetAlert2
+const Toast = Swal.mixin({
+    toast: true,
+    position: "top-end",
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+});
+
 function loadViewMode(): ViewMode {
     try { return localStorage.getItem(VIEW_MODE_KEY) === "completo" ? "completo" : "simples"; }
     catch { return "simples"; }
@@ -78,7 +83,6 @@ function elapsedLabel(openedAt: string): string {
     return `${hours}h${String(minutes % 60).padStart(2, "0")}`;
 }
 
-// --- DEFINIÇÃO DE COLUNAS ---
 interface ColumnDef {
     id: Stage | "agendamento";
     label: string;
@@ -126,7 +130,6 @@ const FULL_COLUMNS: ColumnDef[] = [
 
 const SIMPLE_COLUMNS = FULL_COLUMNS.filter(c => c.id !== "agendamento" && c.id !== "cancelado");
 
-// --- COMPONENTES VISUAIS ---
 function OrderCard({ order, stage, dense, onOpen, onSendToKitchen, onMarkReady, onMarkOnRoute, busy }: any) {
     const customerName = order.customerName?.trim() || `Pedido #${order.id}`;
     const channelLabel = getChannel(order) === "delivery" ? "DELIVERY" : "RETIRADA";
@@ -134,7 +137,7 @@ function OrderCard({ order, stage, dense, onOpen, onSendToKitchen, onMarkReady, 
     const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
 
     return (
-        <button type="button" onClick={onOpen} style={{
+        <button type="button" onClick={onOpen} data-testid={`order-card-${order.id}`} style={{
             background: "#fff", border: "1px solid #EFEFEF", borderRadius: 12, padding: 16, width: "100%",
             textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: 12,
             boxShadow: "0 2px 8px rgba(0,0,0,0.04)", transition: "transform 0.1s"
@@ -162,10 +165,10 @@ function OrderCard({ order, stage, dense, onOpen, onSendToKitchen, onMarkReady, 
                 <span>aberto há {elapsedLabel(order.openedAt)}</span>
             </div>
 
-            {stage === "novo" && <button onClick={stop(onSendToKitchen)} disabled={busy} style={btnActionStyle}>{busy ? "Enviando…" : "Enviar p/ cozinha"}</button>}
-            {stage === "cozinha" && <button onClick={stop(onMarkReady)} disabled={busy} style={btnActionStyle}>{busy ? "Atualizando…" : "Pronto p/ saída"}</button>}
-            {stage === "aguardando" && <button onClick={stop(onMarkOnRoute)} disabled={busy} style={btnActionStyle}>Saiu para entrega</button>}
-            {stage === "rota" && <button onClick={stop(onOpen)} disabled={busy} style={btnActionStyle}>Confirmar entrega</button>}
+            {stage === "novo" && <button data-testid={`btn-action-${order.id}`} onClick={stop(onSendToKitchen)} disabled={busy} style={btnActionStyle}>{busy ? "Enviando…" : "Enviar p/ cozinha"}</button>}
+            {stage === "cozinha" && <button data-testid={`btn-action-${order.id}`} onClick={stop(onMarkReady)} disabled={busy} style={btnActionStyle}>{busy ? "Atualizando…" : "Pronto p/ saída"}</button>}
+            {stage === "aguardando" && <button data-testid={`btn-action-${order.id}`} onClick={stop(onMarkOnRoute)} disabled={busy} style={btnActionStyle}>Saiu para entrega</button>}
+            {stage === "rota" && <button data-testid={`btn-action-${order.id}`} onClick={stop(onOpen)} disabled={busy} style={btnActionStyle}>Confirmar entrega</button>}
         </button>
     );
 }
@@ -175,10 +178,8 @@ const btnActionStyle: React.CSSProperties = {
     color: "#fff", fontWeight: 700, cursor: "pointer", marginTop: 4, fontSize: "0.9rem"
 };
 
-// --- PÁGINA PRINCIPAL ---
 export function DeliveryBoardPage() {
     const queryClient = useQueryClient();
-    const toast = useToast();
     const { branchId, employeeId } = useAuthStore();
 
     const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
@@ -284,14 +285,17 @@ export function DeliveryBoardPage() {
     }, [boardOrders, ordersByStage]);
 
     const refresh = () => void queryClient.invalidateQueries({ queryKey: ["orders"] });
-    const onErr = (fallback: string) => (error: unknown) => toast.error(error instanceof ApiError ? error.message : fallback);
+
+    const onErr = (fallback: string) => (error: unknown) => {
+        Toast.fire({ icon: "error", title: error instanceof ApiError ? error.message : fallback });
+    };
 
     const sendToKitchen = useMutation({
         mutationFn: async (order: OrderResponse) => {
             const pending = order.items.filter((i) => i.orderItemStatusId === OrderItemStatus.Lancado);
             await Promise.all(pending.map((i) => updateItemStatus(order.id, i.id, OrderItemStatus.EnviadoCozinha, employeeId)));
         },
-        onSuccess: (_data, order) => { toast.success(`Pedido #${order.id} p/ cozinha.`); setPendingOrderId(null); refresh(); },
+        onSuccess: (_data, order) => { Toast.fire({ icon: "success", title: `Pedido #${order.id} p/ cozinha.` }); setPendingOrderId(null); refresh(); },
         onError: (e) => { onErr("Falha ao enviar.")(e); setPendingOrderId(null); },
     });
 
@@ -300,7 +304,7 @@ export function DeliveryBoardPage() {
             const pending = order.items.filter((i) => i.orderItemStatusId !== OrderItemStatus.Cancelado && !READY_ITEM_STATUSES.has(i.orderItemStatusId));
             await Promise.all(pending.map((i) => updateItemStatus(order.id, i.id, OrderItemStatus.Pronto, employeeId)));
         },
-        onSuccess: (_data, order) => { toast.success(`Pedido #${order.id} pronto.`); setPendingOrderId(null); refresh(); },
+        onSuccess: (_data, order) => { Toast.fire({ icon: "success", title: `Pedido #${order.id} pronto.` }); setPendingOrderId(null); refresh(); },
         onError: (e) => { onErr("Falha ao marcar.")(e); setPendingOrderId(null); },
     });
 
@@ -323,8 +327,6 @@ export function DeliveryBoardPage() {
             display: "flex",
             flexDirection: "column"
         }}>
-
-            {/* HEADER TOP */}
             <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                     <div>
@@ -340,25 +342,26 @@ export function DeliveryBoardPage() {
                     <div style={{ display: "flex", background: "#fff", borderRadius: 8, padding: 4, border: "1px solid #EAEAEA", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
                         <button
                             onClick={() => setViewMode("simples")}
+                            data-testid="btn-view-simples"
                             style={{ padding: "8px 16px", borderRadius: 6, border: "none", fontWeight: 600, cursor: "pointer", background: viewMode === "simples" ? "#fff" : "transparent", color: viewMode === "simples" ? "#1A1A1A" : "#888", boxShadow: viewMode === "simples" ? "0 2px 8px rgba(0,0,0,0.1)" : "none" }}
                         >Simples</button>
                         <button
                             onClick={() => setViewMode("completo")}
+                            data-testid="btn-view-completo"
                             style={{ padding: "8px 16px", borderRadius: 6, border: "none", fontWeight: 600, cursor: "pointer", background: viewMode === "completo" ? "#FF6B00" : "transparent", color: viewMode === "completo" ? "#fff" : "#888", boxShadow: viewMode === "completo" ? "0 2px 8px rgba(255,107,0,0.4)" : "none" }}
                         >Completo</button>
                     </div>
 
-                    <button type="button" onClick={() => setOpeningNew(true)} style={{ background: "linear-gradient(90deg, #FF7B00 0%, #FF5500 100%)", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 8, fontWeight: 700, fontSize: "1rem", cursor: "pointer", boxShadow: "0 4px 12px rgba(255, 85, 0, 0.3)" }}>
+                    <button type="button" data-testid="btn-new-delivery-order" onClick={() => setOpeningNew(true)} style={{ background: "linear-gradient(90deg, #FF7B00 0%, #FF5500 100%)", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 8, fontWeight: 700, fontSize: "1rem", cursor: "pointer", boxShadow: "0 4px 12px rgba(255, 85, 0, 0.3)" }}>
                         + Novo pedido
                     </button>
                 </div>
             </header>
 
-            {/* FILTROS E BUSCA */}
             <div style={{ display: "flex", gap: 16, marginBottom: 24, alignItems: "center" }}>
                 <div style={{ display: "flex", gap: 8 }}>
                     {(["todos", "delivery", "retirada"] as ChannelFilter[]).map((c) => (
-                        <button key={c} onClick={() => setChannelFilter(c)} style={{
+                        <button key={c} data-testid={`btn-filter-${c}`} onClick={() => setChannelFilter(c)} style={{
                             padding: "10px 20px", borderRadius: 8, border: c === channelFilter ? "none" : "1px solid #EAEAEA",
                             background: c === channelFilter ? "#FF6B00" : "#fff", color: c === channelFilter ? "#fff" : "#555",
                             fontWeight: 700, cursor: "pointer", boxShadow: c === channelFilter ? "0 4px 12px rgba(255,107,0,0.2)" : "0 2px 4px rgba(0,0,0,0.02)"
@@ -372,9 +375,7 @@ export function DeliveryBoardPage() {
                     <input
                         placeholder="Buscar pedido, cliente ou endereço..."
                         value={search} onChange={(e) => setSearch(e.target.value)}
-                        /* Achado: este board usa cores fixas (light) em vez das variáveis de tema,
-                           mas o input não tinha "color" — herdava o texto claro do tema escuro
-                           (--ink), ficando ilegível em cima do fundo branco #fff deste campo. */
+                        data-testid="input-search-delivery"
                         style={{ width: "100%", padding: "12px 16px 12px 40px", borderRadius: 8, border: "1px solid #EAEAEA", background: "#fff", color: "#1A1A1A", fontSize: "0.95rem", boxShadow: "0 2px 4px rgba(0,0,0,0.02)", outline: "none" }}
                     />
                     <svg style={{ position: "absolute", left: 14, top: 12, width: 18, color: "#999" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -387,14 +388,11 @@ export function DeliveryBoardPage() {
                 </div>
             </div>
 
-            {/* KANBAN BOARD */}
             <div style={{ display: "flex", gap: 16, flex: 1, overflowX: "auto", paddingBottom: 24, minHeight: 400 }}>
                 {columns.map((col) => {
                     const items = col.id === "agendamento" ? [] : ordersByStage[col.id as Stage] || [];
                     return (
-                        <div key={col.id} style={{ minWidth: 260, width: "16.6%", background: "#fff", borderRadius: 16, padding: "16px", display: "flex", flexDirection: "column", border: "1px solid #EFEFEF", boxShadow: "0 4px 12px rgba(0,0,0,0.02)" }}>
-
-                            {/* Header da Coluna */}
+                        <div key={col.id} data-testid={`kanban-column-${col.id}`} style={{ minWidth: 260, width: "16.6%", background: "#fff", borderRadius: 16, padding: "16px", display: "flex", flexDirection: "column", border: "1px solid #EFEFEF", boxShadow: "0 4px 12px rgba(0,0,0,0.02)" }}>
                             <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
                                 <div style={{ background: col.themeColor, color: "#fff", width: 42, height: 42, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 4px 10px ${col.themeColor}40` }}>
                                     {col.icon}
@@ -410,7 +408,6 @@ export function DeliveryBoardPage() {
                                 </div>
                             </div>
 
-                            {/* Corpo da Coluna */}
                             <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, overflowY: "auto", position: "relative" }}>
                                 {col.placeholder ? (
                                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: 20 }}>
@@ -442,7 +439,6 @@ export function DeliveryBoardPage() {
                 })}
             </div>
 
-            {/* DASHBOARD INFERIOR */}
             <div style={{ background: "#111", borderRadius: 16, padding: "24px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", boxShadow: "0 10px 40px rgba(255, 107, 0, 0.15)", borderBottom: "4px solid #FF6B00" }}>
                 <DashboardMetric icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 24 }}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>} label="Total de pedidos" value={dashboardMetrics.total} sub="hoje" />
                 <div style={{ width: 1, height: 40, background: "#333" }}></div>

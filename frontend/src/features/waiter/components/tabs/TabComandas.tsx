@@ -10,15 +10,15 @@ interface TabComandasProps {
 
 export function TabComandas({ isLoading, comandas, comandaOrders, onComandaClick }: TabComandasProps) {
     return (
-        <section className="waiter-section">
+        <section className="waiter-section" data-testid="tab-comandas-section">
             <h2 className="waiter-section-title" style={{ marginBottom: 16 }}>Comandas</h2>
 
             {isLoading ? (
-                <p className="waiter-empty">Carregando comandas...</p>
+                <p className="waiter-empty" data-testid="loading-comandas-msg">Carregando comandas...</p>
             ) : !comandas || comandas.length === 0 ? (
-                <p className="waiter-empty">Nenhuma comanda registrada.</p>
+                <p className="waiter-empty" data-testid="empty-comandas-msg">Nenhuma comanda registrada.</p>
             ) : (
-                <div className="waiter-tables-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "14px" }}>
+                <div className="waiter-tables-grid" data-testid="waiter-comandas-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "14px" }}>
                     {comandas.map((comanda) => {
                         const order = comandaOrders.find((o) => o.comandaId === comanda.id);
 
@@ -40,6 +40,7 @@ export function TabComandas({ isLoading, comandas, comandaOrders, onComandaClick
                             <button
                                 key={comanda.id}
                                 onClick={() => onComandaClick(comanda, order?.id)}
+                                data-testid={`comanda-tile-${comanda.id}`}
                                 style={{
                                     display: "flex",
                                     flexDirection: "column",
@@ -56,16 +57,15 @@ export function TabComandas({ isLoading, comandas, comandaOrders, onComandaClick
                                 }}
                             >
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", marginBottom: "6px" }}>
-                                    {/* Aqui está a mágica: aplicando font-display para ficar igual à mesa */}
                                     <span style={{ fontFamily: "var(--font-display)", fontSize: "2rem", color: "var(--w-ink)", lineHeight: 1 }}>
                                         {comanda.code || comanda.id}
                                     </span>
-                                    <span style={{ fontSize: "0.65rem", fontWeight: "700", backgroundColor: statusBg, color: statusColor, padding: "4px 8px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase" }}>
+                                    <span data-testid={`comanda-status-${comanda.id}`} style={{ fontSize: "0.65rem", fontWeight: "700", backgroundColor: statusBg, color: statusColor, padding: "4px 8px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase" }}>
                                         <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: statusColor }} />
                                         {statusText}
                                     </span>
                                 </div>
-                                <span style={{ fontSize: "0.85rem", color: "var(--w-ink-dim)", fontWeight: 500 }}>
+                                <span data-testid={`comanda-subtext-${comanda.id}`} style={{ fontSize: "0.85rem", color: "var(--w-ink-dim)", fontWeight: 500 }}>
                                     {subText}
                                 </span>
                             </button>

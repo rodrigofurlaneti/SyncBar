@@ -29,22 +29,25 @@ export function TabMensagens({ activeAreaId, isLoading, isError, error, messages
     }, [messages]);
 
     return (
-        <section className="waiter-section">
+        <section className="waiter-section" data-testid="tab-mensagens-section">
             <h2 className="waiter-section-title" style={{ marginBottom: 16 }}>Mensagens e Avisos</h2>
 
             {!activeAreaId ? (
-                <p className="waiter-empty">Atribua-se a uma praça para visualizar as mensagens locais.</p>
+                <p className="waiter-empty" data-testid="no-area-msg">Atribua-se a uma praça para visualizar as mensagens locais.</p>
             ) : isLoading ? (
-                <p className="waiter-empty">Carregando mensagens...</p>
+                <p className="waiter-empty" data-testid="loading-msg">Carregando mensagens...</p>
             ) : isError ? (
-                <QueryError error={error} what="as mensagens" />
+                <div data-testid="error-query-container">
+                    <QueryError error={error} what="as mensagens" />
+                </div>
             ) : sortedMessages.length === 0 ? (
-                <p className="waiter-empty">Nenhuma mensagem registrada na sua praça no momento.</p>
+                <p className="waiter-empty" data-testid="empty-messages-msg">Nenhuma mensagem registrada na sua praça no momento.</p>
             ) : (
-                <div className="waiter-order-list" style={{ display: "grid", gap: "10px" }}>
+                <div className="waiter-order-list" data-testid="messages-list" style={{ display: "grid", gap: "10px" }}>
                     {sortedMessages.map((msg) => (
                         <div
                             key={msg.id}
+                            data-testid={`message-card-${msg.id}`}
                             style={{
                                 backgroundColor: "var(--w-bg-card)",
                                 borderRadius: "14px",
@@ -63,7 +66,7 @@ export function TabMensagens({ activeAreaId, isLoading, isError, error, messages
                                     {parseApiDate(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {parseApiDate(msg.createdAt).toLocaleDateString()}
                                 </span>
                             </div>
-                            <p style={{ fontSize: "0.95rem", color: "var(--w-ink)", margin: 0, fontWeight: 500 }}>
+                            <p data-testid={`message-text-${msg.id}`} style={{ fontSize: "0.95rem", color: "var(--w-ink)", margin: 0, fontWeight: 500 }}>
                                 {msg.message}
                             </p>
                         </div>

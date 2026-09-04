@@ -1,5 +1,6 @@
 ﻿import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import Swal from "sweetalert2"; // Adicionado SweetAlert2
 import { api } from "../../../../lib/apiClient";
 import type { TableResponse, ComandaResponse, OrderResponse } from "../../../../lib/types";
 
@@ -20,6 +21,15 @@ interface ProductDetails {
     id: number;
     name: string;
 }
+
+// Configuração do Toast do SweetAlert2
+const Toast = Swal.mixin({
+    toast: true,
+    position: "top-end",
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+});
 
 export function TransferItemModal({
     mode = "table",
@@ -136,7 +146,10 @@ export function TransferItemModal({
         if (isTransferring) return;
 
         if (!sourceId || !targetId || selectedItemIds.length === 0 || !sourceOrder) {
-            return onError("Preencha a origem, o destino e selecione ao menos um item.");
+            const msg = "Preencha a origem, o destino e selecione ao menos um item.";
+            Swal.fire("Atenção", msg, "warning");
+            onError(msg);
+            return;
         }
 
         const targetIdNum = Number(targetId);
@@ -146,7 +159,10 @@ export function TransferItemModal({
 
         if (!targetOrder) {
             const destinoTipo = transferType === "table" ? "mesa" : "comanda";
-            return onError(`A ${destinoTipo} de destino precisa ter um pedido aberto para receber o(s) item(ns).`);
+            const msg = `A ${destinoTipo} de destino precisa ter um pedido aberto para receber o(s) item(ns).`;
+            Swal.fire("Atenção", msg, "warning");
+            onError(msg);
+            return;
         }
 
         setIsTransferring(true);
@@ -176,10 +192,14 @@ export function TransferItemModal({
                 body: JSON.stringify(payload),
             });
 
-            onSuccess(`${selectedItemIds.length} item(ns) transferido(s) com sucesso!`);
+            const successMsg = `${selectedItemIds.length} item(ns) transferido(s) com sucesso!`;
+            Toast.fire({ icon: "success", title: successMsg });
+            onSuccess(successMsg);
             onClose();
         } catch (err: any) {
-            onError(err?.message || "Erro ao realizar transferência.");
+            const errorMsg = err?.message || "Erro ao realizar transferência.";
+            Swal.fire("Erro", errorMsg, "error");
+            onError(errorMsg);
             setIsTransferring(false);
         }
     };
@@ -191,6 +211,7 @@ export function TransferItemModal({
             onMouseDown={(e) => {
                 if (e.target === e.currentTarget && !isTransferring) onClose();
             }}
+            data-testid="transfer-modal-backdrop"
             style={{
                 position: "fixed",
                 inset: 0,
@@ -205,6 +226,7 @@ export function TransferItemModal({
             }}
         >
             <div
+                data-testid="transfer-modal-panel"
                 style={{
                     width: "100%",
                     maxWidth: "480px",
@@ -230,6 +252,7 @@ export function TransferItemModal({
                             onClick={onClose}
                             disabled={isTransferring}
                             aria-label="Fechar"
+                            data-testid="btn-close-transfer-modal"
                             style={{ background: "none", border: "none", cursor: isTransferring ? "not-allowed" : "pointer", color: "#94a3b8", fontSize: "1.2rem", padding: "4px" }}
                         >
                             ✕
@@ -243,6 +266,7 @@ export function TransferItemModal({
                             aria-selected={transferType === "table"}
                             disabled={isTransferring}
                             onClick={() => handleTypeChange("table")}
+                            data-testid="tab-transfer-tables"
                             style={{
                                 flex: 1,
                                 padding: "8px",
@@ -264,6 +288,7 @@ export function TransferItemModal({
                             aria-selected={transferType === "comanda"}
                             disabled={isTransferring}
                             onClick={() => handleTypeChange("comanda")}
+                            data-testid="tab-transfer-comandas"
                             style={{
                                 flex: 1,
                                 padding: "8px",
@@ -282,7 +307,7 @@ export function TransferItemModal({
                     </div>
                 </div>
 
-                <form onSubmit={handleExecuteTransfer} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <form onSubmit={handleExecuteTransfer} style={{ display: "flex", flexDirection: "column", gap: "14px" }} data-testid="transfer-form">
 
                     {/* Origem */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -296,6 +321,7 @@ export function TransferItemModal({
                                 setSourceId(e.target.value);
                                 setSelectedItemIds([]);
                             }}
+                            data-testid="select-transfer-source"
                             style={{ padding: "10px", borderRadius: "8px", border: "1px solid #475569", backgroundColor: "#0f172a", color: "#f8fafc", fontSize: "0.9rem" }}
                             required
                         >
@@ -313,7 +339,7 @@ export function TransferItemModal({
                     </div>
 
                     {/* Seletor de Modo e Atalho de Seleção Rápida */}
-                    {sourceOrder && (
+                    {sourceId && (
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px", background: "rgba(255,255,255,0.03)", padding: "10px 12px", borderRadius: "8px", border: "1px solid #334155" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                 <span style={{ fontSize: "0.80rem", fontWeight: "600", color: "#94a3b8" }}>Modo:</span>
@@ -322,6 +348,7 @@ export function TransferItemModal({
                                         type="button"
                                         disabled={isTransferring}
                                         onClick={() => { setTransferMode("single"); setSelectedItemIds([]); }}
+                                        data-testid="btn-mode-single"
                                         style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "6px", border: "1px solid #475569", background: transferMode === "single" ? "#3b82f6" : "transparent", color: "#fff", cursor: isTransferring ? "not-allowed" : "pointer" }}
                                     >
                                         Item Único
@@ -330,6 +357,7 @@ export function TransferItemModal({
                                         type="button"
                                         disabled={isTransferring}
                                         onClick={() => setTransferMode("batch")}
+                                        data-testid="btn-mode-batch"
                                         style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "6px", border: "1px solid #475569", background: transferMode === "batch" ? "#3b82f6" : "transparent", color: "#fff", cursor: isTransferring ? "not-allowed" : "pointer" }}
                                     >
                                         Múltiplos / Todos
@@ -342,6 +370,7 @@ export function TransferItemModal({
                                     type="button"
                                     disabled={isTransferring}
                                     onClick={handleSelectAll}
+                                    data-testid="btn-select-all-items"
                                     style={{
                                         marginTop: "4px",
                                         padding: "6px",
@@ -374,14 +403,15 @@ export function TransferItemModal({
                                 value={searchTerm}
                                 disabled={isTransferring}
                                 onChange={(e) => setSearchTerm(e.target.value)}
+                                data-testid="input-search-item"
                                 style={{ padding: "8px 10px", borderRadius: "6px", border: "1px solid #475569", backgroundColor: "#0f172a", color: "#fff", fontSize: "0.85rem" }}
                             />
 
-                            <div style={{ maxHeight: "130px", overflowY: "auto", border: "1px solid #334155", borderRadius: "8px", background: "#0f172a" }}>
+                            <div data-testid="available-items-list" style={{ maxHeight: "130px", overflowY: "auto", border: "1px solid #334155", borderRadius: "8px", background: "#0f172a" }}>
                                 {productQueries.isLoading ? (
-                                    <div style={{ padding: "10px", textAlign: "center", color: "#94a3b8", fontSize: "0.85rem" }}>Carregando produtos...</div>
+                                    <div style={{ padding: "10px", textAlign: "center", color: "#94a3b8", fontSize: "0.85rem" }} data-testid="loading-products">Carregando produtos...</div>
                                 ) : availableItems.length === 0 ? (
-                                    <div style={{ padding: "10px", textAlign: "center", color: "#94a3b8", fontSize: "0.85rem" }}>Nenhum item ativo encontrado.</div>
+                                    <div style={{ padding: "10px", textAlign: "center", color: "#94a3b8", fontSize: "0.85rem" }} data-testid="empty-items">Nenhum item ativo encontrado.</div>
                                 ) : (
                                     availableItems.map((item: any) => {
                                         const pId = item.productId || item.ProductId;
@@ -392,6 +422,7 @@ export function TransferItemModal({
                                             <div
                                                 key={item.id}
                                                 onClick={() => !isTransferring && handleToggleItem(item.id)}
+                                                data-testid={`transfer-item-row-${item.id}`}
                                                 style={{
                                                     display: "flex",
                                                     alignItems: "center",
@@ -408,6 +439,7 @@ export function TransferItemModal({
                                                         checked={isSelected}
                                                         disabled={isTransferring}
                                                         onChange={() => { }}
+                                                        data-testid={`checkbox-item-${item.id}`}
                                                         style={{
                                                             cursor: "pointer",
                                                             width: "16px",
@@ -437,6 +469,7 @@ export function TransferItemModal({
                             value={targetId}
                             disabled={isTransferring}
                             onChange={(e) => setTargetId(e.target.value)}
+                            data-testid="select-transfer-target"
                             style={{ padding: "10px", borderRadius: "8px", border: "1px solid #475569", backgroundColor: "#0f172a", color: "#f8fafc", fontSize: "0.9rem" }}
                             required
                         >
@@ -463,6 +496,7 @@ export function TransferItemModal({
                             type="button"
                             onClick={onClose}
                             disabled={isTransferring}
+                            data-testid="btn-cancel-transfer"
                             style={{ flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #475569", background: "transparent", color: "inherit", cursor: isTransferring ? "not-allowed" : "pointer", fontWeight: "600" }}
                         >
                             Cancelar
@@ -470,6 +504,7 @@ export function TransferItemModal({
                         <button
                             type="submit"
                             disabled={isTransferring || selectedItemIds.length === 0}
+                            data-testid="btn-confirm-transfer"
                             style={{
                                 flex: 1,
                                 padding: "10px",
