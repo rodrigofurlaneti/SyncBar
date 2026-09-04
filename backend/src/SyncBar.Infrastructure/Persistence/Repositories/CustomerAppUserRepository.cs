@@ -34,6 +34,12 @@ internal sealed class CustomerAppUserRepository(AppDbContext context) : ICustome
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
 
+    public async Task<CustomerAppUser?> GetByEmailForUpdateAsync(string email, long companyId, CancellationToken cancellationToken = default)
+    {
+        return await context.Set<CustomerAppUser>()
+            .FirstOrDefaultAsync(x => x.Email == email && x.CompanyId == companyId && x.IsActive, cancellationToken);
+    }
+
     public Task AddAsync(CustomerAppUser entity, CancellationToken cancellationToken = default)
     {
         context.Set<CustomerAppUser>().Add(entity);

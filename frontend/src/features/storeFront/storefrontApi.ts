@@ -54,6 +54,32 @@ export type CustomerAddressResponse = {
     isActive: boolean;
 };
 
+export type CustomerLoginPayload = {
+    email: string;
+    password: string;
+    companyId: number;
+    branchId?: number | null;
+};
+
+export type CustomerLoginResponse = {
+    accessToken: string;
+    expiresAt: string;
+    refreshToken: string;
+    refreshTokenExpiresAt: string;
+    userName: string;
+    customerId: number;
+    companyId: number;
+};
+
+// Nova rota conectada ao backend (AuthController)
+export const loginCustomerAppUser = (
+    payload: CustomerLoginPayload
+): Promise<CustomerLoginResponse> =>
+    api<CustomerLoginResponse>(`/api/auth/customer-login`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+
 // Buscar o cardápio público da filial (sem token de mesa)
 export const getStorefrontMenu = (branchId: number): Promise<StorefrontMenuResponse> =>
     api<StorefrontMenuResponse>(`/api/storefront/branches/${branchId}/menu`, {

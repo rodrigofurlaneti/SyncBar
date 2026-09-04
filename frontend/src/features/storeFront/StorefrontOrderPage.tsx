@@ -126,7 +126,13 @@ export function StorefrontOrderPage() {
         });
     };
 
-    const handleCheckoutCart = (generalNotes: string, activeCustomerData?: CustomerSessionData) => {
+    // Ajustado para capturar endereço e pagamento vindos do Drawer multilinha
+    const handleCheckoutCart = (
+        generalNotes: string,
+        activeCustomerData?: CustomerSessionData,
+        _deliveryAddressId?: number,
+        _paymentMethod?: string
+    ) => {
         if (cartItems.length === 0) return;
         setPendingCheckoutNotes(generalNotes);
 
