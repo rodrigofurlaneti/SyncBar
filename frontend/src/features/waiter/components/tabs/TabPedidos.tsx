@@ -12,13 +12,13 @@ interface TabPedidosProps {
 
 export function TabPedidos({ myOrders, tablesById, comandasById, onOrderClick }: TabPedidosProps) {
     return (
-        <section className="waiter-section">
+        <section className="waiter-section" data-testid="tab-pedidos-section">
             <h2 className="waiter-section-title" style={{ marginBottom: 16 }}>Histórico de Pedidos</h2>
 
             {myOrders.length === 0 ? (
-                <p className="waiter-empty">Nenhum pedido registrado na sua praça no momento.</p>
+                <p className="waiter-empty" data-testid="empty-orders-msg">Nenhum pedido registrado na sua praça no momento.</p>
             ) : (
-                <div className="waiter-order-list">
+                <div className="waiter-order-list" data-testid="waiter-order-list">
                     {myOrders.map((order) => {
                         const badge = deriveOrderBadge(order);
                         return (
@@ -27,13 +27,12 @@ export function TabPedidos({ myOrders, tablesById, comandasById, onOrderClick }:
                                 type="button"
                                 className="waiter-order-row"
                                 onClick={() => onOrderClick(order.id)}
+                                data-testid={`order-row-${order.id}`}
                                 style={{
-                                    // Utiliza --bg-elevated para adaptar a cor de fundo ao tema (escuro/claro)
                                     backgroundColor: "var(--bg-elevated, var(--surface, #ffffff))",
                                     borderRadius: "10px",
                                     padding: "14px",
                                     marginBottom: "10px",
-                                    // Adapta a borda também usando --line
                                     border: "1px solid var(--line, var(--border, #e5e7eb))",
                                     width: "100%",
                                     textAlign: "left",
@@ -57,6 +56,7 @@ export function TabPedidos({ myOrders, tablesById, comandasById, onOrderClick }:
 
                                 <span
                                     className="waiter-order-badge"
+                                    data-testid={`order-badge-${order.id}`}
                                     style={{
                                         "--w-badge": badgeToneVar[badge.tone],
                                         backgroundColor: badge.tone === "ready" ? "#dcfce7" : badge.tone === "preparing" ? "#dbeafe" : "#fef3c7",

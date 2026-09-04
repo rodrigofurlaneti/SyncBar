@@ -1,5 +1,6 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useState, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Swal from "sweetalert2"; // Adicionado SweetAlert2
 import {
     createDiningArea,
     getDiningAreasByBranch,
@@ -22,13 +23,20 @@ import { QueryError } from "../../components/QueryError";
 import { Modal } from "../../ui/Modal";
 import { Button } from "../../ui/Button";
 import { Field, TextField } from "../../ui/Field";
-import { useToast } from "../../ui/Toast";
 import { EmptyState } from "../../ui/EmptyState";
 import { SkeletonList } from "../../ui/Skeleton";
 
+// Configuração do Toast do SweetAlert2
+const Toast = Swal.mixin({
+    toast: true,
+    position: "top-end",
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+});
+
 export function DiningAreasPage() {
     const queryClient = useQueryClient();
-    const toast = useToast();
     const { branchId } = useAuthStore();
 
     const [search, setSearch] = useState("");
@@ -41,7 +49,12 @@ export function DiningAreasPage() {
     const [tableForm, setTableForm] = useState({ tableId: "" });
     const [assignmentForm, setAssignmentForm] = useState({ employeeId: "" });
 
-    const onApiError = (e: unknown) => setError(e instanceof ApiError ? e.message : "Operação falhou.");
+    const onApiError = (e: unknown) => {
+        const msg = e instanceof ApiError ? e.message : "Operação falhou.";
+        setError(msg);
+        Swal.fire("Erro", msg, "error");
+    };
+
     const refreshAreas = () => void queryClient.invalidateQueries({ queryKey: ["diningareas"] });
     const refreshManagement = () => {
         if (managingArea) {
@@ -96,7 +109,7 @@ export function DiningAreasPage() {
         mutationFn: () => createDiningArea({ branchId: branchId ?? 1, name: form.name.trim() }),
         onSuccess: () => {
             setError(null); setCreating(false); setForm({ name: "" });
-            toast.success("Praça cadastrada.");
+            Toast.fire({ icon: "success", title: "Praça cadastrada." });
             refreshAreas();
         },
         onError: onApiError,
@@ -106,7 +119,7 @@ export function DiningAreasPage() {
         mutationFn: () => updateDiningArea(editingTo!.id, editingTo!.name.trim()),
         onSuccess: () => {
             setError(null); setEditingTo(null);
-            toast.success("Praça atualizada.");
+            Toast.fire({ icon: "success", title: "Praça atualizada." });
             refreshAreas();
         },
         onError: onApiError,
@@ -116,7 +129,7 @@ export function DiningAreasPage() {
         mutationFn: () => assignTableToArea(managingArea!.id, Number(tableForm.tableId)),
         onSuccess: () => {
             setError(null); setTableForm({ tableId: "" });
-            toast.success("Mesa vinculada à praça.");
+            Toast.fire({ icon: "success", title: "Mesa vinculada à praça." });
             refreshManagement();
         },
         onError: onApiError,
@@ -124,7 +137,10 @@ export function DiningAreasPage() {
 
     const removeTableMutation = useMutation({
         mutationFn: (assignmentId: number) => removeTableFromArea(assignmentId),
-        onSuccess: () => { toast.success("Mesa removida da praça."); refreshManagement(); },
+        onSuccess: () => {
+            Toast.fire({ icon: "success", title: "Mesa removida da praça." });
+            refreshManagement();
+        },
         onError: onApiError,
     });
 
@@ -132,7 +148,7 @@ export function DiningAreasPage() {
         mutationFn: () => startAssignment(managingArea!.id, Number(assignmentForm.employeeId), new Date().toISOString()),
         onSuccess: () => {
             setError(null); setAssignmentForm({ employeeId: "" });
-            toast.success("Turno do garçom iniciado na praça.");
+            Toast.fire({ icon: "success", title: "Turno do garçom iniciado na praça." });
             refreshManagement();
         },
         onError: onApiError,
@@ -140,7 +156,10 @@ export function DiningAreasPage() {
 
     const endAssignmentMutation = useMutation({
         mutationFn: (assignmentId: number) => endAssignment(assignmentId, new Date().toISOString()),
-        onSuccess: () => { toast.success("Turno encerrado."); refreshManagement(); },
+        onSuccess: () => {
+            Toast.fire({ icon: "success", title: "Turno encerrado." });
+            refreshManagement();
+        },
         onError: onApiError,
     });
 
@@ -158,40 +177,43 @@ export function DiningAreasPage() {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     style={{ flex: 1, minWidth: 220 }}
+                    data-testid="input-search-area"
                 />
-                <Button variant="primary" onClick={() => { setError(null); setCreating(true); }}>
+                <Button variant="primary" onClick={() => { setError(null); setCreating(true); }} data-testid="btn-new-area">
                     + Nova praça
                 </Button>
             </div>
 
             {areasQuery.isError && <QueryError error={areasQuery.error} what="as praças" />}
-            {error && !creating && editingTo === null && managingArea === null && <p className="error-text">{error}</p>}
+            {error && !creating && editingTo === null && managingArea === null && <p className="error-text" data-testid="error-message-main">{error}</p>}
 
             {areasQuery.isLoading && <SkeletonList rows={4} rowHeight={58} />}
 
             {!areasQuery.isLoading && filteredAreas.length === 0 && (
-                <EmptyState
-                    icon="🍽️"
-                    title="Nenhuma praça encontrada"
-                    description={
-                        search.trim() === ""
-                            ? "Cadastre a primeira praça (ex: Salão Interno, Varanda) para organizar suas mesas."
-                            : "Nenhuma praça bate com essa busca."
-                    }
-                    action={
-                        search.trim() === "" ? (
-                            <Button variant="primary" onClick={() => { setError(null); setCreating(true); }}>
-                                + Nova praça
-                            </Button>
-                        ) : undefined
-                    }
-                />
+                <div data-testid="empty-areas-msg">
+                    <EmptyState
+                        icon="🍽️"
+                        title="Nenhuma praça encontrada"
+                        description={
+                            search.trim() === ""
+                                ? "Cadastre a primeira praça (ex: Salão Interno, Varanda) para organizar suas mesas."
+                                : "Nenhuma praça bate com essa busca."
+                        }
+                        action={
+                            search.trim() === "" ? (
+                                <Button variant="primary" onClick={() => { setError(null); setCreating(true); }} data-testid="btn-empty-new-area">
+                                    + Nova praça
+                                </Button>
+                            ) : undefined
+                        }
+                    />
+                </div>
             )}
 
             {!areasQuery.isLoading && filteredAreas.length > 0 && (
-                <div className="rise rise-1 ticket" style={{ marginTop: 12 }}>
+                <div className="rise rise-1 ticket" style={{ marginTop: 12 }} data-testid="areas-list">
                     {filteredAreas.map((area) => (
-                        <div key={area.id} className="ticket-row">
+                        <div key={area.id} className="ticket-row" data-testid={`area-row-${area.id}`}>
                             <div style={{ display: "grid", gap: 2 }}>
                                 <span style={{ fontWeight: 600 }}>{area.name}</span>
                                 <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
@@ -199,10 +221,10 @@ export function DiningAreasPage() {
                                 </span>
                             </div>
                             <div className="ui-row" style={{ gap: 10 }}>
-                                <Button variant="ghost" size="sm" onClick={() => { setError(null); setEditingTo({ id: area.id, name: area.name }); }}>
+                                <Button variant="ghost" size="sm" onClick={() => { setError(null); setEditingTo({ id: area.id, name: area.name }); }} data-testid={`btn-edit-area-${area.id}`}>
                                     Editar Nome
                                 </Button>
-                                <Button variant="primary" size="sm" onClick={() => { setError(null); setManagingArea(area); }}>
+                                <Button variant="primary" size="sm" onClick={() => { setError(null); setManagingArea(area); }} data-testid={`btn-manage-area-${area.id}`}>
                                     Gerenciar Operação
                                 </Button>
                             </div>
@@ -213,9 +235,22 @@ export function DiningAreasPage() {
 
             {creating && (
                 <Modal title="Nova praça" onClose={() => setCreating(false)}>
-                    <TextField label="Nome (ex: Varanda, Salão 1)" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} autoFocus />
-                    {error && <p className="error-text">{error}</p>}
-                    <Button variant="primary" block disabled={form.name.trim() === ""} loading={createMutation.isPending} onClick={() => createMutation.mutate()}>
+                    <TextField
+                        label="Nome (ex: Varanda, Salão 1)"
+                        value={form.name}
+                        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                        autoFocus
+                        data-testid="input-area-name"
+                    />
+                    {error && <p className="error-text" data-testid="modal-error-message">{error}</p>}
+                    <Button
+                        variant="primary"
+                        block
+                        disabled={form.name.trim() === ""}
+                        loading={createMutation.isPending}
+                        onClick={() => createMutation.mutate()}
+                        data-testid="btn-submit-area"
+                    >
                         Criar praça
                     </Button>
                 </Modal>
@@ -223,9 +258,22 @@ export function DiningAreasPage() {
 
             {editingTo !== null && (
                 <Modal title="Editar praça" onClose={() => setEditingTo(null)}>
-                    <TextField label="Nome" value={editingTo.name} onChange={(e) => setEditingTo((prev) => prev ? { ...prev, name: e.target.value } : null)} autoFocus />
+                    <TextField
+                        label="Nome"
+                        value={editingTo.name}
+                        onChange={(e) => setEditingTo((prev) => prev ? { ...prev, name: e.target.value } : null)}
+                        autoFocus
+                        data-testid="input-edit-area-name"
+                    />
                     {error && <p className="error-text">{error}</p>}
-                    <Button variant="primary" block disabled={editingTo.name.trim() === ""} loading={updateMutation.isPending} onClick={() => updateMutation.mutate()}>
+                    <Button
+                        variant="primary"
+                        block
+                        disabled={editingTo.name.trim() === ""}
+                        loading={updateMutation.isPending}
+                        onClick={() => updateMutation.mutate()}
+                        data-testid="btn-submit-edit-area"
+                    >
                         Salvar alterações
                     </Button>
                 </Modal>
@@ -245,6 +293,7 @@ export function DiningAreasPage() {
                                             {...a11y}
                                             value={tableForm.tableId}
                                             onChange={(e) => setTableForm({ tableId: e.target.value })}
+                                            data-testid="select-table"
                                         >
                                             <option value="">Escolha uma mesa…</option>
                                             {(branchTablesQuery.data ?? []).map((t) => (
@@ -259,6 +308,7 @@ export function DiningAreasPage() {
                                 disabled={!tableForm.tableId}
                                 loading={addTableMutation.isPending}
                                 onClick={() => addTableMutation.mutate()}
+                                data-testid="btn-link-table"
                             >
                                 + Vincular
                             </Button>
@@ -267,11 +317,22 @@ export function DiningAreasPage() {
                         {areaTablesQuery.isLoading ? <p>Carregando mesas...</p> : (
                             <ul style={{ paddingLeft: 20 }}>
                                 {areaTablesQuery.data?.map(t => (
-                                    <li key={t.id} style={{ marginBottom: 4 }}>
+                                    <li key={t.id} style={{ marginBottom: 4 }} data-testid={`linked-table-${t.id}`}>
                                         Mesa {tableNumberMap.get(t.diningTableId) ?? t.diningTableId}
                                         <button
                                             style={{ marginLeft: 8, color: "var(--red)", background: "none", border: "none", cursor: "pointer" }}
-                                            onClick={() => removeTableMutation.mutate(t.id)}
+                                            data-testid={`btn-remove-table-${t.id}`}
+                                            onClick={async () => {
+                                                const { isConfirmed } = await Swal.fire({
+                                                    title: "Remover mesa?",
+                                                    text: "Deseja desvincular esta mesa da praça?",
+                                                    icon: "warning",
+                                                    showCancelButton: true,
+                                                    confirmButtonText: "Remover",
+                                                    cancelButtonText: "Cancelar"
+                                                });
+                                                if (isConfirmed) removeTableMutation.mutate(t.id);
+                                            }}
                                         >
                                             (remover)
                                         </button>
@@ -294,6 +355,7 @@ export function DiningAreasPage() {
                                             {...a11y}
                                             value={assignmentForm.employeeId}
                                             onChange={(e) => setAssignmentForm({ employeeId: e.target.value })}
+                                            data-testid="select-employee"
                                         >
                                             <option value="">Escolha um garçom…</option>
                                             {(employeesQuery.data ?? []).map((e) => (
@@ -308,6 +370,7 @@ export function DiningAreasPage() {
                                 disabled={!assignmentForm.employeeId}
                                 loading={startAssignmentMutation.isPending}
                                 onClick={() => startAssignmentMutation.mutate()}
+                                data-testid="btn-start-shift"
                             >
                                 + Iniciar Turno
                             </Button>
@@ -316,14 +379,25 @@ export function DiningAreasPage() {
                         {assignmentsQuery.isLoading ? <p>Carregando escala...</p> : (
                             <ul style={{ paddingLeft: 20 }}>
                                 {assignmentsQuery.data?.map(a => (
-                                    <li key={a.id} style={{ marginBottom: 4 }}>
+                                    <li key={a.id} style={{ marginBottom: 4 }} data-testid={`active-shift-${a.id}`}>
                                         <span style={{ fontWeight: 500 }}>{employeeNameMap.get(a.employeeId) ?? a.employeeId}</span>
                                         <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)", marginLeft: 6 }}>
                                             (iniciou às {new Date(a.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
                                         </span>
                                         <button
                                             style={{ marginLeft: 8, color: "var(--red)", background: "none", border: "none", cursor: "pointer" }}
-                                            onClick={() => endAssignmentMutation.mutate(a.id)}
+                                            data-testid={`btn-end-shift-${a.id}`}
+                                            onClick={async () => {
+                                                const { isConfirmed } = await Swal.fire({
+                                                    title: "Encerrar turno?",
+                                                    text: "O garçom não receberá mais pedidos desta praça.",
+                                                    icon: "question",
+                                                    showCancelButton: true,
+                                                    confirmButtonText: "Encerrar",
+                                                    cancelButtonText: "Cancelar"
+                                                });
+                                                if (isConfirmed) endAssignmentMutation.mutate(a.id);
+                                            }}
                                         >
                                             (encerrar turno)
                                         </button>

@@ -1,10 +1,12 @@
 ﻿import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Swal from "sweetalert2"; // Adicionado SweetAlert2 para feedback não-intrusivo
 import { advanceItemStatus, getPreparationQueue } from "./api";
 import { useAuthStore } from "../../stores/authStore";
 import { OrderItemStatus, orderItemStatusLabel, OrderType } from "../../lib/types";
 import type { PreparationItemResponse } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
+
 function timeColor(ratio: number): string {
     if (ratio >= 1) return "var(--danger)";
     if (ratio >= 0.7) return "var(--busy)";
@@ -27,17 +29,20 @@ function formatElapsed(ms: number): string {
 
 function parseLocalDateTime(dateString: string): number {
     if (!dateString) return Date.now();
-
     const matches = dateString.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2}):(\d{2})/);
-
-    if (!matches) {
-        return new Date(dateString).getTime();
-    }
-
+    if (!matches) return new Date(dateString).getTime();
     const [, year, month, day, hour, minute, second] = matches.map(Number);
-
     return new Date(year, month - 1, day, hour, minute, second).getTime();
 }
+
+// Configuração do Toast de Erro (para não travar a tela da cozinha)
+const ErrorToast = Swal.mixin({
+    toast: true,
+    position: "top-end",
+    showConfirmButton: false,
+    timer: 4000,
+    timerProgressBar: true,
+});
 
 function ItemRow({
     item,
@@ -61,6 +66,7 @@ function ItemRow({
     return (
         <div
             className={overdue ? "kds-overdue" : undefined}
+            data-testid={`kds-item-row-${item.orderItemId}`}
             style={{
                 display: "grid",
                 gap: 6,
@@ -89,7 +95,7 @@ function ItemRow({
                         </span>
                     )}
                 </span>
-                <span className="mono-num display" style={{ fontSize: "1.15rem", color }}>
+                <span className="mono-num display" style={{ fontSize: "1.15rem", color }} data-testid={`kds-timer-${item.orderItemId}`}>
                     {formatElapsed(elapsedMs)}
                 </span>
             </div>
@@ -125,6 +131,7 @@ function ItemRow({
                         className="btn-primary"
                         style={{ minHeight: 40, padding: "0 16px", fontSize: "0.9rem" }}
                         disabled={isPending}
+                        data-testid={`btn-advance-item-${item.orderItemId}`}
                         onClick={() => onAdvance(next.id)}
                     >
                         {next.label}
@@ -155,6 +162,12 @@ export function PreparationPage() {
         mutationFn: ({ orderId, itemId, statusId }: { orderId: number; itemId: number; statusId: number }) =>
             advanceItemStatus(orderId, itemId, statusId),
         onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["preparation"] }),
+        onError: () => {
+            ErrorToast.fire({
+                icon: "error",
+                title: "Erro ao avançar status. Verifique sua conexão.",
+            });
+        }
     });
 
     const tickets = queueQuery.data ?? [];
@@ -171,7 +184,7 @@ export function PreparationPage() {
             {queueQuery.isError && <QueryError error={queueQuery.error} what="a fila de preparo" />}
 
             {tickets.length === 0 && !queueQuery.isLoading && (
-                <div style={{ display: "grid", placeItems: "center", minHeight: "50vh" }}>
+                <div style={{ display: "grid", placeItems: "center", minHeight: "50vh" }} data-testid="kds-empty-state">
                     <div style={{ textAlign: "center", display: "grid", gap: 6 }}>
                         <span className="display" style={{ fontSize: "2.2rem", color: "var(--free)" }}>
                             Tudo em dia
@@ -181,9 +194,9 @@ export function PreparationPage() {
                 </div>
             )}
 
-            {/* Regua de pedidos: trilho horizontal, ticket mais antigo primeiro */}
             <div
                 className="rise rise-1"
+                data-testid="kds-tickets-board"
                 style={{
                     display: "flex",
                     gap: 14,
@@ -206,10 +219,12 @@ export function PreparationPage() {
                     const ticketTitle = ticket.tableNumber !== null
                         ? `Mesa ${ticket.tableNumber}`
                         : comandaOrCustomerLabel;
+
                     return (
                         <div
                             key={ticket.customerOrderId}
                             className="ticket"
+                            data-testid={`kds-ticket-${ticket.customerOrderId}`}
                             style={{ minWidth: 300, maxWidth: 340, flexShrink: 0 }}
                         >
                             <div
@@ -220,10 +235,6 @@ export function PreparationPage() {
                                     <span className="display" style={{ fontSize: "1.35rem" }}>
                                         {ticketTitle}
                                     </span>
-                                    {/* Pedido sem mesa/comanda = Retirada ou Delivery (OpenDeliveryOrderDialog) —
-                                        sem esse selo a cozinha via só "Comanda ?" e não tinha como saber que
-                                        o pedido precisa ser embalado pra entrega/retirada em vez de servido
-                                        numa mesa. */}
                                     {ticket.orderTypeId !== OrderType.Mesa && (
                                         <span className="chip" style={{ "--dot": "var(--reserved)" } as React.CSSProperties}>
                                             {ticket.orderTypeId === OrderType.Delivery ? "DELIVERY" : "RETIRADA"}
