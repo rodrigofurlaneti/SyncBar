@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+﻿import { useState, useId, useEffect } from "react";
 import Swal from "sweetalert2";
 import { api } from "../../lib/apiClient";
 
@@ -9,6 +9,33 @@ type StorefrontAuthModalProps = {
     onAuthenticated: (customerData: { name: string; phone?: string; customerId?: number }) => void;
 };
 
+// COMPONENTE MOVIDO PARA FORA: Evita a perda de foco na digitação
+const InputField = ({ label, id, isLoading, ...props }: any) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
+        <label htmlFor={id} style={{ fontSize: "0.875rem", fontWeight: 500, color: "#a1a1aa" }}>
+            {label}
+        </label>
+        <input
+            id={id}
+            disabled={isLoading}
+            style={{
+                width: "100%",
+                borderRadius: "8px",
+                border: "1px solid #3f3f46",
+                backgroundColor: "#09090b",
+                padding: "10px 16px",
+                color: "#f4f4f5",
+                boxSizing: "border-box",
+                outline: "none",
+                opacity: isLoading ? 0.5 : 1,
+                cursor: isLoading ? "not-allowed" : "text",
+                fontSize: "0.95rem"
+            }}
+            {...props}
+        />
+    </div>
+);
+
 export function StorefrontAuthModal({
     isOpen,
     onClose,
@@ -16,23 +43,33 @@ export function StorefrontAuthModal({
     onAuthenticated,
 }: StorefrontAuthModalProps) {
     const [mode, setMode] = useState<"login" | "register">("login");
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Controle de responsividade básico
+    const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+    const isMobile = windowWidth < 640;
+
+    // Gerador de IDs únicos para acessibilidade
+    const formId = useId();
 
     // Estados do Login
     const [loginEmail, setLoginEmail] = useState("");
     const [loginPassword, setLoginPassword] = useState("");
 
-    // Estados do Cadastro (Novo Cliente + Endereço)
+    // Estados do Cadastro
     const [regName, setRegName] = useState("");
     const [regPhone, setRegPhone] = useState("");
     const [regEmail, setRegEmail] = useState("");
     const [regPassword, setRegPassword] = useState("");
-
-    // Campos de endereço exigidos no cadastro
+    const [regZipCode, setRegZipCode] = useState("");
     const [regStreet, setRegStreet] = useState("");
     const [regNumber, setRegNumber] = useState("");
     const [regSupplement, setRegSupplement] = useState("");
-    const [regZipCode, setRegZipCode] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
 
     if (!isOpen) return null;
 
@@ -66,14 +103,13 @@ export function StorefrontAuthModal({
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!regName || !regEmail || !regPassword || !regStreet || !regNumber) {
-            Swal.fire("Atenção", "Preencha os campos obrigatórios de cadastro e endereço (Rua e Número).", "warning");
+        if (!regName || !regEmail || !regPassword || !regStreet || !regNumber || !regZipCode) {
+            Swal.fire("Atenção", "Preencha os campos obrigatórios de cadastro e endereço (incluindo CEP).", "warning");
             return;
         }
 
         setIsLoading(true);
         try {
-            // 1. Cadastra o usuário e o cliente na API unificada (retorna o customerId corrigido)
             const userPayload = {
                 companyId: 1,
                 branchId: branchId,
@@ -90,7 +126,7 @@ export function StorefrontAuthModal({
 
             const newCustomerId = userResult.id;
 
-            // 2. Cadastra o endereço vinculado ao novo customerId gerado
+            // CORREÇÃO: Enviando a propriedade zipCode exigida pela API
             const addressPayload = {
                 companyId: 1,
                 branchId: branchId,
@@ -98,6 +134,7 @@ export function StorefrontAuthModal({
                 street: regStreet,
                 number: regNumber,
                 supplement: regSupplement || "",
+                zipCode: regZipCode,
             };
 
             await api(`/api/customeraddresses`, {
@@ -109,10 +146,10 @@ export function StorefrontAuthModal({
                 toast: true,
                 position: 'top-end',
                 icon: 'success',
-                title: 'Cadastro e endereço realizados com sucesso!',
+                title: 'Cadastro realizado com sucesso!',
                 showConfirmButton: false,
                 timer: 2000,
-                background: '#1e1e24',
+                background: '#18181b',
                 color: '#fff'
             });
 
@@ -130,167 +167,128 @@ export function StorefrontAuthModal({
     };
 
     return (
-        <div data-testid="storefront-auth-modal" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, overflowY: "auto" }}>
-            <div style={{ backgroundColor: "#1e1e24", padding: 32, borderRadius: 16, width: "100%", maxWidth: 480, border: "1px solid #323238", boxShadow: "0 10px 30px rgba(0,0,0,0.6)", display: "grid", gap: 20, maxHeight: "90vh", overflowY: "auto" }}>
+        <div
+            data-testid="storefront-auth-modal"
+            style={{ position: "fixed", inset: 0, zIndex: 10000, display: "flex", alignItems: "center", justifyItems: "center", padding: isMobile ? "16px" : "24px", overflowY: "auto", fontFamily: "sans-serif" }}
+            aria-modal="true"
+            role="dialog"
+            onClick={onClose}
+        >
+            {/* Overlay Escurecido */}
+            <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", backdropFilter: "blur(4px)" }} aria-hidden="true" />
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <h3 style={{ margin: 0, color: "#fff", fontSize: "1.2rem" }}>
-                        {mode === "login" ? "🔐 Identificação de Acesso" : "📝 Novo Cadastro e Endereço"}
+            <div
+                onClick={(e) => e.stopPropagation()}
+                style={{ position: "relative", width: "100%", maxWidth: "440px", margin: "auto", display: "flex", flexDirection: "column", gap: "24px", borderRadius: "16px", border: "1px solid #27272a", backgroundColor: "#18181b", padding: isMobile ? "24px" : "32px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.7)" }}
+            >
+                {/* Cabeçalho */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <h3 style={{ margin: 0, fontSize: "1.125rem", fontWeight: 600, color: "#f4f4f5" }}>
+                        {mode === "login" ? "🔐 Identificação" : "📝 Novo Cadastro"}
                     </h3>
-                    <button onClick={onClose} style={{ background: "none", border: "none", color: "#a8a8b3", fontSize: "1.5rem", cursor: "pointer" }}>✕</button>
+                    <button
+                        onClick={onClose}
+                        aria-label="Fechar modal"
+                        disabled={isLoading}
+                        style={{ background: "none", border: "none", padding: "4px", color: "#a1a1aa", cursor: isLoading ? "not-allowed" : "pointer", borderRadius: "6px" }}
+                    >
+                        <svg style={{ height: "24px", width: "24px" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
 
-                {/* Abas / Modos */}
-                <div style={{ display: "flex", gap: 8, backgroundColor: "#121214", padding: 4, borderRadius: 8 }}>
+                {/* Abas Alternadoras */}
+                <div style={{ display: "flex", gap: "4px", borderRadius: "8px", backgroundColor: "#09090b", padding: "4px" }}>
                     <button
                         type="button"
                         onClick={() => setMode("login")}
-                        style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", backgroundColor: mode === "login" ? "#f59e0b" : "transparent", color: mode === "login" ? "#121214" : "#a8a8b3", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}
+                        disabled={isLoading}
+                        style={{ flex: 1, padding: "10px", borderRadius: "6px", border: "none", fontWeight: 600, fontSize: "0.875rem", cursor: isLoading ? "not-allowed" : "pointer", backgroundColor: mode === "login" ? "#f59e0b" : "transparent", color: mode === "login" ? "#18181b" : "#a1a1aa", transition: "all 0.2s" }}
                     >
                         Já tenho cadastro
                     </button>
                     <button
                         type="button"
                         onClick={() => setMode("register")}
-                        style={{ flex: 1, padding: 10, borderRadius: 6, border: "none", backgroundColor: mode === "register" ? "#f59e0b" : "transparent", color: mode === "register" ? "#121214" : "#a8a8b3", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}
+                        disabled={isLoading}
+                        style={{ flex: 1, padding: "10px", borderRadius: "6px", border: "none", fontWeight: 600, fontSize: "0.875rem", cursor: isLoading ? "not-allowed" : "pointer", backgroundColor: mode === "register" ? "#f59e0b" : "transparent", color: mode === "register" ? "#18181b" : "#a1a1aa", transition: "all 0.2s" }}
                     >
                         Novo Cliente
                     </button>
                 </div>
 
+                {/* Formulários */}
                 {mode === "login" ? (
-                    <form onSubmit={handleLogin} style={{ display: "grid", gap: 12 }}>
-                        <div style={{ display: "grid", gap: 6 }}>
-                            <label style={{ fontSize: "0.85rem", color: "#a8a8b3" }}>E-mail</label>
-                            <input
-                                type="email"
-                                value={loginEmail}
-                                onChange={(e) => setLoginEmail(e.target.value)}
-                                placeholder="seu@email.com"
-                                style={{ width: "100%", padding: 12, borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", boxSizing: "border-box" }}
-                                required
-                            />
-                        </div>
-                        <div style={{ display: "grid", gap: 6 }}>
-                            <label style={{ fontSize: "0.85rem", color: "#a8a8b3" }}>Senha</label>
-                            <input
-                                type="password"
-                                value={loginPassword}
-                                onChange={(e) => setLoginPassword(e.target.value)}
-                                placeholder="******"
-                                style={{ width: "100%", padding: 12, borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", boxSizing: "border-box" }}
-                                required
-                            />
-                        </div>
+                    <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                        <InputField label="E-mail" id={`${formId}-login-email`} type="email" placeholder="seu@email.com" value={loginEmail} onChange={(e: any) => setLoginEmail(e.target.value)} isLoading={isLoading} required />
+                        <InputField label="Senha" id={`${formId}-login-password`} type="password" placeholder="••••••" value={loginPassword} onChange={(e: any) => setLoginPassword(e.target.value)} isLoading={isLoading} required />
+
                         <button
                             type="submit"
                             disabled={isLoading}
-                            style={{ width: "100%", padding: 14, borderRadius: 8, border: "none", backgroundColor: "#f59e0b", color: "#121214", fontWeight: "bold", cursor: "pointer", marginTop: 8 }}
+                            style={{ marginTop: "8px", width: "100%", borderRadius: "8px", backgroundColor: "#f59e0b", padding: "14px", fontWeight: "bold", fontSize: "1rem", color: "#18181b", border: "none", cursor: isLoading ? "not-allowed" : "pointer", opacity: isLoading ? 0.7 : 1 }}
                         >
-                            {isLoading ? "Entrando..." : "Entrar e Finalizar Pedido"}
+                            {isLoading ? "Autenticando..." : "Entrar e Finalizar Pedido"}
                         </button>
                     </form>
                 ) : (
-                    <form onSubmit={handleRegister} style={{ display: "grid", gap: 12 }}>
-                        <div style={{ display: "grid", gap: 6 }}>
-                            <label style={{ fontSize: "0.85rem", color: "#a8a8b3" }}>Nome Completo</label>
-                            <input
-                                type="text"
-                                value={regName}
-                                onChange={(e) => setRegName(e.target.value)}
-                                placeholder="Seu nome"
-                                style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", boxSizing: "border-box" }}
-                                required
-                            />
-                        </div>
-                        <div style={{ display: "grid", gap: 6 }}>
-                            <label style={{ fontSize: "0.85rem", color: "#a8a8b3" }}>Telefone / WhatsApp</label>
-                            <input
-                                type="text"
+                    <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                            <InputField label="Nome Completo" id={`${formId}-reg-name`} type="text" placeholder="Seu nome" value={regName} onChange={(e: any) => setRegName(e.target.value)} isLoading={isLoading} required />
+                            <InputField
+                                label="Telefone / WhatsApp"
+                                id={`${formId}-reg-phone`}
+                                type="tel"
+                                inputMode="numeric"
+                                placeholder="Somente números (ex: 11999999999)"
                                 value={regPhone}
-                                onChange={(e) => setRegPhone(e.target.value)}
-                                placeholder="(11) 99999-9999"
-                                style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", boxSizing: "border-box" }}
+                                onChange={(e: any) => setRegPhone(e.target.value.replace(/\D/g, ''))}
+                                isLoading={isLoading}
                             />
-                        </div>
-                        <div style={{ display: "grid", gap: 6 }}>
-                            <label style={{ fontSize: "0.85rem", color: "#a8a8b3" }}>E-mail</label>
-                            <input
-                                type="email"
-                                value={regEmail}
-                                onChange={(e) => setRegEmail(e.target.value)}
-                                placeholder="seu@email.com"
-                                style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", boxSizing: "border-box" }}
-                                required
-                            />
-                        </div>
-                        <div style={{ display: "grid", gap: 6 }}>
-                            <label style={{ fontSize: "0.85rem", color: "#a8a8b3" }}>Senha</label>
-                            <input
-                                type="password"
-                                value={regPassword}
-                                onChange={(e) => setRegPassword(e.target.value)}
-                                placeholder="Mínimo 6 caracteres"
-                                style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", boxSizing: "border-box" }}
-                                required
-                            />
+                            <InputField label="E-mail" id={`${formId}-reg-email`} type="email" placeholder="seu@email.com" value={regEmail} onChange={(e: any) => setRegEmail(e.target.value)} isLoading={isLoading} required />
+                            <InputField label="Senha" id={`${formId}-reg-pass`} type="password" placeholder="Mínimo 6 caracteres" value={regPassword} onChange={(e: any) => setRegPassword(e.target.value)} isLoading={isLoading} required />
                         </div>
 
-                        {/* Seção de Endereço */}
-                        <div style={{ borderTop: "1px solid #323238", paddingTop: 10, marginTop: 4, display: "grid", gap: 10 }}>
-                            <span style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#f59e0b" }}>Endereço de Entrega</span>
-                            <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: 8 }}>
-                                <div style={{ display: "grid", gap: 4 }}>
-                                    <label style={{ fontSize: "0.8rem", color: "#a8a8b3" }}>Cep</label>
-                                        <input
-                                            type="text"
-                                            value={regZipCode}
-                                            onChange={(e) => setRegZipCode(e.target.value)}
-                                            placeholder="00000000"
-                                            style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", boxSizing: "border-box", maxHeight: 9 }}
-                                            required
-                                    />
-                                </div>
+                        {/* Divisor Visual de Seção */}
+                        <div style={{ position: "relative", marginTop: "8px", marginBottom: "8px" }}>
+                            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center" }} aria-hidden="true">
+                                <div style={{ width: "100%", borderTop: "1px solid #27272a" }}></div>
+                            </div>
+                            <div style={{ position: "relative", display: "flex", justifyItems: "center", justifyContent: "center" }}>
+                                <span style={{ backgroundColor: "#18181b", padding: "0 12px", fontSize: "0.875rem", fontWeight: 600, color: "#f59e0b" }}>Endereço de Entrega</span>
+                            </div>
+                        </div>
 
-                                <div style={{ display: "grid", gap: 4 }}>
-                                    <label style={{ fontSize: "0.8rem", color: "#a8a8b3" }}>Rua / Avenida</label>
-                                    <input
-                                        type="text"
-                                        value={regStreet}
-                                        onChange={(e) => setRegStreet(e.target.value)}
-                                        placeholder="Nome da rua"
-                                        style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", boxSizing: "border-box" }}
-                                        required
-                                    />
+                        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                            <InputField
+                                label="CEP"
+                                id={`${formId}-reg-cep`}
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="00000000"
+                                value={regZipCode}
+                                onChange={(e: any) => setRegZipCode(e.target.value.replace(/\D/g, ''))}
+                                isLoading={isLoading}
+                                required
+                            />
+
+                            <div style={{ display: "flex", gap: "16px", flexDirection: isMobile ? "column" : "row" }}>
+                                <div style={{ flex: isMobile ? "none" : 3 }}>
+                                    <InputField label="Rua / Avenida" id={`${formId}-reg-street`} type="text" placeholder="Nome da rua" value={regStreet} onChange={(e: any) => setRegStreet(e.target.value)} isLoading={isLoading} required />
                                 </div>
-                                <div style={{ display: "grid", gap: 4 }}>
-                                    <label style={{ fontSize: "0.8rem", color: "#a8a8b3" }}>Número</label>
-                                    <input
-                                        type="text"
-                                        value={regNumber}
-                                        onChange={(e) => setRegNumber(e.target.value)}
-                                        placeholder="123"
-                                        style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", boxSizing: "border-box" }}
-                                        required
-                                    />
+                                <div style={{ flex: isMobile ? "none" : 1 }}>
+                                    <InputField label="Número" id={`${formId}-reg-number`} type="text" placeholder="123" value={regNumber} onChange={(e: any) => setRegNumber(e.target.value)} isLoading={isLoading} required />
                                 </div>
                             </div>
-                            <div style={{ display: "grid", gap: 4 }}>
-                                <label style={{ fontSize: "0.8rem", color: "#a8a8b3" }}>Complemento / Bairro</label>
-                                <input
-                                    type="text"
-                                    value={regSupplement}
-                                    onChange={(e) => setRegSupplement(e.target.value)}
-                                    placeholder="Apto 42, Bloco B"
-                                    style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #323238", backgroundColor: "#121214", color: "#fff", boxSizing: "border-box" }}
-                                />
-                            </div>
+
+                            <InputField label="Complemento / Bairro" id={`${formId}-reg-comp`} type="text" placeholder="Apto 42, Bloco B" value={regSupplement} onChange={(e: any) => setRegSupplement(e.target.value)} isLoading={isLoading} />
                         </div>
 
                         <button
                             type="submit"
                             disabled={isLoading}
-                            style={{ width: "100%", padding: 14, borderRadius: 8, border: "none", backgroundColor: "#f59e0b", color: "#121214", fontWeight: "bold", cursor: "pointer", marginTop: 8 }}
+                            style={{ marginTop: "8px", width: "100%", borderRadius: "8px", backgroundColor: "#f59e0b", padding: "14px", fontWeight: "bold", fontSize: "1rem", color: "#18181b", border: "none", cursor: isLoading ? "not-allowed" : "pointer", opacity: isLoading ? 0.7 : 1 }}
                         >
                             {isLoading ? "Cadastrando..." : "Cadastrar e Enviar Pedido"}
                         </button>

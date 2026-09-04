@@ -9,11 +9,9 @@ import { StorefrontCartDrawer, CartItem, CustomerSessionData } from "./Storefron
 import { submitStorefrontOrder, StorefrontOrderPayload } from "./storefrontApi";
 import { StorefrontAuthModal } from "./StorefrontAuthModal";
 
-// Importando as imagens do projeto
 import logoImg from "../../image/logo.png";
 import bgImg from "../../image/screenbackground_auth.jpeg";
 
-// Função para buscar o menu público da filial usando a rota correta do storefront
 async function fetchMenu(branchId: number): Promise<any> {
     const res = await fetch(`/api/storefront/branches/${branchId}/menu`);
     if (!res.ok) throw new Error("Não foi possível carregar o cardápio da filial.");
@@ -29,15 +27,13 @@ export function StorefrontOrderPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [quantities, setQuantities] = useState<Record<number, number>>({});
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
     const [isCartOpen, setIsCartOpen] = useState(false);
-
-    // Estados de Sessão do Cliente Logado / Identificado
     const [customerData, setCustomerData] = useState<CustomerSessionData | null>(null);
-
-    // Estados do Modal de Autenticação / Cadastro para o Checkout
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [pendingCheckoutNotes, setPendingCheckoutNotes] = useState("");
 
+    // Controle de responsividade para estilos inline
     const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
     useEffect(() => {
         const handleResize = () => setWindowWidth(window.innerWidth);
@@ -46,7 +42,6 @@ export function StorefrontOrderPage() {
     }, []);
 
     const isMobile = windowWidth < 640;
-    const isTvOrLarge = windowWidth > 1200;
 
     const menuQuery = useQuery({
         queryKey: ["storefront-menu", branchId],
@@ -56,9 +51,7 @@ export function StorefrontOrderPage() {
     });
 
     const addBatchMutation = useMutation({
-        mutationFn: (payload: StorefrontOrderPayload) => {
-            return submitStorefrontOrder(branchId, payload);
-        },
+        mutationFn: (payload: StorefrontOrderPayload) => submitStorefrontOrder(branchId, payload),
         onSuccess: () => {
             setCartItems([]);
             setIsCartOpen(false);
@@ -66,7 +59,7 @@ export function StorefrontOrderPage() {
                 title: "Pedido Solicitado!",
                 text: "Seu pedido foi enviado com sucesso para a produção.",
                 icon: "success",
-                background: "#1e1e24",
+                background: "#18181b",
                 color: "#ffffff",
                 confirmButtonColor: "#f59e0b",
             });
@@ -77,7 +70,7 @@ export function StorefrontOrderPage() {
                 title: "Ops!",
                 text: msg,
                 icon: "error",
-                background: "#1e1e24",
+                background: "#18181b",
                 color: "#ffffff",
                 confirmButtonColor: "#ef4444",
                 confirmButtonText: "Voltar",
@@ -128,7 +121,7 @@ export function StorefrontOrderPage() {
             title: 'Item adicionado à cesta!',
             showConfirmButton: false,
             timer: 1500,
-            background: '#1e1e24',
+            background: '#18181b',
             color: '#fff'
         });
     };
@@ -137,22 +130,18 @@ export function StorefrontOrderPage() {
         if (cartItems.length === 0) return;
         setPendingCheckoutNotes(generalNotes);
 
-        // Se o cliente ainda não estiver identificado, abre o modal de autenticação/cadastro
         const currentCustomer = activeCustomerData || customerData;
         if (!currentCustomer || !currentCustomer.customerId) {
             setIsAuthModalOpen(true);
             return;
         }
 
-        // Caso já esteja autenticado, envia o pedido diretamente vinculando o customerId
         executeSubmitOrder(currentCustomer);
     };
 
     const handleAuthenticatedSuccess = (authenticatedData: CustomerSessionData) => {
         setCustomerData(authenticatedData);
         setIsAuthModalOpen(false);
-
-        // Após autenticar/cadastrar com sucesso, prossegue automaticamente com o envio do pedido
         executeSubmitOrder(authenticatedData);
     };
 
@@ -168,7 +157,7 @@ export function StorefrontOrderPage() {
         }));
 
         addBatchMutation.mutate({
-            customerId: activeCustomer.customerId || null, // <-- CustomerId repassado corretamente
+            customerId: activeCustomer.customerId || null,
             customerName: activeCustomer.name,
             customerPhone: activeCustomer.phone || null,
             generalNotes: pendingCheckoutNotes || undefined,
@@ -201,63 +190,82 @@ export function StorefrontOrderPage() {
         return { categoryList: cats, groupedItems: grouped, filteredItems: resultItems };
     }, [menuQuery.data, activeCategory, searchQuery]);
 
-    if (menuQuery.isLoading)
-        return <main data-testid="loading-menu" style={{ padding: 24, textAlign: "center", color: "#a8a8b3", backgroundColor: "#121214", minHeight: "100vh" }}>Carregando cardápio…</main>;
-    if (menuQuery.isError)
-        return <main data-testid="error-menu" style={{ padding: 24, textAlign: "center", backgroundColor: "#121214", minHeight: "100vh" }}><p style={{ color: "#ef4444" }}>Não foi possível carregar o cardápio.</p></main>;
+    if (menuQuery.isLoading) {
+        return (
+            <main data-testid="loading-menu" style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", backgroundColor: "#09090b", color: "#a1a1aa" }}>
+                <span>Carregando cardápio…</span>
+            </main>
+        );
+    }
 
-    const gridColumns = isMobile
-        ? "1fr"
-        : isTvOrLarge
-            ? "repeat(auto-fill, minmax(380px, 1fr))"
-            : "repeat(auto-fill, minmax(300px, 1fr))";
+    if (menuQuery.isError) {
+        return (
+            <main data-testid="error-menu" style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", backgroundColor: "#09090b" }}>
+                <p style={{ color: "#ef4444" }}>Não foi possível carregar o cardápio.</p>
+            </main>
+        );
+    }
+
+    const gridColumns = isMobile ? "1fr" : "repeat(auto-fill, minmax(300px, 1fr))";
 
     return (
-        <main data-testid="storefront-order-page" style={{ backgroundColor: "#121214", minHeight: "100vh", paddingBottom: 100, color: "#e1e1e6", fontFamily: "sans-serif", position: "relative", fontSize: isTvOrLarge ? "1.1rem" : "1rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: isMobile ? "8px 12px" : "12px 24px", backgroundImage: `linear-gradient(rgba(18, 18, 20, 0.85), rgba(18, 18, 20, 0.95)), url(${bgImg})`, backgroundSize: "cover", backgroundPosition: "center", borderBottom: "1px solid #29292e", height: isTvOrLarge ? "100px" : "80px", boxSizing: "border-box" }}>
-                <img src={logoImg} alt="Logotipo SyncBar" style={{ height: isTvOrLarge ? 70 : 50, objectFit: "contain", position: "relative", zIndex: 2 }} />
-                <div style={{ textAlign: "right", position: "relative", zIndex: 2 }}>
-                    <div style={{ color: "#ffffff", fontSize: isTvOrLarge ? "1.5rem" : "1.15rem", fontWeight: "600" }} data-testid="header-store-title">
-                        Cardápio <span style={{ color: "#f59e0b" }}>Digital</span>
+        <main data-testid="storefront-order-page" style={{ minHeight: "100vh", backgroundColor: "#09090b", paddingBottom: "112px", fontFamily: "sans-serif", color: "#f4f4f5" }}>
+
+            {/* Cabeçalho Hero com Imagem */}
+            <header style={{ display: "flex", height: isMobile ? "80px" : "112px", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #27272a", padding: isMobile ? "0 16px" : "0 40px", backgroundImage: `linear-gradient(rgba(9, 9, 11, 0.85), rgba(9, 9, 11, 0.95)), url(${bgImg})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+                <img src={logoImg} alt="Logotipo SyncBar" style={{ position: "relative", zIndex: 10, height: isMobile ? "48px" : "64px", objectFit: "contain" }} />
+                <h1 data-testid="header-store-title" style={{ position: "relative", zIndex: 10, fontSize: isMobile ? "1.125rem" : "1.5rem", fontWeight: 600, color: "#fff", margin: 0 }}>
+                    Cardápio <span style={{ color: "#f59e0b" }}>Digital</span>
+                </h1>
+            </header>
+
+            {/* Navegação Sticky (Categorias + Busca) */}
+            <div style={{ position: "sticky", top: 0, zIndex: 40, borderBottom: "1px solid #27272a", backgroundColor: "rgba(9, 9, 11, 0.9)", backdropFilter: "blur(12px)", padding: isMobile ? "16px" : "16px 40px" }}>
+                <div style={{ margin: "0 auto", maxWidth: "1280px" }}>
+
+                    {/* Lista de Categorias */}
+                    <nav style={{ display: "flex", gap: "24px", overflowX: "auto", whiteSpace: "nowrap", paddingBottom: "8px" }}>
+                        {categoryList.map((cat: string) => {
+                            const isActive = activeCategory === cat;
+                            return (
+                                <button
+                                    key={cat}
+                                    data-testid={`category-tab-${cat.replace(/\s+/g, '-')}`}
+                                    onClick={() => setActiveCategory(cat)}
+                                    style={{ background: "none", border: "none", borderBottom: isActive ? "2px solid #f59e0b" : "2px solid transparent", paddingBottom: "4px", fontSize: isMobile ? "0.875rem" : "1rem", fontWeight: 500, color: isActive ? "#f59e0b" : "#a1a1aa", cursor: "pointer", transition: "color 0.2s" }}
+                                >
+                                    {cat}
+                                </button>
+                            );
+                        })}
+                    </nav>
+
+                    {/* Barra de Pesquisa */}
+                    <div style={{ position: "relative", marginTop: "16px" }}>
+                        <input
+                            type="text"
+                            placeholder="Pesquisar um produto..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            data-testid="input-menu-search"
+                            style={{ width: "100%", borderRadius: "12px", border: "1px solid #3f3f46", backgroundColor: "#18181b", padding: "14px 48px 14px 16px", fontSize: isMobile ? "0.875rem" : "1rem", color: "#f4f4f5", boxSizing: "border-box", outline: "none" }}
+                        />
+                        <div style={{ position: "absolute", top: 0, bottom: 0, right: "16px", display: "flex", alignItems: "center", pointerEvents: "none" }}>
+                            <span style={{ color: "#71717a" }}>🔍</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div style={{ padding: isMobile ? "0 12px" : "0 24px", maxWidth: isTvOrLarge ? 1400 : 900, margin: "16px auto 0" }}>
-                <div style={{ display: "flex", overflowX: "auto", gap: isTvOrLarge ? 32 : 24, paddingBottom: 6, borderBottom: "1px solid #323238" }}>
-                    {categoryList.map((cat: string) => {
-                        const isActive = activeCategory === cat;
-                        return (
-                            <button
-                                key={cat}
-                                data-testid={`category-tab-${cat.replace(/\s+/g, '-')}`}
-                                onClick={() => setActiveCategory(cat)}
-                                style={{ background: "none", border: "none", padding: "0 0 10px 0", whiteSpace: "nowrap", fontWeight: isActive ? "bold" : "normal", color: isActive ? "#f59e0b" : "#a8a8b3", borderBottom: isActive ? "2px solid #f59e0b" : "2px solid transparent", cursor: "pointer", fontSize: isTvOrLarge ? "1.2rem" : "0.95rem" }}
-                            >
-                                {cat}
-                            </button>
-                        );
-                    })}
-                </div>
-                <div style={{ marginTop: 16, position: "relative" }}>
-                    <input
-                        type="text"
-                        placeholder="Pesquisar um produto..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        data-testid="input-menu-search"
-                        style={{ width: "100%", padding: isTvOrLarge ? "18px 20px" : "14px 16px", borderRadius: 8, border: "1px solid #323238", backgroundColor: "#202024", color: "#e1e1e6", outline: "none", fontSize: isTvOrLarge ? "1.1rem" : "0.95rem", boxSizing: "border-box" }}
-                    />
-                    <span style={{ position: "absolute", right: 16, top: isTvOrLarge ? 18 : 14, color: "#a8a8b3" }}>🔍</span>
-                </div>
-
+            {/* Container Principal de Produtos */}
+            <div style={{ margin: "0 auto", maxWidth: "1280px", padding: isMobile ? "32px 16px 0" : "32px 40px 0" }}>
                 {activeCategory === "Todas" && !searchQuery ? (
                     Object.entries(groupedItems).map(([categoryName, products]) => (
-                        <div key={categoryName} style={{ marginTop: 32 }} data-testid={`category-section-${categoryName.replace(/\s+/g, '-')}`}>
-                            <div style={{ marginBottom: 16 }}>
-                                <h2 style={{ fontSize: isTvOrLarge ? "1.3rem" : "1.05rem", textTransform: "uppercase", letterSpacing: 1, color: "#fff", margin: 0, paddingBottom: 6, borderBottom: "2px solid #f59e0b", display: "inline-block" }}>{categoryName}</h2>
-                            </div>
-                            <div style={{ display: "grid", gap: 16, gridTemplateColumns: gridColumns }}>
+                        <section key={categoryName} data-testid={`category-section-${categoryName.replace(/\s+/g, '-')}`} style={{ marginBottom: "48px" }}>
+                            <h2 style={{ marginBottom: "24px", display: "inline-block", borderBottom: "2px solid #f59e0b", paddingBottom: "4px", fontSize: isMobile ? "1.125rem" : "1.25rem", fontWeight: "bold", letterSpacing: "0.025em", color: "#f4f4f5", textTransform: "uppercase" }}>
+                                {categoryName}
+                            </h2>
+                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: gridColumns }}>
                                 {products.map((item: MenuItemResponse) => (
                                     <PublicOrderCard
                                         key={item.id}
@@ -270,10 +278,10 @@ export function StorefrontOrderPage() {
                                     />
                                 ))}
                             </div>
-                        </div>
+                        </section>
                     ))
                 ) : (
-                    <div style={{ marginTop: 24, display: "grid", gap: 16, gridTemplateColumns: gridColumns }} data-testid="filtered-items-grid">
+                    <div data-testid="filtered-items-grid" style={{ display: "grid", gap: "16px", gridTemplateColumns: gridColumns }}>
                         {filteredItems.map((item: MenuItemResponse) => (
                             <PublicOrderCard
                                 key={item.id}
@@ -289,22 +297,22 @@ export function StorefrontOrderPage() {
                 )}
             </div>
 
-            {/* Botão Flutuante do Carrinho / Cesta */}
+            {/* Botão Flutuante (FAB) do Carrinho */}
             <button
                 onClick={() => setIsCartOpen(true)}
                 data-testid="btn-open-cart"
-                style={{ position: "fixed", bottom: isTvOrLarge ? 36 : 24, right: isTvOrLarge ? 36 : 24, zIndex: 50, backgroundColor: "#f59e0b", color: "#121214", border: "none", borderRadius: "50%", width: isTvOrLarge ? 80 : 64, height: isTvOrLarge ? 80 : 64, boxShadow: "0 4px 15px rgba(245, 158, 11, 0.4)", fontSize: isTvOrLarge ? "2.2rem" : "1.8rem", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-                aria-label="Ver Cesta"
+                aria-label="Ver Cesta de Compras"
+                style={{ position: "fixed", bottom: isMobile ? "24px" : "32px", right: isMobile ? "24px" : "32px", zIndex: 50, display: "flex", height: isMobile ? "64px" : "80px", width: isMobile ? "64px" : "80px", alignItems: "center", justifyContent: "center", borderRadius: "50%", border: "none", backgroundColor: "#f59e0b", fontSize: isMobile ? "1.5rem" : "1.875rem", boxShadow: "0 4px 15px rgba(245,158,11,0.4)", cursor: "pointer" }}
             >
                 🛒
                 {cartItems.length > 0 && (
-                    <span style={{ position: "absolute", top: 4, right: 4, backgroundColor: "#ef4444", color: "#fff", fontSize: "0.75rem", fontWeight: "bold", width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ position: "absolute", top: 0, right: 0, display: "flex", height: isMobile ? "24px" : "28px", width: isMobile ? "24px" : "28px", alignItems: "center", justifyContent: "center", borderRadius: "50%", backgroundColor: "#ef4444", fontSize: isMobile ? "0.75rem" : "0.875rem", fontWeight: "bold", color: "#fff", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
                         {cartItems.reduce((acc, i) => acc + i.quantity, 0)}
                     </span>
                 )}
             </button>
 
-            {/* Gaveta do Carrinho de Autoatendimento */}
+            {/* Modais */}
             <StorefrontCartDrawer
                 isOpen={isCartOpen}
                 onClose={() => setIsCartOpen(false)}
@@ -323,7 +331,6 @@ export function StorefrontOrderPage() {
                 onOpenAuthModal={() => setIsAuthModalOpen(true)}
             />
 
-            {/* Modal de Autenticação / Cadastro para Finalizar Pedido */}
             <StorefrontAuthModal
                 isOpen={isAuthModalOpen}
                 onClose={() => setIsAuthModalOpen(false)}
