@@ -111,15 +111,15 @@ export function StockPage() {
                     saldo por produto · linhas em vermelho estão abaixo do mínimo
                 </span>
                 <span style={{ flex: 1 }} />
-                <button type="button" className="btn-ghost" onClick={() => setInventoryOpen(true)}>
+                <button type="button" data-testid="btn-open-inventory" className="btn-ghost" onClick={() => setInventoryOpen(true)}>
                     Inventário
                 </button>
-                <button type="button" className="btn-primary" onClick={() => { setError(null); setMovementOpen(true); }}>
+                <button type="button" data-testid="btn-open-movement" className="btn-primary" onClick={() => { setError(null); setMovementOpen(true); }}>
                     + Lançar movimento
                 </button>
             </div>
 
-            {error && !movementOpen && limitsItem === null && <p className="error-text">{error}</p>}
+            {error && !movementOpen && limitsItem === null && <p className="error-text" data-testid="stock-error">{error}</p>}
             {stockQuery.isError && <QueryError error={stockQuery.error} what="o estoque" />}
             {menuQuery.isError && <QueryError error={menuQuery.error} what="os produtos" />}
 
@@ -131,7 +131,7 @@ export function StockPage() {
                     title="Nenhum item de estoque"
                     description="Lance uma entrada (compra, ajuste ou inventário) para começar a controlar o saldo."
                     action={
-                        <button type="button" className="btn-primary" onClick={() => { setError(null); setMovementOpen(true); }}>
+                        <button type="button" data-testid="btn-empty-movement" className="btn-primary" onClick={() => { setError(null); setMovementOpen(true); }}>
                             + Lançar movimento
                         </button>
                     }
@@ -139,9 +139,9 @@ export function StockPage() {
             )}
 
             {!stockQuery.isLoading && (stockQuery.data?.length ?? 0) > 0 && (
-                <div className="ticket rise rise-1">
+                <div className="ticket rise rise-1" data-testid="stock-list">
                     {(stockQuery.data ?? []).map((item) => (
-                        <div className="ticket-row" key={item.id}>
+                        <div className="ticket-row" key={item.id} data-testid={`stock-item-${item.productId}`}>
                             <div style={{ display: "grid", gap: 2 }}>
                                 <span style={{ color: item.isBelowMinimum ? "var(--danger)" : "var(--ink)" }}>
                                     {productName.get(item.productId) ?? `Produto ${item.productId}`}
@@ -154,11 +154,13 @@ export function StockPage() {
                                 <span
                                     className="mono-num display"
                                     style={{ fontSize: "1.5rem", color: item.isBelowMinimum ? "var(--danger)" : "var(--amber)" }}
+                                    data-testid={`stock-qty-${item.productId}`}
                                 >
                                     {item.currentQuantity}
                                 </span>
                                 <button
                                     type="button"
+                                    data-testid={`btn-ledger-${item.productId}`}
                                     className="btn-ghost"
                                     style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                                     onClick={() => setLedgerItem(item)}
@@ -167,6 +169,7 @@ export function StockPage() {
                                 </button>
                                 <button
                                     type="button"
+                                    data-testid={`btn-limits-${item.productId}`}
                                     className="btn-ghost"
                                     style={{ minHeight: 44, padding: "0 12px", fontSize: "0.85rem" }}
                                     onClick={() => {
@@ -195,7 +198,7 @@ export function StockPage() {
 
             {movementOpen && (
                 <Modal title="Lançar movimento" onClose={() => setMovementOpen(false)} variant="center" wide>
-                    <SelectField label="Produto" value={productId} onChange={(e) => setProductId(e.target.value)} autoFocus>
+                    <SelectField data-testid="select-movement-product" label="Produto" value={productId} onChange={(e) => setProductId(e.target.value)} autoFocus>
                         <option value="">Selecione…</option>
                         {(menuQuery.data ?? []).map((p) => (
                             <option key={p.id} value={p.id}>{p.name}</option>
@@ -204,7 +207,7 @@ export function StockPage() {
 
                     <div className="ui-row ui-row-wrap">
                         <div style={{ flex: 1, minWidth: 200 }}>
-                            <SelectField label="Tipo" value={typeId} onChange={(e) => setTypeId(Number(e.target.value))}>
+                            <SelectField data-testid="select-movement-type" label="Tipo" value={typeId} onChange={(e) => setTypeId(Number(e.target.value))}>
                                 {manualStockMovementTypes.map((id) => (
                                     <option key={id} value={id}>
                                         {stockMovementTypeLabel[id]} {stockMovementIsInflow[id] ? "(+)" : "(−)"}
@@ -214,6 +217,7 @@ export function StockPage() {
                         </div>
                         <div style={{ flex: 1, minWidth: 140 }}>
                             <TextField
+                                data-testid="input-movement-quantity"
                                 label="Quantidade"
                                 inputMode="decimal"
                                 value={quantity}
@@ -225,6 +229,7 @@ export function StockPage() {
                     <div className="ui-row ui-row-wrap">
                         <div style={{ flex: 1, minWidth: 160 }}>
                             <TextField
+                                data-testid="input-movement-cost"
                                 label="Custo unit. (R$)"
                                 inputMode="decimal"
                                 value={unitCost}
@@ -233,6 +238,7 @@ export function StockPage() {
                         </div>
                         <div style={{ flex: 1, minWidth: 160 }}>
                             <TextField
+                                data-testid="input-movement-doc"
                                 label="Documento (NF)"
                                 value={documentNumber}
                                 onChange={(e) => setDocumentNumber(e.target.value)}
@@ -240,9 +246,9 @@ export function StockPage() {
                         </div>
                     </div>
 
-                    <TextField label="Observações" value={notes} onChange={(e) => setNotes(e.target.value)} />
+                    <TextField data-testid="input-movement-notes" label="Observações" value={notes} onChange={(e) => setNotes(e.target.value)} />
 
-                    {error && <p className="error-text">{error}</p>}
+                    {error && <p className="error-text" data-testid="movement-error">{error}</p>}
 
                     <Button
                         variant="primary"
@@ -250,6 +256,7 @@ export function StockPage() {
                         loading={movementMutation.isPending}
                         disabled={productId === "" || (parseNum(quantity) ?? 0) <= 0}
                         onClick={() => movementMutation.mutate()}
+                        data-testid="btn-submit-movement"
                     >
                         Registrar
                     </Button>
@@ -268,7 +275,7 @@ export function StockPage() {
                         <EmptyState icon="🧾" title="Sem movimentos" description="Este produto ainda não teve entradas ou saídas registradas." />
                     )}
                     {!ledgerQuery.isLoading && (ledgerQuery.data?.length ?? 0) > 0 && (
-                        <div className="ticket" style={{ display: "grid", gap: 8 }}>
+                        <div className="ticket" style={{ display: "grid", gap: 8 }} data-testid="ledger-list">
                             {(ledgerQuery.data ?? []).map((movement) => {
                                 const inflow = stockMovementIsInflow[movement.stockMovementTypeId];
                                 return (
@@ -295,6 +302,7 @@ export function StockPage() {
             {limitsItem !== null && (
                 <Modal title="Limites de estoque" onClose={() => setLimitsItem(null)} variant="center">
                     <TextField
+                        data-testid="input-limit-min"
                         label="Quantidade mínima"
                         inputMode="decimal"
                         value={minQ}
@@ -302,15 +310,16 @@ export function StockPage() {
                         autoFocus
                     />
                     <TextField
+                        data-testid="input-limit-max"
                         label="Quantidade máxima (opcional)"
                         inputMode="decimal"
                         value={maxQ}
                         onChange={(e) => setMaxQ(e.target.value)}
                     />
 
-                    {error && <p className="error-text">{error}</p>}
+                    {error && <p className="error-text" data-testid="limits-error">{error}</p>}
 
-                    <Button variant="primary" block loading={limitsMutation.isPending} onClick={() => limitsMutation.mutate()}>
+                    <Button variant="primary" block loading={limitsMutation.isPending} onClick={() => limitsMutation.mutate()} data-testid="btn-submit-limits">
                         Salvar
                     </Button>
                 </Modal>

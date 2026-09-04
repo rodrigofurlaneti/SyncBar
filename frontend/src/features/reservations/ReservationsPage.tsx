@@ -1,5 +1,6 @@
 ﻿import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Swal from "sweetalert2";
 import { useDialog } from "../../ui/Dialog";
 import { cancelReservation, confirmReservation, createReservation, getReservationsByBranch } from "./api";
 import { getTablesByBranch } from "../tables/api";
@@ -10,7 +11,6 @@ import { QueryError } from "../../components/QueryError";
 import { Modal } from "../../ui/Modal";
 import { Button } from "../../ui/Button";
 import { TextField, SelectField } from "../../ui/Field";
-import { useToast } from "../../ui/Toast";
 import { EmptyState } from "../../ui/EmptyState";
 import { SkeletonList } from "../../ui/Skeleton";
 
@@ -25,12 +25,10 @@ function defaultRange() {
 export function ReservationsPage() {
     const queryClient = useQueryClient();
     const dialog = useDialog();
-    const toast = useToast();
     const { branchId } = useAuthStore();
     const [creating, setCreating] = useState(false);
     const [confirmingId, setConfirmingId] = useState<number | null>(null);
     const [tableForConfirm, setTableForConfirm] = useState("");
-    const [error, setError] = useState<string | null>(null);
     const range = useMemo(defaultRange, []);
 
     const [form, setForm] = useState({
@@ -52,7 +50,16 @@ export function ReservationsPage() {
     });
 
     const refresh = () => void queryClient.invalidateQueries({ queryKey: ["reservations"] });
-    const onApiError = (e: unknown) => setError(e instanceof ApiError ? e.message : "Operação falhou.");
+
+    const onApiError = (e: unknown) => {
+        const message = e instanceof ApiError ? e.message : "Operação falhou.";
+        Swal.fire({
+            title: "Atenção",
+            text: message,
+            icon: "error",
+            confirmButtonText: "Ok",
+        });
+    };
 
     const createMutation = useMutation({
         mutationFn: () =>
@@ -65,11 +72,16 @@ export function ReservationsPage() {
                 notes: form.notes.trim() === "" ? null : form.notes.trim(),
             }),
         onSuccess: () => {
-            setError(null);
             setCreating(false);
             setForm({ customerName: "", customerPhone: "", partySize: 2, reservedFor: "", notes: "" });
             refresh();
-            toast.success("Reserva criada.");
+            Swal.fire({
+                title: "Reserva criada!",
+                text: "A nova reserva foi cadastrada com sucesso.",
+                icon: "success",
+                timer: 1500,
+                showConfirmButton: false,
+            });
         },
         onError: onApiError,
     });
@@ -77,12 +89,17 @@ export function ReservationsPage() {
     const confirmMutation = useMutation({
         mutationFn: (id: number) => confirmReservation(id, Number(tableForConfirm)),
         onSuccess: () => {
-            setError(null);
             setConfirmingId(null);
             setTableForConfirm("");
             refresh();
             void queryClient.invalidateQueries({ queryKey: ["tables"] });
-            toast.success("Reserva confirmada.");
+            Swal.fire({
+                title: "Reserva confirmada!",
+                text: "A mesa foi vinculada e a reserva está confirmada.",
+                icon: "success",
+                timer: 1500,
+                showConfirmButton: false,
+            });
         },
         onError: onApiError,
     });
@@ -92,7 +109,13 @@ export function ReservationsPage() {
         onSuccess: () => {
             refresh();
             void queryClient.invalidateQueries({ queryKey: ["tables"] });
-            toast.success("Reserva cancelada.");
+            Swal.fire({
+                title: "Reserva cancelada",
+                text: "A reserva foi cancelada com sucesso.",
+                icon: "success",
+                timer: 1500,
+                showConfirmButton: false,
+            });
         },
         onError: onApiError,
     });
@@ -109,13 +132,12 @@ export function ReservationsPage() {
                 <h2 className="display" style={{ fontSize: "1.7rem" }}>Reservas de mesa</h2>
                 <span style={{ color: "var(--ink-faint)", fontSize: "0.9rem" }}>próximos 14 dias</span>
                 <span style={{ flex: 1 }} />
-                <button className="btn-primary" type="button" onClick={() => { setError(null); setCreating(true); }}>
+                <button className="btn-primary" data-testid="btn-new-reservation" type="button" onClick={() => setCreating(true)}>
                     + Nova reserva
                 </button>
             </div>
 
             {reservationsQuery.isError && <QueryError error={reservationsQuery.error} what="as reservas" />}
-            {error && !creating && confirmingId === null && <p className="error-text">{error}</p>}
 
             {reservationsQuery.isLoading && <SkeletonList rows={4} rowHeight={80} />}
 
@@ -125,7 +147,7 @@ export function ReservationsPage() {
                     title="Nenhuma reserva nos próximos 14 dias"
                     description="Crie uma reserva para reservar uma mesa com antecedência."
                     action={
-                        <button className="btn-primary" type="button" onClick={() => { setError(null); setCreating(true); }}>
+                        <button className="btn-primary" data-testid="btn-empty-new-reservation" type="button" onClick={() => setCreating(true)}>
                             + Nova reserva
                         </button>
                     }
@@ -133,37 +155,54 @@ export function ReservationsPage() {
             )}
 
             {!reservationsQuery.isLoading && sorted.length > 0 && (
-            <div className="rise rise-1" style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                {sorted.map((r) => (
-                    <div key={r.id} className="ticket">
-                        <div className="ticket-head">
-                            <span>{r.customerName}</span>
-                            <span className="chip" style={{ "--dot": "var(--busy)" } as React.CSSProperties}>
-                                {reservationStatusLabel[r.reservationStatusId]}
-                            </span>
-                        </div>
-                        <div className="ticket-row" style={{ alignItems: "center" }}>
-                            <div style={{ display: "grid", gap: 2 }}>
-                                <span className="mono-num">
-                                    {new Date(r.reservedFor).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
-                                </span>
-                                <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
-                                    {r.partySize} pessoas {r.customerPhone ? `· ${r.customerPhone}` : ""}
+                <div className="rise rise-1" style={{ display: "grid", gap: 10, marginTop: 12 }} data-testid="reservations-list">
+                    {sorted.map((r) => (
+                        <div key={r.id} className="ticket" data-testid={`reservation-item-${r.id}`}>
+                            <div className="ticket-head">
+                                <span>{r.customerName}</span>
+                                <span className="chip" style={{ "--dot": "var(--busy)" } as React.CSSProperties}>
+                                    {reservationStatusLabel[r.reservationStatusId]}
                                 </span>
                             </div>
-                            {r.reservationStatusId === ReservationStatus.Pending && (
-                                <div style={{ display: "flex", gap: 8 }}>
-                                    <button
-                                        className="btn-ghost"
-                                        type="button"
-                                        style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
-                                        onClick={() => { setError(null); setConfirmingId(r.id); }}
-                                    >
-                                        Confirmar
-                                    </button>
+                            <div className="ticket-row" style={{ alignItems: "center" }}>
+                                <div style={{ display: "grid", gap: 2 }}>
+                                    <span className="mono-num">
+                                        {new Date(r.reservedFor).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                                    </span>
+                                    <span style={{ fontSize: "0.8rem", color: "var(--ink-faint)" }}>
+                                        {r.partySize} pessoas {r.customerPhone ? `· ${r.customerPhone}` : ""}
+                                    </span>
+                                </div>
+                                {r.reservationStatusId === ReservationStatus.Pending && (
+                                    <div style={{ display: "flex", gap: 8 }}>
+                                        <button
+                                            className="btn-ghost"
+                                            type="button"
+                                            data-testid={`btn-confirm-${r.id}`}
+                                            style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
+                                            onClick={() => setConfirmingId(r.id)}
+                                        >
+                                            Confirmar
+                                        </button>
+                                        <button
+                                            className="btn-danger"
+                                            type="button"
+                                            data-testid={`btn-cancel-${r.id}`}
+                                            style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
+                                            onClick={async () => {
+                                                if (await dialog.confirm({ title: "Cancelar reserva", message: `Cancelar a reserva de ${r.customerName}?`, confirmLabel: "Cancelar reserva", danger: true }))
+                                                    cancelMutation.mutate(r.id);
+                                            }}
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                )}
+                                {r.reservationStatusId === ReservationStatus.Confirmed && (
                                     <button
                                         className="btn-danger"
                                         type="button"
+                                        data-testid={`btn-cancel-${r.id}`}
                                         style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
                                         onClick={async () => {
                                             if (await dialog.confirm({ title: "Cancelar reserva", message: `Cancelar a reserva de ${r.customerName}?`, confirmLabel: "Cancelar reserva", danger: true }))
@@ -172,30 +211,17 @@ export function ReservationsPage() {
                                     >
                                         Cancelar
                                     </button>
-                                </div>
-                            )}
-                            {r.reservationStatusId === ReservationStatus.Confirmed && (
-                                <button
-                                    className="btn-danger"
-                                    type="button"
-                                    style={{ minHeight: 44, padding: "0 10px", fontSize: "0.85rem" }}
-                                    onClick={async () => {
-                                        if (await dialog.confirm({ title: "Cancelar reserva", message: `Cancelar a reserva de ${r.customerName}?`, confirmLabel: "Cancelar reserva", danger: true }))
-                                            cancelMutation.mutate(r.id);
-                                    }}
-                                >
-                                    Cancelar
-                                </button>
-                            )}
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
             )}
 
             {creating && (
                 <Modal title="Nova reserva" onClose={() => setCreating(false)} variant="center">
                     <TextField
+                        data-testid="input-customer-name"
                         label="Nome do cliente"
                         type="text"
                         value={form.customerName}
@@ -206,6 +232,7 @@ export function ReservationsPage() {
                     <div className="ui-row ui-row-wrap">
                         <div style={{ flex: 1, minWidth: 140 }}>
                             <TextField
+                                data-testid="input-customer-phone"
                                 label="Telefone"
                                 type="text"
                                 value={form.customerPhone}
@@ -214,6 +241,7 @@ export function ReservationsPage() {
                         </div>
                         <div style={{ flex: 1, minWidth: 100 }}>
                             <TextField
+                                data-testid="input-party-size"
                                 label="Pessoas"
                                 type="number"
                                 min={1}
@@ -224,6 +252,7 @@ export function ReservationsPage() {
                     </div>
 
                     <TextField
+                        data-testid="input-reserved-for"
                         label="Data e hora"
                         type="datetime-local"
                         value={form.reservedFor}
@@ -231,15 +260,15 @@ export function ReservationsPage() {
                     />
 
                     <TextField
+                        data-testid="input-notes"
                         label="Observações"
                         type="text"
                         value={form.notes}
                         onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                     />
 
-                    {error && <p className="error-text">{error}</p>}
-
                     <Button
+                        data-testid="btn-submit-reservation"
                         variant="primary"
                         block
                         loading={createMutation.isPending}
@@ -253,7 +282,7 @@ export function ReservationsPage() {
 
             {confirmingId !== null && (
                 <Modal title="Confirmar reserva — escolher mesa" onClose={() => setConfirmingId(null)} variant="center">
-                    <SelectField label="Mesa livre" value={tableForConfirm} onChange={(e) => setTableForConfirm(e.target.value)} autoFocus>
+                    <SelectField data-testid="select-free-table" label="Mesa livre" value={tableForConfirm} onChange={(e) => setTableForConfirm(e.target.value)} autoFocus>
                         <option value="">Selecione…</option>
                         {freeTables.map((t) => (
                             <option key={t.id} value={t.id}>Mesa {t.number}</option>
@@ -262,8 +291,8 @@ export function ReservationsPage() {
                     {freeTables.length === 0 && (
                         <p style={{ color: "var(--ink-faint)", fontSize: "0.85rem" }}>Nenhuma mesa livre no momento.</p>
                     )}
-                    {error && <p className="error-text">{error}</p>}
                     <Button
+                        data-testid="btn-submit-confirm-reservation"
                         variant="primary"
                         block
                         loading={confirmMutation.isPending}

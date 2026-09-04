@@ -3,32 +3,34 @@ import { Navigate } from "react-router-dom";
 import { featurePath, useMyFeatures } from "./hooks";
 
 interface Props {
-  code: string;
-  children: ReactNode;
+    code: string;
+    children: ReactNode;
 }
 
 export function FeatureGate({ code, children }: Props) {
-  const featuresQuery = useMyFeatures();
+    const featuresQuery = useMyFeatures();
 
-  if (featuresQuery.isLoading) return null;
+    if (featuresQuery.isLoading) return null;
 
-  const data = featuresQuery.data;
-  const allowed = data?.canManageAccess || data?.features.includes(code);
-  if (allowed) return <>{children}</>;
+    const data = featuresQuery.data;
+    const allowed = data?.canManageAccess || data?.features.includes(code);
+    if (allowed) return <>{children}</>;
 
-  const firstAllowed = data?.features.find((f) => featurePath[f] !== undefined);
-  return <Navigate to={firstAllowed ? featurePath[firstAllowed] : "/sem-acesso"} replace />;
+    const firstAllowed = data?.features.find((f) => featurePath[f] !== undefined);
+    return <Navigate to={firstAllowed ? featurePath[firstAllowed] : "/sem-acesso"} replace />;
 }
 
 export function NoAccessPage() {
-  return (
-    <main style={{ display: "grid", placeItems: "center", minHeight: "60vh" }}>
-      <div style={{ textAlign: "center", display: "grid", gap: 8 }}>
-        <span className="display" style={{ fontSize: "2rem" }}>Sem telas liberadas</span>
-        <span style={{ color: "var(--ink-dim)" }}>
-          Peça ao gerente para conceder acesso na tela Acessos.
-        </span>
-      </div>
-    </main>
-  );
+    return (
+        <main style={{ display: "grid", placeItems: "center", minHeight: "60vh" }}>
+            <div style={{ textAlign: "center", display: "grid", gap: 8 }}>
+                <span className="display" style={{ fontSize: "2rem" }} data-testid="no-access-title">
+                    Sem telas liberadas
+                </span>
+                <span style={{ color: "var(--ink-dim)" }} data-testid="no-access-message">
+                    Peça ao gerente para conceder acesso na tela Acessos.
+                </span>
+            </div>
+        </main>
+    );
 }

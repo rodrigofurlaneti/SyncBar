@@ -247,6 +247,7 @@ export function SettingsPage() {
                             </span>
                         )}
                         <input
+                            data-testid="input-comanda-limit"
                             placeholder="novo limite"
                             inputMode="decimal"
                             value={limitInput}
@@ -255,6 +256,7 @@ export function SettingsPage() {
                         />
                         <button
                             type="button"
+                            data-testid="btn-save-comanda-limit"
                             className="btn-ghost"
                             disabled={limitMutation.isPending || limitInput.trim() === ""}
                             onClick={() => {
@@ -279,6 +281,7 @@ export function SettingsPage() {
                     </div>
                     <div className="ui-row" style={{ gap: 8 }}>
                         <select
+                            data-testid="select-self-service-employee"
                             value={selfServiceEmployeeId}
                             onChange={(e) => setSelfServiceEmployeeId(e.target.value)}
                             style={{ width: 200 }}
@@ -290,6 +293,7 @@ export function SettingsPage() {
                         </select>
                         <button
                             type="button"
+                            data-testid="btn-save-self-service"
                             className="btn-ghost"
                             disabled={selfServiceEmployeeId === "" || selfServiceMutation.isPending}
                             onClick={() => selfServiceMutation.mutate(Number(selfServiceEmployeeId))}
