@@ -1,6 +1,7 @@
 ﻿import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Swal from "sweetalert2";
 import { login } from "./api";
 import { useAuthStore } from "../../stores/authStore";
 import { useThemeStore } from "../../stores/themeStore";
@@ -27,16 +28,33 @@ export function LoginPage() {
         onSuccess: (session) => {
             queryClient.clear();
             setSession(session);
-            navigate("/", { replace: true });
-        },
-    });
 
-    const errorMessage =
-        mutation.error instanceof ApiError
-            ? mutation.error.message
-            : mutation.isError
-                ? "Não foi possível conectar à API."
-                : null;
+            // Feedback de Sucesso com SweetAlert
+            Swal.fire({
+                title: "Bem-vindo(a)!",
+                text: "Login realizado com sucesso.",
+                icon: "success",
+                timer: 1500, // Fecha sozinho após 1.5s
+                showConfirmButton: false,
+            }).then(() => {
+                navigate("/", { replace: true });
+            });
+        },
+        onError: (error) => {
+            const message = error instanceof ApiError
+                ? error.message
+                : "Não foi possível conectar à API.";
+
+            // Feedback de Erro com SweetAlert
+            Swal.fire({
+                title: "Falha na Autenticação",
+                text: message,
+                icon: "error",
+                confirmButtonText: "Tentar novamente",
+                confirmButtonColor: "var(--primary)", // Usa a cor principal do seu CSS
+            });
+        }
+    });
 
     return (
         <>
@@ -124,7 +142,6 @@ export function LoginPage() {
                         </div>
                     </div>
 
-                    {/* htmlFor adicionado apontando para o id do input */}
                     <label htmlFor="username" style={{ display: "grid", gap: 6 }}>
                         <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>Usuário</span>
                         <input
@@ -139,7 +156,6 @@ export function LoginPage() {
                         />
                     </label>
 
-                    {/* htmlFor adicionado apontando para o id do input */}
                     <label htmlFor="password" style={{ display: "grid", gap: 6 }}>
                         <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>Senha</span>
                         <input
@@ -153,8 +169,6 @@ export function LoginPage() {
                             required
                         />
                     </label>
-
-                    {errorMessage && <p className="error-text" data-testid="error-message">{errorMessage}</p>}
 
                     <button
                         className="btn-primary"
