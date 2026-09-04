@@ -12,6 +12,7 @@ import { OpenOrderDialog } from "./OpenOrderDialog";
 import { OpenDeliveryOrderDialog } from "./OpenDeliveryOrderDialog";
 import { QueryError } from "../../components/QueryError";
 import { Overlay } from "./Overlay";
+import { StorefrontHubModal } from "../storeFront/StorefrontHubModal";
 
 const statusColor: Record<number, string> = {
     [TableStatus.Livre]: "var(--free)",
@@ -53,6 +54,9 @@ export function OrdersPage() {
     const [qrTable, setQrTable] = useState<TableResponse | null>(null);
     const [qrUrl, setQrUrl] = useState<string | null>(null);
     const [openingDelivery, setOpeningDelivery] = useState(false);
+
+    // Estado para controlar a abertura do modal unificado de autoatendimento da filial
+    const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
 
     const qrMutation = useMutation({
         mutationFn: (tableId: number) => generateTableQrToken(tableId),
@@ -138,6 +142,16 @@ export function OrdersPage() {
                             onClick={() => { setQrUrl(null); setQrTable(tablesQuery.data?.[0] ?? null); }}
                         >
                             Gerar QR de autoatendimento
+                        </button>
+
+                        {/* Botão para abrir o modal unificado de link e QR Code da filial */}
+                        <button
+                            className="btn-ghost"
+                            type="button"
+                            onClick={() => setIsLinkModalOpen(true)}
+                            data-testid="btn-open-storefront-modal"
+                        >
+                            🔗 Gerar link de autoatendimento
                         </button>
                     </div>
 
@@ -305,6 +319,13 @@ export function OrdersPage() {
                     }}
                 />
             )}
+
+            {/* Modal limpo da filial (Link Geral + QR Code Geral da Filial) */}
+            <StorefrontHubModal
+                isOpen={isLinkModalOpen}
+                onClose={() => setIsLinkModalOpen(false)}
+                branchId={branchId}
+            />
 
             {qrTable && (
                 <Overlay title="QR Code de autoatendimento" onClose={() => setQrTable(null)} data-testid="qr-overlay">

@@ -237,7 +237,11 @@ export function PreparationPage() {
                                     </span>
                                     {ticket.orderTypeId !== OrderType.Mesa && (
                                         <span className="chip" style={{ "--dot": "var(--reserved)" } as React.CSSProperties}>
-                                            {ticket.orderTypeId === OrderType.Delivery ? "DELIVERY" : "RETIRADA"}
+                                            {ticket.orderTypeId === OrderType.Delivery
+                                                ? "DELIVERY"
+                                                : ticket.orderTypeId === OrderType.WebSite
+                                                    ? "AUTOATENDIMENTO WEB SITE"
+                                                    : "RETIRADA"}
                                         </span>
                                     )}
                                 </div>

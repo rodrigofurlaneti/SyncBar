@@ -725,12 +725,14 @@ export const OrderType = {
   Mesa: 1,
   Retirada: 2,
   Delivery: 3,
+  WebSite: 4,
 } as const;
 
 export const orderTypeLabel: Record<number, string> = {
   1: "Mesa",
   2: "Retirada",
   3: "Delivery",
+  4: "WebSite"
 };
 
 export interface PublicMenuResponse {

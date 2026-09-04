@@ -41,6 +41,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Comanda> Comandas => Set<Comanda>();
     public DbSet<CustomerOrder> CustomerOrders => Set<CustomerOrder>();
+    public DbSet<CustomerAppUser> CustomerAppUsers => Set<CustomerAppUser>();
+    public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderItemComplement> OrderItemComplements => Set<OrderItemComplement>();
     public DbSet<CashRegister> CashRegisters => Set<CashRegister>();

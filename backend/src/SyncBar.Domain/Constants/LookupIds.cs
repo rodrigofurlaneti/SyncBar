@@ -8,6 +8,7 @@ public static class OrderStatusIds
     public const long AguardandoPagamento = 3;
     public const long Pago = 4;
     public const long Cancelado = 5;
+    public const long WebSite = 6;
 }
 
 public static class OrderItemStatusIds
@@ -37,6 +38,7 @@ public static class OrderTypeIds
     public const long Mesa = 1;
     public const long Retirada = 2;
     public const long Delivery = 3;
+    public const long WebSite = 4;
 }
 
 // Não é lookup seedado (sem tabela própria) — só uma constante de código para a
