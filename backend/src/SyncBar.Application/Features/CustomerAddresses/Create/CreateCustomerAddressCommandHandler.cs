@@ -24,7 +24,8 @@ namespace SyncBar.Application.Features.CustomerAddresses.Create
                         request.CustomerId,
                         request.Street,
                         request.Number,
-                        request.Supplement
+                        request.Supplement,
+                        request.ZipCode
                     );
 
                     if (addressResult.IsFailure)

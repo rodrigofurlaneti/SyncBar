@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace SyncBar.Infrastructure.Persistence.Repositories
 {
-    public sealed class CustomerAddressRepository(AppDbContext context) : ICustomerAddressRepository
+    internal sealed class CustomerAddressRepository(AppDbContext context) : ICustomerAddressRepository
     {
         public async Task<CustomerAddress?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         {

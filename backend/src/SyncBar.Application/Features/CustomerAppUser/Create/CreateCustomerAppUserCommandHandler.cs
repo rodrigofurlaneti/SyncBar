@@ -1,4 +1,5 @@
-﻿using SyncBar.Application.Abstractions.Messaging;
+﻿using SyncBar.Application.Abstractions.Authentication;
+using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Features.CustomerAppUser.Create;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -10,6 +11,7 @@ internal sealed class CreateCustomerAppUserCommandHandler(
     ICustomerAppUserRepository customerAppUserRepository,
     ICustomerRepository customerRepository,
     ILogTrackerRepository logRepository,
+    IPasswordHasher passwordHasher,
     IUnitOfWork unitOfWork)
     : BaseCommandHandler<CreateCustomerAppUserCommand, long>(logRepository, unitOfWork)
 {
@@ -40,7 +42,7 @@ internal sealed class CreateCustomerAppUserCommandHandler(
                     customerId = customer.Id;
                 }
 
-                string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                string passwordHash = passwordHasher.Hash(request.Password);
                 var customerAppUserResult = SyncBar.Domain.Entities.CustomerAppUser.Create(
                     request.CompanyId,
                     request.BranchId,

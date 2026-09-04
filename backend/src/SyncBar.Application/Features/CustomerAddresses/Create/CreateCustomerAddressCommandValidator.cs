@@ -24,6 +24,10 @@ namespace SyncBar.Application.Features.CustomerAddresses.Create
             RuleFor(x => x.Supplement)
                 .MaximumLength(50)
                 .WithMessage("Supplement must not exceed 50 characters.");
+
+            RuleFor(x => x.ZipCode)
+                .MaximumLength(9)
+                .WithMessage("ZipCode must not exceed 9 characters.");
         }
     }
 }

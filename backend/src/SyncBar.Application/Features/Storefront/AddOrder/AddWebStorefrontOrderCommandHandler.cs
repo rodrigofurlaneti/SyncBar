@@ -12,7 +12,7 @@ namespace SyncBar.Application.Features.Storefront.AddOrder
         private readonly IBranchRepository _branchRepository;
         private readonly IProductRepository _productRepository;
         private readonly ICustomerOrderRepository _orderRepository;
-        private readonly ICustomerAddressRepository _customerAddressRepository; // <-- Adicionado
+        private readonly ICustomerAddressRepository _customerAddressRepository;
         private readonly IProductComplementGroupRepository _productComplementGroupRepository;
         private readonly IComplementGroupRepository _complementGroupRepository;
         private readonly IPrintingService _printingService;
@@ -71,7 +71,7 @@ namespace SyncBar.Application.Features.Storefront.AddOrder
                             deliveryAddressFormatted = $"{customerAddress.Street}, Nº {customerAddress.Number}";
                             if (!string.IsNullOrWhiteSpace(customerAddress.Supplement))
                             {
-                                deliveryAddressFormatted += $" - {customerAddress.Supplement}";
+                                deliveryAddressFormatted += $" - {customerAddress.Supplement} - {customerAddress.ZipCode}";
                             }
                         }
                     }

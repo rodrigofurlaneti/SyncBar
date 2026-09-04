@@ -37,6 +37,7 @@ export type CustomerAddressPayload = {
     street: string;
     number: string;
     supplement?: string | null;
+    zipCode?: string | null;
 };
 
 // Tipo de resposta para o endereço do cliente
@@ -48,6 +49,7 @@ export type CustomerAddressResponse = {
     street: string;
     number: string;
     supplement?: string | null;
+    zipCode?: string | null;
     lastOrderId?: number | null;
     isActive: boolean;
 };

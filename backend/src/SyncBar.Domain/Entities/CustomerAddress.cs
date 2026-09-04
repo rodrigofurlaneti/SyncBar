@@ -11,6 +11,7 @@ public sealed class CustomerAddress : AggregateRoot
     public string Street { get; private set; } = null!;
     public string Number { get; private set; } = null!;
     public string Supplement { get; private set; } = null!;
+    public string ZipCode { get; private set; } = null!;
     public DateTime? LastOrderAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
@@ -24,7 +25,8 @@ public sealed class CustomerAddress : AggregateRoot
         long? customerId,
         string street,
         string number,
-        string supplement) : base(0)
+        string supplement,
+        string zipCode) : base(0)
     {
         CompanyId = companyId;
         BranchId = branchId;
@@ -32,6 +34,7 @@ public sealed class CustomerAddress : AggregateRoot
         Street = street;
         Number = number;
         Supplement = supplement ?? string.Empty;
+        ZipCode = zipCode ?? string.Empty;
         IsActive = true;
         CreatedAt = DateTime.Now;
     }
@@ -42,26 +45,32 @@ public sealed class CustomerAddress : AggregateRoot
         long? customerId,
         string street,
         string number,
-        string supplement)
+        string supplement,
+        string zipCode)
     {
         if (string.IsNullOrWhiteSpace(street))
             return Result.Failure<CustomerAddress>(new Error("CustomerAddress.EmptyStreet", "Street is required."));
         if (string.IsNullOrWhiteSpace(number))
             return Result.Failure<CustomerAddress>(new Error("CustomerAddress.EmptyNumber", "Number is required."));
+        if (string.IsNullOrWhiteSpace(zipCode))
+            return Result.Failure<CustomerAddress>(new Error("CustomerAddress.EmptyZipCode", "Zip code is required."));
 
-        return Result.Success(new CustomerAddress(companyId, branchId, customerId, street, number, supplement));
+        return Result.Success(new CustomerAddress(companyId, branchId, customerId, street, number, supplement, zipCode));
     }
 
-    public Result UpdateDetails(string street, string number, string supplement)
+    public Result UpdateDetails(string street, string number, string supplement, string zipCode)
     {
         if (string.IsNullOrWhiteSpace(street))
             return Result.Failure(new Error("CustomerAddress.EmptyStreet", "Street is required."));
         if (string.IsNullOrWhiteSpace(number))
             return Result.Failure(new Error("CustomerAddress.EmptyNumber", "Number is required."));
+        if (string.IsNullOrWhiteSpace(zipCode))
+            return Result.Failure(new Error("CustomerAddress.EmptyZipCode", "Zip code is required."));
 
         Street = street;
         Number = number;
         Supplement = supplement ?? string.Empty;
+        ZipCode = zipCode ?? string.Empty;
         UpdatedAt = DateTime.Now;
         return Result.Success();
     }

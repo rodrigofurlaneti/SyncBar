@@ -7,6 +7,7 @@ namespace SyncBar.Application.Features.CustomerAddresses.Create
         long? CustomerId,
         string Street,
         string Number,
-        string Supplement
+        string Supplement,
+        string?ZipCode
     ) : ICommand<long>;
 }
