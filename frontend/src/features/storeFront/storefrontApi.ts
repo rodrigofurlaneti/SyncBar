@@ -8,14 +8,6 @@ export type StorefrontItemRequest = {
     complements?: OrderItemComplementSelection[];
 };
 
-export type StorefrontOrderPayload = {
-    customerName: string;
-    customerPhone?: string | null;
-    generalNotes?: string | null;
-    items: StorefrontItemRequest[];
-    customerId?: number | null;
-};
-
 export type StorefrontMenuResponse = {
     items: MenuItemResponse[];
 };
@@ -52,6 +44,23 @@ export type CustomerAddressResponse = {
     zipCode?: string | null;
     lastOrderId?: number | null;
     isActive: boolean;
+};
+
+// Payload atualizado do pedido contendo as opções de entrega e novo endereço
+export type StorefrontOrderPayload = {
+    customerName: string;
+    customerPhone?: string | null;
+    generalNotes?: string | null;
+    items: StorefrontItemRequest[];
+    customerId?: number | null;
+    deliveryType: "PICKUP" | "DELIVERY";
+    addressId?: number | null;
+    newAddress?: {
+        street: string;
+        number: string;
+        supplement?: string | null;
+        zipCode: string;
+    } | null;
 };
 
 export type CustomerLoginPayload = {

@@ -22,9 +22,17 @@ type StorefrontCartDrawerProps = {
     isOpen: boolean;
     onClose: () => void;
     items: CartItem[];
+    initialStep?: "review" | "delivery"; // Adicionado para receber o passo inicial vindo da página principal
     onUpdateQuantity: (productId: number, newQty: number) => void;
     onRemoveItem: (productId: number) => void;
-    onCheckout: (notes: string, customerData?: CustomerSessionData, deliveryAddressId?: number, paymentMethod?: string) => void;
+    onCheckout: (
+        notes: string,
+        customerData?: CustomerSessionData,
+        deliveryType?: "PICKUP" | "DELIVERY",
+        addressId?: number | null,
+        newAddress?: any,
+        paymentMethod?: string
+    ) => void;
     isSubmitting: boolean;
     customerData?: CustomerSessionData | null;
     onOpenAuthModal: () => void;
@@ -34,6 +42,7 @@ export function StorefrontCartDrawer({
     isOpen,
     onClose,
     items,
+    initialStep = "review",
     onUpdateQuantity,
     onRemoveItem,
     onCheckout,
@@ -44,23 +53,34 @@ export function StorefrontCartDrawer({
     const [generalNotes, setGeneralNotes] = useState("");
     const notesId = useId();
 
-    // Controle de Etapas do Drawer: "review" (Cesta) -> "delivery" (Endereço e Pagamento)
-    const [step, setStep] = useState<"review" | "delivery">("review");
+    // Controle de Etapas: Sincronizado com o initialStep
+    const [step, setStep] = useState<"review" | "delivery">(initialStep);
 
-    // Estados da Etapa de Entrega
+    // Estados do fluxo logístico
+    const [deliveryType, setDeliveryType] = useState<"PICKUP" | "DELIVERY">("DELIVERY");
     const [addresses, setAddresses] = useState<CustomerAddressResponse[]>([]);
     const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+    const [isEditingAddress, setIsEditingAddress] = useState(false);
+
+    // Campos caso precise preencher um novo endereço de entrega
+    const [newStreet, setNewStreet] = useState("");
+    const [newNumber, setNewNumber] = useState("");
+    const [newSupplement, setNewSupplement] = useState("");
+    const [newZipCode, setNewZipCode] = useState("");
+
     const [paymentMethod, setPaymentMethod] = useState<"PIX" | "MAQUININHA">("PIX");
     const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
 
-    // Reseta para o passo inicial ao fechar o drawer
+    // Sincroniza o passo sempre que o drawer abrir ou o initialStep mudar
     useEffect(() => {
-        if (!isOpen) {
-            setStep("review");
+        if (isOpen) {
+            setStep(initialStep);
+        } else {
+            setIsEditingAddress(false);
         }
-    }, [isOpen]);
+    }, [isOpen, initialStep]);
 
-    // Busca os endereços cadastrados assim que entra na etapa de entrega
+    // Busca os endereços cadastrados assim que o usuário vai para a etapa de entrega
     useEffect(() => {
         if (step === "delivery" && customerData?.customerId) {
             setIsLoadingAddresses(true);
@@ -68,7 +88,10 @@ export function StorefrontCartDrawer({
                 .then((data) => {
                     setAddresses(data);
                     if (data && data.length > 0) {
-                        setSelectedAddressId(data[0].id); // Pré-seleciona o primeiro endereço
+                        setSelectedAddressId(data[0].id);
+                        setIsEditingAddress(false);
+                    } else {
+                        setIsEditingAddress(true);
                     }
                 })
                 .catch(console.error)
@@ -83,17 +106,28 @@ export function StorefrontCartDrawer({
         return acc + (item.salePrice + complementsTotal) * item.quantity;
     }, 0);
 
-    const handleContinueClick = () => {
+    // Função central que controla se vai para a pergunta ou se envia o pedido
+    const handleMainActionClick = () => {
         if (!customerData || !customerData.customerId) {
             onOpenAuthModal();
             return;
         }
-        // Se já estiver logado, avança para a escolha de endereço e pagamento
-        setStep("delivery");
-    };
 
-    const handleFinalizeOrder = () => {
-        onCheckout(generalNotes, customerData!, selectedAddressId || undefined, paymentMethod);
+        // Se está na revisão da cesta, NÃO envia o pedido: para na pergunta de Retirada vs Motoboy
+        if (step === "review") {
+            setStep("delivery");
+            return;
+        }
+
+        // Se já está na etapa de entrega/balcão, finaliza e envia
+        onCheckout(
+            generalNotes,
+            customerData!,
+            deliveryType,
+            deliveryType === "DELIVERY" && !isEditingAddress ? selectedAddressId : null,
+            deliveryType === "DELIVERY" && isEditingAddress ? { street: newStreet, number: newNumber, supplement: newSupplement, zipCode: newZipCode } : null,
+            paymentMethod
+        );
     };
 
     return (
@@ -103,7 +137,7 @@ export function StorefrontCartDrawer({
             role="dialog"
             aria-modal="true"
         >
-            {/* Overlay Escurecido (clicável para fechar) */}
+            {/* Overlay Escurecido */}
             <div
                 style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
                 onClick={onClose}
@@ -122,7 +156,7 @@ export function StorefrontCartDrawer({
                             </button>
                         )}
                         <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#f4f4f5", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-                            {step === "review" ? (<span>🛒 Sua Cesta</span>) : (<span>🚚 Entrega e Pagamento</span>)}
+                            {step === "review" ? (<span>🛒 Sua Cesta</span>) : (<span>🚚 Modalidade de Entrega</span>)}
                         </h2>
                     </div>
                     <button
@@ -140,7 +174,7 @@ export function StorefrontCartDrawer({
                 {/* Banner de Identificação do Cliente */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #27272a", backgroundColor: "rgba(9, 9, 11, 0.5)", padding: "12px 24px" }}>
                     <div style={{ display: "flex", flexDirection: "column" }}>
-                        <span style={{ fontSize: "0.75rem", color: "#a1a1aa" }}>Cliente / Entrega:</span>
+                        <span style={{ fontSize: "0.75rem", color: "#a1a1aa" }}>Cliente / Conta:</span>
                         <span style={{ fontSize: "0.875rem", fontWeight: "bold", color: customerData?.name ? "#f59e0b" : "#f4f4f5" }}>
                             {customerData?.name ? `👤 ${customerData.name}` : "⚠️ Não identificado"}
                         </span>
@@ -154,7 +188,7 @@ export function StorefrontCartDrawer({
                     </button>
                 </div>
 
-                {/* Lista de Itens ou Etapa de Entrega (Scrollable) */}
+                {/* Conteúdo Dinâmico */}
                 <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
                     {step === "review" ? (
                         items.length === 0 ? (
@@ -185,7 +219,6 @@ export function StorefrontCartDrawer({
                                             </button>
                                         </div>
 
-                                        {/* Complementos */}
                                         {item.complements && item.complements.length > 0 && (
                                             <div style={{ display: "flex", flexDirection: "column", gap: "4px", borderLeft: "2px solid #3f3f46", paddingLeft: "12px", fontSize: "0.875rem", color: "#a1a1aa" }}>
                                                 {item.complements.map(c => (
@@ -197,7 +230,6 @@ export function StorefrontCartDrawer({
                                             </div>
                                         )}
 
-                                        {/* Controles de Quantidade e Preço Final */}
                                         <div style={{ marginTop: "8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                                             <div style={{ display: "flex", height: "40px", alignItems: "center", overflow: "hidden", borderRadius: "8px", border: "1px solid #3f3f46", backgroundColor: "#18181b" }}>
                                                 <button
@@ -227,50 +259,117 @@ export function StorefrontCartDrawer({
                             })
                         )
                     ) : (
-                        /* ETAPA DE SELEÇÃO DE ENDEREÇO E PAGAMENTO */
-                        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                                <span style={{ fontSize: "1rem", fontWeight: 600, color: "#f4f4f5" }}>Onde devemos entregar?</span>
-                                {isLoadingAddresses ? (
-                                    <span style={{ color: "#a1a1aa", fontSize: "0.9rem" }}>Carregando endereços...</span>
-                                ) : (
-                                    <>
-                                        <div
-                                            onClick={() => setSelectedAddressId(null)}
-                                            style={{ padding: "16px", borderRadius: "12px", border: selectedAddressId === null ? "2px solid #f59e0b" : "1px solid #3f3f46", backgroundColor: selectedAddressId === null ? "rgba(245, 158, 11, 0.1)" : "#09090b", cursor: "pointer" }}
-                                        >
-                                            <div style={{ fontWeight: "bold", color: selectedAddressId === null ? "#f59e0b" : "#f4f4f5" }}>🏬 Retirar no Balcão</div>
-                                            <div style={{ fontSize: "0.8rem", color: "#a1a1aa", marginTop: "4px" }}>Sem taxa de entrega.</div>
-                                        </div>
+                        /* ETAPA OBRIGATÓRIA DE PERGUNTA: RETIRADA VS MOTOBOY */
+                        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-                                        {addresses.map(addr => (
-                                            <div
-                                                key={addr.id}
-                                                onClick={() => setSelectedAddressId(addr.id)}
-                                                style={{ padding: "16px", borderRadius: "12px", border: selectedAddressId === addr.id ? "2px solid #f59e0b" : "1px solid #3f3f46", backgroundColor: selectedAddressId === addr.id ? "rgba(245, 158, 11, 0.1)" : "#09090b", cursor: "pointer" }}
-                                            >
-                                                <div style={{ fontWeight: "bold", color: selectedAddressId === addr.id ? "#f59e0b" : "#f4f4f5" }}>📍 {addr.street}, {addr.number}</div>
-                                                <div style={{ fontSize: "0.8rem", color: "#a1a1aa", marginTop: "4px" }}>CEP {addr.zipCode} {addr.supplement ? `- ${addr.supplement}` : ""}</div>
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
+                            {/* Pergunta principal */}
+                            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "#f4f4f5" }}>Como deseja receber o pedido?</span>
+                                <div style={{ display: "flex", gap: "10px" }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeliveryType("DELIVERY")}
+                                        style={{ flex: 1, padding: "12px", borderRadius: "8px", border: deliveryType === "DELIVERY" ? "2px solid #f59e0b" : "1px solid #3f3f46", backgroundColor: deliveryType === "DELIVERY" ? "rgba(245, 158, 11, 0.1)" : "#09090b", color: deliveryType === "DELIVERY" ? "#f59e0b" : "#a1a1aa", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}
+                                    >
+                                        🛵 Enviar com Motoboy
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeliveryType("PICKUP")}
+                                        style={{ flex: 1, padding: "12px", borderRadius: "8px", border: deliveryType === "PICKUP" ? "2px solid #f59e0b" : "1px solid #3f3f46", backgroundColor: deliveryType === "PICKUP" ? "rgba(245, 158, 11, 0.1)" : "#09090b", color: deliveryType === "PICKUP" ? "#f59e0b" : "#a1a1aa", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}
+                                    >
+                                        🏬 Retirar no Balcão
+                                    </button>
+                                </div>
                             </div>
 
-                            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                                <span style={{ fontSize: "1rem", fontWeight: 600, color: "#f4f4f5" }}>Como prefere pagar?</span>
-                                <div style={{ display: "flex", gap: "12px" }}>
+                            {/* Se for Motoboy, valida se mantém o endereço cadastrado ou preenche novo */}
+                            {deliveryType === "DELIVERY" && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderTop: "1px solid #27272a", paddingTop: "16px" }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                        <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "#f4f4f5" }}>Endereço de Entrega</span>
+                                        {!isEditingAddress && addresses.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsEditingAddress(true)}
+                                                style={{ background: "none", border: "none", color: "#f59e0b", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
+                                            >
+                                                Cadastrar / Usar outro
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {isLoadingAddresses ? (
+                                        <span style={{ color: "#a1a1aa", fontSize: "0.85rem" }}>Verificando endereço cadastrado...</span>
+                                    ) : !isEditingAddress && addresses.length > 0 ? (
+                                        <div style={{ padding: "14px", borderRadius: "10px", border: "1px solid #f59e0b", backgroundColor: "rgba(245, 158, 11, 0.05)" }}>
+                                            <div style={{ fontSize: "0.75rem", color: "#a1a1aa" }}>Endereço atualmente cadastrado:</div>
+                                            <div style={{ fontWeight: "bold", color: "#f4f4f5", marginTop: "4px" }}>📍 {addresses[0].street}, {addresses[0].number}</div>
+                                            <div style={{ fontSize: "0.8rem", color: "#a1a1aa", marginTop: "2px" }}>CEP: {addresses[0].zipCode} {addresses[0].supplement ? `(${addresses[0].supplement})` : ""}</div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: "flex", flexDirection: "column", gap: "10px", backgroundColor: "#09090b", padding: "12px", borderRadius: "10px", border: "1px solid #3f3f46" }}>
+                                            <div style={{ fontSize: "0.8rem", color: "#f59e0b", fontWeight: "bold" }}>Informe o endereço de entrega:</div>
+                                            <input
+                                                type="text"
+                                                placeholder="CEP (somente números)"
+                                                value={newZipCode}
+                                                onChange={(e) => setNewZipCode(e.target.value.replace(/\D/g, ''))}
+                                                style={{ padding: "10px", borderRadius: "6px", backgroundColor: "#18181b", border: "1px solid #3f3f46", color: "#fff", fontSize: "0.85rem" }}
+                                            />
+                                            <div style={{ display: "flex", gap: "8px" }}>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Rua / Avenida"
+                                                    value={newStreet}
+                                                    onChange={(e) => setNewStreet(e.target.value)}
+                                                    style={{ flex: 3, padding: "10px", borderRadius: "6px", backgroundColor: "#18181b", border: "1px solid #3f3f46", color: "#fff", fontSize: "0.85rem" }}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Número"
+                                                    value={newNumber}
+                                                    onChange={(e) => setNewNumber(e.target.value)}
+                                                    style={{ flex: 1, padding: "10px", borderRadius: "6px", backgroundColor: "#18181b", border: "1px solid #3f3f46", color: "#fff", fontSize: "0.85rem" }}
+                                                />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder="Complemento / Bairro"
+                                                value={newSupplement}
+                                                onChange={(e) => setNewSupplement(e.target.value)}
+                                                style={{ padding: "10px", borderRadius: "6px", backgroundColor: "#18181b", border: "1px solid #3f3f46", color: "#fff", fontSize: "0.85rem" }}
+                                            />
+
+                                            {addresses.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsEditingAddress(false)}
+                                                    style={{ background: "none", border: "none", color: "#a1a1aa", fontSize: "0.75rem", cursor: "pointer", textAlign: "left", marginTop: "2px" }}
+                                                >
+                                                    ← Usar meu endereço cadastrado
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Forma de Pagamento */}
+                            <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderTop: "1px solid #27272a", paddingTop: "16px" }}>
+                                <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "#f4f4f5" }}>Forma de Pagamento</span>
+                                <div style={{ display: "flex", gap: "10px" }}>
                                     <button
                                         type="button"
                                         onClick={() => setPaymentMethod("PIX")}
-                                        style={{ flex: 1, padding: "12px", borderRadius: "8px", border: paymentMethod === "PIX" ? "2px solid #10b981" : "1px solid #3f3f46", backgroundColor: paymentMethod === "PIX" ? "rgba(16, 185, 129, 0.1)" : "#09090b", color: paymentMethod === "PIX" ? "#10b981" : "#a1a1aa", fontWeight: "bold", cursor: "pointer" }}
+                                        style={{ flex: 1, padding: "10px", borderRadius: "8px", border: paymentMethod === "PIX" ? "2px solid #10b981" : "1px solid #3f3f46", backgroundColor: paymentMethod === "PIX" ? "rgba(16, 185, 129, 0.1)" : "#09090b", color: paymentMethod === "PIX" ? "#10b981" : "#a1a1aa", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}
                                     >
                                         PIX (Online)
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setPaymentMethod("MAQUININHA")}
-                                        style={{ flex: 1, padding: "12px", borderRadius: "8px", border: paymentMethod === "MAQUININHA" ? "2px solid #f59e0b" : "1px solid #3f3f46", backgroundColor: paymentMethod === "MAQUININHA" ? "rgba(245, 158, 11, 0.1)" : "#09090b", color: paymentMethod === "MAQUININHA" ? "#f59e0b" : "#a1a1aa", fontWeight: "bold", cursor: "pointer" }}
+                                        style={{ flex: 1, padding: "10px", borderRadius: "8px", border: paymentMethod === "MAQUININHA" ? "2px solid #f59e0b" : "1px solid #3f3f46", backgroundColor: paymentMethod === "MAQUININHA" ? "rgba(245, 158, 11, 0.1)" : "#09090b", color: paymentMethod === "MAQUININHA" ? "#f59e0b" : "#a1a1aa", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}
                                     >
                                         Maquininha
                                     </button>
@@ -280,10 +379,10 @@ export function StorefrontCartDrawer({
                     )}
                 </div>
 
-                {/* Footer Fixo: Observações e Ação */}
+                {/* Footer Fixo */}
                 {items.length > 0 && (
                     <footer style={{ borderTop: "1px solid #27272a", backgroundColor: "#09090b", padding: "24px" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
                             {step === "review" && (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -303,20 +402,24 @@ export function StorefrontCartDrawer({
                             )}
 
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <span style={{ fontSize: "1rem", fontWeight: 500, color: "#a1a1aa" }}>{step === "review" ? "Total do Pedido" : "Total a Pagar"}</span>
-                                <span data-testid="cart-total-amount" style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#f4f4f5" }}>
+                                <span style={{ fontSize: "0.95rem", fontWeight: 500, color: "#a1a1aa" }}>{step === "review" ? "Total do Pedido" : "Total a Pagar"}</span>
+                                <span data-testid="cart-total-amount" style={{ fontSize: "1.35rem", fontWeight: "bold", color: "#f4f4f5" }}>
                                     {formatBRL(subtotal)}
                                 </span>
                             </div>
 
                             <button
                                 type="button"
-                                onClick={step === "review" ? handleContinueClick : handleFinalizeOrder}
+                                onClick={handleMainActionClick}
                                 disabled={isSubmitting}
                                 data-testid="btn-submit-order"
-                                style={{ width: "100%", borderRadius: "12px", backgroundColor: "#f59e0b", padding: "16px", fontSize: "1rem", fontWeight: "bold", color: "#18181b", border: "none", cursor: isSubmitting ? "not-allowed" : "pointer", opacity: isSubmitting ? 0.7 : 1, boxShadow: "0 10px 15px -3px rgba(245, 158, 11, 0.2)" }}
+                                style={{ width: "100%", borderRadius: "12px", backgroundColor: "#f59e0b", padding: "14px", fontSize: "1rem", fontWeight: "bold", color: "#18181b", border: "none", cursor: isSubmitting ? "not-allowed" : "pointer", opacity: isSubmitting ? 0.7 : 1 }}
                             >
-                                {isSubmitting ? "Processando..." : (step === "review" ? (customerData?.customerId ? "Avançar para Entrega" : "Identificar-se e Finalizar") : "Confirmar e Enviar Pedido")}
+                                {isSubmitting
+                                    ? "Processando..."
+                                    : (step === "review"
+                                        ? (customerData?.customerId ? "Avançar para Opções de Entrega" : "Identificar-se para Continuar")
+                                        : "Confirmar e Enviar Pedido")}
                             </button>
                         </div>
                     </footer>
