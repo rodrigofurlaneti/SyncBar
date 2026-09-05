@@ -12,7 +12,6 @@ public sealed class CreateAsaasIntegrationSavedCardCommandHandlerTests
 {
     private readonly IAsaasIntegrationSavedCardRepository _savedCardRepository = Substitute.For<IAsaasIntegrationSavedCardRepository>();
     private readonly IAsaasIntegrationCustomerRepository _customerRepository = Substitute.For<IAsaasIntegrationCustomerRepository>();
-    private readonly IAsaasIntegrationSettingRepository _settingRepository = Substitute.For<IAsaasIntegrationSettingRepository>();
     private readonly IAsaasService _asaasService = Substitute.For<IAsaasService>();
     private readonly ILogTrackerRepository _logRepository = Substitute.For<ILogTrackerRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
@@ -22,7 +21,7 @@ public sealed class CreateAsaasIntegrationSavedCardCommandHandlerTests
     public CreateAsaasIntegrationSavedCardCommandHandlerTests()
     {
         _handler = new CreateAsaasIntegrationSavedCardCommandHandler(
-            _savedCardRepository, _customerRepository, _settingRepository, _asaasService, _logRepository, _unitOfWork);
+            _savedCardRepository, _customerRepository, _asaasService, _logRepository, _unitOfWork);
     }
 
     private static CreateAsaasIntegrationSavedCardCommand ValidCommand(bool setAsDefault = false) =>
@@ -30,22 +29,8 @@ public sealed class CreateAsaasIntegrationSavedCardCommandHandlerTests
             ExpiryMonth: "12", ExpiryYear: "2030", Ccv: "123", SetAsDefault: setAsDefault);
 
     [Fact]
-    public async Task Handle_NoActiveSetting_ShouldReturnValidationFailure()
-    {
-        _settingRepository.GetByBranchOrCompanyFallbackAsync(1, null, Arg.Any<CancellationToken>())
-            .Returns((AsaasIntegrationSetting?)null);
-
-        var result = await _handler.Handle(ValidCommand(), CancellationToken.None);
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("AsaasSetting.NotFound");
-    }
-
-    [Fact]
     public async Task Handle_CustomerNotBoundToAsaas_ShouldReturnNotFound()
     {
-        _settingRepository.GetByBranchOrCompanyFallbackAsync(1, null, Arg.Any<CancellationToken>())
-            .Returns(AsaasIntegrationSetting.Create(1, null, "api-key").Value);
         _customerRepository.GetByCustomerIdAndCompanyIdAsync(1, 1, Arg.Any<CancellationToken>())
             .Returns((AsaasIntegrationCustomer?)null);
 
@@ -58,8 +43,6 @@ public sealed class CreateAsaasIntegrationSavedCardCommandHandlerTests
     [Fact]
     public async Task Handle_TokenizeApiThrows_ShouldReturnFailure()
     {
-        _settingRepository.GetByBranchOrCompanyFallbackAsync(1, null, Arg.Any<CancellationToken>())
-            .Returns(AsaasIntegrationSetting.Create(1, null, "api-key").Value);
         _customerRepository.GetByCustomerIdAndCompanyIdAsync(1, 1, Arg.Any<CancellationToken>())
             .Returns(AsaasIntegrationCustomer.Create(1, 1, "cus_123").Value);
         _asaasService.TokenizeCreditCardAsync("cus_123", Arg.Any<CreditCardRequest>(), Arg.Any<CreditCardHolderInfoRequest?>(), Arg.Any<CancellationToken>())
@@ -75,8 +58,6 @@ public sealed class CreateAsaasIntegrationSavedCardCommandHandlerTests
     [Fact]
     public async Task Handle_ValidRequest_ShouldPersistCardWithMaskedData()
     {
-        _settingRepository.GetByBranchOrCompanyFallbackAsync(1, null, Arg.Any<CancellationToken>())
-            .Returns(AsaasIntegrationSetting.Create(1, null, "api-key").Value);
         _customerRepository.GetByCustomerIdAndCompanyIdAsync(1, 1, Arg.Any<CancellationToken>())
             .Returns(AsaasIntegrationCustomer.Create(1, 1, "cus_123").Value);
         _asaasService.TokenizeCreditCardAsync("cus_123", Arg.Any<CreditCardRequest>(), Arg.Any<CreditCardHolderInfoRequest?>(), Arg.Any<CancellationToken>())
@@ -96,8 +77,6 @@ public sealed class CreateAsaasIntegrationSavedCardCommandHandlerTests
     [Fact]
     public async Task Handle_SetAsDefaultTrue_ShouldUnsetPreviousDefaultCards()
     {
-        _settingRepository.GetByBranchOrCompanyFallbackAsync(1, null, Arg.Any<CancellationToken>())
-            .Returns(AsaasIntegrationSetting.Create(1, null, "api-key").Value);
         _customerRepository.GetByCustomerIdAndCompanyIdAsync(1, 1, Arg.Any<CancellationToken>())
             .Returns(AsaasIntegrationCustomer.Create(1, 1, "cus_123").Value);
         _asaasService.TokenizeCreditCardAsync("cus_123", Arg.Any<CreditCardRequest>(), Arg.Any<CreditCardHolderInfoRequest?>(), Arg.Any<CancellationToken>())

@@ -19,6 +19,17 @@ export type CustomerSessionData = {
     customerId?: number;
 };
 
+export type PaymentMethod = "PIX" | "MAQUININHA" | "CREDITO" | "BOLETO";
+
+export type NewCardData = {
+    holderName: string;
+    number: string;
+    expiryMonth: string;
+    expiryYear: string;
+    ccv: string;
+    saveCard: boolean;
+};
+
 type StorefrontCartDrawerProps = {
     isOpen: boolean;
     onClose: () => void;
@@ -32,7 +43,8 @@ type StorefrontCartDrawerProps = {
         deliveryType?: "PICKUP" | "DELIVERY",
         addressId?: number | null,
         newAddress?: any,
-        paymentMethod?: string
+        paymentMethod?: PaymentMethod,
+        cardData?: NewCardData
     ) => void;
     isSubmitting: boolean;
     customerData?: CustomerSessionData | null;
@@ -126,10 +138,22 @@ export function StorefrontCartDrawer({
     const [newNeighborhood, setNewNeighborhood] = useState("");
     const [newZipCode, setNewZipCode] = useState("");
 
-    const [paymentMethod, setPaymentMethod] = useState<"PIX" | "MAQUININHA" | "CREDITO">("PIX");
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("PIX");
     const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
     const [isProcessingAddress, setIsProcessingAddress] = useState(false);
     const [isFetchingCep, setIsFetchingCep] = useState(false);
+
+    const [cardHolderName, setCardHolderName] = useState("");
+    const [cardNumber, setCardNumber] = useState("");
+    const [cardExpiryMonth, setCardExpiryMonth] = useState("");
+    const [cardExpiryYear, setCardExpiryYear] = useState("");
+    const [cardCcv, setCardCcv] = useState("");
+    const [saveCard, setSaveCard] = useState(false);
+    const cardHolderId = useId();
+    const cardNumberId = useId();
+    const cardExpiryMonthId = useId();
+    const cardExpiryYearId = useId();
+    const cardCcvId = useId();
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -260,15 +284,32 @@ export function StorefrontCartDrawer({
             setIsProcessingAddress(false);
         }
 
+        if (paymentMethod === "CREDITO") {
+            if (!cardHolderName || !cardNumber || !cardExpiryMonth || !cardExpiryYear || !cardCcv) {
+                Swal.fire({ title: "Atenção", text: "Preencha todos os dados do cartão.", icon: "warning", background: '#18181b', color: '#fff' });
+                return;
+            }
+        }
+
         onCheckout(
             generalNotes,
             customerData,
             deliveryType,
             deliveryType === "DELIVERY" ? currentAddressIdToSubmit : null,
             null,
-            paymentMethod
+            paymentMethod,
+            paymentMethod === "CREDITO"
+                ? {
+                    holderName: cardHolderName,
+                    number: cardNumber,
+                    expiryMonth: cardExpiryMonth,
+                    expiryYear: cardExpiryYear,
+                    ccv: cardCcv,
+                    saveCard,
+                }
+                : undefined
         );
-    }, [customerData, step, onCheckout, generalNotes, deliveryType, isEditingAddress, selectedAddressId, paymentMethod, newZipCode, newStreet, newNumber, newSupplement, newNeighborhood, onOpenAuthModal]);
+    }, [customerData, step, onCheckout, generalNotes, deliveryType, isEditingAddress, selectedAddressId, paymentMethod, newZipCode, newStreet, newNumber, newSupplement, newNeighborhood, onOpenAuthModal, cardHolderName, cardNumber, cardExpiryMonth, cardExpiryYear, cardCcv, saveCard]);
 
     if (!isOpen) return null;
 
@@ -601,7 +642,16 @@ export function StorefrontCartDrawer({
                                         style={paymentMethod === "CREDITO" ? { borderColor: "#3b82f6", background: "rgba(59, 130, 246, 0.1)", color: "#3b82f6" } : {}}
                                         aria-pressed={paymentMethod === "CREDITO"}
                                     >
-                                        Cartão (Online)
+                                        Cartão (Crédito/Débito)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPaymentMethod("BOLETO")}
+                                        className="selection-btn"
+                                        style={paymentMethod === "BOLETO" ? { borderColor: "#a78bfa", background: "rgba(167, 139, 250, 0.1)", color: "#a78bfa" } : {}}
+                                        aria-pressed={paymentMethod === "BOLETO"}
+                                    >
+                                        Boleto
                                     </button>
                                     <button
                                         type="button"
@@ -612,6 +662,89 @@ export function StorefrontCartDrawer({
                                         Maquininha
                                     </button>
                                 </div>
+
+                                {paymentMethod === "CREDITO" && (
+                                    <fieldset style={{ display: "flex", flexDirection: "column", gap: "0.75rem", background: "#09090b", padding: "1rem", borderRadius: "0.625rem", border: "0.0625rem solid #3f3f46", margin: 0 }}>
+                                        <legend className="visually-hidden">Dados do cartão de crédito</legend>
+
+                                        <div className="input-group">
+                                            <label htmlFor={cardHolderId} className="input-label">Nome no cartão</label>
+                                            <input
+                                                id={cardHolderId}
+                                                type="text"
+                                                placeholder="Como está impresso no cartão"
+                                                value={cardHolderName}
+                                                onChange={(e) => setCardHolderName(e.target.value)}
+                                                className="form-input"
+                                                autoComplete="cc-name"
+                                            />
+                                        </div>
+
+                                        <div className="input-group">
+                                            <label htmlFor={cardNumberId} className="input-label">Número do cartão</label>
+                                            <input
+                                                id={cardNumberId}
+                                                type="text"
+                                                inputMode="numeric"
+                                                placeholder="0000 0000 0000 0000"
+                                                value={cardNumber}
+                                                onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, "").slice(0, 19))}
+                                                className="form-input"
+                                                autoComplete="cc-number"
+                                            />
+                                        </div>
+
+                                        <div style={{ display: "flex", gap: "0.75rem" }}>
+                                            <div className="input-group" style={{ flex: 1 }}>
+                                                <label htmlFor={cardExpiryMonthId} className="input-label">Mês (MM)</label>
+                                                <input
+                                                    id={cardExpiryMonthId}
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    placeholder="MM"
+                                                    maxLength={2}
+                                                    value={cardExpiryMonth}
+                                                    onChange={(e) => setCardExpiryMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                                                    className="form-input"
+                                                    autoComplete="cc-exp-month"
+                                                />
+                                            </div>
+                                            <div className="input-group" style={{ flex: 1 }}>
+                                                <label htmlFor={cardExpiryYearId} className="input-label">Ano (AAAA)</label>
+                                                <input
+                                                    id={cardExpiryYearId}
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    placeholder="AAAA"
+                                                    maxLength={4}
+                                                    value={cardExpiryYear}
+                                                    onChange={(e) => setCardExpiryYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                                                    className="form-input"
+                                                    autoComplete="cc-exp-year"
+                                                />
+                                            </div>
+                                            <div className="input-group" style={{ flex: 1 }}>
+                                                <label htmlFor={cardCcvId} className="input-label">CVV</label>
+                                                <input
+                                                    id={cardCcvId}
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    placeholder="123"
+                                                    maxLength={4}
+                                                    value={cardCcv}
+                                                    onChange={(e) => setCardCcv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                                                    className="form-input"
+                                                    autoComplete="cc-csc"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem", color: "#a1a1aa", cursor: "pointer" }}>
+                                            <input type="checkbox" checked={saveCard} onChange={(e) => setSaveCard(e.target.checked)} />
+                                            Salvar cartão para próximas compras
+                                        </label>
+                                    </fieldset>
+                                )}
                             </fieldset>
                         </div>
                     )}

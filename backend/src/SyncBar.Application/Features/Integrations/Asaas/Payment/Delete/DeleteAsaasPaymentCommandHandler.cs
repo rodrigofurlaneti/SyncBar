@@ -8,17 +8,20 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Delete
     internal sealed class DeleteAsaasPaymentCommandHandler : BaseCommandHandler<DeleteAsaasPaymentCommand>
     {
         private readonly IAsaasIntegrationPaymentRepository _paymentRepository;
+        private readonly IBranchRepository _branchRepository;
         private readonly IAsaasService _asaasService;
         private readonly IUnitOfWork _unitOfWork;
 
         public DeleteAsaasPaymentCommandHandler(
             IAsaasIntegrationPaymentRepository paymentRepository,
+            IBranchRepository branchRepository,
             IAsaasService asaasService,
             ILogTrackerRepository logRepository,
             IUnitOfWork unitOfWork)
             : base(logRepository, unitOfWork)
         {
             _paymentRepository = paymentRepository;
+            _branchRepository = branchRepository;
             _asaasService = asaasService;
             _unitOfWork = unitOfWork;
         }
@@ -49,6 +52,15 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Delete
                                 "AsaasPayment.CannotDeletePaid",
                                 "Cobranças já liquidadas ou confirmadas não podem ser excluídas. Utilize a rotina de estorno."));
                     }
+
+                    var branch = await _branchRepository.GetByIdAsync(payment.BranchId, cancellationToken);
+                    if (branch is null)
+                    {
+                        return Result.Failure(
+                            Error.NotFound("Branch.NotFound", $"Filial com ID {payment.BranchId} não foi encontrada."));
+                    }
+
+                    await _asaasService.ConfigureForTenantAsync(branch.CompanyId, payment.BranchId, cancellationToken);
 
                     // Cancela ou remove a cobrança no gateway Asaas (DELETE /v3/payments/{id})
                     try

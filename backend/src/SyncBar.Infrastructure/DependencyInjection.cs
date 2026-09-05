@@ -182,12 +182,14 @@ public static class DependencyInjection
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodAnalyticsClient, IfoodAnalyticsClient>(
             client => client.Timeout = TimeSpan.FromSeconds(20));
 
-        services.Configure<AsaasSettings>(configuration.GetSection("AsaasSettings"));
+        services.Configure<AsaasSettings>(configuration.GetSection("Asaas"));
 
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.Asaas.IAsaasCredentialsResolver, AsaasCredentialsResolver>();
         services.AddHttpClient<AsaasAuthClient>();
         services.AddScoped<AsaasService>();
         services.AddScoped<IAsaasService>(sp => sp.GetRequiredService<AsaasService>());
         services.AddScoped<SyncBar.Application.Abstractions.Integrations.Asaas.IAsaasService, AsaasApplicationService>();
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.Asaas.IAsaasCustomerProvisioningService, AsaasCustomerProvisioningService>();
 
         return services;
     }

@@ -11,6 +11,7 @@ namespace SyncBar.Tests.Application.Features.Integrations.Asaas.Payment.Delete;
 public sealed class DeleteAsaasPaymentCommandHandlerTests
 {
     private readonly IAsaasIntegrationPaymentRepository _paymentRepository = Substitute.For<IAsaasIntegrationPaymentRepository>();
+    private readonly IBranchRepository _branchRepository = Substitute.For<IBranchRepository>();
     private readonly IAsaasService _asaasService = Substitute.For<IAsaasService>();
     private readonly ILogTrackerRepository _logRepository = Substitute.For<ILogTrackerRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
@@ -19,11 +20,14 @@ public sealed class DeleteAsaasPaymentCommandHandlerTests
 
     public DeleteAsaasPaymentCommandHandlerTests()
     {
-        _handler = new DeleteAsaasPaymentCommandHandler(_paymentRepository, _asaasService, _logRepository, _unitOfWork);
+        _handler = new DeleteAsaasPaymentCommandHandler(_paymentRepository, _branchRepository, _asaasService, _logRepository, _unitOfWork);
     }
 
     private static AsaasIntegrationPayment CreatePayment() =>
         AsaasIntegrationPayment.Create(1, 10, 1, "pay_1", "PIX", 100m, new DateTime(2026, 9, 20)).Value;
+
+    private static Branch CreateBranch() =>
+        Branch.Create(1, "Matriz", null, null, null, null, null, null, null, null).Value;
 
     [Fact]
     public async Task Handle_PaymentNotFound_ShouldReturnNotFound()
@@ -57,6 +61,7 @@ public sealed class DeleteAsaasPaymentCommandHandlerTests
     {
         var payment = CreatePayment();
         _paymentRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(payment);
+        _branchRepository.GetByIdAsync(payment.BranchId, Arg.Any<CancellationToken>()).Returns(CreateBranch());
         _asaasService.DeletePaymentAsync("pay_1", Arg.Any<CancellationToken>())
             .Returns<Task>(_ => throw new HttpRequestException("Asaas indisponível"));
 
@@ -72,10 +77,12 @@ public sealed class DeleteAsaasPaymentCommandHandlerTests
     {
         var payment = CreatePayment();
         _paymentRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(payment);
+        _branchRepository.GetByIdAsync(payment.BranchId, Arg.Any<CancellationToken>()).Returns(CreateBranch());
 
         var result = await _handler.Handle(new DeleteAsaasPaymentCommand(1), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
+        await _asaasService.Received(1).ConfigureForTenantAsync(1, payment.BranchId, Arg.Any<CancellationToken>());
         await _asaasService.Received(1).DeletePaymentAsync("pay_1", Arg.Any<CancellationToken>());
         _paymentRepository.Received(1).Delete(payment);
         await _unitOfWork.Received(2).CommitAsync(Arg.Any<CancellationToken>());

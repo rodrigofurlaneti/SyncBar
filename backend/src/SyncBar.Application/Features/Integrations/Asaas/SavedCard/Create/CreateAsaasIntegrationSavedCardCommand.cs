@@ -15,5 +15,6 @@ namespace SyncBar.Application.Features.Integrations.Asaas.SavedCard.Create
         string ExpiryMonth,
         string ExpiryYear,
         string Ccv,
-        bool SetAsDefault = false) : ICommand<CreateAsaasIntegrationSavedCardResponse>;
+        bool SetAsDefault = false,
+        long? BranchId = null) : ICommand<CreateAsaasIntegrationSavedCardResponse>;
 }

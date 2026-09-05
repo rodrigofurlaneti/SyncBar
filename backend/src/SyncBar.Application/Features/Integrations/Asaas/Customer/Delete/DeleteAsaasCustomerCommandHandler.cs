@@ -45,6 +45,8 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Customer.Delete
                                 $"Vínculo do cliente {request.CustomerId} para a empresa {request.CompanyId} não foi encontrado."));
                     }
 
+                    await _asaasService.ConfigureForTenantAsync(request.CompanyId, null, cancellationToken);
+
                     // Remove o cadastro no gateway Asaas (DELETE /v3/customers/{id})
                     try
                     {

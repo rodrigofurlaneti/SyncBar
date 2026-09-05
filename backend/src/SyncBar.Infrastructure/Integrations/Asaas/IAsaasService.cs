@@ -2,11 +2,19 @@
 {
     public interface IAsaasService
     {
+        /// <summary>
+        /// Aplica a credencial (BaseUrl + access_token) da empresa/filial informada nas próximas
+        /// chamadas feitas por esta instância — deve ser chamado antes de qualquer outro método.
+        /// </summary>
+        Task ConfigureForTenantAsync(long companyId, long? branchId, CancellationToken cancellationToken = default);
+
         Task<string> CreateCustomerAsync(string name, string cpfCnpj, string email, string? mobilePhone = null, CancellationToken cancellationToken = default);
         Task DeleteCustomerAsync(string asaasCustomerId, CancellationToken cancellationToken = default);
 
         Task<AsaasPaymentResponse> CreatePixPaymentAsync(string customerId, decimal value, DateTime dueDate, string description, CancellationToken cancellationToken = default);
         Task<AsaasPixQrCodeResponse> GetPixQrCodeAsync(string paymentId, CancellationToken cancellationToken = default);
+
+        Task<AsaasBoletoIdentificationFieldResponse> GetBoletoIdentificationFieldAsync(string paymentId, CancellationToken cancellationToken = default);
 
         Task<AsaasCreditCardPaymentResponse> CreateCreditCardPaymentAsync(
             string customerId,

@@ -1,15 +1,29 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
+using SyncBar.Application.Abstractions.Integrations.Asaas;
 
 namespace SyncBar.Infrastructure.Integrations.Asaas;
 
 public class AsaasService : IAsaasService
 {
     private readonly HttpClient _http;
+    private readonly IAsaasCredentialsResolver _credentialsResolver;
 
-    public AsaasService(AsaasAuthClient authClient)
+    public AsaasService(AsaasAuthClient authClient, IAsaasCredentialsResolver credentialsResolver)
     {
         _http = authClient.Client;
+        _credentialsResolver = credentialsResolver;
+    }
+
+    public async Task ConfigureForTenantAsync(long companyId, long? branchId, CancellationToken cancellationToken = default)
+    {
+        var credentials = await _credentialsResolver.ResolveAsync(companyId, branchId, cancellationToken);
+
+        var baseUrl = credentials.BaseUrl.EndsWith('/') ? credentials.BaseUrl : credentials.BaseUrl + "/";
+        _http.BaseAddress = new Uri(baseUrl);
+
+        _http.DefaultRequestHeaders.Remove("access_token");
+        _http.DefaultRequestHeaders.Add("access_token", credentials.ApiKey);
     }
 
     public async Task<string> CreateCustomerAsync(
@@ -106,6 +120,15 @@ public class AsaasService : IAsaasService
         await EnsureSuccessOrThrowAsaasErrorAsync(response);
 
         var result = await response.Content.ReadFromJsonAsync<AsaasPixQrCodeResponse>(cancellationToken: cancellationToken);
+        return result!;
+    }
+
+    public async Task<AsaasBoletoIdentificationFieldResponse> GetBoletoIdentificationFieldAsync(string paymentId, CancellationToken cancellationToken = default)
+    {
+        var response = await _http.GetAsync($"payments/{paymentId}/identificationField", cancellationToken);
+        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+
+        var result = await response.Content.ReadFromJsonAsync<AsaasBoletoIdentificationFieldResponse>(cancellationToken: cancellationToken);
         return result!;
     }
 

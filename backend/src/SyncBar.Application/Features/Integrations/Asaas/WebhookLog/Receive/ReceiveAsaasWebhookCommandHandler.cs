@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -10,11 +11,14 @@ namespace SyncBar.Application.Features.Integrations.Asaas.WebhookLog.Receive
     internal sealed class ReceiveAsaasWebhookCommandHandler : BaseCommandHandler<ReceiveAsaasWebhookCommand>
     {
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+        private static readonly string[] PaidStatuses = ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"];
 
         private readonly IAsaasIntegrationPaymentRepository _paymentRepository;
         private readonly IAsaasIntegrationSettingRepository _settingRepository;
         private readonly IAsaasIntegrationWebhookLogRepository _webhookLogRepository;
         private readonly IBranchRepository _branchRepository;
+        private readonly ICustomerOrderRepository _orderRepository;
+        private readonly TimeProvider _timeProviderCustom;
         private readonly IUnitOfWork _unitOfWork;
 
         public ReceiveAsaasWebhookCommandHandler(
@@ -22,6 +26,8 @@ namespace SyncBar.Application.Features.Integrations.Asaas.WebhookLog.Receive
             IAsaasIntegrationSettingRepository settingRepository,
             IAsaasIntegrationWebhookLogRepository webhookLogRepository,
             IBranchRepository branchRepository,
+            ICustomerOrderRepository orderRepository,
+            TimeProvider timeProviderCustom,
             ILogTrackerRepository logRepository,
             IUnitOfWork unitOfWork)
             : base(logRepository, unitOfWork)
@@ -30,6 +36,8 @@ namespace SyncBar.Application.Features.Integrations.Asaas.WebhookLog.Receive
             _settingRepository = settingRepository;
             _webhookLogRepository = webhookLogRepository;
             _branchRepository = branchRepository;
+            _orderRepository = orderRepository;
+            _timeProviderCustom = timeProviderCustom;
             _unitOfWork = unitOfWork;
         }
 
@@ -96,6 +104,19 @@ namespace SyncBar.Application.Features.Integrations.Asaas.WebhookLog.Receive
                     }
 
                     _paymentRepository.Update(payment);
+
+                    // Cobrança Pix confirmada: liquida o pedido (sem gerar Sale/SalePayment — isso
+                    // fica para o fluxo de faturamento, que não se aplica a pedidos sem caixa aberto).
+                    if (!string.IsNullOrWhiteSpace(payload.Payment.Status)
+                        && PaidStatuses.Contains(payload.Payment.Status.ToUpperInvariant()))
+                    {
+                        var order = await _orderRepository.GetByIdForUpdateAsync(payment.CustomerOrderId, cancellationToken);
+                        if (order is not null && order.OrderStatusId == OrderStatusIds.AguardandoPagamento)
+                        {
+                            order.MarkAsPaid(_timeProviderCustom.GetLocalNow().DateTime);
+                        }
+                    }
+
                     await _unitOfWork.CommitAsync(cancellationToken);
 
                     return Result.Success();

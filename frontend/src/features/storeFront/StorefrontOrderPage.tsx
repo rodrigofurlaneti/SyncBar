@@ -1,13 +1,15 @@
-﻿import { useState, useMemo, useCallback } from "react";
+﻿import { useState, useMemo, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Swal from "sweetalert2";
 import type { MenuItemResponse, OrderItemComplementSelection } from "../../lib/types";
 import { ComplementSelectorModal } from "../orders/ComplementSelectorModal";
 import { PublicOrderCard } from "../publicOrdering/PublicOrderCard";
-import { StorefrontCartDrawer, CartItem, CustomerSessionData } from "./StorefrontCartDrawer";
+import { StorefrontCartDrawer, CartItem, CustomerSessionData, PaymentMethod, NewCardData } from "./StorefrontCartDrawer";
 import { submitStorefrontOrder, StorefrontOrderPayload } from "./storefrontApi";
 import { StorefrontAuthModal } from "./StorefrontAuthModal";
+import { StorefrontPaymentModal, StorefrontPaymentResult } from "./StorefrontPaymentModal";
+import { payWithPix, payWithCreditCard, payWithBoleto } from "./checkoutApi";
 
 import logoImg from "../../image/logo.png";
 import bgImg from "../../image/screenbackground_auth.jpeg";
@@ -219,11 +221,73 @@ export function StorefrontOrderPage() {
         retry: false,
     });
 
+    const [paymentResult, setPaymentResult] = useState<StorefrontPaymentResult | null>(null);
+    const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null);
+    const pendingPaymentRef = useRef<{ method: PaymentMethod; cardData?: NewCardData } | null>(null);
+
+    const chargeOnlinePayment = useCallback(async (orderId: number) => {
+        const pending = pendingPaymentRef.current;
+        if (!pending || pending.method === "MAQUININHA") return;
+
+        try {
+            switch (pending.method) {
+                case "PIX": {
+                    const data = await payWithPix(orderId);
+                    setPaymentOrderId(orderId);
+                    setPaymentResult({ method: "PIX", data });
+                    break;
+                }
+                case "CREDITO": {
+                    const card = pending.cardData;
+                    const data = await payWithCreditCard({
+                        customerOrderId: orderId,
+                        card: card
+                            ? {
+                                holderName: card.holderName,
+                                number: card.number,
+                                expiryMonth: card.expiryMonth,
+                                expiryYear: card.expiryYear,
+                                ccv: card.ccv,
+                            }
+                            : null,
+                        saveCard: card?.saveCard ?? false,
+                    });
+                    setPaymentOrderId(orderId);
+                    setPaymentResult({ method: "CREDITO", data });
+                    break;
+                }
+                case "BOLETO": {
+                    const data = await payWithBoleto(orderId);
+                    setPaymentOrderId(orderId);
+                    setPaymentResult({ method: "BOLETO", data });
+                    break;
+                }
+            }
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Falha ao processar o pagamento.";
+            Swal.fire({
+                title: "Pagamento não concluído",
+                text: `${msg} Seu pedido já foi registrado — você pode tentar pagar novamente pela tela de acompanhamento.`,
+                icon: "error",
+                background: "#18181b",
+                color: "#ffffff",
+                confirmButtonColor: "#ef4444",
+            });
+        }
+    }, []);
+
     const addBatchMutation = useMutation({
         mutationFn: (payload: StorefrontOrderPayload) => submitStorefrontOrder(branchId, payload),
-        onSuccess: () => {
+        onSuccess: (data) => {
             setCartItems([]);
             setIsCartOpen(false);
+
+            const pending = pendingPaymentRef.current;
+            if (pending && pending.method !== "MAQUININHA") {
+                void chargeOnlinePayment(data.orderId);
+                return;
+            }
+
             Swal.fire({
                 title: "Pedido Solicitado!",
                 text: "Seu pedido foi enviado com sucesso para a produção.",
@@ -330,7 +394,8 @@ export function StorefrontOrderPage() {
         deliveryType?: "PICKUP" | "DELIVERY",
         addressId?: number | null,
         newAddress?: any,
-        _paymentMethod?: string
+        paymentMethod?: PaymentMethod,
+        cardData?: NewCardData
     ) => {
         if (cartItems.length === 0) return;
         setPendingCheckoutNotes(generalNotes);
@@ -341,6 +406,8 @@ export function StorefrontOrderPage() {
             return;
         }
         if (!deliveryType) return;
+
+        pendingPaymentRef.current = paymentMethod ? { method: paymentMethod, cardData } : null;
         executeSubmitOrder(currentCustomer, deliveryType, addressId, newAddress);
     }, [cartItems.length, customerData, executeSubmitOrder]);
 
@@ -524,6 +591,17 @@ export function StorefrontOrderPage() {
                     setIsAuthModalOpen(false);
                 }}
             />
+
+            {paymentResult && paymentOrderId && (
+                <StorefrontPaymentModal
+                    orderId={paymentOrderId}
+                    result={paymentResult}
+                    onClose={() => {
+                        setPaymentResult(null);
+                        setPaymentOrderId(null);
+                    }}
+                />
+            )}
 
             {selectingItem && (
                 <ComplementSelectorModal
