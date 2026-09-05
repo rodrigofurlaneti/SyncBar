@@ -3,6 +3,7 @@ namespace SyncBar.Domain.Repositories
 {
     public interface IAsaasIntegrationWebhookLogRepository
     {
+        Task<IEnumerable<AsaasIntegrationWebhookLog?>> GetAsync(CancellationToken cancellationToken = default);
         Task<AsaasIntegrationWebhookLog?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
         Task<AsaasIntegrationWebhookLog?> GetByIdForUpdateAsync(long id, CancellationToken cancellationToken = default);
         Task<IReadOnlyList<AsaasIntegrationWebhookLog>> GetByPaymentIdAsync(long companyId, string paymentId, CancellationToken cancellationToken = default);

@@ -7,6 +7,12 @@ namespace SyncBar.Infrastructure.Persistence.Repositories;
 
 internal sealed class AsaasIntegrationWebhookLogRepository(AppDbContext context) : IAsaasIntegrationWebhookLogRepository
 {
+    public async Task<IEnumerable<AsaasIntegrationWebhookLog>> GetAsync(CancellationToken cancellationToken = default)
+        => await context.Set<AsaasIntegrationWebhookLog>()
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .ToListAsync(cancellationToken);
+
     public async Task<AsaasIntegrationWebhookLog?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         => await context.Set<AsaasIntegrationWebhookLog>()
             .AsNoTracking()
