@@ -1,6 +1,7 @@
 ﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
+
 namespace SyncBar.Application.Features.Integrations.Asaas.WebhookLog.GetByAsaasPaymentId
 {
     internal sealed class GetAsaasWebhookLogsByPaymentIdQueryHandler
@@ -27,11 +28,22 @@ namespace SyncBar.Application.Features.Integrations.Asaas.WebhookLog.GetByAsaasP
                 null,
                 async (userIdBox) =>
                 {
+                    // 1. Faz uma única consulta já filtrada e otimizada no banco de dados
                     var logs = await _webhookLogRepository.GetByPaymentIdAsync(
                         request.CompanyId,
                         request.PaymentId,
                         cancellationToken);
 
+                    // 2. Valida se a consulta não retornou nenhum registro
+                    if (logs == null || !logs.Any())
+                    {
+                        return Result.Failure<IReadOnlyList<AsaasWebhookLogResponse>>(
+                            new Error(
+                                "AsaasWebhookLogNotFound",
+                                $"No webhook logs found for company ID {request.CompanyId} and payment ID {request.PaymentId}."));
+                    }
+
+                    // 3. Mapeia o resultado
                     var response = logs
                         .Select(log => new AsaasWebhookLogResponse(
                             log.Id,
