@@ -28,6 +28,15 @@ namespace SyncBar.Infrastructure.Persistence.Repositories
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync(cancellationToken);
 
+        public async Task<IReadOnlyList<AsaasIntegrationSavedCard>> GetByCustomerIdAndCompanyIdForUpdateAsync(
+            long customerId,
+            long companyId,
+            CancellationToken cancellationToken = default)
+            => await context.Set<AsaasIntegrationSavedCard>()
+                .Where(x => x.CustomerId == customerId && x.CompanyId == companyId && x.IsActive)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync(cancellationToken);
+
         public async Task<bool> ExistsByTokenAsync(string creditCardToken, CancellationToken cancellationToken = default)
             => await context.Set<AsaasIntegrationSavedCard>()
                 .AnyAsync(x => x.CreditCardToken == creditCardToken && x.IsActive, cancellationToken);

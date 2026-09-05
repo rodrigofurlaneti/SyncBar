@@ -19,6 +19,10 @@ internal sealed class AsaasIntegrationCustomerRepository(AppDbContext context) :
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.CustomerId == customerId && x.CompanyId == companyId && x.IsActive, cancellationToken);
 
+    public async Task<AsaasIntegrationCustomer?> GetByIdForUpdateAsync(long id, CancellationToken cancellationToken = default)
+        => await context.Set<AsaasIntegrationCustomer>()
+            .FirstOrDefaultAsync(x => x.Id == id && x.IsActive, cancellationToken);
+
     public async Task<AsaasIntegrationCustomer?> GetByCustomerIdAndCompanyIdForUpdateAsync(
         long customerId,
         long companyId,

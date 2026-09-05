@@ -12,24 +12,32 @@ internal sealed class AsaasIntegrationWebhookLogRepository(AppDbContext context)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id && x.IsActive, cancellationToken);
 
-    public async Task<IReadOnlyList<AsaasIntegrationWebhookLog>> GetByAsaasPaymentIdAsync(
+    public async Task<IReadOnlyList<AsaasIntegrationWebhookLog>> GetByPaymentIdAsync(
+        long companyId,
         string paymentId,
         CancellationToken cancellationToken = default)
         => await context.Set<AsaasIntegrationWebhookLog>()
             .AsNoTracking()
-            .Where(x => x.PaymentId == paymentId && x.IsActive)
+            .Where(x => x.CompanyId == companyId && x.PaymentId == paymentId && x.IsActive)
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<AsaasIntegrationWebhookLog>> GetUnprocessedLogsAsync(
-        int take = 50,
+        long companyId,
+        int limit = 50,
         CancellationToken cancellationToken = default)
         => await context.Set<AsaasIntegrationWebhookLog>()
             .AsNoTracking()
-            .Where(x => x.Status == WebhookLogStatus.Pending && x.IsActive)
+            .Where(x => x.CompanyId == companyId && x.Status == WebhookLogStatus.Pending && x.IsActive)
             .OrderBy(x => x.CreatedAt)
-            .Take(take)
+            .Take(limit)
             .ToListAsync(cancellationToken);
+
+    public async Task<bool> ExistsByEventIdAsync(
+        string asaasEventId,
+        CancellationToken cancellationToken = default)
+        => await context.Set<AsaasIntegrationWebhookLog>()
+            .AnyAsync(x => x.AsaasEventId == asaasEventId && x.IsActive, cancellationToken);
 
     public async Task<bool> HasAlreadyProcessedEventAsync(
         string asaasEventId,
