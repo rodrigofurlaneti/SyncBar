@@ -10,6 +10,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     : DbContext(options), IUnitOfWork
 {
     private readonly ICurrentTenantService? _currentTenant = currentTenant;
+    public DbSet<AsaasIntegrationCustomer> AsaasIntegrationCustomers => Set<AsaasIntegrationCustomer>();
+    public DbSet<AsaasIntegrationPayment> AsaasIntegrationPayments => Set<AsaasIntegrationPayment>();
+    public DbSet<AsaasIntegrationSavedCard> AsaasIntegrationSavedCards => Set<AsaasIntegrationSavedCard>();
+    public DbSet<AsaasIntegrationSetting> AsaasIntegrationSettings => Set<AsaasIntegrationSetting>();
+    public DbSet<AsaasIntegrationWebhookLog> AsaasIntegrationWebhookLogs => Set<AsaasIntegrationWebhookLog>();
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<Branch> Branchs => Set<Branch>();
     public DbSet<UnitOfMeasure> UnitOfMeasures => Set<UnitOfMeasure>();
