@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from "react";
+﻿import { useState, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Swal from "sweetalert2";
@@ -11,6 +11,185 @@ import { StorefrontAuthModal } from "./StorefrontAuthModal";
 
 import logoImg from "../../image/logo.png";
 import bgImg from "../../image/screenbackground_auth.jpeg";
+
+const styles = `
+  .storefront-main {
+    min-height: 100vh;
+    background-color: #09090b;
+    padding-bottom: 7rem;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #f4f4f5;
+  }
+  .storefront-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 0.0625rem solid #27272a;
+    background-image: linear-gradient(rgba(9, 9, 11, 0.85), rgba(9, 9, 11, 0.95)), url(${bgImg});
+    background-size: cover;
+    background-position: center;
+    padding: 0 1rem;
+    height: 5rem;
+  }
+  .storefront-logo {
+    position: relative;
+    z-index: 10;
+    height: 3rem;
+    object-fit: contain;
+  }
+  .storefront-title {
+    position: relative;
+    z-index: 10;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+  }
+  .storefront-nav-container {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    border-bottom: 0.0625rem solid #27272a;
+    background-color: rgba(9, 9, 11, 0.9);
+    backdrop-filter: blur(0.75rem);
+    padding: 1rem;
+  }
+  .storefront-nav-inner {
+    margin: 0 auto;
+    max-width: 80rem;
+  }
+  .category-nav {
+    display: flex;
+    gap: 1.5rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 0.5rem;
+    scrollbar-width: none;
+  }
+  .category-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .category-btn {
+    background: none;
+    border: none;
+    padding-bottom: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease;
+  }
+  .category-btn:focus-visible {
+    outline: 0.125rem solid #f59e0b;
+    outline-offset: 0.25rem;
+    border-radius: 0.125rem;
+  }
+  .search-container {
+    position: relative;
+    margin-top: 1rem;
+  }
+  .search-input {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 0.0625rem solid #3f3f46;
+    background-color: #18181b;
+    padding: 0.875rem 3rem 0.875rem 1rem;
+    font-size: 0.875rem;
+    color: #f4f4f5;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    outline: none;
+  }
+  .search-input:focus {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 0.125rem rgba(245, 158, 11, 0.2);
+  }
+  .content-container {
+    margin: 0 auto;
+    max-width: 80rem;
+    padding: 2rem 1rem 0;
+  }
+  .product-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+  }
+  .fab-cart {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 50;
+    display: flex;
+    height: 4rem;
+    width: 4rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: none;
+    background-color: #f59e0b;
+    font-size: 1.5rem;
+    box-shadow: 0 0.25rem 0.9375rem rgba(245,158,11,0.4);
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+  }
+  .fab-cart:hover {
+    transform: scale(1.05);
+    background-color: #d97706;
+  }
+  .fab-cart:active {
+    transform: scale(0.95);
+  }
+  .fab-cart:focus-visible {
+    outline: 0.125rem solid #fff;
+    outline-offset: 0.125rem;
+  }
+  .cart-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    height: 1.5rem;
+    width: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: #ef4444;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #fff;
+    box-shadow: 0 0.25rem 0.375rem -0.0625rem rgba(0, 0, 0, 0.1);
+  }
+
+  /* Breakpoints: Tablet */
+  @media (min-width: 40.0625rem) { /* 641px */
+    .storefront-header { padding: 0 2.5rem; height: 7rem; }
+    .storefront-logo { height: 4rem; }
+    .storefront-title { font-size: 1.5rem; }
+    .storefront-nav-container { padding: 1rem 2.5rem; }
+    .category-btn { font-size: 1rem; }
+    .search-input { font-size: 1rem; }
+    .content-container { padding: 2rem 2.5rem 0; }
+    .product-grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+    .fab-cart { bottom: 2rem; right: 2rem; height: 5rem; width: 5rem; font-size: 1.875rem; }
+    .cart-badge { height: 1.75rem; width: 1.75rem; font-size: 0.875rem; }
+  }
+
+  /* Breakpoints: Desktop */
+  @media (min-width: 64rem) { /* 1024px */
+    .product-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (min-width: 90rem) { /* 1440px */
+    .product-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  .spinner {
+    border: 0.25rem solid rgba(255, 255, 255, 0.1);
+    border-left-color: #f59e0b;
+    border-radius: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+`;
 
 async function fetchMenu(branchId: number): Promise<any> {
     const res = await fetch(`/api/storefront/branches/${branchId}/menu`);
@@ -32,16 +211,6 @@ export function StorefrontOrderPage() {
     const [customerData, setCustomerData] = useState<CustomerSessionData | null>(null);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [pendingCheckoutNotes, setPendingCheckoutNotes] = useState("");
-
-    // Controle de responsividade para estilos inline
-    const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
-    useEffect(() => {
-        const handleResize = () => setWindowWidth(window.innerWidth);
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
-    }, []);
-
-    const isMobile = windowWidth < 640;
 
     const menuQuery = useQuery({
         queryKey: ["storefront-menu", branchId],
@@ -78,21 +247,13 @@ export function StorefrontOrderPage() {
         },
     });
 
-    const getQty = (productId: number) => quantities[productId] || 1;
-    const setQty = (productId: number, newQty: number) => {
+    const getQty = useCallback((productId: number) => quantities[productId] || 1, [quantities]);
+
+    const setQty = useCallback((productId: number, newQty: number) => {
         setQuantities(prev => ({ ...prev, [productId]: Math.max(1, newQty) }));
-    };
+    }, []);
 
-    const handlePickItem = (item: MenuItemResponse) => {
-        const currentQty = getQty(item.id);
-        if (item.complementGroups && item.complementGroups.length > 0) {
-            setSelectingItem(item);
-            return;
-        }
-        handleAddOrAddToCart({ productId: item.id, quantity: currentQty, item });
-    };
-
-    const handleAddOrAddToCart = ({ productId, quantity, complements, item }: { productId: number; quantity: number; complements?: OrderItemComplementSelection[]; item?: MenuItemResponse }) => {
+    const handleAddOrAddToCart = useCallback(({ productId, quantity, complements, item }: { productId: number; quantity: number; complements?: OrderItemComplementSelection[]; item?: MenuItemResponse }) => {
         const targetItem = item || menuQuery.data?.items.find((i: MenuItemResponse) => i.id === productId);
         if (!targetItem) return;
 
@@ -124,41 +285,18 @@ export function StorefrontOrderPage() {
             background: '#18181b',
             color: '#fff'
         });
-    };
+    }, [menuQuery.data]);
 
-    // CORREÇÃO: Só executa o envio do pedido se o deliveryType for informado (evita enviar direto da tela de revisão)
-    const handleCheckoutCart = (
-        generalNotes: string,
-        activeCustomerData?: CustomerSessionData,
-        deliveryType?: "PICKUP" | "DELIVERY",
-        addressId?: number | null,
-        newAddress?: any,
-        _paymentMethod?: string
-    ) => {
-        if (cartItems.length === 0) return;
-        setPendingCheckoutNotes(generalNotes);
-
-        const currentCustomer = activeCustomerData || customerData;
-        if (!currentCustomer || !currentCustomer.customerId) {
-            setIsAuthModalOpen(true);
+    const handlePickItem = useCallback((item: MenuItemResponse) => {
+        const currentQty = getQty(item.id);
+        if (item.complementGroups && item.complementGroups.length > 0) {
+            setSelectingItem(item);
             return;
         }
+        handleAddOrAddToCart({ productId: item.id, quantity: currentQty, item });
+    }, [getQty, handleAddOrAddToCart]);
 
-        // Se o usuário ainda não passou pela etapa de escolha de entrega, o drawer apenas muda de passo.
-        if (!deliveryType) {
-            return;
-        }
-
-        executeSubmitOrder(currentCustomer, deliveryType, addressId, newAddress);
-    };
-
-    const handleAuthenticatedSuccess = (authenticatedData: CustomerSessionData) => {
-        setCustomerData(authenticatedData);
-        setIsAuthModalOpen(false);
-        // Após logar com sucesso, mantemos o usuário no carrinho para que ele escolha explicitamente entre Retirada ou Motoboy.
-    };
-
-    const executeSubmitOrder = (
+    const executeSubmitOrder = useCallback((
         activeCustomer: CustomerSessionData,
         deliveryType: "PICKUP" | "DELIVERY" = "DELIVERY",
         addressId?: number | null,
@@ -184,7 +322,27 @@ export function StorefrontOrderPage() {
             newAddress: newAddress || null,
             items: payloadItems
         });
-    };
+    }, [cartItems, pendingCheckoutNotes, addBatchMutation]);
+
+    const handleCheckoutCart = useCallback((
+        generalNotes: string,
+        activeCustomerData?: CustomerSessionData,
+        deliveryType?: "PICKUP" | "DELIVERY",
+        addressId?: number | null,
+        newAddress?: any,
+        _paymentMethod?: string
+    ) => {
+        if (cartItems.length === 0) return;
+        setPendingCheckoutNotes(generalNotes);
+
+        const currentCustomer = activeCustomerData || customerData;
+        if (!currentCustomer || !currentCustomer.customerId) {
+            setIsAuthModalOpen(true);
+            return;
+        }
+        if (!deliveryType) return;
+        executeSubmitOrder(currentCustomer, deliveryType, addressId, newAddress);
+    }, [cartItems.length, customerData, executeSubmitOrder]);
 
     const { categoryList, groupedItems, filteredItems } = useMemo(() => {
         if (!menuQuery.data) return { categoryList: [] as string[], groupedItems: {} as Record<string, MenuItemResponse[]>, filteredItems: [] as MenuItemResponse[] };
@@ -213,80 +371,82 @@ export function StorefrontOrderPage() {
 
     if (menuQuery.isLoading) {
         return (
-            <main data-testid="loading-menu" style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", backgroundColor: "#09090b", color: "#a1a1aa" }}>
-                <span>Carregando cardápio…</span>
+            <main data-testid="loading-menu" className="storefront-main" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-busy="true" aria-live="polite">
+                <style>{styles}</style>
+                <div className="spinner" aria-label="Carregando cardápio"></div>
             </main>
         );
     }
 
     if (menuQuery.isError) {
         return (
-            <main data-testid="error-menu" style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", backgroundColor: "#09090b" }}>
-                <p style={{ color: "#ef4444" }}>Não foi possível carregar o cardápio.</p>
+            <main data-testid="error-menu" className="storefront-main" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} role="alert">
+                <style>{styles}</style>
+                <p style={{ color: "#ef4444", fontSize: "1.125rem" }}>Não foi possível carregar o cardápio. Tente novamente mais tarde.</p>
             </main>
         );
     }
 
-    const gridColumns = isMobile ? "1fr" : "repeat(auto-fill, minmax(300px, 1fr))";
-
     return (
-        <main data-testid="storefront-order-page" style={{ minHeight: "100vh", backgroundColor: "#09090b", paddingBottom: "112px", fontFamily: "sans-serif", color: "#f4f4f5" }}>
+        <main data-testid="storefront-order-page" className="storefront-main">
+            <style>{styles}</style>
 
-            {/* Cabeçalho Hero com Imagem */}
-            <header style={{ display: "flex", height: isMobile ? "80px" : "112px", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #27272a", padding: isMobile ? "0 16px" : "0 40px", backgroundImage: `linear-gradient(rgba(9, 9, 11, 0.85), rgba(9, 9, 11, 0.95)), url(${bgImg})`, backgroundSize: "cover", backgroundPosition: "center" }}>
-                <img src={logoImg} alt="Logotipo SyncBar" style={{ position: "relative", zIndex: 10, height: isMobile ? "48px" : "64px", objectFit: "contain" }} />
-                <h1 data-testid="header-store-title" style={{ position: "relative", zIndex: 10, fontSize: isMobile ? "1.125rem" : "1.5rem", fontWeight: 600, color: "#fff", margin: 0 }}>
+            <header className="storefront-header">
+                <img src={logoImg} alt="Logotipo SyncBar" className="storefront-logo" />
+                <h1 data-testid="header-store-title" className="storefront-title">
                     Cardápio <span style={{ color: "#f59e0b" }}>Digital</span>
                 </h1>
             </header>
 
-            {/* Navegação Sticky (Categorias + Busca) */}
-            <div style={{ position: "sticky", top: 0, zIndex: 40, borderBottom: "1px solid #27272a", backgroundColor: "rgba(9, 9, 11, 0.9)", backdropFilter: "blur(12px)", padding: isMobile ? "16px" : "16px 40px" }}>
-                <div style={{ margin: "0 auto", maxWidth: "1280px" }}>
-
-                    {/* Lista de Categorias */}
-                    <nav style={{ display: "flex", gap: "24px", overflowX: "auto", whiteSpace: "nowrap", paddingBottom: "8px" }}>
+            <nav className="storefront-nav-container" aria-label="Navegação do Cardápio">
+                <div className="storefront-nav-inner">
+                    <div className="category-nav" role="tablist">
                         {categoryList.map((cat: string) => {
                             const isActive = activeCategory === cat;
                             return (
                                 <button
                                     key={cat}
+                                    role="tab"
+                                    aria-selected={isActive}
                                     data-testid={`category-tab-${cat.replace(/\s+/g, '-')}`}
                                     onClick={() => setActiveCategory(cat)}
-                                    style={{ background: "none", border: "none", borderBottom: isActive ? "2px solid #f59e0b" : "2px solid transparent", paddingBottom: "4px", fontSize: isMobile ? "0.875rem" : "1rem", fontWeight: 500, color: isActive ? "#f59e0b" : "#a1a1aa", cursor: "pointer", transition: "color 0.2s" }}
+                                    className="category-btn"
+                                    style={{
+                                        borderBottom: isActive ? "0.125rem solid #f59e0b" : "0.125rem solid transparent",
+                                        color: isActive ? "#f59e0b" : "#a1a1aa"
+                                    }}
                                 >
                                     {cat}
                                 </button>
                             );
                         })}
-                    </nav>
+                    </div>
 
-                    {/* Barra de Pesquisa */}
-                    <div style={{ position: "relative", marginTop: "16px" }}>
+                    <div className="search-container" role="search">
                         <input
                             type="text"
                             placeholder="Pesquisar um produto..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             data-testid="input-menu-search"
-                            style={{ width: "100%", borderRadius: "12px", border: "1px solid #3f3f46", backgroundColor: "#18181b", padding: "14px 48px 14px 16px", fontSize: isMobile ? "0.875rem" : "1rem", color: "#f4f4f5", boxSizing: "border-box", outline: "none" }}
+                            className="search-input"
+                            aria-label="Buscar produtos no cardápio"
                         />
-                        <div style={{ position: "absolute", top: 0, bottom: 0, right: "16px", display: "flex", alignItems: "center", pointerEvents: "none" }}>
+                        <div style={{ position: "absolute", top: 0, bottom: 0, right: "1rem", display: "flex", alignItems: "center", pointerEvents: "none" }} aria-hidden="true">
                             <span style={{ color: "#71717a" }}>🔍</span>
                         </div>
                     </div>
                 </div>
-            </div>
+            </nav>
 
-            {/* Container Principal de Produtos */}
-            <div style={{ margin: "0 auto", maxWidth: "1280px", padding: isMobile ? "32px 16px 0" : "32px 40px 0" }}>
+            <section className="content-container" aria-live="polite">
                 {activeCategory === "Todas" && !searchQuery ? (
                     Object.entries(groupedItems).map(([categoryName, products]) => (
-                        <section key={categoryName} data-testid={`category-section-${categoryName.replace(/\s+/g, '-')}`} style={{ marginBottom: "48px" }}>
-                            <h2 style={{ marginBottom: "24px", display: "inline-block", borderBottom: "2px solid #f59e0b", paddingBottom: "4px", fontSize: isMobile ? "1.125rem" : "1.25rem", fontWeight: "bold", letterSpacing: "0.025em", color: "#f4f4f5", textTransform: "uppercase" }}>
+                        <article key={categoryName} data-testid={`category-section-${categoryName.replace(/\s+/g, '-')}`} style={{ marginBottom: "3rem" }}>
+                            <h2 style={{ marginBottom: "1.5rem", display: "inline-block", borderBottom: "0.125rem solid #f59e0b", paddingBottom: "0.25rem", fontSize: "1.25rem", fontWeight: "bold", textTransform: "uppercase" }}>
                                 {categoryName}
                             </h2>
-                            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: gridColumns }}>
+                            <div className="product-grid">
                                 {products.map((item: MenuItemResponse) => (
                                     <PublicOrderCard
                                         key={item.id}
@@ -299,10 +459,10 @@ export function StorefrontOrderPage() {
                                     />
                                 ))}
                             </div>
-                        </section>
+                        </article>
                     ))
-                ) : (
-                    <div data-testid="filtered-items-grid" style={{ display: "grid", gap: "16px", gridTemplateColumns: gridColumns }}>
+                ) : filteredItems.length > 0 ? (
+                    <div data-testid="filtered-items-grid" className="product-grid">
                         {filteredItems.map((item: MenuItemResponse) => (
                             <PublicOrderCard
                                 key={item.id}
@@ -315,25 +475,28 @@ export function StorefrontOrderPage() {
                             />
                         ))}
                     </div>
+                ) : (
+                    <div style={{ textAlign: "center", padding: "4rem 1rem", color: "#a1a1aa" }}>
+                        <p style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>Nenhum produto encontrado.</p>
+                        <p style={{ fontSize: "0.875rem" }}>Tente ajustar os termos da sua pesquisa ou mude de categoria.</p>
+                    </div>
                 )}
-            </div>
+            </section>
 
-            {/* Botão Flutuante (FAB) do Carrinho */}
             <button
                 onClick={() => setIsCartOpen(true)}
                 data-testid="btn-open-cart"
-                aria-label="Ver Cesta de Compras"
-                style={{ position: "fixed", bottom: isMobile ? "24px" : "32px", right: isMobile ? "24px" : "32px", zIndex: 50, display: "flex", height: isMobile ? "64px" : "80px", width: isMobile ? "64px" : "80px", alignItems: "center", justifyContent: "center", borderRadius: "50%", border: "none", backgroundColor: "#f59e0b", fontSize: isMobile ? "1.5rem" : "1.875rem", boxShadow: "0 4px 15px rgba(245,158,11,0.4)", cursor: "pointer" }}
+                aria-label={`Ver Cesta de Compras com ${cartItems.reduce((acc, i) => acc + i.quantity, 0)} itens`}
+                className="fab-cart"
             >
                 🛒
                 {cartItems.length > 0 && (
-                    <span style={{ position: "absolute", top: 0, right: 0, display: "flex", height: isMobile ? "24px" : "28px", width: isMobile ? "24px" : "28px", alignItems: "center", justifyContent: "center", borderRadius: "50%", backgroundColor: "#ef4444", fontSize: isMobile ? "0.75rem" : "0.875rem", fontWeight: "bold", color: "#fff", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
+                    <span className="cart-badge" aria-hidden="true">
                         {cartItems.reduce((acc, i) => acc + i.quantity, 0)}
                     </span>
                 )}
             </button>
 
-            {/* Modais */}
             <StorefrontCartDrawer
                 isOpen={isCartOpen}
                 onClose={() => setIsCartOpen(false)}
@@ -356,7 +519,10 @@ export function StorefrontOrderPage() {
                 isOpen={isAuthModalOpen}
                 onClose={() => setIsAuthModalOpen(false)}
                 branchId={branchId}
-                onAuthenticated={handleAuthenticatedSuccess}
+                onAuthenticated={(data) => {
+                    setCustomerData(data);
+                    setIsAuthModalOpen(false);
+                }}
             />
 
             {selectingItem && (

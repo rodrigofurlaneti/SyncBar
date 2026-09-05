@@ -36,7 +36,7 @@ namespace SyncBar.Infrastructure.Persistence.Configurations
                 .IsRequired();
 
             builder.Property(x => x.Supplement)
-                .HasMaxLength(50)
+                .HasMaxLength(500)
                 .IsRequired();
 
             builder.Property(x => x.Supplement)
