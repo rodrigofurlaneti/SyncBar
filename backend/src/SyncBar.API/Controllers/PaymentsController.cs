@@ -1,9 +1,10 @@
-﻿using System.Security.Claims;
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Payments.ChargePayment;
 using SyncBar.Domain.Repositories;
+using SyncBar.Infrastructure.Integrations.Asaas;
+using System.Security.Claims;
 
 namespace SyncBar.API.Controllers;
 

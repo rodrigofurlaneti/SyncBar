@@ -35,6 +35,7 @@ const cards = [
     { to: "/promocoes", label: "Promoções", desc: "Ofertas e descontos ativos" },
     { to: "/impressao", label: "Impressão", desc: "Impressoras e cupons" },
     { to: "/integracoes/ifood", label: "Integração iFood", desc: "Credenciais e conexão com o iFood" },
+    { to: "/integracoes/asaas", label: "Integração Asaas", desc: "Credenciais, clientes, cobranças e webhooks" },
 ];
 
 export function SettingsPage() {

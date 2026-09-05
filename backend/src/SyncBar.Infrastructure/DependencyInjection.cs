@@ -4,15 +4,17 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SyncBar.Application.Abstractions.Authentication;
 using SyncBar.Application.Abstractions.Tenancy;
+using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
 using SyncBar.Infrastructure.Authentication;
 using SyncBar.Infrastructure.Fiscal;
+using SyncBar.Infrastructure.Integrations.Asaas;
 using SyncBar.Infrastructure.Integrations.Ifood;
 using SyncBar.Infrastructure.Payments;
 using SyncBar.Infrastructure.Persistence;
 using SyncBar.Infrastructure.Persistence.Repositories;
-using SyncBar.Infrastructure.Printing;
 using SyncBar.Infrastructure.Persistence.Repositories;
+using SyncBar.Infrastructure.Printing;
 using SyncBar.Infrastructure.Security;
 using SyncBar.Infrastructure.Storage;
 using SyncBar.Infrastructure.Tenancy;
@@ -103,6 +105,11 @@ public static class DependencyInjection
         services.AddScoped<ILogTrackerRepository, LogTrackerRepository>();
         services.AddScoped<ICustomerAppUserRepository, CustomerAppUserRepository>();
         services.AddScoped<ICustomerAddressRepository, CustomerAddressRepository>();
+        services.AddScoped<IAsaasIntegrationCustomerRepository, AsaasIntegrationCustomerRepository>();
+        services.AddScoped<IAsaasIntegrationPaymentRepository, AsaasIntegrationPaymentRepository>();
+        services.AddScoped<IAsaasIntegrationSavedCardRepository, AsaasIntegrationSavedCardRepository>();
+        services.AddScoped<IAsaasIntegrationSettingRepository, AsaasIntegrationSettingRepository>();
+        services.AddScoped<IAsaasIntegrationWebhookLogRepository, AsaasIntegrationWebhookLogRepository>();
 
         services.AddSingleton<TimeProvider, SyncBar.Infrastructure.Time.TimeProviderCustom>();
         services.AddSingleton<SyncBar.Application.Abstractions.Storage.IImageStorage, LocalImageStorage>();
@@ -174,6 +181,13 @@ public static class DependencyInjection
 
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodAnalyticsClient, IfoodAnalyticsClient>(
             client => client.Timeout = TimeSpan.FromSeconds(20));
+
+        services.Configure<AsaasSettings>(configuration.GetSection("AsaasSettings"));
+
+        services.AddHttpClient<AsaasAuthClient>();
+        services.AddScoped<AsaasService>();
+        services.AddScoped<IAsaasService>(sp => sp.GetRequiredService<AsaasService>());
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.Asaas.IAsaasService, AsaasApplicationService>();
 
         return services;
     }

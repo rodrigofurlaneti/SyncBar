@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\SyncBar.Infrastructure\SyncBar.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Application\Features\Integrations\Asaas\" />
     <Folder Include="Application\Features\Promotions\" />
     <Folder Include="Application\Features\Purchases\" />
     <Folder Include="Application\Features\Reservations\" />
