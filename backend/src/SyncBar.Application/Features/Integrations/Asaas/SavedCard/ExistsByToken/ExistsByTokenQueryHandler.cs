@@ -15,8 +15,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.SavedCard.ExistsByToke
 
         public ExistsByTokenQueryHandler(
             IAsaasIntegrationSavedCardRepository savedCardRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _savedCardRepository = savedCardRepository;
         }

@@ -11,8 +11,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.SavedCard.GetByIdForUp
 
         public GetAsaasSavedCardByIdForUpdateQueryHandler(
             IAsaasIntegrationSavedCardRepository savedCardRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _savedCardRepository = savedCardRepository;
         }

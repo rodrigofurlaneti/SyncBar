@@ -17,8 +17,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Setting.GetByBranchIdF
 
         public GetAsaasSettingByBranchIdForUpdateQueryHandler(
             IAsaasIntegrationSettingRepository settingRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _settingRepository = settingRepository;
         }
@@ -35,7 +36,6 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Setting.GetByBranchIdF
                 {
                     // Busca a entidade com change tracking ativo para preparação de mutação
                     var setting = await _settingRepository.GetByBranchIdForUpdateAsync(
-                        request.CompanyId,
                         request.BranchId,
                         cancellationToken);
 

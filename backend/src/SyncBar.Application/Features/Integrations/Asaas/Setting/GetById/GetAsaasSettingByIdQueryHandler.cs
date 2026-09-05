@@ -11,8 +11,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Setting.GetById
 
         public GetAsaasSettingByIdQueryHandler(
             IAsaasIntegrationSettingRepository settingRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _settingRepository = settingRepository;
         }

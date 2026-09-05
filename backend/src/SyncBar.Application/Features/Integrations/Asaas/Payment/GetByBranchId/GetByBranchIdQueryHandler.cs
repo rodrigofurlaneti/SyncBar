@@ -13,8 +13,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.GetByBranchId
 
         public GetByBranchIdQueryHandler(
             IAsaasIntegrationPaymentRepository paymentRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _paymentRepository = paymentRepository;
         }

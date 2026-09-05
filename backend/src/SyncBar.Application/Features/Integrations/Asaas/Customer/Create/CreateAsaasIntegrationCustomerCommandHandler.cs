@@ -1,4 +1,5 @@
 ﻿using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 using System;

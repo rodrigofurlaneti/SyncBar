@@ -10,8 +10,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Setting.ExistsForBranc
 
         public ExistsAsaasSettingForBranchQueryHandler(
             IAsaasIntegrationSettingRepository settingRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _settingRepository = settingRepository;
         }
@@ -27,7 +28,6 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Setting.ExistsForBranc
                 async (userIdBox) =>
                 {
                     var exists = await _settingRepository.ExistsForBranchAsync(
-                        request.CompanyId,
                         request.BranchId,
                         cancellationToken);
 

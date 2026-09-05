@@ -15,8 +15,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.ExistsByAsaasP
 
         public ExistsByAsaasPaymentIdQueryHandler(
             IAsaasIntegrationPaymentRepository paymentRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _paymentRepository = paymentRepository;
         }

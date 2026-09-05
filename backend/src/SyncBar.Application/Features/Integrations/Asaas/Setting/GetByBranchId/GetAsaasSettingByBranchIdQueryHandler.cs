@@ -11,8 +11,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Setting.GetByBranchId
 
         public GetAsaasSettingByBranchIdQueryHandler(
             IAsaasIntegrationSettingRepository settingRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _settingRepository = settingRepository;
         }
@@ -28,7 +29,6 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Setting.GetByBranchId
                 async (userIdBox) =>
                 {
                     var setting = await _settingRepository.GetByBranchIdAsync(
-                        request.CompanyId,
                         request.BranchId,
                         cancellationToken);
 

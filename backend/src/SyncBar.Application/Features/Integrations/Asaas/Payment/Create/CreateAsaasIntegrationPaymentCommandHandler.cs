@@ -1,4 +1,5 @@
 ﻿using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 using SyncBar.Application.Abstractions.Integrations.Asaas;
@@ -75,17 +76,31 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Create
                         asaasCustomerId = customerBinding?.AsaasCustomerId;
                     }
 
+                    if (string.IsNullOrWhiteSpace(asaasCustomerId))
+                    {
+                        return Result.Failure<CreateAsaasIntegrationPaymentResponse>(
+                            Error.Validation("AsaasCustomer.NotFound", "O cliente não possui cadastro vinculado no Asaas para esta empresa."));
+                    }
+
                     // 4. Emitir a cobrança no gateway Asaas via serviço de integração
-                    var asaasResult = await _asaasService.CreatePaymentAsync(
-                        setting,
-                        request,
-                        asaasCustomerId,
-                        cancellationToken);
-
-                    if (asaasResult.IsFailure)
-                        return Result.Failure<CreateAsaasIntegrationPaymentResponse>(asaasResult.Error);
-
-                    var asaasPaymentData = asaasResult.Value;
+                    AsaasPaymentResponse asaasPaymentData;
+                    try
+                    {
+                        asaasPaymentData = await _asaasService.CreatePaymentAsync(
+                            asaasCustomerId,
+                            request.BillingType,
+                            request.Value,
+                            request.DueDate,
+                            $"Pedido #{request.CustomerOrderId}",
+                            request.CreditCardToken,
+                            request.InstallmentCount,
+                            cancellationToken);
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        return Result.Failure<CreateAsaasIntegrationPaymentResponse>(
+                            Error.Failure("AsaasApi.CreatePaymentFailed", $"Falha ao criar cobrança no Asaas: {ex.Message}"));
+                    }
 
                     // 5. Criar a entidade de Domínio
                     var paymentEntityResult = AsaasIntegrationPayment.Create(
@@ -108,12 +123,16 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Create
                     string? pixPayload = null;
                     if (request.BillingType.Equals("PIX", StringComparison.OrdinalIgnoreCase))
                     {
-                        var qrResult = await _asaasService.GetPixQrCodeAsync(setting, asaasPaymentData.Id, cancellationToken);
-                        if (qrResult.IsSuccess)
+                        try
                         {
-                            pixQrCode = qrResult.Value.EncodedImage;
-                            pixPayload = qrResult.Value.Payload;
+                            var qrCode = await _asaasService.GetPixQrCodeAsync(asaasPaymentData.Id, cancellationToken);
+                            pixQrCode = qrCode.EncodedImage;
+                            pixPayload = qrCode.Payload;
                             paymentEntity.SetPixDetails(pixQrCode, pixPayload);
+                        }
+                        catch (HttpRequestException)
+                        {
+                            // QR Code pode ser consultado novamente depois; não interrompe a criação da cobrança
                         }
                     }
 

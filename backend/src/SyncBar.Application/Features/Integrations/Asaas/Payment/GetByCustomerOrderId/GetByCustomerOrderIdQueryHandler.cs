@@ -12,8 +12,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.GetByCustomerO
 
         public GetByCustomerOrderIdQueryHandler(
             IAsaasIntegrationPaymentRepository paymentRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _paymentRepository = paymentRepository;
         }

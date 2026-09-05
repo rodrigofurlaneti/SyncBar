@@ -11,8 +11,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Customer.GetByCustomer
 
         public GetByCustomerIdAndCompanyIdQueryHandler(
             IAsaasIntegrationCustomerRepository asaasCustomerRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _asaasCustomerRepository = asaasCustomerRepository;
         }
@@ -46,6 +47,7 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Customer.GetByCustomer
                         customer.CompanyId,
                         customer.AsaasCustomerId,
                         customer.CreatedAt,
+                        customer.UpdatedAt,
                         customer.IsActive);
 
                     return Result.Success(response);

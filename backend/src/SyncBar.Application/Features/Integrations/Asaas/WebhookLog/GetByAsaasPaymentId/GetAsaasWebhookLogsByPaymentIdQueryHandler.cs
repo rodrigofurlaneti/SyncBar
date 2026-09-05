@@ -10,8 +10,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.WebhookLog.GetByAsaasP
 
         public GetAsaasWebhookLogsByPaymentIdQueryHandler(
             IAsaasIntegrationWebhookLogRepository webhookLogRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _webhookLogRepository = webhookLogRepository;
         }

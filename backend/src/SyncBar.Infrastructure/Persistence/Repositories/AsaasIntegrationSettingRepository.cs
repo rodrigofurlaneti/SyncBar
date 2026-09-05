@@ -43,10 +43,25 @@ namespace SyncBar.Infrastructure.Persistence.Repositories
                 .FirstOrDefaultAsync(x => x.CompanyId == companyId && x.BranchId == null && x.IsActive, cancellationToken);
         }
 
+        public async Task<AsaasIntegrationSetting?> GetByScopeAsync(long companyId, long? branchId, CancellationToken cancellationToken = default)
+            => branchId.HasValue && branchId.Value > 0
+                ? await context.Set<AsaasIntegrationSetting>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.BranchId == branchId.Value && x.IsActive, cancellationToken)
+                : await context.Set<AsaasIntegrationSetting>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.CompanyId == companyId && x.BranchId == null && x.IsActive, cancellationToken);
+
         public async Task<IReadOnlyList<AsaasIntegrationSetting>> GetAllActiveAsync(CancellationToken cancellationToken = default)
             => await context.Set<AsaasIntegrationSetting>()
                 .AsNoTracking()
                 .Where(x => x.IsActive)
+                .ToListAsync(cancellationToken);
+
+        public async Task<IReadOnlyList<AsaasIntegrationSetting>> GetAllActiveByCompanyIdAsync(long companyId, CancellationToken cancellationToken = default)
+            => await context.Set<AsaasIntegrationSetting>()
+                .AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.IsActive)
                 .ToListAsync(cancellationToken);
 
         public async Task<bool> ExistsForCompanyAsync(long companyId, CancellationToken cancellationToken = default)

@@ -11,8 +11,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.GetByAsaasPaym
 
         public GetByAsaasPaymentIdForUpdateQueryHandler(
             IAsaasIntegrationPaymentRepository paymentRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _paymentRepository = paymentRepository;
         }

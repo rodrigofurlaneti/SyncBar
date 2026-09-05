@@ -19,7 +19,7 @@ public sealed class AsaasCustomerController(
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
     [HttpGet("{id:long}")]
-    [ProducesResponseType(typeof(AsaasIntegrationCustomerResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(SyncBar.Application.Features.Integrations.Asaas.Customer.GetAllByCompanyId.AsaasIntegrationCustomerResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<IActionResult> GetById(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AsaasCustomerController), nameof(GetById), async () =>
@@ -29,7 +29,7 @@ public sealed class AsaasCustomerController(
         });
 
     [HttpGet("company/{companyId:long}")]
-    [ProducesResponseType(typeof(IReadOnlyList<AsaasIntegrationCustomerResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyList<SyncBar.Application.Features.Integrations.Asaas.Customer.GetAllByCompanyId.AsaasIntegrationCustomerResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public Task<IActionResult> GetAllByCompany(long companyId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AsaasCustomerController), nameof(GetAllByCompany), async () =>
@@ -39,7 +39,7 @@ public sealed class AsaasCustomerController(
         });
 
     [HttpGet("company/{companyId:long}/customer/{customerId:long}")]
-    [ProducesResponseType(typeof(AsaasIntegrationCustomerResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(SyncBar.Application.Features.Integrations.Asaas.Customer.GetByCustomerIdAndCompanyId.AsaasIntegrationCustomerResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<IActionResult> GetByCustomerAndCompany(long companyId, long customerId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AsaasCustomerController), nameof(GetByCustomerAndCompany), async () =>
@@ -49,7 +49,7 @@ public sealed class AsaasCustomerController(
         });
 
     [HttpGet("asaas-id/{asaasCustomerId}")]
-    [ProducesResponseType(typeof(AsaasIntegrationCustomerResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(SyncBar.Application.Features.Integrations.Asaas.Customer.GetAllByCompanyId.AsaasIntegrationCustomerResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<IActionResult> GetByAsaasCustomerId(string asaasCustomerId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AsaasCustomerController), nameof(GetByAsaasCustomerId), async () =>

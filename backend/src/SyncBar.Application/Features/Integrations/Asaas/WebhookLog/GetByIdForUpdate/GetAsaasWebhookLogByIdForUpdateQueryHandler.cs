@@ -17,8 +17,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.WebhookLog.GetByIdForU
 
         public GetAsaasWebhookLogByIdForUpdateQueryHandler(
             IAsaasIntegrationWebhookLogRepository webhookLogRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _webhookLogRepository = webhookLogRepository;
         }

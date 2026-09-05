@@ -6,5 +6,11 @@ namespace SyncBar.Infrastructure.Integrations.Asaas
         [property: JsonPropertyName("status")] string Status,
         [property: JsonPropertyName("value")] decimal Value,
         [property: JsonPropertyName("netValue")] decimal? NetValue,
-        [property: JsonPropertyName("invoiceUrl")] string? InvoiceUrl);
+        [property: JsonPropertyName("invoiceUrl")] string? InvoiceUrl,
+        [property: JsonPropertyName("creditCard")] AsaasCreditCardInfo? CreditCard);
+
+    public sealed record AsaasCreditCardInfo(
+        [property: JsonPropertyName("creditCardNumber")] string? CreditCardNumber,
+        [property: JsonPropertyName("creditCardBrand")] string? CreditCardBrand,
+        [property: JsonPropertyName("creditCardToken")] string? CreditCardToken);
 }

@@ -14,8 +14,8 @@ namespace SyncBar.Infrastructure.Persistence.Configurations
 
             builder.Property(x => x.CustomerId).IsRequired();
             builder.Property(x => x.CreditCardToken).HasMaxLength(150).IsRequired();
-            builder.Property(x => x.CreditCardBrand).HasMaxLength(50).IsRequired();
-            builder.Property(x => x.CreditCardNumber).HasMaxLength(10).IsRequired();
+            builder.Property(x => x.CardBrand).HasMaxLength(50).IsRequired();
+            builder.Property(x => x.Last4Digits).HasMaxLength(10).IsRequired();
 
             builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();
             builder.Property(x => x.UpdatedAt).HasColumnType("datetime(6)");

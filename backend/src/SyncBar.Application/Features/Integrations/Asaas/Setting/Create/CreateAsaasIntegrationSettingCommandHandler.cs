@@ -56,7 +56,7 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Setting.Create
                         request.ApiKey,
                         request.WebhookToken,
                         request.Environment ?? "SANDBOX",
-                        request.IsActive);
+                        isActive: request.IsActive);
 
                     if (settingResult.IsFailure)
                         return Result.Failure<CreateAsaasIntegrationSettingResponse>(settingResult.Error);

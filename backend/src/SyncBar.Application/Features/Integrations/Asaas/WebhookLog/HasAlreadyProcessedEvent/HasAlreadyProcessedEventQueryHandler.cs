@@ -16,8 +16,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.WebhookLog.HasAlreadyP
 
         public HasAlreadyProcessedEventQueryHandler(
             IAsaasIntegrationWebhookLogRepository webhookLogRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _webhookLogRepository = webhookLogRepository;
         }

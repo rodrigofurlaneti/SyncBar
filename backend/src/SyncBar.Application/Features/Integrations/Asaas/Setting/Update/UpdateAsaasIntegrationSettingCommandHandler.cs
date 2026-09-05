@@ -51,7 +51,7 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Setting.Update
                         request.ApiKey,
                         request.WebhookToken,
                         request.Environment,
-                        request.IsActive);
+                        isActive: request.IsActive);
 
                     if (updateResult.IsFailure)
                         return Result.Failure(updateResult.Error);

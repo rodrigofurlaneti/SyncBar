@@ -17,8 +17,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Setting.GetByBranchOrC
 
         public GetByBranchOrCompanyFallbackQueryHandler(
             IAsaasIntegrationSettingRepository settingRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _settingRepository = settingRepository;
         }

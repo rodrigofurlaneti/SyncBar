@@ -15,8 +15,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Customer.Exists
 
         public ExistsAsaasCustomerQueryHandler(
             IAsaasIntegrationCustomerRepository asaasCustomerRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _asaasCustomerRepository = asaasCustomerRepository;
         }

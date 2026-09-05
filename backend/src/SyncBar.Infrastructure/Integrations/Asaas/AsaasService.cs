@@ -63,6 +63,43 @@ public class AsaasService : IAsaasService
         return result!;
     }
 
+    public async Task<AsaasPaymentResponse> CreatePaymentAsync(
+        string customerId,
+        string billingType,
+        decimal value,
+        DateTime dueDate,
+        string description,
+        string? creditCardToken = null,
+        int installmentCount = 1,
+        CancellationToken cancellationToken = default)
+    {
+        var payload = new Dictionary<string, object>
+        {
+            ["customer"] = customerId,
+            ["billingType"] = billingType.ToUpperInvariant(),
+            ["value"] = value,
+            ["dueDate"] = dueDate.ToString("yyyy-MM-dd"),
+            ["description"] = description
+        };
+
+        if (!string.IsNullOrWhiteSpace(creditCardToken))
+        {
+            payload["creditCardToken"] = creditCardToken;
+        }
+
+        if (installmentCount > 1)
+        {
+            payload["installmentCount"] = installmentCount;
+            payload["totalValue"] = value;
+        }
+
+        var response = await _http.PostAsJsonAsync("payments", payload, cancellationToken);
+        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+
+        var result = await response.Content.ReadFromJsonAsync<AsaasPaymentResponse>(cancellationToken: cancellationToken);
+        return result!;
+    }
+
     public async Task<AsaasPixQrCodeResponse> GetPixQrCodeAsync(string paymentId, CancellationToken cancellationToken = default)
     {
         var response = await _http.GetAsync($"payments/{paymentId}/pixQrCode", cancellationToken);
@@ -180,7 +217,7 @@ public class AsaasService : IAsaasService
         await EnsureSuccessOrThrowAsaasErrorAsync(response);
     }
 
-    private static async Task EnsureSuccessOrThrowAsaasErrorAsync(HttpResponseMessage response)
+    internal static async Task EnsureSuccessOrThrowAsaasErrorAsync(HttpResponseMessage response)
     {
         if (response.IsSuccessStatusCode)
             return;

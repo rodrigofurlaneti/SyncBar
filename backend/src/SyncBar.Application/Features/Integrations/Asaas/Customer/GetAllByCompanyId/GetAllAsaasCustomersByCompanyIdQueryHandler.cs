@@ -16,8 +16,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Customer.GetAllByCompa
 
         public GetAllAsaasCustomersByCompanyIdQueryHandler(
             IAsaasIntegrationCustomerRepository asaasCustomerRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _asaasCustomerRepository = asaasCustomerRepository;
         }

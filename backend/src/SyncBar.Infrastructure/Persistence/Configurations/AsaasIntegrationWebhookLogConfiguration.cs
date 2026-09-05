@@ -18,21 +18,20 @@ namespace SyncBar.Infrastructure.Persistence.Configurations
             builder.HasKey(x => x.Id);
             builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
-            builder.Property(x => x.AsaasPaymentId)
-                .HasMaxLength(50)
-                .IsRequired();
+            builder.Property(x => x.PaymentId)
+                .HasMaxLength(50);
 
             builder.Property(x => x.Event)
                 .HasMaxLength(50)
                 .IsRequired();
 
-            builder.Property(x => x.RawPayload)
+            builder.Property(x => x.Payload)
                 .HasColumnType("longtext")
                 .IsRequired();
 
-            builder.Property(x => x.IsProcessed)
-                .HasColumnType("tinyint(1)")
-                .HasDefaultValue(false)
+            builder.Property(x => x.Status)
+                .HasConversion<int>()
+                .HasDefaultValue(SyncBar.Domain.Enums.WebhookLogStatus.Pending)
                 .IsRequired();
 
             builder.Property(x => x.ErrorMessage)
@@ -51,7 +50,7 @@ namespace SyncBar.Infrastructure.Persistence.Configurations
                 .IsRequired();
 
             // Índice composto para busca rápida de eventos repetidos (idempotência)
-            builder.HasIndex(x => new { x.AsaasPaymentId, x.Event })
+            builder.HasIndex(x => new { x.PaymentId, x.Event })
                 .HasDatabaseName("IX_AsaasIntegrationWebhookLog_Payment_Event");
         }
     }

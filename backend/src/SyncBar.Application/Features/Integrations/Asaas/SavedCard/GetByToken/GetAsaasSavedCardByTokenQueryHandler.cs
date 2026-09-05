@@ -17,8 +17,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.SavedCard.GetByToken
 
         public GetAsaasSavedCardByTokenQueryHandler(
             IAsaasIntegrationSavedCardRepository savedCardRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _savedCardRepository = savedCardRepository;
         }

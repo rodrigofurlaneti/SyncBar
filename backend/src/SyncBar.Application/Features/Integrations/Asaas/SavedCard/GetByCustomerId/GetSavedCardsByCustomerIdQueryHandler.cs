@@ -11,8 +11,9 @@ namespace SyncBar.Application.Features.Integrations.Asaas.SavedCard.GetByCustome
 
         public GetSavedCardsByCustomerIdQueryHandler(
             IAsaasIntegrationSavedCardRepository savedCardRepository,
-            ILogTrackerRepository logRepository)
-            : base(logRepository)
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
         {
             _savedCardRepository = savedCardRepository;
         }

@@ -45,7 +45,7 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Setting.Delete
                                 $"Configuração de integração com ID {request.Id} não foi encontrada para esta empresa."));
                     }
 
-                    _settingRepository.Remove(setting);
+                    _settingRepository.Delete(setting);
                     await _unitOfWork.CommitAsync(cancellationToken);
 
                     return Result.Success();

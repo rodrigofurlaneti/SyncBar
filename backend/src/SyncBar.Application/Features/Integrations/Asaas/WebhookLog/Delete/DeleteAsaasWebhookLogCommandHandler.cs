@@ -45,7 +45,7 @@ namespace SyncBar.Application.Features.Integrations.Asaas.WebhookLog.Delete
                                 $"Log de webhook com ID {request.Id} não foi encontrado para esta empresa."));
                     }
 
-                    _webhookLogRepository.Remove(log);
+                    _webhookLogRepository.Delete(log);
                     await _unitOfWork.CommitAsync(cancellationToken);
 
                     return Result.Success();
