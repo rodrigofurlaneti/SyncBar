@@ -52,6 +52,13 @@ public class AsaasAuthClient
                 new MediaTypeWithQualityHeaderValue("application/json")
             );
         }
+
+        // A Asaas exige User-Agent no cabeçalho — sem isso a API responde
+        // 400 (user_agent_not_informed) antes mesmo de validar o access_token.
+        if (_httpClient.DefaultRequestHeaders.UserAgent.Count == 0)
+        {
+            _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("SyncBar", "1.0"));
+        }
     }
 
     public HttpClient Client => _httpClient;

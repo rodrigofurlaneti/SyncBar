@@ -44,6 +44,19 @@ function getConnectionStatusKey(lastTest: boolean | null | undefined): "connecte
   return "untested";
 }
 
+// Mesmo padrão de abas da integração Asaas (AsaasPage.tsx) — agrupa os assuntos por abas em vez
+// de empilhar todas as seções numa rolagem só, mantendo o visual (ticket/chip/display) idêntico.
+type IFoodTabId = "credentials" | "stores" | "orders" | "catalog" | "insights" | "status";
+
+const IFOOD_TABS: Array<{ id: IFoodTabId; label: string; icon: string }> = [
+  { id: "credentials", label: "Credenciais", icon: "🔑" },
+  { id: "stores", label: "Lojas", icon: "🏬" },
+  { id: "orders", label: "Pedidos & Logística", icon: "🧾" },
+  { id: "catalog", label: "Cardápio & Financeiro", icon: "🍔" },
+  { id: "insights", label: "Avaliações & Indicadores", icon: "⭐" },
+  { id: "status", label: "Status", icon: "📋" },
+];
+
 export function IFoodIntegrationPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -55,6 +68,7 @@ export function IFoodIntegrationPage() {
   const [enabled, setEnabled] = useState(false);
   const [ifoodCustomerId, setIfoodCustomerId] = useState("");
   const [initializedCompanyId, setInitializedCompanyId] = useState<number | null>(null);
+  const [tab, setTab] = useState<IFoodTabId>("credentials");
 
   const settingsQuery = useQuery({
     queryKey: ["integrations", "ifood", "settings", companyId],
@@ -158,359 +172,418 @@ export function IFoodIntegrationPage() {
 
       {settingsQuery.isError && <QueryError error={settingsQuery.error} what="a integração com o iFood" />}
 
-      <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 16 }}>
-        <div style={{ display: "grid", gap: 4 }}>
-          <span className="display" style={{ fontSize: "1.2rem" }}>
-            Credenciais do aplicativo
-          </span>
-          <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
-            Client ID e Client Secret vêm de "Meus aplicativos" no portal do iFood Developer —
-            um único app pode dar acesso a várias lojas, então essas credenciais valem pra
-            empresa inteira (cada loja individual é configurada na seção "Lojas" abaixo).
-          </span>
-        </div>
-
-        <TextField
-          label="Client ID"
-          value={clientId}
-          onChange={(e) => setClientId(e.target.value)}
-          placeholder="ex.: 3f9a1c2b-..."
-        />
-
-        <TextField
-          label="Client Secret"
-          type="password"
-          value={clientSecret}
-          onChange={(e) => setClientSecret(e.target.value)}
-          placeholder={settingsQuery.data?.hasCredentials ? "•••••••• (deixe em branco para manter o atual)" : "cole o Client Secret aqui"}
-          hint="Fica criptografado no banco — esta tela nunca reexibe o valor já salvo."
-        />
-
-        <TextField
-          label="iFood Customer ID (opcional)"
-          value={ifoodCustomerId}
-          onChange={(e) => setIfoodCustomerId(e.target.value)}
-          placeholder="necessário só para configurar tempo de preparo (seção Operação da loja)"
-          hint="Não é segredo — fica salvo em texto puro. Sem ele, o resto da integração funciona normalmente, só o campo de tempo de preparo fica desabilitado."
-        />
-
-        <Field label="Integração ativa">
-          {() => (
-            <Switch
-              checked={enabled}
-              onChange={setEnabled}
-              label="Ativar integração com o iFood"
-              disabled={saveMutation.isPending}
-            />
-          )}
-        </Field>
-
-        <Button
-          variant="primary"
-          loading={saveMutation.isPending}
-          disabled={enabled && clientId.trim() === ""}
-          onClick={() => saveMutation.mutate()}
-        >
-          Salvar credenciais
-        </Button>
-      </section>
-
-      <section className="ticket rise rise-2" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
-        <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16 }}>
-          <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
-            <span className="display" style={{ fontSize: "1.2rem" }}>
-              Conexão
-            </span>
-            <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
-              Testa as credenciais salvas contra o iFood (autenticação OAuth2). Só funciona
-              depois que você tiver credenciais reais de teste/sandbox ou produção.
-            </span>
-          </div>
-          <div className="ui-row" style={{ gap: 12 }}>
-            <span className="chip" style={{ "--dot": statusDot } as CSSProperties}>
-              {statusLabel}
-            </span>
-            <Button
-              variant="ghost"
-              loading={testMutation.isPending}
-              disabled={!settingsQuery.data?.hasCredentials}
-              onClick={() => testMutation.mutate()}
-            >
-              Testar conexão
-            </Button>
-          </div>
-        </div>
-        {settingsQuery.data?.lastConnectionTestAt && (
-          <span style={{ color: "var(--ink-faint)", fontSize: "0.82rem" }}>
-            Último teste: {new Date(settingsQuery.data.lastConnectionTestAt).toLocaleString("pt-BR")}
-          </span>
-        )}
-      </section>
-
-      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 14, marginTop: 16 }}>
-        <div style={{ display: "grid", gap: 4 }}>
-          <span className="display" style={{ fontSize: "1.2rem" }}>
-            Lojas (merchants)
-          </span>
-          <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
-            Cada filial precisa do seu MerchantId do iFood — encontrado na tela "Permissões" do
-            seu app no portal (ou em "Testes" → dados da loja de teste). O MerchantUuid é usado
-            só em algumas chamadas específicas; pode deixar em branco se não tiver ainda.
-          </span>
-        </div>
-
-        {mappingsQuery.isError && <QueryError error={mappingsQuery.error} what="as lojas" />}
-        {!mappingsQuery.isLoading && (mappingsQuery.data?.length ?? 0) === 0 && (
-          <span style={{ color: "var(--ink-faint)", fontSize: "0.88rem" }}>
-            Nenhuma filial ativa cadastrada ainda.
-          </span>
-        )}
-
-        {(mappingsQuery.data ?? []).map((mapping) => (
-          <MerchantMappingRow
-            key={mapping.branchId}
-            mapping={mapping}
-            onSaved={() => void queryClient.invalidateQueries({ queryKey: ["integrations", "ifood", "merchants"] })}
-          />
+      <div
+        role="tablist"
+        aria-label="Áreas da integração iFood"
+        className="ui-row ui-row-wrap"
+        style={{ gap: 4, borderBottom: "1px solid var(--line-soft)", marginBottom: 18 }}
+      >
+        {IFOOD_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            id={`ifood-tab-${t.id}`}
+            aria-selected={tab === t.id}
+            aria-controls={`ifood-panel-${t.id}`}
+            onClick={() => setTab(t.id)}
+            style={{
+              padding: "10px 16px",
+              border: "none",
+              borderBottom: tab === t.id ? "2px solid var(--amber)" : "2px solid transparent",
+              background: "transparent",
+              color: tab === t.id ? "var(--ink)" : "var(--ink-faint)",
+              fontWeight: tab === t.id ? 700 : 500,
+              fontSize: "0.92rem",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "color var(--duration-base) var(--ease-standard), border-color var(--duration-base) var(--ease-standard)",
+            }}
+          >
+            <span aria-hidden="true">{t.icon}</span> {t.label}
+          </button>
         ))}
-      </section>
+      </div>
 
-      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
-        <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
-          <div style={{ display: "grid", gap: 4 }}>
-            <span className="display" style={{ fontSize: "1.2rem" }}>
-              Pedidos
-            </span>
-            <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
-              Recebimento automático (a cada 30s), confirmação dentro do prazo de 8 minutos, e
-              avanço manual de status (iniciar preparo, pronto, cancelar) pela tela de pedidos.
-            </span>
-          </div>
-          <Link to="/integracoes/ifood/pedidos">
-            <Button variant="ghost">Ver pedidos iFood</Button>
-          </Link>
-        </div>
-      </section>
-
-      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
-        <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
-          <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
-            <span className="display" style={{ fontSize: "1.2rem" }}>
-              Logística (frota própria)
-            </span>
-            <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
-              Entregue com a equipe da própria casa pedidos que vieram do iFood — atribua o
-              entregador e avise cada passo (saiu, chegou, despachou, entregou).
-            </span>
-          </div>
-          <Link to="/integracoes/ifood/logistica">
-            <Button variant="ghost">Ver logística</Button>
-          </Link>
-        </div>
-      </section>
-
-      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
-        <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
-          <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
-            <span className="display" style={{ fontSize: "1.2rem" }}>
-              Entregas iFood (Shipping)
-            </span>
-            <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
-              Peça um entregador do iFood pra um pedido de outro canal (telefone, WhatsApp, balcão)
-              — cotação de preço/prazo, acompanhamento e cancelamento. Tudo sob demanda.
-            </span>
-          </div>
-          <Link to="/integracoes/ifood/shipping">
-            <Button variant="ghost">Ver entregas iFood</Button>
-          </Link>
-        </div>
-      </section>
-
-      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
-        <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
-          <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
-            <span className="display" style={{ fontSize: "1.2rem" }}>
-              Cardápio
-            </span>
-            <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
-              Categorias e produtos ativos são enviados sozinhos pro iFood sempre que você
-              cria, edita ou desativa algo em Produtos. Use o botão ao lado pra reenviar tudo de
-              uma vez (primeira carga, ou depois de uma falha).
-            </span>
-          </div>
-          <div className="ui-row" style={{ gap: 8 }}>
-            <Link to="/integracoes/ifood/catalogo">
-              <Button variant="ghost">Gerenciar catálogo</Button>
-            </Link>
-            <Button variant="ghost" loading={syncCatalogMutation.isPending} onClick={() => syncCatalogMutation.mutate()}>
-              Sincronizar agora
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 14, marginTop: 16 }}>
-        <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
-          <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
-            <span className="display" style={{ fontSize: "1.2rem" }}>
-              Financeiro
-            </span>
-            <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
-              Trilha de auditoria dos lançamentos e repasses do iFood (últimos 30 dias) — não
-              substitui o fechamento de caixa do SyncBar, é só pra conferir o que o iFood
-              calculou. Sincroniza sozinho 1x por dia.
-            </span>
-          </div>
-          <div className="ui-row" style={{ gap: 8 }}>
-            <Link to="/integracoes/ifood/financeiro/relatorios">
-              <Button variant="ghost">Relatórios completos</Button>
-            </Link>
-            <Button
-              variant="ghost"
-              loading={syncFinancialMutation.isPending}
-              disabled={!firstMappedBranch}
-              onClick={() => syncFinancialMutation.mutate()}
-            >
-              Sincronizar agora
-            </Button>
-          </div>
-        </div>
-
-        {!firstMappedBranch && (
-          <span style={{ color: "var(--ink-faint)", fontSize: "0.88rem" }}>
-            Configure o Merchant ID de ao menos uma loja acima para ver o financeiro.
-          </span>
-        )}
-
-        {financialSummaryQuery.isError && (
-          <QueryError error={financialSummaryQuery.error} what="o financeiro do iFood" />
-        )}
-
-        {financialSummaryQuery.data && (
+      <div id={`ifood-panel-${tab}`} role="tabpanel" aria-labelledby={`ifood-tab-${tab}`} className="rise rise-1">
+        {tab === "credentials" && (
           <>
-            <div className="ui-row ui-row-wrap" style={{ gap: 20 }}>
-              <div style={{ display: "grid", gap: 2 }}>
-                <span style={{ color: "var(--ink-faint)", fontSize: "0.82rem" }}>Lançamentos c/ impacto no repasse</span>
-                <span className="display" style={{ fontSize: "1.15rem" }}>
-                  {financialSummaryQuery.data.totalFinancialEventsWithTransferImpact.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 16 }}>
+              <div style={{ display: "grid", gap: 4 }}>
+                <span className="display" style={{ fontSize: "1.2rem" }}>
+                  Credenciais do aplicativo
+                </span>
+                <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+                  Client ID e Client Secret vêm de "Meus aplicativos" no portal do iFood Developer —
+                  um único app pode dar acesso a várias lojas, então essas credenciais valem pra
+                  empresa inteira (cada loja individual é configurada na aba "Lojas").
                 </span>
               </div>
-              <div style={{ display: "grid", gap: 2 }}>
-                <span style={{ color: "var(--ink-faint)", fontSize: "0.82rem" }}>Repasses (Settlement)</span>
-                <span className="display" style={{ fontSize: "1.15rem" }}>
-                  {financialSummaryQuery.data.totalSettlements.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                </span>
+
+              <TextField
+                label="Client ID"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                placeholder="ex.: 3f9a1c2b-..."
+              />
+
+              <TextField
+                label="Client Secret"
+                type="password"
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+                placeholder={settingsQuery.data?.hasCredentials ? "•••••••• (deixe em branco para manter o atual)" : "cole o Client Secret aqui"}
+                hint="Fica criptografado no banco — esta tela nunca reexibe o valor já salvo."
+              />
+
+              <TextField
+                label="iFood Customer ID (opcional)"
+                value={ifoodCustomerId}
+                onChange={(e) => setIfoodCustomerId(e.target.value)}
+                placeholder="necessário só para configurar tempo de preparo (aba Lojas)"
+                hint="Não é segredo — fica salvo em texto puro. Sem ele, o resto da integração funciona normalmente, só o campo de tempo de preparo fica desabilitado."
+              />
+
+              <Field label="Integração ativa">
+                {() => (
+                  <Switch
+                    checked={enabled}
+                    onChange={setEnabled}
+                    label="Ativar integração com o iFood"
+                    disabled={saveMutation.isPending}
+                  />
+                )}
+              </Field>
+
+              <Button
+                variant="primary"
+                loading={saveMutation.isPending}
+                disabled={enabled && clientId.trim() === ""}
+                onClick={() => saveMutation.mutate()}
+              >
+                Salvar credenciais
+              </Button>
+            </section>
+
+            <section className="ticket rise rise-2" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
+              <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16 }}>
+                <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
+                  <span className="display" style={{ fontSize: "1.2rem" }}>
+                    Conexão
+                  </span>
+                  <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+                    Testa as credenciais salvas contra o iFood (autenticação OAuth2). Só funciona
+                    depois que você tiver credenciais reais de teste/sandbox ou produção.
+                  </span>
+                </div>
+                <div className="ui-row" style={{ gap: 12 }}>
+                  <span className="chip" style={{ "--dot": statusDot } as CSSProperties}>
+                    {statusLabel}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    loading={testMutation.isPending}
+                    disabled={!settingsQuery.data?.hasCredentials}
+                    onClick={() => testMutation.mutate()}
+                  >
+                    Testar conexão
+                  </Button>
+                </div>
               </div>
-              {financialSummaryQuery.data.hasDiscrepancy && (
-                <span className="chip" style={{ "--dot": "var(--danger)" } as CSSProperties}>
-                  Revisar conciliação — diferença de{" "}
-                  {financialSummaryQuery.data.discrepancyAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              {settingsQuery.data?.lastConnectionTestAt && (
+                <span style={{ color: "var(--ink-faint)", fontSize: "0.82rem" }}>
+                  Último teste: {new Date(settingsQuery.data.lastConnectionTestAt).toLocaleString("pt-BR")}
                 </span>
               )}
-            </div>
+            </section>
+          </>
+        )}
 
-            {financialSummaryQuery.data.settlements.length > 0 && (
-              <div style={{ display: "grid", gap: 6 }}>
-                <span style={{ color: "var(--ink-dim)", fontSize: "0.88rem", fontWeight: 600 }}>Repasses</span>
-                {financialSummaryQuery.data.settlements.map((s) => (
-                  <div
-                    key={s.id}
-                    className="ui-row ui-row-wrap"
-                    style={{ justifyContent: "space-between", gap: 10, borderTop: "1px solid var(--line-soft)", paddingTop: 8, fontSize: "0.88rem" }}
-                  >
-                    <span>
-                      {s.type}
-                      {s.product ? ` — ${s.product}` : ""}
-                    </span>
-                    <span style={{ color: "var(--ink-faint)" }}>{s.status}</span>
-                    <span>{s.paymentDate ? new Date(s.paymentDate).toLocaleDateString("pt-BR") : "sem data prevista"}</span>
-                    <strong>{s.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
-                  </div>
-                ))}
+        {tab === "stores" && (
+          <>
+            <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 14 }}>
+              <div style={{ display: "grid", gap: 4 }}>
+                <span className="display" style={{ fontSize: "1.2rem" }}>
+                  Lojas (merchants)
+                </span>
+                <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+                  Cada filial precisa do seu MerchantId do iFood — encontrado na tela "Permissões" do
+                  seu app no portal (ou em "Testes" → dados da loja de teste). O MerchantUuid é usado
+                  só em algumas chamadas específicas; pode deixar em branco se não tiver ainda.
+                </span>
               </div>
-            )}
 
-            {financialSummaryQuery.data.events.length === 0 && financialSummaryQuery.data.settlements.length === 0 && (
-              <span style={{ color: "var(--ink-faint)", fontSize: "0.88rem" }}>
-                Nenhum lançamento financeiro nos últimos 30 dias ainda.
-              </span>
+              {mappingsQuery.isError && <QueryError error={mappingsQuery.error} what="as lojas" />}
+              {!mappingsQuery.isLoading && (mappingsQuery.data?.length ?? 0) === 0 && (
+                <span style={{ color: "var(--ink-faint)", fontSize: "0.88rem" }}>
+                  Nenhuma filial ativa cadastrada ainda.
+                </span>
+              )}
+
+              {(mappingsQuery.data ?? []).map((mapping) => (
+                <MerchantMappingRow
+                  key={mapping.branchId}
+                  mapping={mapping}
+                  onSaved={() => void queryClient.invalidateQueries({ queryKey: ["integrations", "ifood", "merchants"] })}
+                />
+              ))}
+            </section>
+
+            {firstMappedBranch && <MerchantOperationsSection branchId={firstMappedBranch.branchId} companyId={companyId} />}
+            {!firstMappedBranch && (
+              <section className="ticket rise rise-2" style={{ padding: 20, display: "grid", gap: 8, marginTop: 16 }}>
+                <span className="display" style={{ fontSize: "1.1rem" }}>
+                  Operação da loja
+                </span>
+                <span style={{ color: "var(--ink-faint)", fontSize: "0.88rem" }}>
+                  Configure o Merchant ID de ao menos uma loja acima para ver status, interrupções,
+                  horários e tempo de preparo.
+                </span>
+              </section>
             )}
           </>
         )}
-      </section>
 
-      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
-        <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
-          <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
-            <span className="display" style={{ fontSize: "1.2rem" }}>
-              Avaliações
-            </span>
-            <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
-              Veja e responda às avaliações dos clientes direto no iFood (nota média, comentários,
-              respostas). Sem sincronização — sempre lido/escrito ao vivo.
-            </span>
-          </div>
-          <Link to="/integracoes/ifood/avaliacoes">
-            <Button variant="ghost">Ver avaliações</Button>
-          </Link>
-        </div>
-      </section>
+        {tab === "orders" && (
+          <>
+            <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 12 }}>
+              <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <span className="display" style={{ fontSize: "1.2rem" }}>
+                    Pedidos
+                  </span>
+                  <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+                    Recebimento automático (a cada 30s), confirmação dentro do prazo de 8 minutos, e
+                    avanço manual de status (iniciar preparo, pronto, cancelar) pela tela de pedidos.
+                  </span>
+                </div>
+                <Link to="/integracoes/ifood/pedidos">
+                  <Button variant="ghost">Ver pedidos iFood</Button>
+                </Link>
+              </div>
+            </section>
 
-      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
-        <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
-          <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
-            <span className="display" style={{ fontSize: "1.2rem" }}>
-              Indicadores
-            </span>
-            <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
-              GMV, taxas e outras métricas de pedidos por período, agrupadas por canal de venda.
-            </span>
-          </div>
-          <Link to="/integracoes/ifood/indicadores">
-            <Button variant="ghost">Ver indicadores</Button>
-          </Link>
-        </div>
-      </section>
+            <section className="ticket rise rise-2" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
+              <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+                <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
+                  <span className="display" style={{ fontSize: "1.2rem" }}>
+                    Logística (frota própria)
+                  </span>
+                  <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+                    Entregue com a equipe da própria casa pedidos que vieram do iFood — atribua o
+                    entregador e avise cada passo (saiu, chegou, despachou, entregou).
+                  </span>
+                </div>
+                <Link to="/integracoes/ifood/logistica">
+                  <Button variant="ghost">Ver logística</Button>
+                </Link>
+              </div>
+            </section>
 
-      {firstMappedBranch && <MerchantOperationsSection branchId={firstMappedBranch.branchId} companyId={companyId} />}
-      {!firstMappedBranch && (
-        <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 8, marginTop: 16 }}>
-          <span className="display" style={{ fontSize: "1.1rem" }}>
-            Operação da loja
-          </span>
-          <span style={{ color: "var(--ink-faint)", fontSize: "0.88rem" }}>
-            Configure o Merchant ID de ao menos uma loja acima para ver status, interrupções,
-            horários e tempo de preparo.
-          </span>
-        </section>
-      )}
+            <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
+              <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+                <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
+                  <span className="display" style={{ fontSize: "1.2rem" }}>
+                    Entregas iFood (Shipping)
+                  </span>
+                  <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+                    Peça um entregador do iFood pra um pedido de outro canal (telefone, WhatsApp, balcão)
+                    — cotação de preço/prazo, acompanhamento e cancelamento. Tudo sob demanda.
+                  </span>
+                </div>
+                <Link to="/integracoes/ifood/shipping">
+                  <Button variant="ghost">Ver entregas iFood</Button>
+                </Link>
+              </div>
+            </section>
+          </>
+        )}
 
-      <section className="ticket rise rise-3" style={{ padding: 20, display: "grid", gap: 8, marginTop: 16 }}>
-        <span className="display" style={{ fontSize: "1.1rem" }}>
-          O que já está pronto x o que falta
-        </span>
-        <ul style={{ margin: 0, paddingLeft: 18, color: "var(--ink-dim)", fontSize: "0.9rem", display: "grid", gap: 6 }}>
-          <li>
-            <strong style={{ color: "var(--ink)" }}>Pronto:</strong> guardar as credenciais do app
-            com segurança (segredo criptografado), testar a autenticação OAuth2 real com o
-            iFood, mapear cada loja ao MerchantId correspondente, sincronizar pedidos (receber,
-            confirmar dentro do SLA, iniciar preparo/pronto/cancelar), sincronizar cardápio
-            (categorias, produtos, preço, pausar/reativar, estoque de produtos com controle de
-            estoque), trilha financeira (lançamentos, repasses e os 13 relatórios completos do
-            iFood, alerta de discrepância), operação da loja (status em tempo real,
-            pausar/reabrir, horários de funcionamento, tempo de preparo customizado), logística
-            por frota própria e entrega Sob Demanda (Shipping) — inclusive pra pedidos que vieram
-            de outros canais —, avaliações (ver/responder) e indicadores de pedidos.
-          </li>
-          <li>
-            <strong style={{ color: "var(--ink)" }}>Pendente:</strong> complementos/pizzas/combos
-            avançados no cardápio (multisetup, migração v1↔v2, imagem em lote), disputas
-            pós-entrega (Handshake) além do aceitar/rejeitar básico, rastreamento em tela do
-            pedido do módulo Order (fora da tela de Shipping/Logística), avaliações no formato
-            v2, e pedidos agendados.
-          </li>
-        </ul>
-      </section>
+        {tab === "catalog" && (
+          <>
+            <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 12 }}>
+              <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+                <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
+                  <span className="display" style={{ fontSize: "1.2rem" }}>
+                    Cardápio
+                  </span>
+                  <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+                    Categorias e produtos ativos são enviados sozinhos pro iFood sempre que você
+                    cria, edita ou desativa algo em Produtos. Use o botão ao lado pra reenviar tudo de
+                    uma vez (primeira carga, ou depois de uma falha).
+                  </span>
+                </div>
+                <div className="ui-row" style={{ gap: 8 }}>
+                  <Link to="/integracoes/ifood/catalogo">
+                    <Button variant="ghost">Gerenciar catálogo</Button>
+                  </Link>
+                  <Button variant="ghost" loading={syncCatalogMutation.isPending} onClick={() => syncCatalogMutation.mutate()}>
+                    Sincronizar agora
+                  </Button>
+                </div>
+              </div>
+            </section>
+
+            <section className="ticket rise rise-2" style={{ padding: 20, display: "grid", gap: 14, marginTop: 16 }}>
+              <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+                <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
+                  <span className="display" style={{ fontSize: "1.2rem" }}>
+                    Financeiro
+                  </span>
+                  <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+                    Trilha de auditoria dos lançamentos e repasses do iFood (últimos 30 dias) — não
+                    substitui o fechamento de caixa do SyncBar, é só pra conferir o que o iFood
+                    calculou. Sincroniza sozinho 1x por dia.
+                  </span>
+                </div>
+                <div className="ui-row" style={{ gap: 8 }}>
+                  <Link to="/integracoes/ifood/financeiro/relatorios">
+                    <Button variant="ghost">Relatórios completos</Button>
+                  </Link>
+                  <Button
+                    variant="ghost"
+                    loading={syncFinancialMutation.isPending}
+                    disabled={!firstMappedBranch}
+                    onClick={() => syncFinancialMutation.mutate()}
+                  >
+                    Sincronizar agora
+                  </Button>
+                </div>
+              </div>
+
+              {!firstMappedBranch && (
+                <span style={{ color: "var(--ink-faint)", fontSize: "0.88rem" }}>
+                  Configure o Merchant ID de ao menos uma loja na aba Lojas para ver o financeiro.
+                </span>
+              )}
+
+              {financialSummaryQuery.isError && (
+                <QueryError error={financialSummaryQuery.error} what="o financeiro do iFood" />
+              )}
+
+              {financialSummaryQuery.data && (
+                <>
+                  <div className="ui-row ui-row-wrap" style={{ gap: 20 }}>
+                    <div style={{ display: "grid", gap: 2 }}>
+                      <span style={{ color: "var(--ink-faint)", fontSize: "0.82rem" }}>Lançamentos c/ impacto no repasse</span>
+                      <span className="display" style={{ fontSize: "1.15rem" }}>
+                        {financialSummaryQuery.data.totalFinancialEventsWithTransferImpact.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    </div>
+                    <div style={{ display: "grid", gap: 2 }}>
+                      <span style={{ color: "var(--ink-faint)", fontSize: "0.82rem" }}>Repasses (Settlement)</span>
+                      <span className="display" style={{ fontSize: "1.15rem" }}>
+                        {financialSummaryQuery.data.totalSettlements.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    </div>
+                    {financialSummaryQuery.data.hasDiscrepancy && (
+                      <span className="chip" style={{ "--dot": "var(--danger)" } as CSSProperties}>
+                        Revisar conciliação — diferença de{" "}
+                        {financialSummaryQuery.data.discrepancyAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    )}
+                  </div>
+
+                  {financialSummaryQuery.data.settlements.length > 0 && (
+                    <div style={{ display: "grid", gap: 6 }}>
+                      <span style={{ color: "var(--ink-dim)", fontSize: "0.88rem", fontWeight: 600 }}>Repasses</span>
+                      {financialSummaryQuery.data.settlements.map((s) => (
+                        <div
+                          key={s.id}
+                          className="ui-row ui-row-wrap"
+                          style={{ justifyContent: "space-between", gap: 10, borderTop: "1px solid var(--line-soft)", paddingTop: 8, fontSize: "0.88rem" }}
+                        >
+                          <span>
+                            {s.type}
+                            {s.product ? ` — ${s.product}` : ""}
+                          </span>
+                          <span style={{ color: "var(--ink-faint)" }}>{s.status}</span>
+                          <span>{s.paymentDate ? new Date(s.paymentDate).toLocaleDateString("pt-BR") : "sem data prevista"}</span>
+                          <strong>{s.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {financialSummaryQuery.data.events.length === 0 && financialSummaryQuery.data.settlements.length === 0 && (
+                    <span style={{ color: "var(--ink-faint)", fontSize: "0.88rem" }}>
+                      Nenhum lançamento financeiro nos últimos 30 dias ainda.
+                    </span>
+                  )}
+                </>
+              )}
+            </section>
+          </>
+        )}
+
+        {tab === "insights" && (
+          <>
+            <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 12 }}>
+              <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+                <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
+                  <span className="display" style={{ fontSize: "1.2rem" }}>
+                    Avaliações
+                  </span>
+                  <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+                    Veja e responda às avaliações dos clientes direto no iFood (nota média, comentários,
+                    respostas). Sem sincronização — sempre lido/escrito ao vivo.
+                  </span>
+                </div>
+                <Link to="/integracoes/ifood/avaliacoes">
+                  <Button variant="ghost">Ver avaliações</Button>
+                </Link>
+              </div>
+            </section>
+
+            <section className="ticket rise rise-2" style={{ padding: 20, display: "grid", gap: 12, marginTop: 16 }}>
+              <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+                <div style={{ display: "grid", gap: 4, maxWidth: 520 }}>
+                  <span className="display" style={{ fontSize: "1.2rem" }}>
+                    Indicadores
+                  </span>
+                  <span style={{ color: "var(--ink-dim)", fontSize: "0.92rem" }}>
+                    GMV, taxas e outras métricas de pedidos por período, agrupadas por canal de venda.
+                  </span>
+                </div>
+                <Link to="/integracoes/ifood/indicadores">
+                  <Button variant="ghost">Ver indicadores</Button>
+                </Link>
+              </div>
+            </section>
+          </>
+        )}
+
+        {tab === "status" && (
+          <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 8 }}>
+            <span className="display" style={{ fontSize: "1.1rem" }}>
+              O que já está pronto x o que falta
+            </span>
+            <ul style={{ margin: 0, paddingLeft: 18, color: "var(--ink-dim)", fontSize: "0.9rem", display: "grid", gap: 6 }}>
+              <li>
+                <strong style={{ color: "var(--ink)" }}>Pronto:</strong> guardar as credenciais do app
+                com segurança (segredo criptografado), testar a autenticação OAuth2 real com o
+                iFood, mapear cada loja ao MerchantId correspondente, sincronizar pedidos (receber,
+                confirmar dentro do SLA, iniciar preparo/pronto/cancelar), sincronizar cardápio
+                (categorias, produtos, preço, pausar/reativar, estoque de produtos com controle de
+                estoque), trilha financeira (lançamentos, repasses e os 13 relatórios completos do
+                iFood, alerta de discrepância), operação da loja (status em tempo real,
+                pausar/reabrir, horários de funcionamento, tempo de preparo customizado), logística
+                por frota própria e entrega Sob Demanda (Shipping) — inclusive pra pedidos que vieram
+                de outros canais —, avaliações (ver/responder) e indicadores de pedidos.
+              </li>
+              <li>
+                <strong style={{ color: "var(--ink)" }}>Pendente:</strong> complementos/pizzas/combos
+                avançados no cardápio (multisetup, migração v1↔v2, imagem em lote), disputas
+                pós-entrega (Handshake) além do aceitar/rejeitar básico, rastreamento em tela do
+                pedido do módulo Order (fora da tela de Shipping/Logística), avaliações no formato
+                v2, e pedidos agendados.
+              </li>
+            </ul>
+          </section>
+        )}
+      </div>
     </main>
   );
 }

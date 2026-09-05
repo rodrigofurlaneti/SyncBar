@@ -7,6 +7,7 @@ public sealed record CreateCustomerAppUserCommand(
     long CompanyId,
     long? BranchId,
     long? CustomerId,
+    string Cpf,
     string UserName,
     string Email,
     string Password,

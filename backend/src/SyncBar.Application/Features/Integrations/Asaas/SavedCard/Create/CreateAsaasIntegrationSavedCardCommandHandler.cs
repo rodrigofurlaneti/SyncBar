@@ -11,14 +11,12 @@ internal sealed class CreateAsaasIntegrationSavedCardCommandHandler
 {
     private readonly IAsaasIntegrationSavedCardRepository _savedCardRepository;
     private readonly IAsaasIntegrationCustomerRepository _customerRepository;
-    private readonly IAsaasIntegrationSettingRepository _settingRepository;
     private readonly IAsaasService _asaasService;
     private readonly IUnitOfWork _unitOfWork;
 
     public CreateAsaasIntegrationSavedCardCommandHandler(
         IAsaasIntegrationSavedCardRepository savedCardRepository,
         IAsaasIntegrationCustomerRepository customerRepository,
-        IAsaasIntegrationSettingRepository settingRepository,
         IAsaasService asaasService,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork)
@@ -26,7 +24,6 @@ internal sealed class CreateAsaasIntegrationSavedCardCommandHandler
     {
         _savedCardRepository = savedCardRepository;
         _customerRepository = customerRepository;
-        _settingRepository = settingRepository;
         _asaasService = asaasService;
         _unitOfWork = unitOfWork;
     }
@@ -41,17 +38,8 @@ internal sealed class CreateAsaasIntegrationSavedCardCommandHandler
             null,
             async (userIdBox) =>
             {
-                // 1. Obter as configurações de integração ativas para a empresa
-                var setting = await _settingRepository.GetByBranchOrCompanyFallbackAsync(
-                    request.CompanyId,
-                    null,
-                    cancellationToken);
-
-                if (setting is null || !setting.IsActive || string.IsNullOrWhiteSpace(setting.ApiKeyEncrypted))
-                {
-                    return Result.Failure<CreateAsaasIntegrationSavedCardResponse>(
-                        Error.Validation("AsaasSetting.NotFound", "Configuração de integração Asaas não configurada ou inativa para esta empresa."));
-                }
+                // 1. Aplica a credencial Asaas da filial/empresa (banco, com fallback pro appsettings)
+                await _asaasService.ConfigureForTenantAsync(request.CompanyId, request.BranchId, cancellationToken);
 
                 // 2. Verificar se o cliente já possui vínculo cadastrado no Asaas
                 var asaasCustomer = await _customerRepository.GetByCustomerIdAndCompanyIdAsync(

@@ -237,7 +237,7 @@ function SettingsSection({ companyId }: { companyId: number }) {
   const list = settingsQuery.data ?? [];
 
   return (
-    <section style={{ display: "grid", gap: 14 }}>
+    <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 14 }}>
       <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "grid", gap: 4, maxWidth: 560 }}>
           <span className="display" style={{ fontSize: "1.2rem" }}>
@@ -277,7 +277,7 @@ function SettingsSection({ companyId }: { companyId: number }) {
       )}
 
       {list.length > 0 && (
-        <div className="ticket" style={{ marginTop: 4 }}>
+        <div style={{ marginTop: 4 }}>
           {list.map((s) => (
             <div key={s.id} className="ticket-row" style={{ alignItems: "center" }}>
               <div style={{ display: "grid", gap: 2 }}>
@@ -478,7 +478,7 @@ function CustomersSection({ companyId }: { companyId: number }) {
   const list = bindingsQuery.data ?? [];
 
   return (
-    <section style={{ display: "grid", gap: 14 }}>
+    <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 14 }}>
       <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "grid", gap: 4, maxWidth: 560 }}>
           <span className="display" style={{ fontSize: "1.2rem" }}>
@@ -518,7 +518,7 @@ function CustomersSection({ companyId }: { companyId: number }) {
       )}
 
       {list.length > 0 && (
-        <div className="ticket">
+        <div>
           {list.map((b) => (
             <div key={b.id} className="ticket-row" style={{ alignItems: "center" }}>
               <div style={{ display: "grid", gap: 2 }}>
@@ -719,7 +719,7 @@ function PaymentsSection({ companyId, branchId }: { companyId: number; branchId:
   const boundCustomers = (bindingsQuery.data ?? []).filter((b) => b.isActive);
 
   return (
-    <section style={{ display: "grid", gap: 14 }}>
+    <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 14 }}>
       <div className="ui-row ui-row-wrap" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "grid", gap: 4, maxWidth: 560 }}>
           <span className="display" style={{ fontSize: "1.2rem" }}>
@@ -764,7 +764,7 @@ function PaymentsSection({ companyId, branchId }: { companyId: number; branchId:
       )}
 
       {list.length > 0 && (
-        <div className="ticket">
+        <div>
           {list.map((p) => (
             <div key={p.id} className="ticket-row" style={{ alignItems: "center" }}>
               <div style={{ display: "grid", gap: 2 }}>
@@ -1122,7 +1122,7 @@ function SavedCardsSection({ companyId }: { companyId: number }) {
   const list = cardsQuery.data ?? [];
 
   return (
-    <section style={{ display: "grid", gap: 14 }}>
+    <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 14 }}>
       <div style={{ display: "grid", gap: 4, maxWidth: 620 }}>
         <span className="display" style={{ fontSize: "1.2rem" }}>
           Cartões de crédito tokenizados
@@ -1176,7 +1176,7 @@ function SavedCardsSection({ companyId }: { companyId: number }) {
           )}
 
           {list.length > 0 && (
-            <div className="ticket">
+            <div>
               {list.map((c) => (
                 <div key={c.id} className="ticket-row" style={{ alignItems: "center" }}>
                   <div style={{ display: "grid", gap: 2 }}>
@@ -1370,7 +1370,7 @@ function WebhooksSection({ companyId }: { companyId: number }) {
   const list = query.data ?? [];
 
   return (
-    <section style={{ display: "grid", gap: 14 }}>
+    <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 14 }}>
       <div style={{ display: "grid", gap: 4, maxWidth: 620 }}>
         <span className="display" style={{ fontSize: "1.2rem" }}>
           Eventos recebidos do Asaas
@@ -1412,7 +1412,7 @@ function WebhooksSection({ companyId }: { companyId: number }) {
       )}
 
       {list.length > 0 && (
-        <div className="ticket">
+        <div>
           {list.map((log) => (
             <div key={log.id} className="ticket-row" style={{ alignItems: "center" }}>
               <div style={{ display: "grid", gap: 2 }}>

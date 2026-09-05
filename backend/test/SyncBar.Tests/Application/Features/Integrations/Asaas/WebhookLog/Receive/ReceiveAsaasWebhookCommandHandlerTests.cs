@@ -1,6 +1,7 @@
 using FluentAssertions;
 using NSubstitute;
 using SyncBar.Application.Features.Integrations.Asaas.WebhookLog.Receive;
+using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
 using Xunit;
@@ -13,6 +14,7 @@ public sealed class ReceiveAsaasWebhookCommandHandlerTests
     private readonly IAsaasIntegrationSettingRepository _settingRepository = Substitute.For<IAsaasIntegrationSettingRepository>();
     private readonly IAsaasIntegrationWebhookLogRepository _webhookLogRepository = Substitute.For<IAsaasIntegrationWebhookLogRepository>();
     private readonly IBranchRepository _branchRepository = Substitute.For<IBranchRepository>();
+    private readonly ICustomerOrderRepository _orderRepository = Substitute.For<ICustomerOrderRepository>();
     private readonly ILogTrackerRepository _logRepository = Substitute.For<ILogTrackerRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
@@ -21,7 +23,8 @@ public sealed class ReceiveAsaasWebhookCommandHandlerTests
     public ReceiveAsaasWebhookCommandHandlerTests()
     {
         _handler = new ReceiveAsaasWebhookCommandHandler(
-            _paymentRepository, _settingRepository, _webhookLogRepository, _branchRepository, _logRepository, _unitOfWork);
+            _paymentRepository, _settingRepository, _webhookLogRepository, _branchRepository, _orderRepository,
+            TimeProvider.System, _logRepository, _unitOfWork);
     }
 
     private static AsaasIntegrationPayment CreatePayment(long branchId = 1) =>
@@ -134,6 +137,30 @@ public sealed class ReceiveAsaasWebhookCommandHandlerTests
         payment.PaymentDate.Should().Be(new DateTime(2026, 9, 18));
         _paymentRepository.Received(1).Update(payment);
         await _unitOfWork.Received(2).CommitAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PaymentReceived_ShouldMarkLinkedOrderAsPaid()
+    {
+        var payment = CreatePayment(); // CustomerOrderId = 10
+        var order = CustomerOrder.Create(
+            branchId: 1, diningTableId: null, comandaId: null, employeeId: 1, guestCount: null, notes: null,
+            Now: DateTime.UtcNow, orderTypeId: OrderTypeIds.WebSite, customerName: "Cliente Teste").Value;
+        order.AddItem(1, 10m, 1, null, null, DateTime.UtcNow);
+        order.Close(0m, DateTime.UtcNow);
+
+        _paymentRepository.GetByAsaasPaymentIdForUpdateAsync("pay_1", Arg.Any<CancellationToken>()).Returns(payment);
+        _branchRepository.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(CreateBranch());
+        _settingRepository.GetByBranchOrCompanyFallbackAsync(1, 1, Arg.Any<CancellationToken>())
+            .Returns((AsaasIntegrationSetting?)null);
+        _orderRepository.GetByIdForUpdateAsync(10, Arg.Any<CancellationToken>()).Returns(order);
+
+        var command = new ReceiveAsaasWebhookCommand(ValidPayload, null, null);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        order.OrderStatusId.Should().Be(OrderStatusIds.Pago);
     }
 
     [Fact]

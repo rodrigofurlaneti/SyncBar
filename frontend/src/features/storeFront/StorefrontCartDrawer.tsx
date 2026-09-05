@@ -1,6 +1,7 @@
-﻿import { useState, useId, useEffect } from "react";
+﻿import { useState, useId, useEffect, useMemo, useCallback } from "react";
+import Swal from "sweetalert2";
 import { formatBRL } from "../../lib/types";
-import { getCustomerAddressesByCustomer, CustomerAddressResponse } from "./storefrontApi";
+import { getCustomerAddressesByCustomer, CustomerAddressResponse, registerCustomerAddress } from "./storefrontApi";
 
 export type CartItem = {
     productId: number;
@@ -18,11 +19,22 @@ export type CustomerSessionData = {
     customerId?: number;
 };
 
+export type PaymentMethod = "PIX" | "MAQUININHA" | "CREDITO" | "BOLETO";
+
+export type NewCardData = {
+    holderName: string;
+    number: string;
+    expiryMonth: string;
+    expiryYear: string;
+    ccv: string;
+    saveCard: boolean;
+};
+
 type StorefrontCartDrawerProps = {
     isOpen: boolean;
     onClose: () => void;
     items: CartItem[];
-    initialStep?: "review" | "delivery"; // Adicionado para receber o passo inicial vindo da página principal
+    initialStep?: "review" | "delivery";
     onUpdateQuantity: (productId: number, newQty: number) => void;
     onRemoveItem: (productId: number) => void;
     onCheckout: (
@@ -31,12 +43,68 @@ type StorefrontCartDrawerProps = {
         deliveryType?: "PICKUP" | "DELIVERY",
         addressId?: number | null,
         newAddress?: any,
-        paymentMethod?: string
+        paymentMethod?: PaymentMethod,
+        cardData?: NewCardData
     ) => void;
     isSubmitting: boolean;
     customerData?: CustomerSessionData | null;
     onOpenAuthModal: () => void;
 };
+
+const styles = `
+  .drawer-wrapper { position: fixed; inset: 0; z-index: 9999; display: flex; justify-content: flex-end; font-family: system-ui, -apple-system, sans-serif; animation: fadeIn 0.2s ease-out; }
+  .drawer-backdrop { position: absolute; inset: 0; background-color: rgba(0, 0, 0, 0.75); backdrop-filter: blur(0.25rem); }
+  .drawer-container { position: relative; width: 100%; max-width: 27.5rem; height: 100%; background-color: #18181b; box-shadow: -0.625rem 0 1.875rem rgba(0, 0, 0, 0.7); display: flex; flex-direction: column; animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+  .drawer-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 0.0625rem solid #27272a; padding: 1.25rem 1.5rem; }
+  .drawer-title { font-size: 1.25rem; font-weight: bold; color: #f4f4f5; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
+  .btn-icon { background: none; border: none; color: #a1a1aa; cursor: pointer; padding: 0.5rem; border-radius: 0.375rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
+  .btn-icon:hover { color: #fff; background-color: #27272a; }
+  .btn-icon:focus-visible { outline: 0.125rem solid #f59e0b; outline-offset: 0.125rem; }
+  .customer-banner { display: flex; align-items: center; justify-content: space-between; border-bottom: 0.0625rem solid #27272a; background-color: rgba(9, 9, 11, 0.5); padding: 0.75rem 1.5rem; }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+  
+  .cart-item-card { display: flex; flex-direction: column; gap: 0.75rem; border-radius: 0.75rem; border: 0.0625rem solid #27272a; background-color: rgba(39, 39, 42, 0.3); padding: 1rem; transition: border-color 0.2s ease; }
+  .cart-item-card:hover { border-color: #3f3f46; }
+  
+  .qty-control { display: flex; height: 2.75rem; align-items: center; overflow: hidden; border-radius: 0.5rem; border: 0.0625rem solid #3f3f46; background-color: #18181b; }
+  .qty-btn { display: flex; height: 100%; width: 2.75rem; align-items: center; justify-content: center; border: none; background: none; color: #a1a1aa; cursor: pointer; font-size: 1.2rem; transition: background-color 0.2s ease, color 0.2s ease; }
+  .qty-btn:hover:not(:disabled) { background-color: #27272a; color: #fff; }
+  .qty-btn:focus-visible { outline: 0.125rem solid #f59e0b; outline-offset: -0.125rem; }
+  
+  .selection-btn { width: 100%; padding: 0.75rem 0.5rem; border-radius: 0.5rem; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: all 0.2s ease; border: 0.0625rem solid #3f3f46; background-color: #09090b; color: #a1a1aa; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .selection-btn[aria-pressed="true"] { border-color: #f59e0b; background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+  .selection-btn:focus-visible { outline: 0.125rem solid #f59e0b; outline-offset: 0.125rem; }
+  
+  .address-card { width: 100%; text-align: left; padding: 0.875rem; border-radius: 0.625rem; border: 0.0625rem solid #3f3f46; background-color: #18181b; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; gap: 0.25rem; }
+  .address-card:hover { border-color: #f59e0b; }
+  .address-card[aria-checked="true"] { border: 0.125rem solid #f59e0b; background-color: rgba(245, 158, 11, 0.05); padding: 0.8125rem; /* Ajuste para não dar salto visual devido à borda maior */ }
+  .address-card:focus-visible { outline: 0.125rem solid #f59e0b; outline-offset: 0.125rem; }
+
+  .input-group { display: flex; flex-direction: column; gap: 0.375rem; width: 100%; }
+  .input-label { font-size: 0.875rem; font-weight: 500; color: #a1a1aa; }
+  .form-input { width: 100%; padding: 0.75rem; border-radius: 0.375rem; background-color: #18181b; border: 0.0625rem solid #3f3f46; color: #fff; font-size: 0.875rem; transition: border-color 0.2s ease; box-sizing: border-box; outline: none; }
+  .form-input:focus:not(:disabled) { border-color: #f59e0b; }
+  .form-input:disabled { opacity: 0.5; cursor: not-allowed; }
+  .form-input:read-only { background-color: #27272a; color: #a1a1aa; border-color: #27272a; cursor: not-allowed; opacity: 0.8; }
+  .form-input:read-only:focus { border-color: #27272a; outline: none; }
+
+  .btn-primary { width: 100%; border-radius: 0.75rem; background-color: #f59e0b; padding: 0.875rem; font-size: 1rem; font-weight: bold; color: #18181b; border: none; cursor: pointer; transition: all 0.2s ease; }
+  .btn-primary:hover:not(:disabled) { background-color: #d97706; transform: translateY(-0.0625rem); }
+  .btn-primary:active:not(:disabled) { transform: translateY(0); }
+  .btn-primary:disabled { cursor: not-allowed; opacity: 0.7; filter: grayscale(0.5); }
+  .btn-primary:focus-visible { outline: 0.125rem solid #fff; outline-offset: 0.125rem; }
+  .btn-secondary { margin-top: 0.5rem; width: 100%; border-radius: 0.5rem; background-color: rgba(245, 158, 11, 0.1); border: 0.0625rem solid #f59e0b; color: #f59e0b; font-weight: bold; padding: 0.75rem; font-size: 0.875rem; cursor: pointer; transition: all 0.2s ease; }
+  .btn-secondary:hover:not(:disabled) { background-color: rgba(245, 158, 11, 0.2); }
+  .btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .address-skeleton { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.875rem; border-radius: 0.625rem; background-color: rgba(39, 39, 42, 0.3); }
+  .skeleton-line { height: 0.75rem; background: linear-gradient(90deg, #27272a 25%, #3f3f46 50%, #27272a 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 0.25rem; }
+  .drawer-footer { border-top: 0.0625rem solid #27272a; background-color: #09090b; padding: 1.5rem; }
+  
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+`;
 
 export function StorefrontCartDrawer({
     isOpen,
@@ -52,43 +120,70 @@ export function StorefrontCartDrawer({
 }: StorefrontCartDrawerProps) {
     const [generalNotes, setGeneralNotes] = useState("");
     const notesId = useId();
+    const zipCodeId = useId();
+    const streetId = useId();
+    const numberId = useId();
+    const supplementId = useId();
 
-    // Controle de Etapas: Sincronizado com o initialStep
     const [step, setStep] = useState<"review" | "delivery">(initialStep);
-
-    // Estados do fluxo logístico
     const [deliveryType, setDeliveryType] = useState<"PICKUP" | "DELIVERY">("DELIVERY");
+
     const [addresses, setAddresses] = useState<CustomerAddressResponse[]>([]);
     const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
     const [isEditingAddress, setIsEditingAddress] = useState(false);
 
-    // Campos caso precise preencher um novo endereço de entrega
     const [newStreet, setNewStreet] = useState("");
     const [newNumber, setNewNumber] = useState("");
     const [newSupplement, setNewSupplement] = useState("");
+    const [newNeighborhood, setNewNeighborhood] = useState("");
     const [newZipCode, setNewZipCode] = useState("");
 
-    const [paymentMethod, setPaymentMethod] = useState<"PIX" | "MAQUININHA">("PIX");
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("PIX");
     const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
+    const [isProcessingAddress, setIsProcessingAddress] = useState(false);
+    const [isFetchingCep, setIsFetchingCep] = useState(false);
 
-    // Sincroniza o passo sempre que o drawer abrir ou o initialStep mudar
+    const [cardHolderName, setCardHolderName] = useState("");
+    const [cardNumber, setCardNumber] = useState("");
+    const [cardExpiryMonth, setCardExpiryMonth] = useState("");
+    const [cardExpiryYear, setCardExpiryYear] = useState("");
+    const [cardCcv, setCardCcv] = useState("");
+    const [saveCard, setSaveCard] = useState(false);
+    const cardHolderId = useId();
+    const cardNumberId = useId();
+    const cardExpiryMonthId = useId();
+    const cardExpiryYearId = useId();
+    const cardCcvId = useId();
+
     useEffect(() => {
-        if (isOpen) {
-            setStep(initialStep);
-        } else {
-            setIsEditingAddress(false);
-        }
-    }, [isOpen, initialStep]);
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape" && isOpen) onClose();
+        };
 
-    // Busca os endereços cadastrados assim que o usuário vai para a etapa de entrega
+        if (isOpen) {
+            window.addEventListener("keydown", handleKeyDown);
+            document.body.style.overflow = "hidden";
+            setStep(initialStep);
+        }
+
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            document.body.style.overflow = "unset";
+            if (!isOpen) setIsEditingAddress(false);
+        };
+    }, [isOpen, initialStep, onClose]);
+
     useEffect(() => {
         if (step === "delivery" && customerData?.customerId) {
             setIsLoadingAddresses(true);
             getCustomerAddressesByCustomer(customerData.customerId)
                 .then((data) => {
-                    setAddresses(data);
-                    if (data && data.length > 0) {
-                        setSelectedAddressId(data[0].id);
+                    // Opcional: ordenar para mostrar os mais recentes primeiro
+                    const sortedData = data.sort((a, b) => b.id - a.id);
+                    setAddresses(sortedData);
+
+                    if (sortedData.length > 0) {
+                        setSelectedAddressId(sortedData[0].id);
                         setIsEditingAddress(false);
                     } else {
                         setIsEditingAddress(true);
@@ -99,80 +194,171 @@ export function StorefrontCartDrawer({
         }
     }, [step, customerData]);
 
-    if (!isOpen) return null;
+    const subtotal = useMemo(() => {
+        return items.reduce((acc, item) => {
+            const complementsTotal = item.complements?.reduce((cAcc, c) => cAcc + c.price, 0) || 0;
+            return acc + (item.salePrice + complementsTotal) * item.quantity;
+        }, 0);
+    }, [items]);
 
-    const subtotal = items.reduce((acc, item) => {
-        const complementsTotal = item.complements?.reduce((cAcc, c) => cAcc + c.price, 0) || 0;
-        return acc + (item.salePrice + complementsTotal) * item.quantity;
-    }, 0);
+    const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const cep = e.target.value.replace(/\D/g, '').slice(0, 8);
+        setNewZipCode(cep);
 
-    // Função central que controla se vai para a pergunta ou se envia o pedido
-    const handleMainActionClick = () => {
+        if (cep.length === 8) {
+            setIsFetchingCep(true);
+            try {
+                const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                const data = await response.json();
+
+                if (!data.erro) {
+                    setNewStreet(data.logradouro || "");
+                    setNewNeighborhood(data.bairro ? `${data.bairro}, ${data.localidade} - ${data.uf}` : "");
+                    document.getElementById(numberId)?.focus();
+                } else {
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'CEP não encontrado', showConfirmButton: false, timer: 2000, background: '#18181b', color: '#fff' });
+                    setNewStreet("");
+                    setNewNeighborhood("");
+                }
+            } catch (error) {
+                console.error("Erro na busca do CEP:", error);
+            } finally {
+                setIsFetchingCep(false);
+            }
+        }
+    };
+
+    const executeSaveAddress = async (): Promise<number> => {
+        const fullSupplementInfo = newSupplement
+            ? `${newSupplement} - ${newNeighborhood}`
+            : newNeighborhood;
+
+        const payload = {
+            companyId: 1,
+            customerId: customerData!.customerId!,
+            street: newStreet,
+            number: newNumber,
+            supplement: fullSupplementInfo,
+            zipCode: newZipCode,
+        };
+        const result = await registerCustomerAddress(payload);
+        const updatedAddresses = await getCustomerAddressesByCustomer(customerData!.customerId!);
+        const sortedData = updatedAddresses.sort((a, b) => b.id - a.id);
+
+        setAddresses(sortedData);
+        setSelectedAddressId(result.id);
+        setIsEditingAddress(false);
+
+        // Limpar formulário de novo endereço
+        setNewZipCode(""); setNewStreet(""); setNewNumber(""); setNewSupplement(""); setNewNeighborhood("");
+        return result.id;
+    };
+
+    const handleMainActionClick = useCallback(async () => {
         if (!customerData || !customerData.customerId) {
             onOpenAuthModal();
             return;
         }
 
-        // Se está na revisão da cesta, NÃO envia o pedido: para na pergunta de Retirada vs Motoboy
         if (step === "review") {
             setStep("delivery");
             return;
         }
 
-        // Se já está na etapa de entrega/balcão, finaliza e envia
+        let currentAddressIdToSubmit = selectedAddressId;
+
+        if (deliveryType === "DELIVERY" && isEditingAddress) {
+            if (!newZipCode || !newStreet || !newNumber) {
+                Swal.fire({ title: "Atenção", text: "Preencha o CEP, Rua e Número para entrega.", icon: "warning", background: '#18181b', color: '#fff' });
+                return;
+            }
+
+            setIsProcessingAddress(true);
+            try {
+                currentAddressIdToSubmit = await executeSaveAddress();
+            } catch (e) {
+                Swal.fire({ title: "Erro", text: "Falha ao registrar o novo endereço.", icon: "error", background: '#18181b', color: '#fff' });
+                setIsProcessingAddress(false);
+                return;
+            }
+            setIsProcessingAddress(false);
+        }
+
+        if (paymentMethod === "CREDITO") {
+            if (!cardHolderName || !cardNumber || !cardExpiryMonth || !cardExpiryYear || !cardCcv) {
+                Swal.fire({ title: "Atenção", text: "Preencha todos os dados do cartão.", icon: "warning", background: '#18181b', color: '#fff' });
+                return;
+            }
+        }
+
         onCheckout(
             generalNotes,
-            customerData!,
+            customerData,
             deliveryType,
-            deliveryType === "DELIVERY" && !isEditingAddress ? selectedAddressId : null,
-            deliveryType === "DELIVERY" && isEditingAddress ? { street: newStreet, number: newNumber, supplement: newSupplement, zipCode: newZipCode } : null,
-            paymentMethod
+            deliveryType === "DELIVERY" ? currentAddressIdToSubmit : null,
+            null,
+            paymentMethod,
+            paymentMethod === "CREDITO"
+                ? {
+                    holderName: cardHolderName,
+                    number: cardNumber,
+                    expiryMonth: cardExpiryMonth,
+                    expiryYear: cardExpiryYear,
+                    ccv: cardCcv,
+                    saveCard,
+                }
+                : undefined
         );
-    };
+    }, [customerData, step, onCheckout, generalNotes, deliveryType, isEditingAddress, selectedAddressId, paymentMethod, newZipCode, newStreet, newNumber, newSupplement, newNeighborhood, onOpenAuthModal, cardHolderName, cardNumber, cardExpiryMonth, cardExpiryYear, cardCcv, saveCard]);
+
+    if (!isOpen) return null;
 
     return (
         <div
             data-testid="public-cart-drawer"
-            style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", justifyContent: "flex-end", fontFamily: "sans-serif" }}
+            className="drawer-wrapper"
             role="dialog"
             aria-modal="true"
+            aria-labelledby="drawer-title"
         >
-            {/* Overlay Escurecido */}
-            <div
-                style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
-                onClick={onClose}
-                aria-hidden="true"
-            />
+            <style>{styles}</style>
 
-            {/* Container do Drawer */}
-            <div style={{ position: "relative", display: "flex", flexDirection: "column", height: "100%", width: "100%", maxWidth: "440px", backgroundColor: "#18181b", boxShadow: "-10px 0 30px rgba(0,0,0,0.7)" }}>
+            <div className="drawer-backdrop" aria-hidden="true" onClick={onClose} />
 
-                {/* Cabeçalho */}
-                <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #27272a", padding: "20px 24px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <aside className="drawer-container">
+                <header className="drawer-header">
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                         {step === "delivery" && (
-                            <button onClick={() => setStep("review")} style={{ background: "none", border: "none", color: "#f59e0b", cursor: "pointer", padding: "4px", fontSize: "1.2rem" }}>
-                                ←
+                            <button
+                                onClick={() => setStep("review")}
+                                className="btn-icon"
+                                aria-label="Voltar para a cesta"
+                                style={{ color: "#f59e0b", padding: "0.25rem" }}
+                            >
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
                             </button>
                         )}
-                        <h2 style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#f4f4f5", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-                            {step === "review" ? (<span>🛒 Sua Cesta</span>) : (<span>🚚 Modalidade de Entrega</span>)}
+                        <h2 id="drawer-title" className="drawer-title">
+                            {step === "review" ? (
+                                <><span aria-hidden="true">🛒</span> Sua Cesta</>
+                            ) : (
+                                <><span aria-hidden="true">🚚</span> Modalidade de Entrega</>
+                            )}
                         </h2>
                     </div>
                     <button
                         onClick={onClose}
+                        className="btn-icon"
                         data-testid="btn-close-cart"
                         aria-label="Fechar carrinho"
-                        style={{ background: "none", border: "none", padding: "8px", color: "#a1a1aa", cursor: "pointer", borderRadius: "6px" }}
                     >
-                        <svg style={{ height: "24px", width: "24px" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </header>
 
-                {/* Banner de Identificação do Cliente */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #27272a", backgroundColor: "rgba(9, 9, 11, 0.5)", padding: "12px 24px" }}>
+                <div className="customer-banner">
                     <div style={{ display: "flex", flexDirection: "column" }}>
                         <span style={{ fontSize: "0.75rem", color: "#a1a1aa" }}>Cliente / Conta:</span>
                         <span style={{ fontSize: "0.875rem", fontWeight: "bold", color: customerData?.name ? "#f59e0b" : "#f4f4f5" }}>
@@ -182,45 +368,45 @@ export function StorefrontCartDrawer({
                     <button
                         type="button"
                         onClick={onOpenAuthModal}
-                        style={{ borderRadius: "8px", border: "1px solid rgba(245, 158, 11, 0.5)", backgroundColor: "rgba(245, 158, 11, 0.1)", padding: "6px 12px", fontSize: "0.75rem", fontWeight: "bold", color: "#f59e0b", cursor: "pointer" }}
+                        style={{ borderRadius: "0.5rem", border: "0.0625rem solid rgba(245, 158, 11, 0.5)", background: "rgba(245, 158, 11, 0.1)", padding: "0.375rem 0.75rem", fontSize: "0.75rem", fontWeight: "bold", color: "#f59e0b", cursor: "pointer", transition: "all 0.2s ease" }}
+                        aria-label={customerData?.name ? "Trocar conta ou editar identificação" : "Identificar-se no sistema"}
                     >
                         {customerData?.name ? "Trocar / Editar" : "Identificar-se"}
                     </button>
                 </div>
 
-                {/* Conteúdo Dinâmico */}
-                <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                <section className="drawer-body" aria-live="polite">
                     {step === "review" ? (
                         items.length === 0 ? (
-                            <div data-testid="empty-cart-msg" style={{ display: "flex", height: "100%", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px", textAlign: "center", color: "#71717a" }}>
-                                <svg style={{ height: "64px", width: "64px", opacity: 0.5 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div data-testid="empty-cart-msg" style={{ display: "flex", height: "100%", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1rem", textAlign: "center", color: "#71717a" }}>
+                                <svg style={{ height: "4rem", width: "4rem", opacity: 0.5 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                                 </svg>
                                 <p style={{ fontSize: "1rem", fontWeight: 500, margin: 0 }}>Sua cesta está vazia.</p>
+                                <p style={{ fontSize: "0.875rem", margin: 0 }}>Adicione itens do cardápio para continuar.</p>
                             </div>
                         ) : (
                             items.map((item) => {
                                 const itemTotal = (item.salePrice + (item.complements?.reduce((acc, c) => acc + c.price, 0) || 0)) * item.quantity;
-
                                 return (
-                                    <div key={item.productId} data-testid={`cart-item-${item.productId}`} style={{ display: "flex", flexDirection: "column", gap: "12px", borderRadius: "12px", border: "1px solid #27272a", backgroundColor: "rgba(39, 39, 42, 0.3)", padding: "16px" }}>
-                                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+                                    <article key={item.productId} className="cart-item-card" data-testid={`cart-item-${item.productId}`}>
+                                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
                                             <div style={{ flex: 1 }}>
                                                 <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "#f4f4f5", lineHeight: 1.2 }}>{item.productName}</h4>
-                                                <span style={{ marginTop: "4px", display: "block", fontSize: "0.875rem", fontWeight: "bold", color: "#f59e0b" }}>{formatBRL(item.salePrice)}</span>
+                                                <span style={{ marginTop: "0.25rem", display: "block", fontSize: "0.875rem", fontWeight: "bold", color: "#f59e0b" }}>{formatBRL(item.salePrice)}</span>
                                             </div>
                                             <button
                                                 onClick={() => onRemoveItem(item.productId)}
                                                 data-testid={`btn-remove-${item.productId}`}
-                                                aria-label={`Remover ${item.productName}`}
-                                                style={{ background: "none", border: "none", fontSize: "0.75rem", fontWeight: 600, color: "#f87171", cursor: "pointer", padding: 0 }}
+                                                aria-label={`Remover ${item.productName} da cesta`}
+                                                style={{ background: "none", border: "none", fontSize: "0.75rem", fontWeight: 600, color: "#f87171", cursor: "pointer", padding: "0.25rem", borderRadius: "0.25rem" }}
                                             >
                                                 Remover
                                             </button>
                                         </div>
 
                                         {item.complements && item.complements.length > 0 && (
-                                            <div style={{ display: "flex", flexDirection: "column", gap: "4px", borderLeft: "2px solid #3f3f46", paddingLeft: "12px", fontSize: "0.875rem", color: "#a1a1aa" }}>
+                                            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", borderLeft: "0.125rem solid #3f3f46", paddingLeft: "0.75rem", fontSize: "0.875rem", color: "#a1a1aa" }}>
                                                 {item.complements.map(c => (
                                                     <div key={c.complementId} style={{ display: "flex", justifyContent: "space-between" }}>
                                                         <span>+ {c.name}</span>
@@ -230,22 +416,22 @@ export function StorefrontCartDrawer({
                                             </div>
                                         )}
 
-                                        <div style={{ marginTop: "8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                            <div style={{ display: "flex", height: "40px", alignItems: "center", overflow: "hidden", borderRadius: "8px", border: "1px solid #3f3f46", backgroundColor: "#18181b" }}>
+                                        <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                            <div className="qty-control" role="group" aria-label={`Quantidade de ${item.productName}`}>
                                                 <button
                                                     onClick={() => onUpdateQuantity(item.productId, item.quantity - 1)}
+                                                    className="qty-btn"
                                                     aria-label="Diminuir quantidade"
-                                                    style={{ display: "flex", height: "100%", width: "40px", alignItems: "center", justifyContent: "center", border: "none", background: "none", color: "#a1a1aa", cursor: "pointer", fontSize: "1.2rem" }}
                                                 >
                                                     −
                                                 </button>
-                                                <span style={{ display: "flex", width: "32px", alignItems: "center", justifyContent: "center", fontSize: "0.875rem", fontWeight: 500, color: "#f4f4f5" }}>
+                                                <span style={{ display: "flex", width: "2rem", alignItems: "center", justifyContent: "center", fontSize: "0.875rem", fontWeight: 500, color: "#f4f4f5" }} aria-live="polite">
                                                     {item.quantity}
                                                 </span>
                                                 <button
                                                     onClick={() => onUpdateQuantity(item.productId, item.quantity + 1)}
+                                                    className="qty-btn"
                                                     aria-label="Aumentar quantidade"
-                                                    style={{ display: "flex", height: "100%", width: "40px", alignItems: "center", justifyContent: "center", border: "none", background: "none", color: "#a1a1aa", cursor: "pointer", fontSize: "1.2rem" }}
                                                 >
                                                     +
                                                 </button>
@@ -254,138 +440,321 @@ export function StorefrontCartDrawer({
                                                 {formatBRL(itemTotal)}
                                             </span>
                                         </div>
-                                    </div>
+                                    </article>
                                 );
                             })
                         )
                     ) : (
-                        /* ETAPA OBRIGATÓRIA DE PERGUNTA: RETIRADA VS MOTOBOY */
-                        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
-                            {/* Pergunta principal */}
-                            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                                <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "#f4f4f5" }}>Como deseja receber o pedido?</span>
-                                <div style={{ display: "flex", gap: "10px" }}>
+                            <fieldset style={{ border: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+                                <legend style={{ fontSize: "0.95rem", fontWeight: 600, color: "#f4f4f5", marginBottom: "0.625rem" }}>Como deseja receber o pedido?</legend>
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "0.625rem" }}>
                                     <button
                                         type="button"
                                         onClick={() => setDeliveryType("DELIVERY")}
-                                        style={{ flex: 1, padding: "12px", borderRadius: "8px", border: deliveryType === "DELIVERY" ? "2px solid #f59e0b" : "1px solid #3f3f46", backgroundColor: deliveryType === "DELIVERY" ? "rgba(245, 158, 11, 0.1)" : "#09090b", color: deliveryType === "DELIVERY" ? "#f59e0b" : "#a1a1aa", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}
+                                        className="selection-btn"
+                                        aria-pressed={deliveryType === "DELIVERY"}
                                     >
-                                        🛵 Enviar com Motoboy
+                                        <span aria-hidden="true">🛵</span> Enviar com Motoboy
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setDeliveryType("PICKUP")}
-                                        style={{ flex: 1, padding: "12px", borderRadius: "8px", border: deliveryType === "PICKUP" ? "2px solid #f59e0b" : "1px solid #3f3f46", backgroundColor: deliveryType === "PICKUP" ? "rgba(245, 158, 11, 0.1)" : "#09090b", color: deliveryType === "PICKUP" ? "#f59e0b" : "#a1a1aa", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}
+                                        className="selection-btn"
+                                        aria-pressed={deliveryType === "PICKUP"}
                                     >
-                                        🏬 Retirar no Balcão
+                                        <span aria-hidden="true">🏬</span> Retirar no Balcão
                                     </button>
                                 </div>
-                            </div>
+                            </fieldset>
 
-                            {/* Se for Motoboy, valida se mantém o endereço cadastrado ou preenche novo */}
                             {deliveryType === "DELIVERY" && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderTop: "1px solid #27272a", paddingTop: "16px" }}>
+                                <section style={{ display: "flex", flexDirection: "column", gap: "0.625rem", borderTop: "0.0625rem solid #27272a", paddingTop: "1rem" }}>
                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                        <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "#f4f4f5" }}>Endereço de Entrega</span>
-                                        {!isEditingAddress && addresses.length > 0 && (
+                                        <h3 style={{ fontSize: "0.95rem", fontWeight: 600, color: "#f4f4f5", margin: 0 }}>Endereço de Entrega</h3>
+                                        {!isEditingAddress && (
                                             <button
                                                 type="button"
                                                 onClick={() => setIsEditingAddress(true)}
                                                 style={{ background: "none", border: "none", color: "#f59e0b", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
                                             >
-                                                Cadastrar / Usar outro
+                                                + Novo Endereço
                                             </button>
                                         )}
                                     </div>
 
                                     {isLoadingAddresses ? (
-                                        <span style={{ color: "#a1a1aa", fontSize: "0.85rem" }}>Verificando endereço cadastrado...</span>
+                                        <div className="address-skeleton" aria-label="Carregando endereços...">
+                                            <div className="skeleton-line" style={{ width: "40%" }}></div>
+                                            <div className="skeleton-line" style={{ width: "80%" }}></div>
+                                            <div className="skeleton-line" style={{ width: "60%" }}></div>
+                                        </div>
                                     ) : !isEditingAddress && addresses.length > 0 ? (
-                                        <div style={{ padding: "14px", borderRadius: "10px", border: "1px solid #f59e0b", backgroundColor: "rgba(245, 158, 11, 0.05)" }}>
-                                            <div style={{ fontSize: "0.75rem", color: "#a1a1aa" }}>Endereço atualmente cadastrado:</div>
-                                            <div style={{ fontWeight: "bold", color: "#f4f4f5", marginTop: "4px" }}>📍 {addresses[0].street}, {addresses[0].number}</div>
-                                            <div style={{ fontSize: "0.8rem", color: "#a1a1aa", marginTop: "2px" }}>CEP: {addresses[0].zipCode} {addresses[0].supplement ? `(${addresses[0].supplement})` : ""}</div>
+                                        <div role="radiogroup" aria-label="Selecione o endereço de entrega" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                                            {addresses.map(addr => (
+                                                <button
+                                                    key={addr.id}
+                                                    type="button"
+                                                    onClick={() => setSelectedAddressId(addr.id)}
+                                                    className="address-card"
+                                                    role="radio"
+                                                    aria-checked={selectedAddressId === addr.id}
+                                                >
+                                                    <div style={{ fontSize: "0.75rem", color: selectedAddressId === addr.id ? "#f59e0b" : "#a1a1aa", fontWeight: "bold" }}>
+                                                        {selectedAddressId === addr.id ? "✓ Selecionado para entrega" : "Endereço cadastrado"}
+                                                    </div>
+                                                    <div style={{ fontWeight: "bold", color: "#f4f4f5", marginTop: "0.25rem", fontSize: "0.9rem" }}>
+                                                        📍 {addr.street}, {addr.number}
+                                                    </div>
+                                                    <div style={{ fontSize: "0.8rem", color: "#a1a1aa", marginTop: "0.125rem", lineHeight: "1.4" }}>
+                                                        CEP: {addr.zipCode} {addr.supplement ? `— ${addr.supplement}` : ""}
+                                                    </div>
+                                                </button>
+                                            ))}
                                         </div>
                                     ) : (
-                                        <div style={{ display: "flex", flexDirection: "column", gap: "10px", backgroundColor: "#09090b", padding: "12px", borderRadius: "10px", border: "1px solid #3f3f46" }}>
-                                            <div style={{ fontSize: "0.8rem", color: "#f59e0b", fontWeight: "bold" }}>Informe o endereço de entrega:</div>
-                                            <input
-                                                type="text"
-                                                placeholder="CEP (somente números)"
-                                                value={newZipCode}
-                                                onChange={(e) => setNewZipCode(e.target.value.replace(/\D/g, ''))}
-                                                style={{ padding: "10px", borderRadius: "6px", backgroundColor: "#18181b", border: "1px solid #3f3f46", color: "#fff", fontSize: "0.85rem" }}
-                                            />
-                                            <div style={{ display: "flex", gap: "8px" }}>
+                                        <fieldset style={{ display: "flex", flexDirection: "column", gap: "1rem", background: "#09090b", padding: "1rem", borderRadius: "0.625rem", border: "0.0625rem solid #3f3f46", margin: 0 }}>
+                                            <legend className="visually-hidden">Informe o endereço de entrega:</legend>
+
+                                            <div className="input-group">
+                                                <label htmlFor={zipCodeId} className="input-label">
+                                                    CEP {isFetchingCep && <span style={{ color: "#f59e0b", marginLeft: "4px", fontSize: "0.75rem" }}>(Buscando...)</span>}
+                                                </label>
                                                 <input
+                                                    id={zipCodeId}
                                                     type="text"
-                                                    placeholder="Rua / Avenida"
-                                                    value={newStreet}
-                                                    onChange={(e) => setNewStreet(e.target.value)}
-                                                    style={{ flex: 3, padding: "10px", borderRadius: "6px", backgroundColor: "#18181b", border: "1px solid #3f3f46", color: "#fff", fontSize: "0.85rem" }}
-                                                />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Número"
-                                                    value={newNumber}
-                                                    onChange={(e) => setNewNumber(e.target.value)}
-                                                    style={{ flex: 1, padding: "10px", borderRadius: "6px", backgroundColor: "#18181b", border: "1px solid #3f3f46", color: "#fff", fontSize: "0.85rem" }}
+                                                    placeholder="00000000"
+                                                    value={newZipCode}
+                                                    onChange={handleCepChange}
+                                                    maxLength={8}
+                                                    disabled={isFetchingCep}
+                                                    className="form-input"
                                                 />
                                             </div>
-                                            <input
-                                                type="text"
-                                                placeholder="Complemento / Bairro"
-                                                value={newSupplement}
-                                                onChange={(e) => setNewSupplement(e.target.value)}
-                                                style={{ padding: "10px", borderRadius: "6px", backgroundColor: "#18181b", border: "1px solid #3f3f46", color: "#fff", fontSize: "0.85rem" }}
-                                            />
+
+                                            <div className="input-group">
+                                                <label htmlFor={streetId} className="input-label">Rua / Avenida</label>
+                                                <input
+                                                    id={streetId}
+                                                    type="text"
+                                                    placeholder="Preenchido pelo CEP"
+                                                    value={newStreet}
+                                                    readOnly
+                                                    tabIndex={-1}
+                                                    className="form-input"
+                                                />
+                                            </div>
+
+                                            <div style={{ display: "flex", gap: "1rem" }}>
+                                                <div className="input-group" style={{ flex: 1 }}>
+                                                    <label htmlFor={numberId} className="input-label">Número</label>
+                                                    <input
+                                                        id={numberId}
+                                                        type="text"
+                                                        placeholder="Ex: 123"
+                                                        value={newNumber}
+                                                        onChange={(e) => setNewNumber(e.target.value)}
+                                                        disabled={isFetchingCep}
+                                                        className="form-input"
+                                                    />
+                                                </div>
+                                                <div className="input-group" style={{ flex: 2 }}>
+                                                    <label htmlFor={supplementId} className="input-label">Complemento</label>
+                                                    <input
+                                                        id={supplementId}
+                                                        type="text"
+                                                        placeholder="Apto, Bloco..."
+                                                        value={newSupplement}
+                                                        onChange={(e) => setNewSupplement(e.target.value)}
+                                                        disabled={isFetchingCep}
+                                                        className="form-input"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="input-group">
+                                                <label htmlFor={`${supplementId}-neighborhood`} className="input-label">Bairro / Cidade</label>
+                                                <input
+                                                    id={`${supplementId}-neighborhood`}
+                                                    type="text"
+                                                    placeholder="Preenchido pelo CEP"
+                                                    value={newNeighborhood}
+                                                    readOnly
+                                                    tabIndex={-1}
+                                                    className="form-input"
+                                                />
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    if (!newZipCode || !newStreet || !newNumber) {
+                                                        Swal.fire({ title: "Atenção", text: "Preencha o CEP, Rua e Número.", icon: "warning", background: '#18181b', color: '#fff' });
+                                                        return;
+                                                    }
+                                                    setIsProcessingAddress(true);
+                                                    try {
+                                                        await executeSaveAddress();
+                                                        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Endereço salvo com sucesso!', showConfirmButton: false, timer: 1500, background: '#18181b', color: '#fff' });
+                                                    } catch (e) {
+                                                        Swal.fire({ title: "Erro", text: "Falha ao registrar endereço.", icon: "error", background: '#18181b', color: '#fff' });
+                                                    } finally {
+                                                        setIsProcessingAddress(false);
+                                                    }
+                                                }}
+                                                disabled={isProcessingAddress || isFetchingCep}
+                                                className="btn-secondary"
+                                            >
+                                                {isProcessingAddress ? "Salvando..." : "Salvar novo endereço"}
+                                            </button>
 
                                             {addresses.length > 0 && (
                                                 <button
                                                     type="button"
                                                     onClick={() => setIsEditingAddress(false)}
-                                                    style={{ background: "none", border: "none", color: "#a1a1aa", fontSize: "0.75rem", cursor: "pointer", textAlign: "left", marginTop: "2px" }}
+                                                    style={{ background: "none", border: "none", color: "#a1a1aa", fontSize: "0.75rem", cursor: "pointer", textAlign: "center", padding: "0.5rem 0", marginTop: "0.25rem", width: "100%" }}
                                                 >
-                                                    ← Usar meu endereço cadastrado
+                                                    ← Cancelar e escolher endereço existente
                                                 </button>
                                             )}
-                                        </div>
+                                        </fieldset>
                                     )}
-                                </div>
+                                </section>
                             )}
 
-                            {/* Forma de Pagamento */}
-                            <div style={{ display: "flex", flexDirection: "column", gap: "10px", borderTop: "1px solid #27272a", paddingTop: "16px" }}>
-                                <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "#f4f4f5" }}>Forma de Pagamento</span>
-                                <div style={{ display: "flex", gap: "10px" }}>
+                            <fieldset style={{ border: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.625rem", borderTop: "0.0625rem solid #27272a", paddingTop: "1rem" }}>
+                                <legend style={{ fontSize: "0.95rem", fontWeight: 600, color: "#f4f4f5", marginBottom: "0.625rem" }}>Forma de Pagamento</legend>
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: "0.625rem" }}>
                                     <button
                                         type="button"
                                         onClick={() => setPaymentMethod("PIX")}
-                                        style={{ flex: 1, padding: "10px", borderRadius: "8px", border: paymentMethod === "PIX" ? "2px solid #10b981" : "1px solid #3f3f46", backgroundColor: paymentMethod === "PIX" ? "rgba(16, 185, 129, 0.1)" : "#09090b", color: paymentMethod === "PIX" ? "#10b981" : "#a1a1aa", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}
+                                        className="selection-btn"
+                                        style={paymentMethod === "PIX" ? { borderColor: "#10b981", background: "rgba(16, 185, 129, 0.1)", color: "#10b981" } : {}}
+                                        aria-pressed={paymentMethod === "PIX"}
                                     >
                                         PIX (Online)
                                     </button>
                                     <button
                                         type="button"
+                                        onClick={() => setPaymentMethod("CREDITO")}
+                                        className="selection-btn"
+                                        style={paymentMethod === "CREDITO" ? { borderColor: "#3b82f6", background: "rgba(59, 130, 246, 0.1)", color: "#3b82f6" } : {}}
+                                        aria-pressed={paymentMethod === "CREDITO"}
+                                    >
+                                        Cartão (Crédito/Débito)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPaymentMethod("BOLETO")}
+                                        className="selection-btn"
+                                        style={paymentMethod === "BOLETO" ? { borderColor: "#a78bfa", background: "rgba(167, 139, 250, 0.1)", color: "#a78bfa" } : {}}
+                                        aria-pressed={paymentMethod === "BOLETO"}
+                                    >
+                                        Boleto
+                                    </button>
+                                    <button
+                                        type="button"
                                         onClick={() => setPaymentMethod("MAQUININHA")}
-                                        style={{ flex: 1, padding: "10px", borderRadius: "8px", border: paymentMethod === "MAQUININHA" ? "2px solid #f59e0b" : "1px solid #3f3f46", backgroundColor: paymentMethod === "MAQUININHA" ? "rgba(245, 158, 11, 0.1)" : "#09090b", color: paymentMethod === "MAQUININHA" ? "#f59e0b" : "#a1a1aa", fontWeight: "bold", cursor: "pointer", fontSize: "0.85rem" }}
+                                        className="selection-btn"
+                                        aria-pressed={paymentMethod === "MAQUININHA"}
                                     >
                                         Maquininha
                                     </button>
                                 </div>
-                            </div>
+
+                                {paymentMethod === "CREDITO" && (
+                                    <fieldset style={{ display: "flex", flexDirection: "column", gap: "0.75rem", background: "#09090b", padding: "1rem", borderRadius: "0.625rem", border: "0.0625rem solid #3f3f46", margin: 0 }}>
+                                        <legend className="visually-hidden">Dados do cartão de crédito</legend>
+
+                                        <div className="input-group">
+                                            <label htmlFor={cardHolderId} className="input-label">Nome no cartão</label>
+                                            <input
+                                                id={cardHolderId}
+                                                type="text"
+                                                placeholder="Como está impresso no cartão"
+                                                value={cardHolderName}
+                                                onChange={(e) => setCardHolderName(e.target.value)}
+                                                className="form-input"
+                                                autoComplete="cc-name"
+                                            />
+                                        </div>
+
+                                        <div className="input-group">
+                                            <label htmlFor={cardNumberId} className="input-label">Número do cartão</label>
+                                            <input
+                                                id={cardNumberId}
+                                                type="text"
+                                                inputMode="numeric"
+                                                placeholder="0000 0000 0000 0000"
+                                                value={cardNumber}
+                                                onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, "").slice(0, 19))}
+                                                className="form-input"
+                                                autoComplete="cc-number"
+                                            />
+                                        </div>
+
+                                        <div style={{ display: "flex", gap: "0.75rem" }}>
+                                            <div className="input-group" style={{ flex: 1 }}>
+                                                <label htmlFor={cardExpiryMonthId} className="input-label">Mês (MM)</label>
+                                                <input
+                                                    id={cardExpiryMonthId}
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    placeholder="MM"
+                                                    maxLength={2}
+                                                    value={cardExpiryMonth}
+                                                    onChange={(e) => setCardExpiryMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                                                    className="form-input"
+                                                    autoComplete="cc-exp-month"
+                                                />
+                                            </div>
+                                            <div className="input-group" style={{ flex: 1 }}>
+                                                <label htmlFor={cardExpiryYearId} className="input-label">Ano (AAAA)</label>
+                                                <input
+                                                    id={cardExpiryYearId}
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    placeholder="AAAA"
+                                                    maxLength={4}
+                                                    value={cardExpiryYear}
+                                                    onChange={(e) => setCardExpiryYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                                                    className="form-input"
+                                                    autoComplete="cc-exp-year"
+                                                />
+                                            </div>
+                                            <div className="input-group" style={{ flex: 1 }}>
+                                                <label htmlFor={cardCcvId} className="input-label">CVV</label>
+                                                <input
+                                                    id={cardCcvId}
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    placeholder="123"
+                                                    maxLength={4}
+                                                    value={cardCcv}
+                                                    onChange={(e) => setCardCcv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                                                    className="form-input"
+                                                    autoComplete="cc-csc"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem", color: "#a1a1aa", cursor: "pointer" }}>
+                                            <input type="checkbox" checked={saveCard} onChange={(e) => setSaveCard(e.target.checked)} />
+                                            Salvar cartão para próximas compras
+                                        </label>
+                                    </fieldset>
+                                )}
+                            </fieldset>
                         </div>
                     )}
-                </div>
+                </section>
 
-                {/* Footer Fixo */}
                 {items.length > 0 && (
-                    <footer style={{ borderTop: "1px solid #27272a", backgroundColor: "#09090b", padding: "24px" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-
+                    <footer className="drawer-footer">
+                        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                             {step === "review" && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
                                     <label htmlFor={notesId} style={{ fontSize: "0.875rem", fontWeight: 500, color: "#a1a1aa" }}>
                                         Observações gerais do pedido
                                     </label>
@@ -396,26 +765,27 @@ export function StorefrontCartDrawer({
                                         onChange={(e) => setGeneralNotes(e.target.value)}
                                         placeholder="Ex: Sem cebola, caprichar no molho..."
                                         data-testid="input-general-notes"
-                                        style={{ width: "100%", borderRadius: "8px", border: "1px solid #27272a", backgroundColor: "#18181b", padding: "12px 16px", fontSize: "0.875rem", color: "#f4f4f5", outline: "none", boxSizing: "border-box" }}
+                                        className="form-input"
                                     />
                                 </div>
                             )}
 
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                                 <span style={{ fontSize: "0.95rem", fontWeight: 500, color: "#a1a1aa" }}>{step === "review" ? "Total do Pedido" : "Total a Pagar"}</span>
-                                <span data-testid="cart-total-amount" style={{ fontSize: "1.35rem", fontWeight: "bold", color: "#f4f4f5" }}>
+                                <strong data-testid="cart-total-amount" style={{ fontSize: "1.35rem", color: "#f4f4f5" }}>
                                     {formatBRL(subtotal)}
-                                </span>
+                                </strong>
                             </div>
 
                             <button
                                 type="button"
                                 onClick={handleMainActionClick}
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || isProcessingAddress || isFetchingCep}
                                 data-testid="btn-submit-order"
-                                style={{ width: "100%", borderRadius: "12px", backgroundColor: "#f59e0b", padding: "14px", fontSize: "1rem", fontWeight: "bold", color: "#18181b", border: "none", cursor: isSubmitting ? "not-allowed" : "pointer", opacity: isSubmitting ? 0.7 : 1 }}
+                                className="btn-primary"
+                                aria-live="polite"
                             >
-                                {isSubmitting
+                                {isSubmitting || isProcessingAddress
                                     ? "Processando..."
                                     : (step === "review"
                                         ? (customerData?.customerId ? "Avançar para Opções de Entrega" : "Identificar-se para Continuar")
@@ -424,7 +794,7 @@ export function StorefrontCartDrawer({
                         </div>
                     </footer>
                 )}
-            </div>
+            </aside>
         </div>
     );
 }

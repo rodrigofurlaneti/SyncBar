@@ -4,6 +4,9 @@ namespace SyncBar.Infrastructure.Integrations.Asaas;
 
 internal sealed class AsaasApplicationService(AsaasService asaasService) : AppAsaas.IAsaasService
 {
+    public Task ConfigureForTenantAsync(long companyId, long? branchId, CancellationToken cancellationToken = default)
+        => asaasService.ConfigureForTenantAsync(companyId, branchId, cancellationToken);
+
     public Task<string> CreateCustomerAsync(string name, string cpfCnpj, string email, string? mobilePhone = null, CancellationToken cancellationToken = default)
         => asaasService.CreateCustomerAsync(name, cpfCnpj, email, mobilePhone, cancellationToken);
 
@@ -23,6 +26,12 @@ internal sealed class AsaasApplicationService(AsaasService asaasService) : AppAs
     {
         var r = await asaasService.GetPixQrCodeAsync(paymentId, cancellationToken);
         return new AppAsaas.AsaasPixQrCodeResponse(r.EncodedImage, r.Payload, r.ExpirationDate);
+    }
+
+    public async Task<AppAsaas.AsaasBoletoIdentificationFieldResponse> GetBoletoIdentificationFieldAsync(string paymentId, CancellationToken cancellationToken = default)
+    {
+        var r = await asaasService.GetBoletoIdentificationFieldAsync(paymentId, cancellationToken);
+        return new AppAsaas.AsaasBoletoIdentificationFieldResponse(r.IdentificationField, r.BarCode, r.NossoNumero);
     }
 
     public async Task<AppAsaas.AsaasCreditCardPaymentResponse> CreateCreditCardPaymentAsync(

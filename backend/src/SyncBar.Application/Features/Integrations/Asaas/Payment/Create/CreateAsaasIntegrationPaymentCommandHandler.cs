@@ -11,7 +11,6 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Create
     {
         private readonly IAsaasIntegrationPaymentRepository _paymentRepository;
         private readonly IAsaasIntegrationCustomerRepository _asaasCustomerRepository;
-        private readonly IAsaasIntegrationSettingRepository _settingRepository;
         private readonly IBranchRepository _branchRepository;
         private readonly IAsaasService _asaasService;
         private readonly IUnitOfWork _unitOfWork;
@@ -19,7 +18,6 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Create
         public CreateAsaasIntegrationPaymentCommandHandler(
             IAsaasIntegrationPaymentRepository paymentRepository,
             IAsaasIntegrationCustomerRepository asaasCustomerRepository,
-            IAsaasIntegrationSettingRepository settingRepository,
             IBranchRepository branchRepository,
             IAsaasService asaasService,
             ILogTrackerRepository logRepository,
@@ -28,7 +26,6 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Create
         {
             _paymentRepository = paymentRepository;
             _asaasCustomerRepository = asaasCustomerRepository;
-            _settingRepository = settingRepository;
             _branchRepository = branchRepository;
             _asaasService = asaasService;
             _unitOfWork = unitOfWork;
@@ -52,17 +49,8 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Create
                             Error.NotFound("Branch.NotFound", $"Filial com ID {request.BranchId} não foi encontrada."));
                     }
 
-                    // 2. Obter as credenciais da integração Asaas (Filial ou fallback Empresa)
-                    var setting = await _settingRepository.GetByBranchOrCompanyFallbackAsync(
-                        branch.CompanyId,
-                        request.BranchId,
-                        cancellationToken);
-
-                    if (setting is null || !setting.IsActive || string.IsNullOrWhiteSpace(setting.ApiKeyEncrypted))
-                    {
-                        return Result.Failure<CreateAsaasIntegrationPaymentResponse>(
-                            Error.Validation("AsaasSetting.NotFound", "Configuração de integração Asaas não configurada ou inativa para esta unidade."));
-                    }
+                    // 2. Aplica a credencial Asaas da filial/empresa (banco, com fallback pro appsettings)
+                    await _asaasService.ConfigureForTenantAsync(branch.CompanyId, request.BranchId, cancellationToken);
 
                     // 3. Obter ou validar o CustomerId no Asaas
                     string? asaasCustomerId = null;

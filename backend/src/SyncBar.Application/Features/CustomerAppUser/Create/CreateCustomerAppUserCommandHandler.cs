@@ -30,7 +30,7 @@ internal sealed class CreateCustomerAppUserCommandHandler(
                         request.CompanyId,
                         request.UserName,
                         request.Phone,
-                        null,
+                        request.Cpf,
                         request.Email
                     );
                     if (customerResult.IsFailure)

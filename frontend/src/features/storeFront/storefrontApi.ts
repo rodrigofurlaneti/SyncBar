@@ -20,6 +20,7 @@ export type CustomerAppUserPayload = {
     email: string;
     password: string;
     phone?: string | null;
+    cpf: string; 
 };
 
 export type CustomerAddressPayload = {

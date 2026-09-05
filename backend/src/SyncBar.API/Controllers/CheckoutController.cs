@@ -1,77 +1,55 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using SyncBar.Infrastructure.Integrations.Asaas;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SyncBar.Application.Features.Checkout.PayOrderWithBoleto;
+using SyncBar.Application.Features.Checkout.PayOrderWithCreditCard;
+using SyncBar.Application.Features.Checkout.PayOrderWithPix;
+using SyncBar.Application.Features.Integrations.Asaas.Payment.Create;
+using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers
 {
-    [ApiController]
+    [AllowAnonymous]
     [Route("api/checkout")]
-    public class CheckoutController : ControllerBase
+    public sealed class CheckoutController(
+        IMediator mediator,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork) : ApiController(mediator)
     {
-        private readonly IAsaasService _asaas;
-
-        public CheckoutController(IAsaasService asaas)
-        {
-            _asaas = asaas;
-        }
-
         [HttpPost("pix")]
-        public async Task<IActionResult> PayWithPix([FromBody] CheckoutPixDto dto)
-        {
-            var customerId = await _asaas.CreateCustomerAsync(dto.Nome, dto.CpfCnpj, dto.Email, dto.Telefone);
-            var cobranca = await _asaas.CreatePixPaymentAsync(
-                customerId,
-                dto.Valor,
-                DateTime.UtcNow.AddDays(1),
-                $"Pedido #{dto.PedidoId}"
-            );
-            var qrCode = await _asaas.GetPixQrCodeAsync(cobranca.Id);
-            return Ok(new
+        public Task<IActionResult> PayWithPix([FromBody] CheckoutPixRequest request, CancellationToken ct) =>
+            ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CheckoutController), nameof(PayWithPix), async () =>
             {
-                cobrancaId = cobranca.Id,
-                status = cobranca.Status,
-                copiaECola = qrCode.Payload,
-                qrCodeBase64 = qrCode.EncodedImage,
-                expiraEm = qrCode.ExpirationDate
+                var result = await Mediator.Send(new PayOrderWithPixCommand(request.CustomerOrderId), ct);
+                return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
             });
-        }
 
         [HttpPost("cartao")]
-        public async Task<IActionResult> PayWithCreditCard([FromBody] CheckoutCartaoDto dto)
-        {
-            var customerId = await _asaas.CreateCustomerAsync(dto.Nome, dto.CpfCnpj, dto.Email, dto.Telefone);
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-            var resultado = await _asaas.CreateCreditCardPaymentAsync(
-                customerId,
-                dto.Valor,
-                DateTime.UtcNow.AddDays(1),
-                $"Pedido #{dto.PedidoId}",
-                dto.Cartao,
-                dto.DadosPortador,
-                ipAddress,
-                dto.Parcelas > 0 ? dto.Parcelas : 1
-            );
-
-            return Ok(new
+        public Task<IActionResult> PayWithCreditCard([FromBody] CheckoutCreditCardRequest request, CancellationToken ct) =>
+            ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CheckoutController), nameof(PayWithCreditCard), async () =>
             {
-                cobrancaId = resultado.Id,
-                status = resultado.Status,
-                bandeira = resultado.CreditCard?.CreditCardBrand,
-                ultimosDigitos = resultado.CreditCard?.CreditCardNumber,
-                tokenCartao = resultado.CreditCard?.CreditCardToken 
+                var result = await Mediator.Send(
+                    new PayOrderWithCreditCardCommand(request.CustomerOrderId, request.SavedCardId, request.Card, request.SaveCard),
+                    ct);
+                return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
             });
-        }
+
+        [HttpPost("boleto")]
+        public Task<IActionResult> PayWithBoleto([FromBody] CheckoutBoletoRequest request, CancellationToken ct) =>
+            ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CheckoutController), nameof(PayWithBoleto), async () =>
+            {
+                var result = await Mediator.Send(new PayOrderWithBoletoCommand(request.CustomerOrderId), ct);
+                return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+            });
     }
 
-    public record CheckoutPixDto(string Nome, string CpfCnpj, string Email, string Telefone, decimal Valor, int PedidoId);
-    public record CheckoutCartaoDto(
-        string Nome,
-        string CpfCnpj,
-        string Email,
-        string Telefone,
-        decimal Valor,
-        int PedidoId,
-        int Parcelas,
-        CreditCardRequest Cartao,
-        CreditCardHolderInfoRequest DadosPortador
-    );
+    public sealed record CheckoutPixRequest(long CustomerOrderId);
+
+    public sealed record CheckoutCreditCardRequest(
+        long CustomerOrderId,
+        long? SavedCardId,
+        CreditCardDataRequest? Card,
+        bool SaveCard = false);
+
+    public sealed record CheckoutBoletoRequest(long CustomerOrderId);
 }
