@@ -15,7 +15,7 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Route("asaas/settings")]
+[Route("api/asaas/settings")]
 public sealed class AsaasSettingController(
     IMediator mediator,
     ILogTrackerRepository logRepository,

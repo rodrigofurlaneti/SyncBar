@@ -114,6 +114,28 @@ export function AppShell() {
                     )}
                     {access?.canManageAccess && (
                         <NavLink
+                            to="/integracoes/asaas"
+                            onClick={closeNav}
+                            title="Integração Asaas — configurações, clientes, cobranças, cartões salvos e webhooks"
+                            style={({ isActive }) => ({
+                                padding: "8px 14px",
+                                borderRadius: 8,
+                                textDecoration: "none",
+                                fontFamily: "var(--font-cond)",
+                                fontWeight: 600,
+                                letterSpacing: "0.05em",
+                                textTransform: "uppercase" as const,
+                                fontSize: "0.85rem",
+                                color: isActive ? "#fff" : "#00A868",
+                                background: isActive ? "#00A868" : "transparent",
+                                border: "1px solid #00A868",
+                            })}
+                        >
+                            💳 Asaas
+                        </NavLink>
+                    )}
+                    {access?.canManageAccess && (
+                        <NavLink
                             to="/configuracoes"
                             onClick={closeNav}
                             style={({ isActive }) => ({

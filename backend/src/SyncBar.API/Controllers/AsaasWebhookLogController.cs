@@ -12,7 +12,7 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Route("asaas/webhook-logs")]
+[Route("api/asaas/webhook-logs")]
 public sealed class AsaasWebhookLogController(
     IMediator mediator,
     ILogTrackerRepository logRepository,

@@ -26,6 +26,7 @@ import { ReservationsPage } from "./features/reservations/ReservationsPage";
 import { CustomersPage } from "./features/customers/CustomersPage";
 import { PublicOrderPage } from "./features/publicOrdering/PublicOrderPage";
 import { StorefrontOrderPage } from "./features/storeFront/StorefrontOrderPage";
+import { AsaasPage } from "./features/asaas/AsaasPage";
 import { IFoodIntegrationPage } from "./features/integrations/IFoodIntegrationPage";
 import { IFoodOrdersPage } from "./features/integrations/IFoodOrdersPage";
 import { IFoodShippingPage } from "./features/integrations/IFoodShippingPage";
@@ -127,6 +128,8 @@ export default function App() {
                 <Route path="/integracoes/ifood/avaliacoes" element={<ManagerGate><IFoodReviewsDetailedPage /></ManagerGate>} />
                 <Route path="/integracoes/ifood/indicadores" element={<ManagerGate><IFoodAnalyticsEnhancedPage /></ManagerGate>} />
                 <Route path="/integracoes/ifood/financeiro/relatorios" element={<ManagerGate><IFoodFinancialReportsPage /></ManagerGate>} />
+
+                <Route path="/integracoes/asaas" element={<ManagerGate><AsaasPage /></ManagerGate>} />
 
                 <Route path="/pracas" element={<ManagerGate><DiningAreasPage /></ManagerGate>} />
                 <Route path="/sem-acesso" element={<NoAccessPage />} />

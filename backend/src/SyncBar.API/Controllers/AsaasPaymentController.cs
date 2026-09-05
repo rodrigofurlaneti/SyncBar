@@ -13,7 +13,7 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Route("asaas/payments")]
+[Route("api/asaas/payments")]
 public sealed class AsaasPaymentController(
     IMediator mediator,
     ILogTrackerRepository logRepository,

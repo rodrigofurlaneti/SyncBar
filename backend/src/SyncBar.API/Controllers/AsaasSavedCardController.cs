@@ -11,7 +11,7 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
-[Route("asaas/saved-cards")]
+[Route("api/asaas/saved-cards")]
 public sealed class AsaasSavedCardController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
