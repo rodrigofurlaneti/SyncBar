@@ -33,8 +33,8 @@ public sealed class CustomerAddress : AggregateRoot
         CustomerId = customerId;
         Street = street;
         Number = number;
-        Supplement = supplement ?? string.Empty;
-        ZipCode = zipCode ?? string.Empty;
+        Supplement = supplement;
+        ZipCode = zipCode;
         IsActive = true;
         CreatedAt = DateTime.Now;
     }

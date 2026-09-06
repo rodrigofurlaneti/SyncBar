@@ -41,7 +41,7 @@ internal sealed class IfoodTokenProvider(
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            await logRepository.AddAsync(log);
+            await logRepository.AddAsync(log, cancellationToken);
             await unitOfWork.CommitAsync(cancellationToken);
             return null;
         }
@@ -67,7 +67,7 @@ internal sealed class IfoodTokenProvider(
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            await logRepository.AddAsync(log);
+            await logRepository.AddAsync(log, cancellationToken);
             await unitOfWork.CommitAsync(cancellationToken);
 
             return null;
@@ -104,7 +104,7 @@ internal sealed class IfoodTokenProvider(
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            await logRepository.AddAsync(log);
+            await logRepository.AddAsync(log, cancellationToken);
             await unitOfWork.CommitAsync(cancellationToken);
             return null;
         }
@@ -130,7 +130,7 @@ internal sealed class IfoodTokenProvider(
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            await logRepository.AddAsync(log);
+            await logRepository.AddAsync(log, cancellationToken);
             await unitOfWork.CommitAsync(cancellationToken);
 
             return null;
