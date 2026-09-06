@@ -117,9 +117,12 @@ public sealed class CreateAsaasIntegrationPaymentCommandHandlerTests
         result.Value.InvoiceUrl.Should().Be("https://invoice");
         await _asaasService.Received(1).ConfigureForTenantAsync(1, 1, Arg.Any<CancellationToken>());
         await _paymentRepository.Received(1).AddAsync(
-            Arg.Is<AsaasIntegrationPayment>(p => p.AsaasPaymentId == "pay_1" && p.PixQrCodeBase64 == "base64image"),
+            Arg.Is<AsaasIntegrationPayment>(p => p.AsaasPaymentId == "pay_1"),
             Arg.Any<CancellationToken>());
-        await _unitOfWork.Received(2).CommitAsync(Arg.Any<CancellationToken>());
+        // 3 commits: (1) persiste o pagamento assim que criado no Asaas — antes de buscar o QR Code,
+        // para não perder o webhook PAYMENT_CREATED que o Asaas dispara nesse meio-tempo — (2) persiste
+        // QR Code/urls depois de buscados, e (3) o log de auditoria do BaseCommandHandler.
+        await _unitOfWork.Received(3).CommitAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

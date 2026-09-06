@@ -1,0 +1,144 @@
+{
+  "info": {
+    "name": "SyncBar - Asaas Webhook (conectividade)",
+    "description": "Testa se a VM do SyncBar (9.205.156.87) está acessível e se o endpoint que recebe os webhooks do Asaas (POST /api/webhook/asaas) responde, nas 3 portas possíveis: 8080 (API direta), 84 (via proxy do frontend/nginx) e 80 (caso exista um proxy reverso na própria VM, que é a porta usada na URL cadastrada no Asaas).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "host", "value": "9.205.156.87" },
+    { "key": "portDirect", "value": "8080" },
+    { "key": "portProxy", "value": "84" },
+    { "key": "webhookToken", "value": "", "description": "Cole aqui o valor de 'Token de autenticação' cadastrado no webhook DingFood do painel Asaas (opcional para este teste, pois o endpoint responde 200 mesmo com token incorreto quando o pagamento simulado não existe no banco)." }
+  ],
+  "item": [
+    {
+      "name": "1. Health Check",
+      "item": [
+        {
+          "name": "Health - API direta (porta 8080)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://{{host}}:{{portDirect}}/health", "protocol": "http", "host": ["{{host}}"], "port": "{{portDirect}}", "path": ["health"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - API acessível na porta 8080', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Health - porta 80 (proxy da VM, se existir)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://{{host}}/health", "protocol": "http", "host": ["{{host}}"], "path": ["health"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - porta 80 acessível', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Webhook Asaas (simulação)",
+      "item": [
+        {
+          "name": "POST Webhook - porta 8080 (API direta)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "asaas-access-token", "value": "{{webhookToken}}" }
+            ],
+            "url": { "raw": "http://{{host}}:{{portDirect}}/api/webhook/asaas", "protocol": "http", "host": ["{{host}}"], "port": "{{portDirect}}", "path": ["api", "webhook", "asaas"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_000000000000\",\n  \"event\": \"PAYMENT_CONFIRMED\",\n  \"payment\": {\n    \"id\": \"pay_test_000000000\",\n    \"value\": 50.00,\n    \"netValue\": 48.50,\n    \"billingType\": \"PIX\",\n    \"status\": \"CONFIRMED\",\n    \"dueDate\": \"2026-09-06\",\n    \"paymentDate\": \"2026-09-06\",\n    \"invoiceUrl\": \"https://sandbox.asaas.com/i/000000000\",\n    \"bankSlipUrl\": null\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - endpoint recebeu o webhook (porta 8080)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST Webhook - porta 80 (URL cadastrada no Asaas)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "asaas-access-token", "value": "{{webhookToken}}" }
+            ],
+            "url": { "raw": "http://{{host}}/api/webhook/asaas", "protocol": "http", "host": ["{{host}}"], "path": ["api", "webhook", "asaas"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_000000000001\",\n  \"event\": \"PAYMENT_CONFIRMED\",\n  \"payment\": {\n    \"id\": \"pay_test_000000001\",\n    \"value\": 50.00,\n    \"netValue\": 48.50,\n    \"billingType\": \"PIX\",\n    \"status\": \"CONFIRMED\",\n    \"dueDate\": \"2026-09-06\",\n    \"paymentDate\": \"2026-09-06\",\n    \"invoiceUrl\": \"https://sandbox.asaas.com/i/000000001\",\n    \"bankSlipUrl\": null\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - endpoint recebeu o webhook (porta 80)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST Webhook - porta 84 (via nginx do frontend)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "asaas-access-token", "value": "{{webhookToken}}" }
+            ],
+            "url": { "raw": "http://{{host}}:{{portProxy}}/api/webhook/asaas", "protocol": "http", "host": ["{{host}}"], "port": "{{portProxy}}", "path": ["api", "webhook", "asaas"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_test_000000000002\",\n  \"event\": \"PAYMENT_CONFIRMED\",\n  \"payment\": {\n    \"id\": \"pay_test_000000002\",\n    \"value\": 50.00,\n    \"netValue\": 48.50,\n    \"billingType\": \"PIX\",\n    \"status\": \"CONFIRMED\",\n    \"dueDate\": \"2026-09-06\",\n    \"paymentDate\": \"2026-09-06\",\n    \"invoiceUrl\": \"https://sandbox.asaas.com/i/000000002\",\n    \"bankSlipUrl\": null\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 - endpoint recebeu o webhook (porta 84)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

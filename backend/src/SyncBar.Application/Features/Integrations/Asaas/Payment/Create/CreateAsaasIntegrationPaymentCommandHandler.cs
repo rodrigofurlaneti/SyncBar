@@ -106,7 +106,15 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Create
 
                     var paymentEntity = paymentEntityResult.Value;
 
-                    // 6. Tratar retorno específico de PIX (QR Code e Copia e Cola)
+                    // 6. Persiste já com o AsaasPaymentId — o Asaas dispara o webhook PAYMENT_CREATED
+                    // assim que a cobrança é criada (passo 4), e se o registro só fosse salvo depois de
+                    // buscar o QR Code (mais uma chamada ao Asaas), o webhook chegava antes do pagamento
+                    // existir no banco e o ReceiveAsaasWebhookCommandHandler descartava o evento por não
+                    // encontrar o pagamento (retornava sucesso sem registrar o log de auditoria).
+                    await _paymentRepository.AddAsync(paymentEntity, cancellationToken);
+                    await _unitOfWork.CommitAsync(cancellationToken);
+
+                    // 7. Tratar retorno específico de PIX (QR Code e Copia e Cola)
                     string? pixQrCode = null;
                     string? pixPayload = null;
                     if (request.BillingType.Equals("PIX", StringComparison.OrdinalIgnoreCase))
@@ -124,15 +132,14 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Create
                         }
                     }
 
-                    // 7. URLs auxiliares e token de cartão
+                    // 8. URLs auxiliares e token de cartão
                     paymentEntity.SetUrls(asaasPaymentData.InvoiceUrl, asaasPaymentData.BankSlipUrl);
                     if (!string.IsNullOrWhiteSpace(request.CreditCardToken))
                     {
                         paymentEntity.SetCreditCardToken(request.CreditCardToken);
                     }
 
-                    // 8. Persistência
-                    await _paymentRepository.AddAsync(paymentEntity, cancellationToken);
+                    // 9. Persiste as atualizações (QR code, urls, token de cartão)
                     await _unitOfWork.CommitAsync(cancellationToken);
 
                     var response = new CreateAsaasIntegrationPaymentResponse(
