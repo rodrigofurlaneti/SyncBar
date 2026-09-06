@@ -11,6 +11,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
 {
     private readonly ICurrentTenantService? _currentTenant = currentTenant;
     public DbSet<AsaasIntegrationCustomer> AsaasIntegrationCustomers => Set<AsaasIntegrationCustomer>();
+    public DbSet<KeetaIntegrationAuthorizationSession> KeetaIntegrationAuthorizationSessions => Set<KeetaIntegrationAuthorizationSession>();
     public DbSet<AsaasIntegrationPayment> AsaasIntegrationPayments => Set<AsaasIntegrationPayment>();
     public DbSet<AsaasIntegrationSavedCard> AsaasIntegrationSavedCards => Set<AsaasIntegrationSavedCard>();
     public DbSet<AsaasIntegrationSetting> AsaasIntegrationSettings => Set<AsaasIntegrationSetting>();
