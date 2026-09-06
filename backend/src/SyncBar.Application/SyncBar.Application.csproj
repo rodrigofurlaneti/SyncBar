@@ -21,6 +21,7 @@
     <InternalsVisibleTo Include="SyncBar.Specs" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Abstractions\Integrations\Keeta\" />
     <Folder Include="Features\Dining\Assignment\Update\" />
   </ItemGroup>
 </Project>

@@ -17,17 +17,17 @@ namespace SyncBar.Infrastructure.Persistence.Configurations
             builder.Property(x => x.CompanyId).IsRequired();
             builder.Property(x => x.BranchId).IsRequired();
 
+            // Opcionais: KeetaIntegrationSetting.Create(companyId, branchId) cria o registro antes de
+            // qualquer credencial existir — SaveCredentials() é chamado depois, separadamente. Marcar
+            // como IsRequired() aqui contradiz a nulabilidade (string?) da entidade e quebra esse fluxo.
             builder.Property(x => x.ClientId)
-                .HasMaxLength(255)
-                .IsRequired();
+                .HasMaxLength(255);
 
             builder.Property(x => x.ClientSecret)
-                .HasMaxLength(255)
-                .IsRequired();
+                .HasMaxLength(255);
 
             builder.Property(x => x.AppId)
-                .HasMaxLength(255)
-                .IsRequired();
+                .HasMaxLength(255);
 
             builder.Property(x => x.BaseUrl)
                 .HasMaxLength(255)
