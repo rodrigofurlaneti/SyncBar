@@ -55,8 +55,11 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
 
     private void GivenAnActiveMerchantMapping()
     {
+        // ResolveBranchAssignmentAsync casa a filial pelo MerchantUuid (não MerchantId) contra
+        // details.MerchantId — precisa ser o mesmo valor usado em OrderDetailsWithItems() pra
+        // resolução de filial funcionar nos testes que dependem dela.
         var mapping = IfoodMerchantMapping.Create(BranchId).Value;
-        mapping.SetMerchant(MerchantId, "merchant-uuid-1");
+        mapping.SetMerchant("merchant-uuid-1", MerchantId);
         _merchantMappingRepository.GetByCompanyAsync(CompanyId, Arg.Any<CancellationToken>())
             .Returns(new Dictionary<long, IfoodMerchantMapping> { [BranchId] = mapping });
     }
@@ -78,8 +81,12 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         => _orderClient.ConfirmOrderAsync(ValidToken, IfoodOrderExternalId, Arg.Any<CancellationToken>())
             .Returns(new IfoodOrderActionResult(true, null));
 
+    // Apesar do nome, este é o evento que o polling do Ifood emite quando um pedido é FEITO
+    // ("PLACED") — é ele que aciona ProcessNewOrderAsync (criação do pedido + auto-confirmação
+    // dentro do SLA), fluxo que os testes abaixo exercitam. O switch do handler despacha por
+    // evt.FullCode (não Code), então é isso que precisa carregar "PLACED".
     private static IfoodPollingEvent ConfirmedEvent(string eventId = "evt-1") =>
-        new(eventId, "CONFIRMED", null, IfoodOrderExternalId, DateTime.Now);
+        new(eventId, "PLC", "PLACED", IfoodOrderExternalId, DateTime.Now);
 
     private static IfoodOrderDetailsDto OrderDetailsWithItems(params IfoodOrderItemDto[] items) => new(
         Id: IfoodOrderExternalId, DisplayId: "001", OrderType: "DELIVERY", OrderTiming: "IMMEDIATE",
@@ -105,7 +112,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         return () => captured;
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
+    [Fact]
     public async Task Handle_WhenIntegrationSettingMissing_ShouldSucceedWithoutPolling()
     {
         _settingRepository.GetByCompanyAsync(CompanyId, Arg.Any<CancellationToken>()).Returns((IfoodIntegrationSetting?)null);
@@ -117,7 +124,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         await _orderClient.DidNotReceive().PollEventsAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
+    [Fact]
     public async Task Handle_WhenIntegrationDisabled_ShouldSucceedWithoutPolling()
     {
         var setting = IfoodIntegrationSetting.Create(CompanyId).Value;
@@ -131,7 +138,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         await _orderClient.DidNotReceive().PollEventsAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
+    [Fact]
     public async Task Handle_WhenTokenUnavailable_ShouldSucceedWithoutPolling()
     {
         var setting = IfoodIntegrationSetting.Create(CompanyId).Value;
@@ -146,7 +153,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         await _orderClient.DidNotReceive().PollEventsAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
+    [Fact]
     public async Task Handle_WhenNoActiveMerchantMappings_ShouldSucceedWithoutPolling()
     {
         GivenIntegrationEnabledWithValidToken();
@@ -195,7 +202,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         await _orderClient.Received(1).AcknowledgeEventsAsync(ValidToken, Arg.Is<IReadOnlyCollection<string>>(ids => ids.Contains("evt-1")), Arg.Any<CancellationToken>());
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
+    [Fact]
     public async Task Handle_ConfirmedEvent_WhenOrderDetailsNotYetAvailable_ShouldNotAcknowledge()
     {
         GivenIntegrationEnabledWithValidToken();
@@ -212,7 +219,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         await _orderClient.DidNotReceive().AcknowledgeEventsAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
+    [Fact]
     public async Task Handle_ConfirmedEvent_WhenMerchantNotMapped_ShouldNotAcknowledge()
     {
         GivenIntegrationEnabledWithValidToken();
@@ -230,7 +237,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         await _orderClient.DidNotReceive().AcknowledgeEventsAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
+    [Fact]
     public async Task Handle_ConfirmedEvent_WhenBranchHasNoSelfServiceEmployee_ShouldNotAcknowledge()
     {
         GivenIntegrationEnabledWithValidToken();
@@ -248,7 +255,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         await _orderClient.DidNotReceive().AcknowledgeEventsAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
+    [Fact]
     public async Task Handle_ConfirmedEvent_WithUnmappedItem_ShouldFlagHasUnmappedItemsButStillCreateOrder()
     {
         GivenIntegrationEnabledWithValidToken();
@@ -273,7 +280,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         await _orderClient.Received(1).AcknowledgeEventsAsync(ValidToken, Arg.Is<IReadOnlyCollection<string>>(ids => ids.Contains("evt-1")), Arg.Any<CancellationToken>());
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
+    [Fact]
     public async Task Handle_ConfirmedEvent_WithMappedComplementOption_ShouldAddComplementToOrderItem()
     {
         GivenIntegrationEnabledWithValidToken();
@@ -307,7 +314,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         orderItem.Complements.Should().ContainSingle(c => c.ComplementId == complement.Id && c.UnitPriceCharged == 3.50m);
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
+    [Fact]
     public async Task Handle_ConfirmedEvent_WhenIfoodConfirmsSuccessfully_ShouldMarkIfoodOrderConfirmed()
     {
         GivenIntegrationEnabledWithValidToken();

@@ -20,16 +20,16 @@ public sealed class GetAsaasWebhookLogsByPaymentIdQueryHandlerTests
         _handler = new GetAsaasWebhookLogsByPaymentIdQueryHandler(_webhookLogRepository, _logRepository, _unitOfWork);
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
-    public async Task Handle_NoLogsForPayment_ShouldReturnEmptyList()
+    [Fact]
+    public async Task Handle_NoLogsForPayment_ShouldReturnFailure()
     {
         _webhookLogRepository.GetByPaymentIdAsync(1, "pay_1", Arg.Any<CancellationToken>())
             .Returns(new List<AsaasIntegrationWebhookLog>());
 
         var result = await _handler.Handle(new GetAsaasWebhookLogsByPaymentIdQuery(1, "pay_1"), CancellationToken.None);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().BeEmpty();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("AsaasWebhookLogNotFound");
     }
 
     [Fact]

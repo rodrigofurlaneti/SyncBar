@@ -24,8 +24,11 @@ public sealed class GetIfoodLogisticsDeliveriesQueryHandlerTests
     }
 
     private static IfoodOrder CreateOrder()
+        // customerOrderId 0 propositalmente: CustomerOrder.Create não persiste, então o Id do
+        // CustomerOrder fabricado abaixo também fica 0 — precisam bater pro join do handler
+        // (IfoodOrdersById -> customerOrdersById por CustomerOrderId) encontrar o registro.
         => IfoodOrder.Create(
-            customerOrderId: 1, branchId: 1, "ifood-order-1", "#001", "MERCH-1", "DELIVERY", null, "IMMEDIATE", null,
+            customerOrderId: 0, branchId: 1, "ifood-order-1", "#001", "MERCH-1", "DELIVERY", null, "IMMEDIATE", null,
             now: DateTime.Now, hasUnmappedItems: false).Value;
 
     private static CustomerOrder CreateCustomerOrder()
@@ -48,7 +51,7 @@ public sealed class GetIfoodLogisticsDeliveriesQueryHandlerTests
         await _ifoodOrderRepository.DidNotReceive().GetOpenByBranchAsync(Arg.Any<long>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
+    [Fact]
     public async Task Handle_WithDeliveries_ShouldMapOrderAndCustomerInfo()
     {
         var order = CreateOrder();

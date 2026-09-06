@@ -75,29 +75,27 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
 
                var setting = await _settingRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
 
+                // As quatro condições abaixo (integração desabilitada/não configurada, token
+                // indisponível, nenhuma loja mapeada) são estados normais e esperados de um ciclo
+                // de polling em background que roda periodicamente por empresa — não uma falha do
+                // comando. Devolver Result.Failure aqui fazia o ExecuteWithLogAsync gravar uma
+                // linha de LogTracker com IsSuccess=false a CADA ciclo enquanto a empresa estivesse
+                // nesse estado (onboarding incompleto, integração pausada, etc.), inundando a
+                // tabela de auditoria de "falhas" que nunca são acionáveis.
                 if (setting is not null && !setting.Enabled)
                {
-                   return Result.Failure(new Error(
-                       "SyncIfoodOrders.MissingSettingsEnabled",
-                       $"Polling ignorado: Integração do iFood está explicitamente desabilitada para a empresa {request.CompanyId}."
-                   ));
+                   return Result.Success();
                }
 
                if (setting is null || setting.ClientId is null)
                {
-                   return Result.Failure(new Error(
-                       "SyncIfoodOrders.MissingSettings",
-                       $"A integração com o iFood foi acionada para a empresa {request.CompanyId}, mas as configurações (Settings/ClientId) não foram encontradas no banco de dados."
-                   ));
+                   return Result.Success();
                }
 
                var token = await _tokenProvider.GetAccessTokenAsync(request.CompanyId, cancellationToken);
                if (string.IsNullOrEmpty(token))
                {
-                   return Result.Failure(new Error(
-                       "SyncIfoodOrders.TokenFailed",
-                       "Falha ao obter o Access Token do iFood. Verifique o LogTracker para detalhes sobre erro de criptografia (Data Protection) ou credenciais inválidas."
-                   ));
+                   return Result.Success();
                }
 
                var mappings = await _merchantMappingRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
@@ -109,10 +107,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
 
                if (merchantIds.Count == 0)
                {
-                   return Result.Failure(new Error(
-                       "SyncIfoodOrders.NoMerchantsMapped",
-                       $"A integração com o iFood está habilitada para a empresa {request.CompanyId}, mas não há nenhuma loja (Merchant UUID) ativa e mapeada."
-                   ));
+                   return Result.Success();
                }
 
                var events = await _orderClient.PollEventsAsync(token, merchantIds, cancellationToken);
