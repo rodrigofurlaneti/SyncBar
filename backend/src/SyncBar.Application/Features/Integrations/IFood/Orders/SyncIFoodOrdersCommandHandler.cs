@@ -146,7 +146,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
                 IsActive = true
             };
 
-            await _logRepository.AddAsync(log);
+            await _logRepository.AddAsync(log, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
             return null;
         }
@@ -168,7 +168,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            await _logRepository.AddAsync(log);
+            await _logRepository.AddAsync(log, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
             return null;
         }
@@ -196,7 +196,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            await _logRepository.AddAsync(log);
+            await _logRepository.AddAsync(log, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
             return null;
         }
@@ -406,7 +406,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
                     IsActive = true
                 };
 
-                await _logRepository.AddAsync(log);
+                await _logRepository.AddAsync(log, cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
             }
             catch
@@ -441,7 +441,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            await _logRepository.AddAsync(log);
+            await _logRepository.AddAsync(log, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
             return Result.Failure<BranchAssignment>(new Error(
                 "Ifood.BranchUnmapped",
@@ -466,7 +466,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            await _logRepository.AddAsync(log);
+            await _logRepository.AddAsync(log, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
             return Result.Failure<BranchAssignment>(new Error(
                 "Ifood.BranchNotFound",
@@ -490,7 +490,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
                 CreatedAt = DateTime.Now,
                 IsActive = true
             };
-            await _logRepository.AddAsync(log);
+            await _logRepository.AddAsync(log, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
             return Result.Failure<BranchAssignment>(new Error(
                 "Ifood.BranchMissingSelfServiceEmployee",
