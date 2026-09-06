@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentAssertions;
 using MediatR;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using SyncBar.Application.Abstractions.Integrations.Asaas;
 using SyncBar.Application.Features.Checkout.PayOrderWithCreditCard;
 using SyncBar.Application.Features.Checkout.Shared;
@@ -204,5 +205,24 @@ public sealed class PayOrderWithCreditCardCommandHandlerTests
         await _mediator.Received(1).Send(
             Arg.Is<CreateAsaasIntegrationPaymentCommand>(c => c.CreditCardToken == "tok_onetime"),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_TokenizeThrowsHttpRequestException_ShouldReturnFailure()
+    {
+        var order = CreateAwaitingPaymentOrder(customerId: 1);
+        GivenPreparationSucceeds(order, CreateCustomer(), CreateBranch());
+        _paymentRepository.GetByCustomerOrderIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns((AsaasIntegrationPayment?)null);
+
+        _asaasService.TokenizeCreditCardAsync(
+                "cus_asaas_1", Arg.Any<CreditCardRequest>(), Arg.Any<CreditCardHolderInfoRequest?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("gateway timeout"));
+
+        var result = await _handler.Handle(
+            new PayOrderWithCreditCardCommand(order.Id, null, CreateCardData(), SaveCard: false), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("AsaasApi.TokenizeCardFailed");
+        await _mediator.DidNotReceive().Send(Arg.Any<CreateAsaasIntegrationPaymentCommand>(), Arg.Any<CancellationToken>());
     }
 }
