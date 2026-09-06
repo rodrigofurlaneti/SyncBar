@@ -1,6 +1,8 @@
 ﻿using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using SyncBar.Application.Features.Checkout.Shared;
+using SyncBar.Application.Features.Integrations.Keeta.Authorization;
+using SyncBar.Application.Features.Integrations.Keeta.Order.Polling;
 
 namespace SyncBar.Application
 {
@@ -14,6 +16,8 @@ namespace SyncBar.Application
             services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
 
             services.AddScoped<ICheckoutOrderPreparer, CheckoutOrderPreparer>();
+            services.AddScoped<IKeetaAccessTokenProvider, KeetaAccessTokenProvider>();
+            services.AddScoped<IKeetaOrderEventProcessor, KeetaOrderEventProcessor>();
 
             return services;
         }

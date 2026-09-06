@@ -36,6 +36,12 @@ namespace SyncBar.Infrastructure.Persistence.Repositories
                 .Where(x => x.BranchId == branchId)
                 .ToListAsync(cancellationToken);
 
+        public async Task<IReadOnlyList<KeetaIntegrationMerchantMapping>> GetAllAuthorizedAsync(CancellationToken cancellationToken = default)
+            => await context.Set<KeetaIntegrationMerchantMapping>()
+                .AsNoTracking()
+                .Where(x => x.IsAuthorized)
+                .ToListAsync(cancellationToken);
+
         public async Task<bool> ExistsByKeetaMerchantIdAsync(long keetaMerchantId, CancellationToken cancellationToken = default)
             => await context.Set<KeetaIntegrationMerchantMapping>()
                 .AnyAsync(x => x.KeetaMerchantId == keetaMerchantId, cancellationToken);

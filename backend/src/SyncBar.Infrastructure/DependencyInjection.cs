@@ -10,6 +10,7 @@ using SyncBar.Infrastructure.Authentication;
 using SyncBar.Infrastructure.Fiscal;
 using SyncBar.Infrastructure.Integrations.Asaas;
 using SyncBar.Infrastructure.Integrations.Ifood;
+using SyncBar.Infrastructure.Integrations.Keeta;
 using SyncBar.Infrastructure.Payments;
 using SyncBar.Infrastructure.Persistence;
 using SyncBar.Infrastructure.Persistence.Repositories;
@@ -197,6 +198,14 @@ public static class DependencyInjection
         services.AddScoped<IAsaasService>(sp => sp.GetRequiredService<AsaasService>());
         services.AddScoped<SyncBar.Application.Abstractions.Integrations.Asaas.IAsaasService, AsaasApplicationService>();
         services.AddScoped<SyncBar.Application.Abstractions.Integrations.Asaas.IAsaasCustomerProvisioningService, AsaasCustomerProvisioningService>();
+
+        services.Configure<KeetaSettings>(configuration.GetSection("Keeta"));
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.Keeta.IKeetaCredentialsResolver, KeetaCredentialsResolver>();
+        services.AddHttpClient<KeetaAuthClient>();
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.Keeta.IKeetaAuthClient>(sp => sp.GetRequiredService<KeetaAuthClient>());
+        services.AddHttpClient<KeetaOrderClient>();
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.Keeta.IKeetaOrderClient>(sp => sp.GetRequiredService<KeetaOrderClient>());
+        services.AddHostedService<KeetaEventPollingBackgroundService>();
 
         return services;
     }
