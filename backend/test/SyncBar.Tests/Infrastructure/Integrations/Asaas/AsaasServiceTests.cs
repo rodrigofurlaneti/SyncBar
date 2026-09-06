@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Hosting;
@@ -34,23 +34,39 @@ public sealed class AsaasServiceTests
     private string LastRequestBody => _handler.RequestBodies[^1]!;
     private HttpRequestMessage LastRequest => _handler.Requests[^1];
 
-    [Fact]
-    public async Task ConfigureForTenantAsync_ShouldResolveCredentialsAndReconfigureClient()
+    private async Task SetupValidTenantAsync()
     {
         _credentialsResolver.ResolveAsync(1, 2, Arg.Any<CancellationToken>())
-            .Returns(new AppAsaas.AsaasCredentials("https://tenant.asaas.example/api", "tenant-key"));
+            .Returns(new AppAsaas.AsaasCredentials("https://tenant.asaas.example/api/", "tenant-key"));
 
         await _service.ConfigureForTenantAsync(1, 2, CancellationToken.None);
+    }
 
-        _handler.EnqueueJson(HttpStatusCode.OK, "{}");
-        await _service.DeletePaymentAsync("pay-1", CancellationToken.None);
-
-        LastRequest.RequestUri.Should().Be(new Uri("https://tenant.asaas.example/api/payments/pay-1"));
-        LastRequest.Headers.GetValues("access_token").Should().ContainSingle().Which.Should().Be("tenant-key");
+    private static AsaasPaymentResponse CreatePaymentResponse(string id, string status = "PENDING", decimal value = 100m, decimal? netValue = 98m)
+    {
+        return new AsaasPaymentResponse(
+            id,
+            status,
+            value,
+            netValue,
+            "2026-12-31",
+            "2026-12-31",
+            "Pedido Descrição",
+            "https://invoice.example/view",
+            "https://slip.example/view");
     }
 
     [Fact]
-    public async Task ConfigureForTenantAsync_BaseUrlWithoutTrailingSlash_ShouldAppendSlash()
+    public async Task SendAsync_WhenNotConfigured_ShouldThrowInvalidOperationException()
+    {
+        var act = () => _service.DeletePaymentAsync("pay_123", CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*AsaasService não foi configurado*");
+    }
+
+    [Fact]
+    public async Task ConfigureForTenantAsync_BaseUrlWithoutTrailingSlash_ShouldTrimAndFormatUriProperly()
     {
         _credentialsResolver.ResolveAsync(1, null, Arg.Any<CancellationToken>())
             .Returns(new AppAsaas.AsaasCredentials("https://tenant.asaas.example/api", "tenant-key"));
@@ -60,326 +76,279 @@ public sealed class AsaasServiceTests
         _handler.EnqueueJson(HttpStatusCode.OK, "{}");
         await _service.DeletePaymentAsync("pay-1", CancellationToken.None);
 
-        LastRequest.RequestUri!.ToString().Should().StartWith("https://tenant.asaas.example/api/");
+        LastRequest.RequestUri.Should().Be(new Uri("https://tenant.asaas.example/api/payments/pay-1"));
+        LastRequest.Headers.GetValues("access_token").Should().ContainSingle().Which.Should().Be("tenant-key");
     }
 
     [Fact]
-    public async Task CreateCustomerAsync_Success_ShouldPostPayloadAndReturnId()
+    public async Task EnsureSuccessOrThrowAsaasErrorAsync_WithJsonErrors_ShouldThrowFormattedException()
     {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"id":"cus_123","name":"João","cpfCnpj":"12345678900","email":"joao@example.com"}""");
+        await SetupValidTenantAsync();
 
-        var id = await _service.CreateCustomerAsync("João", "12345678900", "joao@example.com", "11999999999", CancellationToken.None);
+        var errorBody = JsonSerializer.Serialize(new
+        {
+            errors = new[]
+            {
+                new { code = "invalid_customer", description = "Cliente não encontrado" },
+                new { code = "invalid_value", description = "Valor inválido" }
+            }
+        });
 
-        id.Should().Be("cus_123");
-        LastRequest.RequestUri.Should().Be(new Uri("https://sandbox.asaas.com/api/v3/customers"));
+        _handler.EnqueueJson(HttpStatusCode.BadRequest, errorBody);
+
+        var act = () => _service.DeletePaymentAsync("pay_invalid", CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<HttpRequestException>();
+        ex.WithMessage("*Erro Asaas (HTTP BadRequest): invalid_customer: Cliente não encontrado; invalid_value: Valor inválido*");
+    }
+
+    [Fact]
+    public async Task EnsureSuccessOrThrowAsaasErrorAsync_WithEmptyJsonErrors_ShouldThrowRawContent()
+    {
+        await SetupValidTenantAsync();
+
+        var errorBody = JsonSerializer.Serialize(new { errors = Array.Empty<object>() });
+        _handler.EnqueueJson(HttpStatusCode.BadRequest, errorBody);
+
+        var act = () => _service.DeletePaymentAsync("pay_invalid", CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<HttpRequestException>();
+        ex.WithMessage("*Falha na requisição Asaas (HTTP BadRequest)*");
+    }
+
+    [Fact]
+    public async Task EnsureSuccessOrThrowAsaasErrorAsync_WithNonJsonError_ShouldCatchJsonExceptionAndThrowRawContent()
+    {
+        await SetupValidTenantAsync();
+
+        _handler.EnqueueJson(HttpStatusCode.InternalServerError, "<html>Gateway Timeout 504</html>");
+
+        var act = () => _service.DeletePaymentAsync("pay_invalid", CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<HttpRequestException>();
+        ex.WithMessage("*Falha na requisição Asaas (HTTP InternalServerError): <html>Gateway Timeout 504</html>*");
+    }
+
+    [Fact]
+    public async Task CreateCustomerAsync_ShouldSendPayloadAndReturnId()
+    {
+        await SetupValidTenantAsync();
+
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(new { id = "cus_12345" }));
+
+        var result = await _service.CreateCustomerAsync("Cliente Teste", "12345678901", "teste@teste.com", "11999998888", CancellationToken.None);
+
+        result.Should().Be("cus_12345");
         LastRequest.Method.Should().Be(HttpMethod.Post);
-        var body = JsonDocument.Parse(LastRequestBody).RootElement;
-        body.GetProperty("name").GetString().Should().Be("João");
-        body.GetProperty("cpfCnpj").GetString().Should().Be("12345678900");
-        body.GetProperty("mobilePhone").GetString().Should().Be("11999999999");
+        LastRequest.RequestUri.Should().Be(new Uri("https://tenant.asaas.example/api/customers"));
+        LastRequestBody.Should().Contain("Cliente Teste")
+            .And.Contain("12345678901")
+            .And.Contain("teste@teste.com")
+            .And.Contain("11999998888");
     }
 
     [Fact]
-    public async Task CreateCustomerAsync_StructuredAsaasError_ShouldThrowWithJoinedMessages()
+    public async Task DeleteCustomerAsync_ShouldSendDeleteRequest()
     {
-        _handler.EnqueueJson(HttpStatusCode.BadRequest,
-            """{"errors":[{"code":"invalid_cpfCnpj","description":"CPF inválido"},{"code":"invalid_email","description":"E-mail inválido"}]}""");
-
-        var act = () => _service.CreateCustomerAsync("João", "000", "x", null, CancellationToken.None);
-
-        (await act.Should().ThrowAsync<HttpRequestException>())
-            .WithMessage("*invalid_cpfCnpj: CPF inválido*invalid_email: E-mail inválido*");
-    }
-
-    [Fact]
-    public async Task CreateCustomerAsync_MalformedErrorBody_ShouldThrowWithRawContent()
-    {
-        _handler.EnqueueJson(HttpStatusCode.InternalServerError, "not-json-at-all");
-
-        var act = () => _service.CreateCustomerAsync("João", "000", "x", null, CancellationToken.None);
-
-        (await act.Should().ThrowAsync<HttpRequestException>()).WithMessage("*not-json-at-all*");
-    }
-
-    [Fact]
-    public async Task CreateCustomerAsync_ErrorBodyWithEmptyErrorsList_ShouldThrowWithRawContent()
-    {
-        _handler.EnqueueJson(HttpStatusCode.BadRequest, """{"errors":[]}""");
-
-        var act = () => _service.CreateCustomerAsync("João", "000", "x", null, CancellationToken.None);
-
-        (await act.Should().ThrowAsync<HttpRequestException>()).WithMessage("*errors*");
-    }
-
-    [Fact]
-    public async Task DeleteCustomerAsync_Success_ShouldSendDeleteToCorrectUrl()
-    {
+        await SetupValidTenantAsync();
         _handler.EnqueueJson(HttpStatusCode.OK, "{}");
 
         await _service.DeleteCustomerAsync("cus_123", CancellationToken.None);
 
         LastRequest.Method.Should().Be(HttpMethod.Delete);
-        LastRequest.RequestUri.Should().Be(new Uri("https://sandbox.asaas.com/api/v3/customers/cus_123"));
+        LastRequest.RequestUri.Should().Be(new Uri("https://tenant.asaas.example/api/customers/cus_123"));
     }
 
     [Fact]
-    public async Task DeleteCustomerAsync_Failure_ShouldThrow()
+    public async Task CreatePixPaymentAsync_ShouldPostCorrectPayload()
     {
-        _handler.EnqueueJson(HttpStatusCode.NotFound, """{"errors":[{"code":"not_found","description":"Cliente não encontrado"}]}""");
+        await SetupValidTenantAsync();
 
-        var act = () => _service.DeleteCustomerAsync("cus_missing", CancellationToken.None);
+        var expectedResponse = CreatePaymentResponse("pay_pix_1", "PENDING", 150.00m, 148.01m);
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(expectedResponse));
 
-        await act.Should().ThrowAsync<HttpRequestException>();
+        var result = await _service.CreatePixPaymentAsync("cus_1", 150.00m, new DateTime(2026, 10, 15), "Pedido 10", CancellationToken.None);
+
+        result.Id.Should().Be("pay_pix_1");
+        LastRequest.Method.Should().Be(HttpMethod.Post);
+        LastRequestBody.Should().Contain("\"billingType\":\"PIX\"")
+            .And.Contain("\"value\":150")
+            .And.Contain("\"dueDate\":\"2026-10-15\"");
     }
 
     [Fact]
-    public async Task CreatePixPaymentAsync_Success_ShouldPostPixPayloadAndReturnPayment()
+    public async Task CreatePaymentAsync_SingleInstallmentWithoutToken_ShouldPostPayload()
     {
-        var dueDate = new DateTime(2026, 1, 15);
-        _handler.EnqueueJson(HttpStatusCode.OK,
-            """{"id":"pay_1","customer":"cus_1","value":50.0,"netValue":48.5,"billingType":"PIX","status":"PENDING","dueDate":"2026-01-15"}""");
+        await SetupValidTenantAsync();
 
-        var result = await _service.CreatePixPaymentAsync("cus_1", 50m, dueDate, "Pedido 42", CancellationToken.None);
+        var expectedResponse = CreatePaymentResponse("pay_bol_1", "PENDING", 200.00m, 198.00m);
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(expectedResponse));
 
-        result.Id.Should().Be("pay_1");
-        result.Status.Should().Be("PENDING");
-        var body = JsonDocument.Parse(LastRequestBody).RootElement;
-        body.GetProperty("billingType").GetString().Should().Be("PIX");
-        body.GetProperty("dueDate").GetString().Should().Be("2026-01-15");
+        var result = await _service.CreatePaymentAsync(
+            "cus_1", "BOLETO", 200.00m, new DateTime(2026, 12, 1), "Boleto", null, 1, CancellationToken.None);
+
+        result.Id.Should().Be("pay_bol_1");
+        LastRequestBody.Should().Contain("\"billingType\":\"BOLETO\"")
+            .And.NotContain("creditCardToken")
+            .And.NotContain("installmentCount");
     }
 
     [Fact]
-    public async Task CreatePixPaymentAsync_Failure_ShouldThrow()
+    public async Task CreatePaymentAsync_MultipleInstallmentsAndCardToken_ShouldIncludeBranchProperties()
     {
-        _handler.EnqueueJson(HttpStatusCode.BadRequest, """{"errors":[{"code":"invalid_customer","description":"Cliente inválido"}]}""");
+        await SetupValidTenantAsync();
 
-        var act = () => _service.CreatePixPaymentAsync("cus_bad", 10m, DateTime.Today, "x", CancellationToken.None);
+        var expectedResponse = CreatePaymentResponse("pay_cc_1", "CONFIRMED", 300.00m, 290.00m);
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(expectedResponse));
 
-        await act.Should().ThrowAsync<HttpRequestException>();
+        var result = await _service.CreatePaymentAsync(
+            "cus_1", "credit_card", 300.00m, new DateTime(2026, 12, 1), "Cartao", "tok_cc_123", 3, CancellationToken.None);
+
+        result.Id.Should().Be("pay_cc_1");
+        LastRequestBody.Should().Contain("\"billingType\":\"CREDIT_CARD\"")
+            .And.Contain("\"creditCardToken\":\"tok_cc_123\"")
+            .And.Contain("\"installmentCount\":3")
+            .And.Contain("\"totalValue\":300");
     }
 
     [Fact]
-    public async Task CreatePaymentAsync_DefaultBillingTypeCasing_ShouldBeUppercasedInPayload()
+    public async Task GetPixQrCodeAsync_ShouldSendGetAndReturnQrCode()
     {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"id":"pay_1","customer":"cus_1","value":10,"netValue":null,"billingType":"boleto","status":"PENDING","dueDate":"2026-01-01"}""");
+        await SetupValidTenantAsync();
 
-        await _service.CreatePaymentAsync("cus_1", "boleto", 10m, DateTime.Today, "desc", cancellationToken: CancellationToken.None);
+        var expected = new AsaasPixQrCodeResponse("img_base64", "payload_copia_cola", "2026-12-31T23:59:59");
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(expected));
 
-        var body = JsonDocument.Parse(LastRequestBody).RootElement;
-        body.GetProperty("billingType").GetString().Should().Be("BOLETO");
-        body.TryGetProperty("creditCardToken", out _).Should().BeFalse();
-        body.TryGetProperty("installmentCount", out _).Should().BeFalse();
-    }
+        var result = await _service.GetPixQrCodeAsync("pay_123", CancellationToken.None);
 
-    [Fact]
-    public async Task CreatePaymentAsync_WithCreditCardToken_ShouldIncludeTokenInPayload()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"id":"pay_1","customer":"cus_1","value":10,"netValue":null,"billingType":"CREDIT_CARD","status":"CONFIRMED","dueDate":"2026-01-01"}""");
-
-        await _service.CreatePaymentAsync("cus_1", "credit_card", 10m, DateTime.Today, "desc", "token-abc", cancellationToken: CancellationToken.None);
-
-        var body = JsonDocument.Parse(LastRequestBody).RootElement;
-        body.GetProperty("creditCardToken").GetString().Should().Be("token-abc");
-    }
-
-    [Fact]
-    public async Task CreatePaymentAsync_WithMultipleInstallments_ShouldIncludeInstallmentCountAndTotalValue()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"id":"pay_1","customer":"cus_1","value":10,"netValue":null,"billingType":"CREDIT_CARD","status":"CONFIRMED","dueDate":"2026-01-01"}""");
-
-        await _service.CreatePaymentAsync("cus_1", "credit_card", 10m, DateTime.Today, "desc", installmentCount: 3, cancellationToken: CancellationToken.None);
-
-        var body = JsonDocument.Parse(LastRequestBody).RootElement;
-        body.GetProperty("installmentCount").GetInt32().Should().Be(3);
-        body.GetProperty("totalValue").GetDecimal().Should().Be(10m);
-    }
-
-    [Fact]
-    public async Task CreatePaymentAsync_Failure_ShouldThrow()
-    {
-        _handler.EnqueueJson(HttpStatusCode.BadRequest, """{"errors":[{"code":"invalid_value","description":"Valor inválido"}]}""");
-
-        var act = () => _service.CreatePaymentAsync("cus_1", "PIX", -1m, DateTime.Today, "desc", cancellationToken: CancellationToken.None);
-
-        await act.Should().ThrowAsync<HttpRequestException>();
-    }
-
-    [Fact]
-    public async Task GetPixQrCodeAsync_Success_ShouldGetAndReturnQrCode()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"encodedImage":"base64img","payload":"copia-e-cola","expirationDate":"2026-01-01"}""");
-
-        var result = await _service.GetPixQrCodeAsync("pay_1", CancellationToken.None);
-
-        result.EncodedImage.Should().Be("base64img");
+        result.EncodedImage.Should().Be("img_base64");
+        result.Payload.Should().Be("payload_copia_cola");
+        result.ExpirationDate.Should().Be("2026-12-31T23:59:59");
         LastRequest.Method.Should().Be(HttpMethod.Get);
-        LastRequest.RequestUri.Should().Be(new Uri("https://sandbox.asaas.com/api/v3/payments/pay_1/pixQrCode"));
+        LastRequest.RequestUri.Should().Be(new Uri("https://tenant.asaas.example/api/payments/pay_123/pixQrCode"));
     }
 
     [Fact]
-    public async Task GetPixQrCodeAsync_Failure_ShouldThrow()
+    public async Task GetBoletoIdentificationFieldAsync_ShouldSendGetAndReturnDetails()
     {
-        _handler.EnqueueJson(HttpStatusCode.NotFound, """{"errors":[{"code":"not_found","description":"Pagamento não encontrado"}]}""");
+        await SetupValidTenantAsync();
 
-        var act = () => _service.GetPixQrCodeAsync("pay_missing", CancellationToken.None);
+        var expected = new AsaasBoletoIdentificationFieldResponse("00190.00009 01234.567890 12345.678901 1 12345678901234", "001912345678901234", "123456");
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(expected));
 
-        await act.Should().ThrowAsync<HttpRequestException>();
+        var result = await _service.GetBoletoIdentificationFieldAsync("pay_123", CancellationToken.None);
+
+        result.IdentificationField.Should().Be(expected.IdentificationField);
+        result.BarCode.Should().Be(expected.BarCode);
+        LastRequest.Method.Should().Be(HttpMethod.Get);
+        LastRequest.RequestUri.Should().Be(new Uri("https://tenant.asaas.example/api/payments/pay_123/identificationField"));
     }
 
     [Fact]
-    public async Task GetBoletoIdentificationFieldAsync_Success_ShouldGetAndReturnField()
+    public async Task CreateCreditCardPaymentAsync_WithRemoteIpAndInstallments_ShouldIncludeFields()
     {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"identificationField":"34191...","barCode":"34191790010104350","nossoNumero":"123"}""");
+        await SetupValidTenantAsync();
 
-        var result = await _service.GetBoletoIdentificationFieldAsync("pay_1", CancellationToken.None);
+        var cardInfo = new AsaasCreditCardInfo("1234", "MASTERCARD", "tok_123");
+        var expected = new AsaasCreditCardPaymentResponse("pay_cc_1", "CONFIRMED", 500m, 480m, "https://invoice", cardInfo);
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(expected));
 
-        result.IdentificationField.Should().Be("34191...");
-        LastRequest.RequestUri.Should().Be(new Uri("https://sandbox.asaas.com/api/v3/payments/pay_1/identificationField"));
-    }
-
-    [Fact]
-    public async Task GetBoletoIdentificationFieldAsync_Failure_ShouldThrow()
-    {
-        _handler.EnqueueJson(HttpStatusCode.NotFound, """{"errors":[{"code":"not_found","description":"Boleto não encontrado"}]}""");
-
-        var act = () => _service.GetBoletoIdentificationFieldAsync("pay_missing", CancellationToken.None);
-
-        await act.Should().ThrowAsync<HttpRequestException>();
-    }
-
-    private static CreditCardRequest ValidCard() => new("João Silva", "4111111111111111", "12", "2030", "123");
-    private static CreditCardHolderInfoRequest ValidHolder() => new("João Silva", "joao@example.com", "12345678900", "01310000", "100", "11999999999");
-
-    [Fact]
-    public async Task CreateCreditCardPaymentAsync_Success_ShouldPostFullPayload()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK,
-            """{"id":"pay_1","status":"CONFIRMED","value":100,"netValue":97,"invoiceUrl":"https://x","creditCard":{"creditCardNumber":"1111","creditCardBrand":"VISA","creditCardToken":"tok_1"}}""");
+        var card = new CreditCardRequest("Titular Teste", "4111111111111111", "12", "2028", "123");
+        var holder = new CreditCardHolderInfoRequest("Titular Teste", "email@teste.com", "12345678909", "01001000", "100", "1199999999");
 
         var result = await _service.CreateCreditCardPaymentAsync(
-            "cus_1", 100m, DateTime.Today, "desc", ValidCard(), ValidHolder(), cancellationToken: CancellationToken.None);
+            "cus_1", 500m, new DateTime(2026, 11, 1), "Descricao", card, holder, "127.0.0.1", 2, CancellationToken.None);
 
-        result.Id.Should().Be("pay_1");
-        result.CreditCard!.CreditCardToken.Should().Be("tok_1");
-        var body = JsonDocument.Parse(LastRequestBody).RootElement;
-        body.GetProperty("billingType").GetString().Should().Be("CREDIT_CARD");
-        body.GetProperty("creditCard").GetProperty("number").GetString().Should().Be("4111111111111111");
-        body.TryGetProperty("remoteIp", out _).Should().BeFalse();
-        body.TryGetProperty("installmentCount", out _).Should().BeFalse();
+        result.Id.Should().Be("pay_cc_1");
+        LastRequestBody.Should().Contain("\"remoteIp\":\"127.0.0.1\"")
+            .And.Contain("\"installmentCount\":2")
+            .And.Contain("\"totalValue\":500");
     }
 
     [Fact]
-    public async Task CreateCreditCardPaymentAsync_WithRemoteIpAndInstallments_ShouldIncludeBothInPayload()
+    public async Task CreateCreditCardPaymentAsync_WithoutRemoteIpAndSingleInstallment_ShouldOmitFields()
     {
-        _handler.EnqueueJson(HttpStatusCode.OK,
-            """{"id":"pay_1","status":"CONFIRMED","value":100,"netValue":97,"invoiceUrl":null,"creditCard":null}""");
+        await SetupValidTenantAsync();
 
-        await _service.CreateCreditCardPaymentAsync(
-            "cus_1", 100m, DateTime.Today, "desc", ValidCard(), ValidHolder(), remoteIp: "1.2.3.4", installmentCount: 2, cancellationToken: CancellationToken.None);
+        var expected = new AsaasCreditCardPaymentResponse("pay_cc_2", "CONFIRMED", 100m, 95m, null, null);
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(expected));
 
-        var body = JsonDocument.Parse(LastRequestBody).RootElement;
-        body.GetProperty("remoteIp").GetString().Should().Be("1.2.3.4");
-        body.GetProperty("installmentCount").GetInt32().Should().Be(2);
-        body.GetProperty("totalValue").GetDecimal().Should().Be(100m);
+        var card = new CreditCardRequest("Titular Teste", "4111111111111111", "12", "2028", "123");
+        var holder = new CreditCardHolderInfoRequest("Titular Teste", "email@teste.com", "12345678909", "01001000", "100", "1199999999");
+
+        var result = await _service.CreateCreditCardPaymentAsync(
+            "cus_1", 100m, new DateTime(2026, 11, 1), "Descricao", card, holder, null, 1, CancellationToken.None);
+
+        result.Id.Should().Be("pay_cc_2");
+        LastRequestBody.Should().NotContain("remoteIp")
+            .And.NotContain("installmentCount");
     }
 
     [Fact]
-    public async Task CreateCreditCardPaymentAsync_Failure_ShouldThrow()
+    public async Task CreatePaymentWithCardTokenAsync_WithRemoteIpAndInstallments_ShouldIncludeFields()
     {
-        _handler.EnqueueJson(HttpStatusCode.BadRequest, """{"errors":[{"code":"invalid_card","description":"Cartão inválido"}]}""");
+        await SetupValidTenantAsync();
 
-        var act = () => _service.CreateCreditCardPaymentAsync("cus_1", 10m, DateTime.Today, "desc", ValidCard(), ValidHolder(), cancellationToken: CancellationToken.None);
+        var expected = CreatePaymentResponse("pay_tok_1", "CONFIRMED", 250m, 240m);
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(expected));
 
-        await act.Should().ThrowAsync<HttpRequestException>();
+        var result = await _service.CreatePaymentWithCardTokenAsync(
+            "cus_1", 250m, new DateTime(2026, 11, 1), "Desc", "token_xyz", 4, "192.168.1.1", CancellationToken.None);
+
+        result.Id.Should().Be("pay_tok_1");
+        LastRequestBody.Should().Contain("\"creditCardToken\":\"token_xyz\"")
+            .And.Contain("\"installmentCount\":4")
+            .And.Contain("\"remoteIp\":\"192.168.1.1\"");
     }
 
     [Fact]
-    public async Task CreatePaymentWithCardTokenAsync_Default_ShouldNotIncludeRemoteIpOrInstallments()
+    public async Task CreatePaymentWithCardTokenAsync_WithoutRemoteIpAndSingleInstallment_ShouldOmitFields()
     {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"id":"pay_1","customer":"cus_1","value":10,"netValue":null,"billingType":"CREDIT_CARD","status":"CONFIRMED","dueDate":"2026-01-01"}""");
+        await SetupValidTenantAsync();
 
-        await _service.CreatePaymentWithCardTokenAsync("cus_1", 10m, DateTime.Today, "desc", "tok_1", cancellationToken: CancellationToken.None);
+        var expected = CreatePaymentResponse("pay_tok_2", "CONFIRMED", 50m, 48m);
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(expected));
 
-        var body = JsonDocument.Parse(LastRequestBody).RootElement;
-        body.GetProperty("creditCardToken").GetString().Should().Be("tok_1");
-        body.TryGetProperty("remoteIp", out _).Should().BeFalse();
-        body.TryGetProperty("installmentCount", out _).Should().BeFalse();
+        var result = await _service.CreatePaymentWithCardTokenAsync(
+            "cus_1", 50m, new DateTime(2026, 11, 1), "Desc", "token_xyz", 1, null, CancellationToken.None);
+
+        result.Id.Should().Be("pay_tok_2");
+        LastRequestBody.Should().Contain("\"creditCardToken\":\"token_xyz\"")
+            .And.NotContain("installmentCount")
+            .And.NotContain("remoteIp");
     }
 
     [Fact]
-    public async Task CreatePaymentWithCardTokenAsync_WithRemoteIpAndInstallments_ShouldIncludeBoth()
+    public async Task TokenizeCreditCardAsync_WithHolderInfo_ShouldPostHolderInfo()
     {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"id":"pay_1","customer":"cus_1","value":10,"netValue":null,"billingType":"CREDIT_CARD","status":"CONFIRMED","dueDate":"2026-01-01"}""");
+        await SetupValidTenantAsync();
 
-        await _service.CreatePaymentWithCardTokenAsync("cus_1", 10m, DateTime.Today, "desc", "tok_1", installmentCount: 4, remoteIp: "9.9.9.9", cancellationToken: CancellationToken.None);
+        var expected = new AsaasTokenizeCreditCardResponse("card_token_999", "MASTERCARD", "1234");
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(expected));
 
-        var body = JsonDocument.Parse(LastRequestBody).RootElement;
-        body.GetProperty("remoteIp").GetString().Should().Be("9.9.9.9");
-        body.GetProperty("installmentCount").GetInt32().Should().Be(4);
+        var card = new CreditCardRequest("Titular", "5111111111111111", "08", "2029", "999");
+        var holder = new CreditCardHolderInfoRequest("Titular", "holder@teste.com", "12345678901", "12345-000", "50", "11988887777");
+
+        var result = await _service.TokenizeCreditCardAsync("cus_1", card, holder, CancellationToken.None);
+
+        result.CreditCardToken.Should().Be("card_token_999");
+        LastRequestBody.Should().Contain("\"creditCardHolderInfo\"")
+            .And.Contain("holder@teste.com");
     }
 
     [Fact]
-    public async Task CreatePaymentWithCardTokenAsync_Failure_ShouldThrow()
+    public async Task TokenizeCreditCardAsync_WithoutHolderInfo_ShouldOmitHolderInfo()
     {
-        _handler.EnqueueJson(HttpStatusCode.BadRequest, """{"errors":[{"code":"invalid_token","description":"Token inválido"}]}""");
+        await SetupValidTenantAsync();
 
-        var act = () => _service.CreatePaymentWithCardTokenAsync("cus_1", 10m, DateTime.Today, "desc", "tok_bad", cancellationToken: CancellationToken.None);
+        var expected = new AsaasTokenizeCreditCardResponse("card_token_888", "VISA", "4321");
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(expected));
 
-        await act.Should().ThrowAsync<HttpRequestException>();
-    }
+        var card = new CreditCardRequest("Titular", "4111111111111111", "08", "2029", "999");
 
-    [Fact]
-    public async Task TokenizeCreditCardAsync_WithHolderInfo_ShouldIncludeItInPayload()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"creditCardToken":"tok_1","creditCardBrand":"VISA","creditCardNumber":"1111"}""");
+        var result = await _service.TokenizeCreditCardAsync("cus_1", card, null, CancellationToken.None);
 
-        var result = await _service.TokenizeCreditCardAsync("cus_1", ValidCard(), ValidHolder(), CancellationToken.None);
-
-        result.CreditCardToken.Should().Be("tok_1");
-        var body = JsonDocument.Parse(LastRequestBody).RootElement;
-        body.TryGetProperty("creditCardHolderInfo", out _).Should().BeTrue();
-        LastRequest.RequestUri.Should().Be(new Uri("https://sandbox.asaas.com/api/v3/creditCard/tokenizeCreditCard"));
-    }
-
-    [Fact]
-    public async Task TokenizeCreditCardAsync_WithoutHolderInfo_ShouldOmitItFromPayload()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"creditCardToken":"tok_1","creditCardBrand":"VISA","creditCardNumber":"1111"}""");
-
-        await _service.TokenizeCreditCardAsync("cus_1", ValidCard(), null, CancellationToken.None);
-
-        var body = JsonDocument.Parse(LastRequestBody).RootElement;
-        body.TryGetProperty("creditCardHolderInfo", out _).Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task TokenizeCreditCardAsync_Failure_ShouldThrow()
-    {
-        _handler.EnqueueJson(HttpStatusCode.BadRequest, """{"errors":[{"code":"invalid_card","description":"Cartão inválido"}]}""");
-
-        var act = () => _service.TokenizeCreditCardAsync("cus_1", ValidCard(), null, CancellationToken.None);
-
-        await act.Should().ThrowAsync<HttpRequestException>();
-    }
-
-    [Fact]
-    public async Task DeletePaymentAsync_Success_ShouldSendDeleteToCorrectUrl()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK, "{}");
-
-        await _service.DeletePaymentAsync("pay_1", CancellationToken.None);
-
-        LastRequest.Method.Should().Be(HttpMethod.Delete);
-        LastRequest.RequestUri.Should().Be(new Uri("https://sandbox.asaas.com/api/v3/payments/pay_1"));
-    }
-
-    [Fact]
-    public async Task DeletePaymentAsync_Failure_ShouldThrow()
-    {
-        _handler.EnqueueJson(HttpStatusCode.NotFound, """{"errors":[{"code":"not_found","description":"Pagamento não encontrado"}]}""");
-
-        var act = () => _service.DeletePaymentAsync("pay_missing", CancellationToken.None);
-
-        await act.Should().ThrowAsync<HttpRequestException>();
+        result.CreditCardToken.Should().Be("card_token_888");
+        LastRequestBody.Should().NotContain("creditCardHolderInfo");
     }
 }

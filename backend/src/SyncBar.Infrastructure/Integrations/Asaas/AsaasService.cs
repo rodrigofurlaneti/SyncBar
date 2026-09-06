@@ -8,6 +8,8 @@ public class AsaasService : IAsaasService
 {
     private readonly HttpClient _http;
     private readonly IAsaasCredentialsResolver _credentialsResolver;
+    private string? _baseUrl;
+    private string? _apiKey;
 
     public AsaasService(AsaasAuthClient authClient, IAsaasCredentialsResolver credentialsResolver)
     {
@@ -18,13 +20,40 @@ public class AsaasService : IAsaasService
     public async Task ConfigureForTenantAsync(long companyId, long? branchId, CancellationToken cancellationToken = default)
     {
         var credentials = await _credentialsResolver.ResolveAsync(companyId, branchId, cancellationToken);
-
-        var baseUrl = credentials.BaseUrl.EndsWith('/') ? credentials.BaseUrl : credentials.BaseUrl + "/";
-        _http.BaseAddress = new Uri(baseUrl);
-
-        _http.DefaultRequestHeaders.Remove("access_token");
-        _http.DefaultRequestHeaders.Add("access_token", credentials.ApiKey);
+        _baseUrl = credentials.BaseUrl.TrimEnd('/');
+        _apiKey = credentials.ApiKey;
     }
+
+    #region Métodos de Envio HTTP Seguros
+
+    private async Task<HttpResponseMessage> SendAsync(
+        HttpMethod method,
+        string endpoint,
+        HttpContent? content,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(_baseUrl) || string.IsNullOrWhiteSpace(_apiKey))
+        {
+            throw new InvalidOperationException("AsaasService não foi configurado. Chame ConfigureForTenantAsync antes de realizar operações.");
+        }
+
+        var fullUrl = $"{_baseUrl}/{endpoint.TrimStart('/')}";
+        using var request = new HttpRequestMessage(method, fullUrl);
+
+        // Header isolado apenas para esta requisição (Thread-safe e sem conflito de HttpClient)
+        request.Headers.Add("access_token", _apiKey);
+
+        if (content is not null)
+        {
+            request.Content = content;
+        }
+
+        var response = await _http.SendAsync(request, cancellationToken);
+        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+        return response;
+    }
+
+    #endregion
 
     public async Task<string> CreateCustomerAsync(
         string name,
@@ -41,8 +70,8 @@ public class AsaasService : IAsaasService
             mobilePhone
         };
 
-        var response = await _http.PostAsJsonAsync("customers", payload, cancellationToken);
-        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+        using var content = JsonContent.Create(payload);
+        using var response = await SendAsync(HttpMethod.Post, "customers", content, cancellationToken);
 
         var result = await response.Content.ReadFromJsonAsync<AsaasCustomerResponse>(cancellationToken: cancellationToken);
         return result!.Id;
@@ -50,8 +79,7 @@ public class AsaasService : IAsaasService
 
     public async Task DeleteCustomerAsync(string asaasCustomerId, CancellationToken cancellationToken = default)
     {
-        var response = await _http.DeleteAsync($"customers/{asaasCustomerId}", cancellationToken);
-        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+        using var response = await SendAsync(HttpMethod.Delete, $"customers/{asaasCustomerId}", null, cancellationToken);
     }
 
     public async Task<AsaasPaymentResponse> CreatePixPaymentAsync(
@@ -70,8 +98,8 @@ public class AsaasService : IAsaasService
             description
         };
 
-        var response = await _http.PostAsJsonAsync("payments", payload, cancellationToken);
-        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+        using var content = JsonContent.Create(payload);
+        using var response = await SendAsync(HttpMethod.Post, "payments", content, cancellationToken);
 
         var result = await response.Content.ReadFromJsonAsync<AsaasPaymentResponse>(cancellationToken: cancellationToken);
         return result!;
@@ -107,8 +135,8 @@ public class AsaasService : IAsaasService
             payload["totalValue"] = value;
         }
 
-        var response = await _http.PostAsJsonAsync("payments", payload, cancellationToken);
-        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+        using var content = JsonContent.Create(payload);
+        using var response = await SendAsync(HttpMethod.Post, "payments", content, cancellationToken);
 
         var result = await response.Content.ReadFromJsonAsync<AsaasPaymentResponse>(cancellationToken: cancellationToken);
         return result!;
@@ -116,8 +144,7 @@ public class AsaasService : IAsaasService
 
     public async Task<AsaasPixQrCodeResponse> GetPixQrCodeAsync(string paymentId, CancellationToken cancellationToken = default)
     {
-        var response = await _http.GetAsync($"payments/{paymentId}/pixQrCode", cancellationToken);
-        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+        using var response = await SendAsync(HttpMethod.Get, $"payments/{paymentId}/pixQrCode", null, cancellationToken);
 
         var result = await response.Content.ReadFromJsonAsync<AsaasPixQrCodeResponse>(cancellationToken: cancellationToken);
         return result!;
@@ -125,8 +152,7 @@ public class AsaasService : IAsaasService
 
     public async Task<AsaasBoletoIdentificationFieldResponse> GetBoletoIdentificationFieldAsync(string paymentId, CancellationToken cancellationToken = default)
     {
-        var response = await _http.GetAsync($"payments/{paymentId}/identificationField", cancellationToken);
-        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+        using var response = await SendAsync(HttpMethod.Get, $"payments/{paymentId}/identificationField", null, cancellationToken);
 
         var result = await response.Content.ReadFromJsonAsync<AsaasBoletoIdentificationFieldResponse>(cancellationToken: cancellationToken);
         return result!;
@@ -165,8 +191,8 @@ public class AsaasService : IAsaasService
             payload["remoteIp"] = remoteIp;
         }
 
-        var response = await _http.PostAsJsonAsync("payments", payload, cancellationToken);
-        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+        using var content = JsonContent.Create(payload);
+        using var response = await SendAsync(HttpMethod.Post, "payments", content, cancellationToken);
 
         var result = await response.Content.ReadFromJsonAsync<AsaasCreditCardPaymentResponse>(cancellationToken: cancellationToken);
         return result!;
@@ -203,8 +229,8 @@ public class AsaasService : IAsaasService
             payload["remoteIp"] = remoteIp;
         }
 
-        var response = await _http.PostAsJsonAsync("payments", payload, cancellationToken);
-        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+        using var content = JsonContent.Create(payload);
+        using var response = await SendAsync(HttpMethod.Post, "payments", content, cancellationToken);
 
         var result = await response.Content.ReadFromJsonAsync<AsaasPaymentResponse>(cancellationToken: cancellationToken);
         return result!;
@@ -227,8 +253,8 @@ public class AsaasService : IAsaasService
             payload["creditCardHolderInfo"] = holderInfo;
         }
 
-        var response = await _http.PostAsJsonAsync("creditCard/tokenizeCreditCard", payload, cancellationToken);
-        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+        using var content = JsonContent.Create(payload);
+        using var response = await SendAsync(HttpMethod.Post, "creditCard/tokenizeCreditCard", content, cancellationToken);
 
         var result = await response.Content.ReadFromJsonAsync<AsaasTokenizeCreditCardResponse>(cancellationToken: cancellationToken);
         return result!;
@@ -236,8 +262,7 @@ public class AsaasService : IAsaasService
 
     public async Task DeletePaymentAsync(string asaasPaymentId, CancellationToken cancellationToken = default)
     {
-        var response = await _http.DeleteAsync($"payments/{asaasPaymentId}", cancellationToken);
-        await EnsureSuccessOrThrowAsaasErrorAsync(response);
+        using var response = await SendAsync(HttpMethod.Delete, $"payments/{asaasPaymentId}", null, cancellationToken);
     }
 
     internal static async Task EnsureSuccessOrThrowAsaasErrorAsync(HttpResponseMessage response)

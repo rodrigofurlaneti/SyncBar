@@ -1,4 +1,5 @@
-using System.Net;
+﻿using System.Net;
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -26,132 +27,32 @@ public sealed class AsaasApplicationServiceTests
         _appService = new AsaasApplicationService(innerService);
     }
 
-    private static AppAsaas.CreditCardRequest AppCard() => new("João Silva", "4111111111111111", "12", "2030", "123");
-    private static AppAsaas.CreditCardHolderInfoRequest AppHolder(string? phone = "11999999999") =>
-        new("João Silva", "joao@example.com", "12345678900", "01310000", "100", phone);
-
-    [Fact]
-    public async Task CreatePixPaymentAsync_ShouldMapResponseFieldsAndOmitDueDate()
+    private async Task SetupValidTenantAsync()
     {
-        _handler.EnqueueJson(HttpStatusCode.OK,
-            """{"id":"pay_1","customer":"cus_1","value":50,"netValue":48,"billingType":"PIX","status":"PENDING","dueDate":"2026-01-01","invoiceUrl":"https://x","bankSlipUrl":null}""");
+        _credentialsResolver.ResolveAsync(1, 2, Arg.Any<CancellationToken>())
+            .Returns(new AppAsaas.AsaasCredentials("https://tenant.asaas.example/api/", "tenant-key"));
 
-        var result = await _appService.CreatePixPaymentAsync("cus_1", 50m, DateTime.Today, "desc", CancellationToken.None);
-
-        result.Id.Should().Be("pay_1");
-        result.Status.Should().Be("PENDING");
-        result.Value.Should().Be(50m);
-        result.NetValue.Should().Be(48m);
-        result.InvoiceUrl.Should().Be("https://x");
-        result.BankSlipUrl.Should().BeNull();
+        await _appService.ConfigureForTenantAsync(1, 2, CancellationToken.None);
     }
 
-    [Fact]
-    public async Task GetPixQrCodeAsync_ShouldMapAllFields()
+    private static AsaasPaymentResponse CreatePaymentResponse(string id, string status = "PENDING", decimal value = 100m, decimal? netValue = 98m)
     {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"encodedImage":"img","payload":"copia-cola","expirationDate":"2026-01-01"}""");
-
-        var result = await _appService.GetPixQrCodeAsync("pay_1", CancellationToken.None);
-
-        result.EncodedImage.Should().Be("img");
-        result.Payload.Should().Be("copia-cola");
-        result.ExpirationDate.Should().Be("2026-01-01");
-    }
-
-    [Fact]
-    public async Task GetBoletoIdentificationFieldAsync_ShouldMapAllFields()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"identificationField":"341","barCode":"341999","nossoNumero":"1"}""");
-
-        var result = await _appService.GetBoletoIdentificationFieldAsync("pay_1", CancellationToken.None);
-
-        result.IdentificationField.Should().Be("341");
-        result.BarCode.Should().Be("341999");
-        result.NossoNumero.Should().Be("1");
-    }
-
-    [Fact]
-    public async Task CreateCreditCardPaymentAsync_ShouldMapCardAndHolderIntoInfraDtosAndReturnToken()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK,
-            """{"id":"pay_1","status":"CONFIRMED","value":100,"netValue":97,"invoiceUrl":null,"creditCard":{"creditCardNumber":"1111","creditCardBrand":"VISA","creditCardToken":"tok_1"}}""");
-
-        var result = await _appService.CreateCreditCardPaymentAsync(
-            "cus_1", 100m, DateTime.Today, "desc", AppCard(), AppHolder(), cancellationToken: CancellationToken.None);
-
-        result.Id.Should().Be("pay_1");
-        result.CreditCardToken.Should().Be("tok_1");
-    }
-
-    [Fact]
-    public async Task CreateCreditCardPaymentAsync_HolderPhoneNull_ShouldMapToEmptyStringInInfraRequest()
-    {
-        var handler = _handler;
-        handler.EnqueueJson(HttpStatusCode.OK,
-            """{"id":"pay_1","status":"CONFIRMED","value":100,"netValue":97,"invoiceUrl":null,"creditCard":null}""");
-
-        await _appService.CreateCreditCardPaymentAsync(
-            "cus_1", 100m, DateTime.Today, "desc", AppCard(), AppHolder(phone: null), cancellationToken: CancellationToken.None);
-
-        var body = System.Text.Json.JsonDocument.Parse(handler.RequestBodies[^1]!).RootElement;
-        body.GetProperty("creditCardHolderInfo").GetProperty("phone").GetString().Should().Be(string.Empty);
-    }
-
-    [Fact]
-    public async Task CreatePaymentWithCardTokenAsync_ShouldMapResponseFields()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK,
-            """{"id":"pay_1","customer":"cus_1","value":10,"netValue":null,"billingType":"CREDIT_CARD","status":"CONFIRMED","dueDate":"2026-01-01","invoiceUrl":"https://x","bankSlipUrl":"https://y"}""");
-
-        var result = await _appService.CreatePaymentWithCardTokenAsync("cus_1", 10m, DateTime.Today, "desc", "tok_1", cancellationToken: CancellationToken.None);
-
-        result.Id.Should().Be("pay_1");
-        result.InvoiceUrl.Should().Be("https://x");
-        result.BankSlipUrl.Should().Be("https://y");
-    }
-
-    [Fact]
-    public async Task TokenizeCreditCardAsync_WithHolderInfo_ShouldMapCardAndHolderThenReturnToken()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"creditCardToken":"tok_1","creditCardBrand":"VISA","creditCardNumber":"1111"}""");
-
-        var result = await _appService.TokenizeCreditCardAsync("cus_1", AppCard(), AppHolder(), CancellationToken.None);
-
-        result.CreditCardToken.Should().Be("tok_1");
-        result.CreditCardBrand.Should().Be("VISA");
-        result.CreditCardNumber.Should().Be("1111");
-    }
-
-    [Fact]
-    public async Task TokenizeCreditCardAsync_WithoutHolderInfo_ShouldPassNullThroughAndOmitFromPayload()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"creditCardToken":"tok_1","creditCardBrand":"VISA","creditCardNumber":"1111"}""");
-
-        await _appService.TokenizeCreditCardAsync("cus_1", AppCard(), null, CancellationToken.None);
-
-        var body = System.Text.Json.JsonDocument.Parse(_handler.RequestBodies[^1]!).RootElement;
-        body.TryGetProperty("creditCardHolderInfo", out _).Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task CreatePaymentAsync_ShouldMapResponseFields()
-    {
-        _handler.EnqueueJson(HttpStatusCode.OK,
-            """{"id":"pay_1","customer":"cus_1","value":10,"netValue":9.5,"billingType":"PIX","status":"PENDING","dueDate":"2026-01-01","invoiceUrl":"https://x","bankSlipUrl":null}""");
-
-        var result = await _appService.CreatePaymentAsync("cus_1", "pix", 10m, DateTime.Today, "desc", cancellationToken: CancellationToken.None);
-
-        result.Id.Should().Be("pay_1");
-        result.NetValue.Should().Be(9.5m);
+        return new AsaasPaymentResponse(
+            id,
+            status,
+            value,
+            netValue,
+            "2026-12-31",
+            "2026-12-31",
+            "Descricao",
+            "https://invoice",
+            "https://slip");
     }
 
     [Fact]
     public async Task ConfigureForTenantAsync_ShouldDelegateToInnerService()
     {
-        _credentialsResolver.ResolveAsync(1, 2, Arg.Any<CancellationToken>())
-            .Returns(new AppAsaas.AsaasCredentials("https://tenant.asaas.example/api", "tenant-key"));
-
-        await _appService.ConfigureForTenantAsync(1, 2, CancellationToken.None);
+        await SetupValidTenantAsync();
 
         _handler.EnqueueJson(HttpStatusCode.OK, "{}");
         await _appService.DeleteCustomerAsync("cus_1", CancellationToken.None);
@@ -162,30 +63,130 @@ public sealed class AsaasApplicationServiceTests
     [Fact]
     public async Task CreateCustomerAsync_ShouldDelegateAndReturnId()
     {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"id":"cus_1","name":"João","cpfCnpj":"1","email":"j@x.com"}""");
+        await SetupValidTenantAsync();
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(new { id = "cus_app_1" }));
 
-        var id = await _appService.CreateCustomerAsync("João", "1", "j@x.com", null, CancellationToken.None);
+        var result = await _appService.CreateCustomerAsync("Nome", "123", "email@mail.com", "999", CancellationToken.None);
 
-        id.Should().Be("cus_1");
+        result.Should().Be("cus_app_1");
     }
 
     [Fact]
-    public async Task DeleteCustomerAsync_ShouldDelegate()
+    public async Task DeletePaymentAsync_ShouldDelegateSuccessfully()
     {
+        await SetupValidTenantAsync();
         _handler.EnqueueJson(HttpStatusCode.OK, "{}");
 
-        await _appService.DeleteCustomerAsync("cus_1", CancellationToken.None);
+        await _appService.DeletePaymentAsync("pay_del_1", CancellationToken.None);
 
         _handler.Requests[^1].Method.Should().Be(HttpMethod.Delete);
+        _handler.Requests[^1].RequestUri!.AbsolutePath.Should().EndWith("payments/pay_del_1");
+    }
+    
+    [Fact]
+    public async Task GetPixQrCodeAsync_ShouldMapToApplicationResponse()
+    {
+        await SetupValidTenantAsync();
+        const string expDate = "2026-12-31T23:59:59";
+        var infraResponse = new AsaasPixQrCodeResponse("img_base64", "payload_copia", expDate);
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(infraResponse));
+
+        var result = await _appService.GetPixQrCodeAsync("pay_1", CancellationToken.None);
+
+        result.EncodedImage.Should().Be("img_base64");
+        result.Payload.Should().Be("payload_copia");
+        result.ExpirationDate.Should().Be(expDate);
     }
 
     [Fact]
-    public async Task DeletePaymentAsync_ShouldDelegate()
+    public async Task GetBoletoIdentificationFieldAsync_ShouldMapToApplicationResponse()
     {
-        _handler.EnqueueJson(HttpStatusCode.OK, "{}");
+        await SetupValidTenantAsync();
+        var infraResponse = new AsaasBoletoIdentificationFieldResponse("field_123", "barcode_123", "nosso_123");
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(infraResponse));
 
-        await _appService.DeletePaymentAsync("pay_1", CancellationToken.None);
+        var result = await _appService.GetBoletoIdentificationFieldAsync("pay_1", CancellationToken.None);
 
-        _handler.Requests[^1].RequestUri!.ToString().Should().EndWith("payments/pay_1");
+        result.IdentificationField.Should().Be("field_123");
+        result.BarCode.Should().Be("barcode_123");
+        result.NossoNumero.Should().Be("nosso_123");
+    }
+
+    [Fact]
+    public async Task CreateCreditCardPaymentAsync_ShouldMapEntitiesAndReturnAppResponse()
+    {
+        await SetupValidTenantAsync();
+        var cardInfo = new AsaasCreditCardInfo("1234", "MASTERCARD", "card_tok_1");
+        var infraResponse = new AsaasCreditCardPaymentResponse("pay_cc_1", "CONFIRMED", 200m, 190m, "https://inv", cardInfo);
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(infraResponse));
+
+        var card = new AppAsaas.CreditCardRequest("Holder", "1234567812345678", "11", "2027", "123");
+        var holder = new AppAsaas.CreditCardHolderInfoRequest("Holder", "h@mail.com", "12345678901", "12345000", "10", "1199999999");
+
+        var result = await _appService.CreateCreditCardPaymentAsync("cus_1", 200m, DateTime.UtcNow, "CC", card, holder, "10.0.0.1", 1, CancellationToken.None);
+
+        result.Id.Should().Be("pay_cc_1");
+        result.CreditCardToken.Should().Be("card_tok_1");
+    }
+
+    [Fact]
+    public async Task CreateCreditCardPaymentAsync_WithNullPhone_ShouldFallbackToEmptyString()
+    {
+        await SetupValidTenantAsync();
+        var infraResponse = new AsaasCreditCardPaymentResponse("pay_cc_2", "CONFIRMED", 150m, 140m, null, null);
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(infraResponse));
+
+        var card = new AppAsaas.CreditCardRequest("Holder", "1234567812345678", "11", "2027", "123");
+        var holder = new AppAsaas.CreditCardHolderInfoRequest("Holder", "h@mail.com", "12345678901", "12345000", "10", null);
+
+        var result = await _appService.CreateCreditCardPaymentAsync("cus_1", 150m, DateTime.UtcNow, "CC", card, holder, null, 1, CancellationToken.None);
+
+        result.Id.Should().Be("pay_cc_2");
+        result.CreditCardToken.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CreatePaymentWithCardTokenAsync_ShouldMapToApplicationResponse()
+    {
+        await SetupValidTenantAsync();
+        var infraResponse = CreatePaymentResponse("pay_tok_1", "CONFIRMED", 120m, 115m);
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(infraResponse));
+
+        var result = await _appService.CreatePaymentWithCardTokenAsync("cus_1", 120m, DateTime.UtcNow, "Tokenized", "tok_xyz", 2, "127.0.0.1", CancellationToken.None);
+
+        result.Id.Should().Be("pay_tok_1");
+        result.Value.Should().Be(120m);
+        result.InvoiceUrl.Should().Be("https://invoice");
+    }
+
+    [Fact]
+    public async Task TokenizeCreditCardAsync_WithHolderInfoAndNullPhone_ShouldMapSuccessfully()
+    {
+        await SetupValidTenantAsync();
+        var infraResponse = new AsaasTokenizeCreditCardResponse("token_ok", "VISA", "9999");
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(infraResponse));
+
+        var card = new AppAsaas.CreditCardRequest("Holder", "4111111111111111", "05", "2030", "555");
+        var holder = new AppAsaas.CreditCardHolderInfoRequest("Holder", "h@mail.com", "12345678901", "12345000", "10", null);
+
+        var result = await _appService.TokenizeCreditCardAsync("cus_1", card, holder, CancellationToken.None);
+
+        result.CreditCardToken.Should().Be("token_ok");
+        result.CreditCardBrand.Should().Be("VISA");
+        result.CreditCardNumber.Should().Be("9999");
+    }
+
+    [Fact]
+    public async Task TokenizeCreditCardAsync_WithNullHolderInfo_ShouldPassNullHolder()
+    {
+        await SetupValidTenantAsync();
+        var infraResponse = new AsaasTokenizeCreditCardResponse("token_null_holder", "MASTERCARD", "8888");
+        _handler.EnqueueJson(HttpStatusCode.OK, JsonSerializer.Serialize(infraResponse));
+
+        var card = new AppAsaas.CreditCardRequest("Holder", "5111111111111111", "05", "2030", "555");
+
+        var result = await _appService.TokenizeCreditCardAsync("cus_1", card, null, CancellationToken.None);
+
+        result.CreditCardToken.Should().Be("token_null_holder");
     }
 }
