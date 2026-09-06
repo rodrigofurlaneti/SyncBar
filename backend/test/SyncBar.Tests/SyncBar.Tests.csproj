@@ -21,8 +21,10 @@
     <ProjectReference Include="..\..\src\SyncBar.Domain\SyncBar.Domain.csproj" />
     <ProjectReference Include="..\..\src\SyncBar.Application\SyncBar.Application.csproj" />
     <ProjectReference Include="..\..\src\SyncBar.Infrastructure\SyncBar.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\SyncBar.API\SyncBar.API.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="API\Controllers\" />
     <Folder Include="Application\Features\Integrations\Asaas\" />
     <Folder Include="Application\Features\Promotions\" />
     <Folder Include="Application\Features\Purchases\" />

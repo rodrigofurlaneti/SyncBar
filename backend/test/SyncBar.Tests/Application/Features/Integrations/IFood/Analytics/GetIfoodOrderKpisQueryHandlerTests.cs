@@ -129,15 +129,14 @@ public sealed class GetIfoodOrderKpisQueryHandlerTests
         await _analyticsClient.Received(1).GetOrderKpisAsync("token-1", "MERCH-1", periodStart, periodEnd, 2, 20, Arg.Any<CancellationToken>());
     }
 
-    [Fact(Skip = "Este teste está suspenso até que o bug #123 seja corrigido.")]
+    [Fact]
     public async Task Handle_NoPeriodProvided_ShouldDefaultToLast30DaysEndingAtTimeProviderNow()
     {
         var branch = CreateBranch();
         var now = new DateTime(2026, 9, 3, 10, 0, 0);
-        // TimeProvider.GetLocalNow() não é interceptável de forma confiável pelo NSubstitute (a
-        // implementação real do método acaba rodando e lê LocalTimeZone via despacho virtual) —
-        // por isso stubamos os dois membros primitivos que ela consome (GetUtcNow + LocalTimeZone
-        // fixo em UTC) em vez do próprio GetLocalNow().
+        // TimeProvider.GetLocalNow() NÃO é virtual (só GetUtcNow()/LocalTimeZone são) — não dá
+        // pra stubar GetLocalNow() diretamente, a implementação real sempre roda e delega pra
+        // esses dois membros, que são os que precisam ser stubados.
         _timeProvider.GetUtcNow().Returns(new DateTimeOffset(now, TimeSpan.Zero));
         _timeProvider.LocalTimeZone.Returns(TimeZoneInfo.Utc);
 

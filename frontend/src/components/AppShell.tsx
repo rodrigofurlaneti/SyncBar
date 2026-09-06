@@ -124,8 +124,8 @@ export function AppShell() {
                                         alt=""
                                         aria-hidden="true"
                                         style={{
-                                            width: 16,
-                                            height: 16,
+                                            width: 24,
+                                            height: 24,
                                             objectFit: "contain",
                                             filter: isActive ? "brightness(0) invert(1)" : "none",
                                             transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.15s ease-in-out",
@@ -167,8 +167,8 @@ export function AppShell() {
                                         alt=""
                                         aria-hidden="true"
                                         style={{
-                                            width: 16,
-                                            height: 16,
+                                            width: 24,
+                                            height: 24,
                                             objectFit: "contain",
                                             filter: isActive ? "brightness(0) invert(1)" : "none",
                                             transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.15s ease-in-out",
@@ -210,8 +210,8 @@ export function AppShell() {
                                         alt=""
                                         aria-hidden="true"
                                         style={{
-                                            width: 16,
-                                            height: 16,
+                                            width: 24,
+                                            height: 24,
                                             objectFit: "contain",
                                             filter: isActive ? "brightness(0) invert(1)" : "none",
                                             transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.15s ease-in-out",
