@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using FluentAssertions;
 using MediatR;
 using Microsoft.AspNetCore.Http;
@@ -39,7 +40,7 @@ public sealed class AsaasWebhookReceiverControllerTests
         _mediator.Send(Arg.Is<ReceiveAsaasWebhookCommand>(c => c.RawPayload.Contains("PAYMENT_CONFIRMED") && c.AccessToken == "token-1"), Arg.Any<CancellationToken>())
             .Returns(Result.Success());
 
-        var result = await _controller.Receive(CancellationToken.None);
+        var result = await _controller.Receive(JsonDocument.Parse("""{"event":"PAYMENT_CONFIRMED"}""").RootElement, CancellationToken.None);
 
         result.Should().BeOfType<OkResult>();
     }
@@ -51,7 +52,7 @@ public sealed class AsaasWebhookReceiverControllerTests
         _mediator.Send(Arg.Any<ReceiveAsaasWebhookCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure(new Error("Asaas.InvalidWebhookToken", "token invalido")));
 
-        var result = await _controller.Receive(CancellationToken.None);
+        var result = await _controller.Receive(JsonDocument.Parse("{}").RootElement, CancellationToken.None);
 
         result.Should().BeOfType<UnauthorizedResult>();
     }
@@ -63,7 +64,7 @@ public sealed class AsaasWebhookReceiverControllerTests
         _mediator.Send(Arg.Any<ReceiveAsaasWebhookCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure(new Error("Asaas.ParseError", "payload invalido")));
 
-        var result = await _controller.Receive(CancellationToken.None);
+        var result = await _controller.Receive(JsonDocument.Parse("{}").RootElement, CancellationToken.None);
 
         result.Should().BeOfType<OkResult>();
     }
