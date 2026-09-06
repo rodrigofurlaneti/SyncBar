@@ -6,6 +6,9 @@ import { useThemeStore } from "../stores/themeStore";
 import { CashDrawer } from "../features/cash/CashDrawer";
 import { useMyFeatures } from "../features/access/hooks";
 import { IFoodAlertsBell } from "./IFoodAlertsBell";
+import logoAsaas from "../image/asaas.png"; 
+import logoKeeta from "../image/keeta.png";
+import logoIFood from "../image/logoifood.jpg";
 
 // Importando os dois logos
 import logoDark from "../image/logodark.png";
@@ -93,9 +96,14 @@ export function AppShell() {
                     {access?.canManageAccess && (
                         <NavLink
                             to="/integracoes/ifood"
+                            id="ifood-link"
+                            className="ifood-link"
                             onClick={closeNav}
                             title="Central de integrações iFood — pedidos, cardápio, financeiro, logística e mais"
                             style={({ isActive }) => ({
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "8px",
                                 padding: "8px 14px",
                                 borderRadius: 8,
                                 textDecoration: "none",
@@ -109,15 +117,36 @@ export function AppShell() {
                                 border: "1px solid #EA1D2C",
                             })}
                         >
-                            🍔 iFood
+                            {({ isActive }) => (
+                                <>
+                                    <img
+                                        src={logoIFood}
+                                        alt=""
+                                        aria-hidden="true"
+                                        style={{
+                                            width: 16,
+                                            height: 16,
+                                            objectFit: "contain",
+                                            filter: isActive ? "brightness(0) invert(1)" : "none",
+                                            transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.15s ease-in-out",
+                                        }}
+                                    />
+                                    <span>iFood</span>
+                                </>
+                            )}
                         </NavLink>
                     )}
                     {access?.canManageAccess && (
                         <NavLink
                             to="/integracoes/asaas"
+                            id="asaas-link"
+                            className="asaas-link"
                             onClick={closeNav}
                             title="Integração Asaas — configurações, clientes, cobranças, cartões salvos e webhooks"
                             style={({ isActive }) => ({
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "8px",
                                 padding: "8px 14px",
                                 borderRadius: 8,
                                 textDecoration: "none",
@@ -131,7 +160,66 @@ export function AppShell() {
                                 border: "1px solid #00A868",
                             })}
                         >
-                            💳 Asaas
+                            {({ isActive }) => (
+                                <>
+                                    <img
+                                        src={logoAsaas}
+                                        alt=""
+                                        aria-hidden="true"
+                                        style={{
+                                            width: 16,
+                                            height: 16,
+                                            objectFit: "contain",
+                                            filter: isActive ? "brightness(0) invert(1)" : "none",
+                                            transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.15s ease-in-out",
+                                        }}
+                                    />
+                                    <span>Asaas</span>
+                                </>
+                            )}
+                        </NavLink>
+                    )}
+                    {access?.canManageAccess && (
+                        <NavLink
+                            to="/integracoes/keeta"
+                            id="keeta-link"
+                            className="keeta-link"
+                            onClick={closeNav}
+                            title="Integração Keeta — credenciais OAuth, autorização de lojas e pedidos"
+                            style={({ isActive }) => ({
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                padding: "8px 14px",
+                                borderRadius: 8,
+                                textDecoration: "none",
+                                fontFamily: "var(--font-cond)",
+                                fontWeight: 600,
+                                letterSpacing: "0.05em",
+                                textTransform: "uppercase" as const,
+                                fontSize: "0.85rem",
+                                color: isActive ? "#fff" : "#6E3AF2",
+                                background: isActive ? "#6E3AF2" : "transparent",
+                                border: "1px solid #6E3AF2",
+                            })}
+                        >
+                            {({ isActive }) => (
+                                <>
+                                    <img
+                                        src={logoKeeta}
+                                        alt=""
+                                        aria-hidden="true"
+                                        style={{
+                                            width: 16,
+                                            height: 16,
+                                            objectFit: "contain",
+                                            filter: isActive ? "brightness(0) invert(1)" : "none",
+                                            transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.15s ease-in-out",
+                                        }}
+                                    />
+                                    <span>Keeta</span>
+                                </>
+                            )}
                         </NavLink>
                     )}
                     {access?.canManageAccess && (

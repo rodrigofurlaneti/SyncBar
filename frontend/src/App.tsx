@@ -27,6 +27,7 @@ import { CustomersPage } from "./features/customers/CustomersPage";
 import { PublicOrderPage } from "./features/publicOrdering/PublicOrderPage";
 import { StorefrontOrderPage } from "./features/storeFront/StorefrontOrderPage";
 import { AsaasPage } from "./features/asaas/AsaasPage";
+import { KeetaPage } from "./features/keeta/KeetaPage";
 import { IFoodIntegrationPage } from "./features/integrations/IFoodIntegrationPage";
 import { IFoodOrdersPage } from "./features/integrations/IFoodOrdersPage";
 import { IFoodShippingPage } from "./features/integrations/IFoodShippingPage";
@@ -130,6 +131,7 @@ export default function App() {
                 <Route path="/integracoes/ifood/financeiro/relatorios" element={<ManagerGate><IFoodFinancialReportsPage /></ManagerGate>} />
 
                 <Route path="/integracoes/asaas" element={<ManagerGate><AsaasPage /></ManagerGate>} />
+                <Route path="/integracoes/keeta" element={<ManagerGate><KeetaPage /></ManagerGate>} />
 
                 <Route path="/pracas" element={<ManagerGate><DiningAreasPage /></ManagerGate>} />
                 <Route path="/sem-acesso" element={<NoAccessPage />} />

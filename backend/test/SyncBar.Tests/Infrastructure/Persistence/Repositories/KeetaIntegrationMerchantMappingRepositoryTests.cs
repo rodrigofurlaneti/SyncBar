@@ -145,6 +145,29 @@ namespace SyncBar.Tests.Infrastructure.Persistence.Repositories
         }
 
         [Fact]
+        public async Task GetAllAuthorizedAsync_MixOfAuthorizedAndNot_ReturnsOnlyAuthorized()
+        {
+            var authorized = await SeedAsync(CreateMapping(keetaMerchantId: 1));
+            var unauthorizedSeed = await SeedAsync(CreateMapping(keetaMerchantId: 2, internalMerchantId: "im-2"));
+            var trackedUnauthorized = await _repository.GetByIdForUpdateAsync(unauthorizedSeed.Id);
+            trackedUnauthorized!.UpdateStatus(isAuthorized: false, isOnboarded: false);
+            _repository.Update(trackedUnauthorized);
+            await Context.SaveChangesAsync();
+
+            var result = await _repository.GetAllAuthorizedAsync();
+
+            result.Should().ContainSingle(x => x.Id == authorized.Id);
+        }
+
+        [Fact]
+        public async Task GetAllAuthorizedAsync_NoAuthorizedMappings_ReturnsEmptyList()
+        {
+            var result = await _repository.GetAllAuthorizedAsync();
+
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
         public async Task ExistsByKeetaMerchantIdAsync_Existing_ReturnsTrue()
         {
             await SeedAsync(CreateMapping(keetaMerchantId: 777));

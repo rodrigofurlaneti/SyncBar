@@ -9,6 +9,7 @@ namespace SyncBar.Domain.Repositories
         Task<KeetaIntegrationMerchantMapping?> GetByInternalMerchantIdAsync(string internalMerchantId, CancellationToken cancellationToken = default);
         Task<IReadOnlyList<KeetaIntegrationMerchantMapping>> GetAllByCompanyIdAsync(long companyId, CancellationToken cancellationToken = default);
         Task<IReadOnlyList<KeetaIntegrationMerchantMapping>> GetAllByBranchIdAsync(long branchId, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<KeetaIntegrationMerchantMapping>> GetAllAuthorizedAsync(CancellationToken cancellationToken = default);
         Task<bool> ExistsByKeetaMerchantIdAsync(long keetaMerchantId, CancellationToken cancellationToken = default);
         Task AddAsync(KeetaIntegrationMerchantMapping mapping, CancellationToken cancellationToken = default);
         void Update(KeetaIntegrationMerchantMapping mapping);

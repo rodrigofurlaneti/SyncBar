@@ -1,5 +1,13 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using SyncBar.Application.Features.Integrations.Keeta.Order.Actions.AcceptRefund;
+using SyncBar.Application.Features.Integrations.Keeta.Order.Actions.ConfirmOrder;
+using SyncBar.Application.Features.Integrations.Keeta.Order.Actions.DispatchOrder;
+using SyncBar.Application.Features.Integrations.Keeta.Order.Actions.MarkDelivered;
+using SyncBar.Application.Features.Integrations.Keeta.Order.Actions.MarkReadyForPickup;
+using SyncBar.Application.Features.Integrations.Keeta.Order.Actions.RejectRefund;
+using SyncBar.Application.Features.Integrations.Keeta.Order.Actions.RequestCancellation;
+using SyncBar.Application.Features.Integrations.Keeta.Order.Actions.SendTrackingUpdate;
 using SyncBar.Application.Features.Integrations.Keeta.Order.Create;
 using SyncBar.Application.Features.Integrations.Keeta.Order.Delete;
 using SyncBar.Application.Features.Integrations.Keeta.Order.ExistsByKeetaOrderId;
@@ -130,8 +138,119 @@ public sealed class KeetaOrderController(
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
+
+    // ---- Ações do ciclo de vida do pedido na API real da Keeta ----
+
+    [HttpPost("{id:long}/confirm")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IActionResult> Confirm(long id, [FromBody] ConfirmKeetaOrderRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOrderController), nameof(Confirm), async () =>
+        {
+            var command = new ConfirmKeetaOrderCommand(id, request.Reason, request.PreparationTimeMinutes);
+            var result = await Mediator.Send(command, ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPost("{id:long}/ready-for-pickup")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IActionResult> MarkReadyForPickup(long id, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOrderController), nameof(MarkReadyForPickup), async () =>
+        {
+            var result = await Mediator.Send(new MarkKeetaOrderReadyForPickupCommand(id), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPost("{id:long}/dispatch")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IActionResult> Dispatch(long id, [FromBody] DispatchKeetaOrderRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOrderController), nameof(Dispatch), async () =>
+        {
+            var command = new DispatchKeetaOrderCommand(id, request.TrackingEventType, request.TrackingEventMessage);
+            var result = await Mediator.Send(command, ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPost("{id:long}/delivered")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IActionResult> MarkDelivered(long id, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOrderController), nameof(MarkDelivered), async () =>
+        {
+            var result = await Mediator.Send(new MarkKeetaOrderDeliveredCommand(id), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPost("{id:long}/tracking")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IActionResult> SendTrackingUpdate(long id, [FromBody] SendKeetaOrderTrackingUpdateRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOrderController), nameof(SendTrackingUpdate), async () =>
+        {
+            var command = new SendKeetaOrderTrackingUpdateCommand(id, request.TrackingEventType, request.TrackingEventMessage);
+            var result = await Mediator.Send(command, ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPost("{id:long}/request-cancellation")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IActionResult> RequestCancellation(long id, [FromBody] RequestKeetaOrderCancellationRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOrderController), nameof(RequestCancellation), async () =>
+        {
+            var command = new RequestKeetaOrderCancellationCommand(
+                id, request.Reason, request.Code, request.Mode, request.OutOfStockItems, request.InvalidItems);
+            var result = await Mediator.Send(command, ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPost("{id:long}/accept-refund")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IActionResult> AcceptRefund(long id, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOrderController), nameof(AcceptRefund), async () =>
+        {
+            var result = await Mediator.Send(new AcceptKeetaOrderRefundCommand(id), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPost("{id:long}/reject-refund")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IActionResult> RejectRefund(long id, [FromBody] RejectKeetaOrderRefundRequest request, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOrderController), nameof(RejectRefund), async () =>
+        {
+            var command = new RejectKeetaOrderRefundCommand(id, request.Reason, request.Code);
+            var result = await Mediator.Send(command, ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
 }
 
 public sealed record UpdateKeetaOrderRequest(
     long CompanyId,
     string? Status = null);
+
+public sealed record ConfirmKeetaOrderRequest(string? Reason = null, int? PreparationTimeMinutes = null);
+
+public sealed record DispatchKeetaOrderRequest(string? TrackingEventType = null, string? TrackingEventMessage = null);
+
+public sealed record SendKeetaOrderTrackingUpdateRequest(string TrackingEventType, string? TrackingEventMessage = null);
+
+public sealed record RequestKeetaOrderCancellationRequest(
+    string Reason,
+    string Code,
+    string Mode,
+    IReadOnlyList<string>? OutOfStockItems = null,
+    IReadOnlyList<string>? InvalidItems = null);
+
+public sealed record RejectKeetaOrderRefundRequest(string Reason, string Code);
