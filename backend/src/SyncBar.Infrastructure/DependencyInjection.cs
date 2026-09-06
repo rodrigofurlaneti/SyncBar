@@ -111,6 +111,13 @@ public static class DependencyInjection
         services.AddScoped<IAsaasIntegrationSettingRepository, AsaasIntegrationSettingRepository>();
         services.AddScoped<IAsaasIntegrationWebhookLogRepository, AsaasIntegrationWebhookLogRepository>();
 
+        services.AddScoped<IKeetaIntegrationSettingRepository, KeetaIntegrationSettingRepository>();
+        services.AddScoped<IKeetaIntegrationMerchantMappingRepository, KeetaIntegrationMerchantMappingRepository>();
+        services.AddScoped<IKeetaIntegrationAuthorizationSessionRepository, KeetaIntegrationAuthorizationSessionRepository>();
+        services.AddScoped<IKeetaIntegrationOrderRepository, KeetaIntegrationOrderRepository>();
+        services.AddScoped<IKeetaIntegrationOrderEventLogRepository, KeetaIntegrationOrderEventLogRepository>();
+        services.AddScoped<IKeetaIntegrationRefundDisputeRepository, KeetaIntegrationRefundDisputeRepository>();
+
         services.AddSingleton<TimeProvider, SyncBar.Infrastructure.Time.TimeProviderCustom>();
         services.AddSingleton<SyncBar.Application.Abstractions.Storage.IImageStorage, LocalImageStorage>();
         services.AddSingleton<IRawPrinterTransport, WindowsRawPrinterTransport>();
