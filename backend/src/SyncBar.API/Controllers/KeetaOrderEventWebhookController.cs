@@ -13,17 +13,22 @@ namespace SyncBar.API.Controllers;
 public sealed class KeetaOrderEventWebhookController(IMediator mediator) : ControllerBase
 {
     [HttpPost]
-    public async Task<IActionResult> Receive(CancellationToken cancellationToken)
+    public async Task<IActionResult> Receive(
+        [FromHeader(Name = "X-App-Id")] string? appId,
+        [FromHeader(Name = "X-App-MerchantId")] string? merchantIdHeader,
+        [FromHeader(Name = "X-App-Signature")] string? signature,
+        CancellationToken cancellationToken)
     {
+        // Corpo lido como texto bruto de propósito — mesma justificativa do
+        // KeetaAuthorizationWebhookController: a assinatura HMAC é calculada sobre os bytes
+        // exatos do payload e a validação de JSON é feita no handler (Keeta.InvalidPayload) com
+        // contrato de erro próprio, não pelo model binder do framework.
         string rawPayload;
         using (var reader = new StreamReader(Request.Body))
         {
             rawPayload = await reader.ReadToEndAsync(cancellationToken);
         }
 
-        var appId = Request.Headers["X-App-Id"].FirstOrDefault();
-        var merchantIdHeader = Request.Headers["X-App-MerchantId"].FirstOrDefault();
-        var signature = Request.Headers["X-App-Signature"].FirstOrDefault();
         long? merchantId = long.TryParse(merchantIdHeader, out var parsedMerchantId) ? parsedMerchantId : null;
 
         var result = await mediator.Send(new ProcessKeetaNewEventWebhookCommand(rawPayload, appId, merchantId, signature), cancellationToken);

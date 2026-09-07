@@ -51,6 +51,15 @@ public sealed class CheckoutControllerTests
     }
 
     [Fact]
+    public async Task PayWithPix_MissingCustomerOrderId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var result = await _controller.PayWithPix(new CheckoutPixRequest(null), CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<PayOrderWithPixCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task PayWithCreditCard_Success_ShouldForwardAllFieldsAndReturnOk()
     {
         var card = new CreditCardDataRequest("Joao Silva", "4111111111111111", "12", "2030", "123");
@@ -76,6 +85,15 @@ public sealed class CheckoutControllerTests
     }
 
     [Fact]
+    public async Task PayWithCreditCard_MissingCustomerOrderId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var result = await _controller.PayWithCreditCard(new CheckoutCreditCardRequest(null, 1, null), CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<PayOrderWithCreditCardCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task PayWithBoleto_Success_ShouldSendCommandAndReturnOk()
     {
         var response = new PayOrderWithBoletoResponse(1, "asaas-1", "PENDING", "https://boleto", "341...", "34199...", 50m, DateTime.Today.AddDays(3));
@@ -96,5 +114,14 @@ public sealed class CheckoutControllerTests
         var result = await _controller.PayWithBoleto(new CheckoutBoletoRequest(999), CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task PayWithBoleto_MissingCustomerOrderId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var result = await _controller.PayWithBoleto(new CheckoutBoletoRequest(null), CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<PayOrderWithBoletoCommand>(), Arg.Any<CancellationToken>());
     }
 }

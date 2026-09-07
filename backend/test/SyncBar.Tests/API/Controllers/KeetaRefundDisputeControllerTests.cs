@@ -141,17 +141,19 @@ public sealed class KeetaRefundDisputeControllerTests
         result.Should().BeOfType<BadRequestObjectResult>();
     }
 
-    private static CreateKeetaIntegrationRefundDisputeCommand ValidCreateCommand() =>
+    private static CreateKeetaRefundDisputeRequest ValidCreateRequest() =>
         new(1, 1, "ko_1", 10, 25m, "CUSTOMER_REQUEST");
 
     [Fact]
     public async Task Create_Success_ShouldReturnCreatedAtActionPointingToGetById()
     {
-        var command = ValidCreateCommand();
+        var request = ValidCreateRequest();
         var response = new CreateKeetaIntegrationRefundDisputeResponse(5L, 1, 1, "ko_1", 10, 25m, "PENDING");
-        _mediator.Send(command, Arg.Any<CancellationToken>()).Returns(Result.Success(response));
+        _mediator.Send(Arg.Is<CreateKeetaIntegrationRefundDisputeCommand>(c =>
+                c.CompanyId == 1 && c.BranchId == 1 && c.AfterSaleOrderId == 10 && c.RefundAmount == 25m),
+            Arg.Any<CancellationToken>()).Returns(Result.Success(response));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         var created = result.Should().BeOfType<CreatedAtActionResult>().Subject;
         created.ActionName.Should().Be(nameof(_controller.GetById));
@@ -162,13 +164,24 @@ public sealed class KeetaRefundDisputeControllerTests
     [Fact]
     public async Task Create_Failure_ShouldReturnMappedErrorResult()
     {
-        var command = ValidCreateCommand();
-        _mediator.Send(command, Arg.Any<CancellationToken>())
+        var request = ValidCreateRequest();
+        _mediator.Send(Arg.Any<CreateKeetaIntegrationRefundDisputeCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure<CreateKeetaIntegrationRefundDisputeResponse>(new Error("KeetaIntegrationRefundDispute.AlreadyExists", "disputa ja existe")));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         result.Should().BeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task Create_MissingRequiredFields_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new CreateKeetaRefundDisputeRequest(1, 1, "ko_1", 10, null, "CUSTOMER_REQUEST");
+
+        var result = await _controller.Create(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<CreateKeetaIntegrationRefundDisputeCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -193,6 +206,28 @@ public sealed class KeetaRefundDisputeControllerTests
         var result = await _controller.Update(999, request, CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task Update_MissingAccepted_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new UpdateKeetaRefundDisputeRequest(1, null);
+
+        var result = await _controller.Update(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<UpdateKeetaIntegrationRefundDisputeCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Update_MissingCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new UpdateKeetaRefundDisputeRequest(null, true);
+
+        var result = await _controller.Update(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<UpdateKeetaIntegrationRefundDisputeCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

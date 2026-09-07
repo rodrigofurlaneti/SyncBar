@@ -44,4 +44,9 @@ public sealed class TablesController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 }
+// Os três flags são deliberadamente bool não anuláveis: este é um PUT que substitui o estado
+// completo de validação de leitura da mesa de uma vez (não um PATCH parcial), então "false" por
+// omissão é o comportamento de negócio esperado (desabilita a validação não informada) e não um
+// caso de under-posting silencioso — diferente de um Id/valor monetário que nunca deveria ter um
+// zero implícito.
 public sealed record SetReadingValidationRequest(bool IsCameraInputEnabled, bool IsBarcodeEnabled, bool IsQrCodeEnabled);

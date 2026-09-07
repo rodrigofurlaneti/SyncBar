@@ -9,12 +9,21 @@ using System.Threading.Tasks;
 
 namespace SyncBar.Application.Features.CustomerAddresses.RegisterOrder
 {
-    internal sealed class RegisterCustomerAddressOrderCommandHandler(
-        ICustomerAddressRepository customerAddressRepository,
-        ILogTrackerRepository logRepository,
-        IUnitOfWork unitOfWork)
-        : BaseCommandHandler<RegisterCustomerAddressOrderCommand>(logRepository, unitOfWork)
+    internal sealed class RegisterCustomerAddressOrderCommandHandler : BaseCommandHandler<RegisterCustomerAddressOrderCommand>
     {
+        private readonly ICustomerAddressRepository _customerAddressRepository;
+        private readonly IUnitOfWork _unitOfWork;
+
+        public RegisterCustomerAddressOrderCommandHandler(
+            ICustomerAddressRepository customerAddressRepository,
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
+        {
+            _customerAddressRepository = customerAddressRepository;
+            _unitOfWork = unitOfWork;
+        }
+
         public override async Task<Result> Handle(RegisterCustomerAddressOrderCommand request, CancellationToken cancellationToken)
         {
             return await ExecuteWithLogAsync(
@@ -23,14 +32,14 @@ namespace SyncBar.Application.Features.CustomerAddresses.RegisterOrder
                 null,
                 async (userIdBox) =>
                 {
-                    var entity = await customerAddressRepository.GetByIdAsync(request.AddressId, cancellationToken);
+                    var entity = await _customerAddressRepository.GetByIdAsync(request.AddressId, cancellationToken);
                     if (entity is null || !entity.IsActive)
                         return Result.Failure(new Error("CustomerAddress.NotFound", "Customer address not found."));
 
                     entity.RegisterOrderUsage(request.OrderId);
 
-                    await customerAddressRepository.UpdateAsync(entity, cancellationToken);
-                    await unitOfWork.CommitAsync(cancellationToken);
+                    await _customerAddressRepository.UpdateAsync(entity, cancellationToken);
+                    await _unitOfWork.CommitAsync(cancellationToken);
 
                     return Result.Success();
                 });

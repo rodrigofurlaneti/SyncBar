@@ -13,16 +13,16 @@ namespace SyncBar.Domain.Entities
         public long BranchId { get; private set; }
         public long CustomerId { get; private set; }
         public long CustomerOrderId { get; private set; }
-        public string KeetaOrderId { get; private set; }
-        public string DisplayId { get; private set; }
-        public string InternalMerchantId { get; private set; }
+        public string KeetaOrderId { get; private set; } = null!;
+        public string DisplayId { get; private set; } = null!;
+        public string InternalMerchantId { get; private set; } = null!;
         public long KeetaMerchantId { get; private set; }
-        public string Status { get; private set; }
-        public string OrderType { get; private set; }
-        public string DeliveredBy { get; private set; }
+        public string Status { get; private set; } = null!;
+        public string OrderType { get; private set; } = null!;
+        public string DeliveredBy { get; private set; } = null!;
         public decimal OrderAmount { get; private set; }
-        public string Currency { get; private set; }
-        public string RawOrderJson { get; private set; }
+        public string Currency { get; private set; } = null!;
+        public string RawOrderJson { get; private set; } = null!;
         public DateTime OrderCreatedAtUtc { get; private set; }
         public DateTime CreatedAtUtc { get; private set; }
         public DateTime? ConfirmedAtUtc { get; private set; }

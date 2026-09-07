@@ -144,6 +144,28 @@ public sealed class AsaasWebhookLogControllerTests
     }
 
     [Fact]
+    public async Task UpdateStatus_MissingCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new UpdateWebhookLogStatusRequest(null, WebhookLogStatus.Processed, null);
+
+        var result = await _controller.UpdateStatus(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<UpdateAsaasWebhookLogStatusCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateStatus_MissingStatus_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new UpdateWebhookLogStatusRequest(1, null, null);
+
+        var result = await _controller.UpdateStatus(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<UpdateAsaasWebhookLogStatusCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Delete_Success_ShouldSendCommandWithIdAndReturnNoContent()
     {
         _mediator.Send(Arg.Is<DeleteAsaasWebhookLogCommand>(c => c.Id == 1 && c.CompanyId == 1), Arg.Any<CancellationToken>())

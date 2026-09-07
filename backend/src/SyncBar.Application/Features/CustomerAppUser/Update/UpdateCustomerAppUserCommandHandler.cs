@@ -4,12 +4,21 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.Application.Features.CustomerAppUser.Update;
 
-internal sealed class UpdateCustomerAppUserCommandHandler(
-    ICustomerAppUserRepository customerAppUserRepository,
-    ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork)
-    : BaseCommandHandler<UpdateCustomerAppUserCommand>(logRepository, unitOfWork)
+internal sealed class UpdateCustomerAppUserCommandHandler : BaseCommandHandler<UpdateCustomerAppUserCommand>
 {
+    private readonly ICustomerAppUserRepository _customerAppUserRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public UpdateCustomerAppUserCommandHandler(
+        ICustomerAppUserRepository customerAppUserRepository,
+        ILogTrackerRepository logRepository,
+        IUnitOfWork unitOfWork)
+        : base(logRepository, unitOfWork)
+    {
+        _customerAppUserRepository = customerAppUserRepository;
+        _unitOfWork = unitOfWork;
+    }
+
     public override async Task<Result> Handle(UpdateCustomerAppUserCommand request, CancellationToken cancellationToken)
     {
         return await ExecuteWithLogAsync(
@@ -18,7 +27,7 @@ internal sealed class UpdateCustomerAppUserCommandHandler(
             null,
             async (userIdBox) =>
             {
-                var entity = await customerAppUserRepository.GetByIdAsync(request.Id, cancellationToken);
+                var entity = await _customerAppUserRepository.GetByIdAsync(request.Id, cancellationToken);
                 if (entity is null || !entity.IsActive)
                     return Result.Failure(new Error("CustomerAppUser.NotFound", "Customer app user not found."));
 
@@ -38,8 +47,8 @@ internal sealed class UpdateCustomerAppUserCommandHandler(
                     entity.ChangePasswordHash(passwordHash);
                 }
 
-                await customerAppUserRepository.UpdateAsync(entity, cancellationToken);
-                await unitOfWork.CommitAsync(cancellationToken);
+                await _customerAppUserRepository.UpdateAsync(entity, cancellationToken);
+                await _unitOfWork.CommitAsync(cancellationToken);
 
                 return Result.Success();
             });

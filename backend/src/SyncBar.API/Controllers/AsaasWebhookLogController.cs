@@ -79,10 +79,13 @@ public sealed class AsaasWebhookLogController(
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AsaasWebhookLogController), nameof(UpdateStatus), async () =>
         {
+            if (request.CompanyId is null || request.Status is null)
+                return BadRequest(new { message = "CompanyId and Status are required." });
+
             var command = new UpdateAsaasWebhookLogStatusCommand(
                 id,
-                request.CompanyId,
-                request.Status,
+                request.CompanyId.Value,
+                request.Status.Value,
                 request.ErrorMessage);
 
             var result = await Mediator.Send(command, ct);
@@ -105,7 +108,11 @@ public sealed class AsaasWebhookLogController(
         });
 }
 
+// Status também é anulável-com-checagem explícita, e não apenas CompanyId: WebhookLogStatus.Pending
+// = 0, então um payload sem "status" seria desserializado como Pending por omissão silenciosa — o
+// mesmo risco de under-posting que Accepted em KeetaRefundDisputeController, já que este endpoint
+// existe justamente para o cliente declarar qual status está sendo aplicado.
 public sealed record UpdateWebhookLogStatusRequest(
-    long CompanyId,
-    WebhookLogStatus Status,
+    long? CompanyId,
+    WebhookLogStatus? Status,
     string? ErrorMessage = null);

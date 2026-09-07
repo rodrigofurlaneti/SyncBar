@@ -98,10 +98,21 @@ public sealed class AsaasSettingController(
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public Task<IActionResult> Create(
-        [FromBody] CreateAsaasIntegrationSettingCommand command,
+        [FromBody] CreateAsaasSettingRequest request,
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AsaasSettingController), nameof(Create), async () =>
         {
+            if (request.CompanyId is null)
+                return BadRequest(new { message = "CompanyId is required." });
+
+            var command = new CreateAsaasIntegrationSettingCommand(
+                request.CompanyId.Value,
+                request.BranchId,
+                request.ApiKey,
+                request.WebhookToken,
+                request.Environment,
+                request.IsActive);
+
             var result = await Mediator.Send(command, ct);
             return result.IsFailure
                 ? HandleFailure(result)
@@ -118,9 +129,12 @@ public sealed class AsaasSettingController(
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AsaasSettingController), nameof(Update), async () =>
         {
+            if (request.CompanyId is null)
+                return BadRequest(new { message = "CompanyId is required." });
+
             var command = new UpdateAsaasIntegrationSettingCommand(
                 id,
-                request.CompanyId,
+                request.CompanyId.Value,
                 request.ApiKey,
                 request.WebhookToken,
                 request.Environment,
@@ -146,8 +160,16 @@ public sealed class AsaasSettingController(
         });
 }
 
+public sealed record CreateAsaasSettingRequest(
+    long? CompanyId,
+    long? BranchId,
+    string ApiKey,
+    string? WebhookToken = null,
+    string? Environment = null,
+    bool IsActive = true);
+
 public sealed record UpdateAsaasSettingRequest(
-    long CompanyId,
+    long? CompanyId,
     string? ApiKey = null,
     string? WebhookToken = null,
     string? Environment = null,

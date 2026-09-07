@@ -17,23 +17,49 @@ namespace SyncBar.API.Controllers
     public sealed class CustomerAddressesController(IMediator mediator) : ApiController(mediator)
     {
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreateCustomerAddressCommand command, CancellationToken cancellationToken)
+        public async Task<IActionResult> Create([FromBody] CreateCustomerAddressRequest request, CancellationToken cancellationToken)
         {
+            // CompanyId é FK obrigatória; sem isso a request silenciaria como CompanyId = 0 (under-posting).
+            if (request.CompanyId is null)
+                return BadRequest(new { message = "CompanyId is required." });
+
             return await ExecuteWithLogAsync(nameof(CustomerAddressesController), nameof(Create), async () =>
             {
+                var command = new CreateCustomerAddressCommand(
+                    request.CompanyId.Value,
+                    request.BranchId,
+                    request.CustomerId,
+                    request.Street,
+                    request.Number,
+                    request.Supplement,
+                    request.ZipCode);
+
                 var result = await Mediator.Send(command, cancellationToken);
                 return result.IsSuccess ? Ok(result.Value) : HandleFailure(result);
             });
         }
 
         [HttpPut("{id:long}")]
-        public async Task<IActionResult> Update(long id, [FromBody] UpdateCustomerAddressCommand command, CancellationToken cancellationToken)
+        public async Task<IActionResult> Update(long id, [FromBody] UpdateCustomerAddressRequest request, CancellationToken cancellationToken)
         {
-            if (id != command.Id)
+            if (id != request.Id)
                 return BadRequest(new { message = "The route ID does not match the command ID." });
+
+            if (request.CompanyId is null)
+                return BadRequest(new { message = "CompanyId is required." });
 
             return await ExecuteWithLogAsync(nameof(CustomerAddressesController), nameof(Update), async () =>
             {
+                var command = new UpdateCustomerAddressCommand(
+                    id,
+                    request.CompanyId.Value,
+                    request.BranchId,
+                    request.CustomerId,
+                    request.Street,
+                    request.Number,
+                    request.Supplement,
+                    request.ZipCode);
+
                 var result = await Mediator.Send(command, cancellationToken);
                 return result.IsSuccess ? NoContent() : HandleFailure(result);
             });
@@ -97,13 +123,36 @@ namespace SyncBar.API.Controllers
         [HttpPatch("{id:long}/register-order")]
         public async Task<IActionResult> RegisterOrder(long id, [FromBody] RegisterCustomerAddressOrderRequest request, CancellationToken cancellationToken)
         {
+            if (request.OrderId is null)
+                return BadRequest(new { message = "OrderId is required." });
+
             return await ExecuteWithLogAsync(nameof(CustomerAddressesController), nameof(RegisterOrder), async () =>
             {
-                var command = new RegisterCustomerAddressOrderCommand(id, request.OrderId);
+                var command = new RegisterCustomerAddressOrderCommand(id, request.OrderId.Value);
                 var result = await Mediator.Send(command, cancellationToken);
                 return result.IsSuccess ? NoContent() : HandleFailure(result);
             });
         }
     }
-    public sealed record RegisterCustomerAddressOrderRequest(long OrderId);
+
+    public sealed record CreateCustomerAddressRequest(
+        long? CompanyId,
+        long? BranchId,
+        long? CustomerId,
+        string Street,
+        string Number,
+        string Supplement,
+        string? ZipCode);
+
+    public sealed record UpdateCustomerAddressRequest(
+        long Id,
+        long? CompanyId,
+        long? BranchId,
+        long? CustomerId,
+        string Street,
+        string Number,
+        string Supplement,
+        string? ZipCode);
+
+    public sealed record RegisterCustomerAddressOrderRequest(long? OrderId);
 }

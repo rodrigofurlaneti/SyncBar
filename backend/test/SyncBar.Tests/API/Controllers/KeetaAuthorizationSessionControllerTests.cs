@@ -95,16 +95,17 @@ public sealed class KeetaAuthorizationSessionControllerTests
         result.Should().BeOfType<BadRequestObjectResult>();
     }
 
-    private static CreateKeetaIntegrationAuthorizationSessionCommand ValidCreateCommand() => new(1, 1, "auth_1", 1);
+    private static CreateKeetaAuthorizationSessionRequest ValidCreateRequest() => new(1, 1, "auth_1", 1);
 
     [Fact]
     public async Task Create_Success_ShouldReturnCreatedAtActionPointingToGetById()
     {
-        var command = ValidCreateCommand();
+        var request = ValidCreateRequest();
         var response = new CreateKeetaIntegrationAuthorizationSessionResponse(5L, 1, 1, "auth_1", 1);
-        _mediator.Send(command, Arg.Any<CancellationToken>()).Returns(Result.Success(response));
+        _mediator.Send(Arg.Is<CreateKeetaIntegrationAuthorizationSessionCommand>(c => c.CompanyId == 1 && c.BranchId == 1 && c.OperationType == 1), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(response));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         var created = result.Should().BeOfType<CreatedAtActionResult>().Subject;
         created.ActionName.Should().Be(nameof(_controller.GetById));
@@ -115,13 +116,24 @@ public sealed class KeetaAuthorizationSessionControllerTests
     [Fact]
     public async Task Create_Failure_ShouldReturnMappedErrorResult()
     {
-        var command = ValidCreateCommand();
-        _mediator.Send(command, Arg.Any<CancellationToken>())
+        var request = ValidCreateRequest();
+        _mediator.Send(Arg.Any<CreateKeetaIntegrationAuthorizationSessionCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure<CreateKeetaIntegrationAuthorizationSessionResponse>(new Error("KeetaIntegrationAuthorizationSession.AlreadyExists", "sessao ja existe")));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         result.Should().BeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task Create_MissingRequiredFields_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new CreateKeetaAuthorizationSessionRequest(1, null, "auth_1", 1);
+
+        var result = await _controller.Create(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<CreateKeetaIntegrationAuthorizationSessionCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -146,6 +158,17 @@ public sealed class KeetaAuthorizationSessionControllerTests
         var result = await _controller.Update(999, request, CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task Update_MissingCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new UpdateKeetaAuthorizationSessionRequest(null);
+
+        var result = await _controller.Update(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<UpdateKeetaIntegrationAuthorizationSessionCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

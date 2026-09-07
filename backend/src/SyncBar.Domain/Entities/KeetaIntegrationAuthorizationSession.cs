@@ -5,7 +5,7 @@ namespace SyncBar.Domain.Entities
     {
         public long CompanyId { get; private set; }
         public long BranchId { get; private set; }
-        public string AuthId { get; private set; }
+        public string AuthId { get; private set; } = null!;
         public string? State { get; private set; }
         public long? KeetaMerchantId { get; private set; }
         public string? AuthorizationCode { get; private set; }

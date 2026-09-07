@@ -5,9 +5,9 @@ namespace SyncBar.Domain.Entities
     {
         public long CompanyId { get; private set; }
         public long BranchId { get; private set; }
-        public string EventId { get; private set; }
-        public string OrderId { get; private set; }
-        public string EventType { get; private set; }
+        public string EventId { get; private set; } = null!;
+        public string OrderId { get; private set; } = null!;
+        public string EventType { get; private set; } = null!;
         public string? RawPayload { get; private set; }
         public bool ProcessedSuccessfully { get; private set; }
         public string? ErrorMessage { get; private set; }

@@ -49,6 +49,8 @@ internal sealed class IfoodOrderClient(
     private const string OrderBaseUrl = "https://merchant-api.Ifood.com.br/order/v1.0";
     private const string EventsBaseUrl = "https://merchant-api.Ifood.com.br/events/v1.0";
 
+    private static readonly JsonSerializerOptions CaseInsensitiveJsonOptions = new() { PropertyNameCaseInsensitive = true };
+
     // SyncBar só vende comida — categorias do módulo Grocery (varejo) ficam de fora.
     private const string Categories = "FOOD,FOOD_SELF_SERVICE";
 
@@ -264,8 +266,7 @@ internal sealed class IfoodOrderClient(
             if (string.IsNullOrWhiteSpace(body))
                 return new IfoodPickupValidationResult(true, false, null);
 
-            var dto = System.Text.Json.JsonSerializer.Deserialize<PickupValidationResponseDto>(
-                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var dto = JsonSerializer.Deserialize<PickupValidationResponseDto>(body, CaseInsensitiveJsonOptions);
             return new IfoodPickupValidationResult(true, dto?.Success ?? false, null);
         }
         catch (Exception ex)
@@ -424,7 +425,7 @@ internal sealed class IfoodOrderClient(
             if (string.IsNullOrWhiteSpace(body))
                 return new IfoodPickupValidationResult(true, false, null);
 
-            var dto = JsonSerializer.Deserialize<PickupValidationResponseDto>(body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var dto = JsonSerializer.Deserialize<PickupValidationResponseDto>(body, CaseInsensitiveJsonOptions);
             return new IfoodPickupValidationResult(true, dto?.Success ?? false, null);
         }
         catch (Exception ex)

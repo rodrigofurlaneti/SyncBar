@@ -81,10 +81,20 @@ public sealed class KeetaMerchantMappingController(
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public Task<IActionResult> Create(
-        [FromBody] CreateKeetaIntegrationMerchantMappingCommand command,
+        [FromBody] CreateKeetaMerchantMappingRequest request,
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaMerchantMappingController), nameof(Create), async () =>
         {
+            if (request.CompanyId is null || request.BranchId is null || request.KeetaMerchantId is null)
+                return BadRequest(new { message = "CompanyId, BranchId and KeetaMerchantId are required." });
+
+            var command = new CreateKeetaIntegrationMerchantMappingCommand(
+                request.CompanyId.Value,
+                request.BranchId.Value,
+                request.InternalMerchantId,
+                request.KeetaMerchantId.Value,
+                request.StoreName);
+
             var result = await Mediator.Send(command, ct);
             return result.IsFailure
                 ? HandleFailure(result)
@@ -101,9 +111,12 @@ public sealed class KeetaMerchantMappingController(
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaMerchantMappingController), nameof(Update), async () =>
         {
+            if (request.CompanyId is null)
+                return BadRequest(new { message = "CompanyId is required." });
+
             var command = new UpdateKeetaIntegrationMerchantMappingCommand(
                 id,
-                request.CompanyId,
+                request.CompanyId.Value,
                 request.IsAuthorized,
                 request.IsOnboarded,
                 request.MenuBaseUrl,
@@ -130,8 +143,15 @@ public sealed class KeetaMerchantMappingController(
         });
 }
 
+public sealed record CreateKeetaMerchantMappingRequest(
+    long? CompanyId,
+    long? BranchId,
+    string InternalMerchantId,
+    long? KeetaMerchantId,
+    string StoreName);
+
 public sealed record UpdateKeetaMerchantMappingRequest(
-    long CompanyId,
+    long? CompanyId,
     bool? IsAuthorized = null,
     bool? IsOnboarded = null,
     string? MenuBaseUrl = null,

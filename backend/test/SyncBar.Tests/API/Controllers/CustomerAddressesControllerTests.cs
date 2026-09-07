@@ -38,15 +38,16 @@ public sealed class CustomerAddressesControllerTests
         ControllerTestHelpers.AttachHttpContext(_controller, services);
     }
 
-    private static CreateCustomerAddressCommand ValidCreateCommand() => new(1, null, null, "Av Paulista", "100", "Apto 1", "01310000");
+    private static CreateCustomerAddressRequest ValidCreateRequest() => new(1, null, null, "Av Paulista", "100", "Apto 1", "01310000");
 
     [Fact]
     public async Task Create_Success_ShouldReturnOkWithValue()
     {
-        var command = ValidCreateCommand();
-        _mediator.Send(command, Arg.Any<CancellationToken>()).Returns(Result.Success(3L));
+        var request = ValidCreateRequest();
+        _mediator.Send(Arg.Is<CreateCustomerAddressCommand>(c => c.CompanyId == 1), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(3L));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         result.Should().BeOfType<OkObjectResult>().Which.Value.Should().Be(3L);
     }
@@ -54,20 +55,43 @@ public sealed class CustomerAddressesControllerTests
     [Fact]
     public async Task Create_Failure_ShouldReturnMappedErrorResult()
     {
-        var command = ValidCreateCommand();
-        _mediator.Send(command, Arg.Any<CancellationToken>()).Returns(Result.Failure<long>(new Error("Company.NotFound", "empresa nao encontrada")));
+        var request = ValidCreateRequest();
+        _mediator.Send(Arg.Any<CreateCustomerAddressCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Failure<long>(new Error("Company.NotFound", "empresa nao encontrada")));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
     }
 
     [Fact]
+    public async Task Create_MissingCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new CreateCustomerAddressRequest(null, null, null, "Av Paulista", "100", "Apto 1", "01310000");
+
+        var result = await _controller.Create(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<CreateCustomerAddressCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Update_IdMismatch_ShouldReturnBadRequestWithoutCallingMediator()
     {
-        var command = new UpdateCustomerAddressCommand(2, 1, null, null, "Av Paulista", "100", "Apto 1", "01310000");
+        var request = new UpdateCustomerAddressRequest(2, 1, null, null, "Av Paulista", "100", "Apto 1", "01310000");
 
-        var result = await _controller.Update(1, command, CancellationToken.None);
+        var result = await _controller.Update(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<UpdateCustomerAddressCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Update_MissingCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new UpdateCustomerAddressRequest(1, null, null, null, "Av Paulista", "100", "Apto 1", "01310000");
+
+        var result = await _controller.Update(1, request, CancellationToken.None);
 
         result.Should().BeOfType<BadRequestObjectResult>();
         await _mediator.DidNotReceive().Send(Arg.Any<UpdateCustomerAddressCommand>(), Arg.Any<CancellationToken>());
@@ -76,10 +100,11 @@ public sealed class CustomerAddressesControllerTests
     [Fact]
     public async Task Update_Success_ShouldReturnNoContent()
     {
-        var command = new UpdateCustomerAddressCommand(1, 1, null, null, "Av Paulista", "100", "Apto 1", "01310000");
-        _mediator.Send(command, Arg.Any<CancellationToken>()).Returns(Result.Success());
+        var request = new UpdateCustomerAddressRequest(1, 1, null, null, "Av Paulista", "100", "Apto 1", "01310000");
+        _mediator.Send(Arg.Is<UpdateCustomerAddressCommand>(c => c.Id == 1 && c.CompanyId == 1), Arg.Any<CancellationToken>())
+            .Returns(Result.Success());
 
-        var result = await _controller.Update(1, command, CancellationToken.None);
+        var result = await _controller.Update(1, request, CancellationToken.None);
 
         result.Should().BeOfType<NoContentResult>();
     }
@@ -87,10 +112,11 @@ public sealed class CustomerAddressesControllerTests
     [Fact]
     public async Task Update_Failure_ShouldReturnMappedErrorResult()
     {
-        var command = new UpdateCustomerAddressCommand(1, 1, null, null, "Av Paulista", "100", "Apto 1", "01310000");
-        _mediator.Send(command, Arg.Any<CancellationToken>()).Returns(Result.Failure(new Error("CustomerAddress.NotFound", "endereco nao encontrado")));
+        var request = new UpdateCustomerAddressRequest(1, 1, null, null, "Av Paulista", "100", "Apto 1", "01310000");
+        _mediator.Send(Arg.Any<UpdateCustomerAddressCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Failure(new Error("CustomerAddress.NotFound", "endereco nao encontrado")));
 
-        var result = await _controller.Update(1, command, CancellationToken.None);
+        var result = await _controller.Update(1, request, CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
     }
@@ -226,5 +252,16 @@ public sealed class CustomerAddressesControllerTests
         var result = await _controller.RegisterOrder(999, request, CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterOrder_MissingOrderId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new RegisterCustomerAddressOrderRequest(null);
+
+        var result = await _controller.RegisterOrder(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<RegisterCustomerAddressOrderCommand>(), Arg.Any<CancellationToken>());
     }
 }
