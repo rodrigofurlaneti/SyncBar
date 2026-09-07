@@ -16,5 +16,6 @@ public interface IProductRepository
     Task<IReadOnlyCollection<Product>> GetAllByCompanyAsync(long companyId, CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<Product>> GetByIdsAsync(IReadOnlyCollection<long> ids, CancellationToken cancellationToken = default);
     Task<Product?> GetByBarcodeAsync(long companyId, string barcode, CancellationToken cancellationToken = default);
+    Task<bool> ExistsActiveByCategoryAsync(long categoryId, CancellationToken cancellationToken = default);
     Task AddAsync(Product entity, CancellationToken cancellationToken = default);
 }

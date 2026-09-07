@@ -13,6 +13,7 @@ namespace SyncBar.Tests.Application.Features.Catalog.DeactivateCategory;
 public sealed class DeactivateCategoryCommandHandlerTests
 {
     private readonly ICategoryRepository _categoryRepository = Substitute.For<ICategoryRepository>();
+    private readonly IProductRepository _productRepository = Substitute.For<IProductRepository>();
     private readonly IIfoodCatalogSyncTrigger _catalogSyncTrigger = Substitute.For<IIfoodCatalogSyncTrigger>();
     private readonly ILogTrackerRepository _logRepository = Substitute.For<ILogTrackerRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
@@ -21,7 +22,7 @@ public sealed class DeactivateCategoryCommandHandlerTests
 
     public DeactivateCategoryCommandHandlerTests()
     {
-        _handler = new DeactivateCategoryCommandHandler(_categoryRepository, _catalogSyncTrigger, _logRepository, _unitOfWork);
+        _handler = new DeactivateCategoryCommandHandler(_categoryRepository, _productRepository, _catalogSyncTrigger, _logRepository, _unitOfWork);
     }
 
     private static void SetId(Entity entity, long id)
@@ -62,15 +63,31 @@ public sealed class DeactivateCategoryCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_Active_ShouldDeactivateAndTriggerSync()
+    public async Task Handle_ActiveWithNoLinkedProducts_ShouldDeactivateAndTriggerSync()
     {
         var category = CreateCategory(companyId: 5, active: true);
         _categoryRepository.GetByIdForUpdateAsync(category.Id, Arg.Any<CancellationToken>()).Returns(category);
+        _productRepository.ExistsActiveByCategoryAsync(category.Id, Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await _handler.Handle(new DeactivateCategoryCommand(category.Id), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         category.IsActive.Should().BeFalse();
         _catalogSyncTrigger.Received(1).TriggerCompanySync(5);
+    }
+
+    [Fact]
+    public async Task Handle_HasActiveLinkedProducts_ShouldReturnFailureAndNotDeactivate()
+    {
+        var category = CreateCategory(active: true);
+        _categoryRepository.GetByIdForUpdateAsync(category.Id, Arg.Any<CancellationToken>()).Returns(category);
+        _productRepository.ExistsActiveByCategoryAsync(category.Id, Arg.Any<CancellationToken>()).Returns(true);
+
+        var result = await _handler.Handle(new DeactivateCategoryCommand(category.Id), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Category.HasLinkedProducts");
+        category.IsActive.Should().BeTrue();
+        _catalogSyncTrigger.DidNotReceive().TriggerCompanySync(Arg.Any<long>());
     }
 }

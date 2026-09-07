@@ -299,7 +299,7 @@ export function ProductsPage() {
         if (category.isActive) {
             const { isConfirmed } = await Swal.fire({
                 title: "Desativar categoria",
-                text: `Desativar "${category.name}"? Produtos já cadastrados nela continuam funcionando, mas ela deixa de aparecer como opção para novos cadastros.`,
+                text: `Desativar "${category.name}"? Só é possível desativar categorias sem nenhum produto ativo vinculado — desative os produtos dela primeiro, se houver.`,
                 icon: "warning",
                 showCancelButton: true,
                 confirmButtonColor: "#d33",
@@ -494,7 +494,7 @@ export function ProductsPage() {
                     </div>
 
                     <p className="catalog-hint">
-                        Arraste para reordenar. Desativar uma categoria não afeta os produtos já vinculados a ela.
+                        Arraste para reordenar. Só é possível desativar uma categoria sem produtos ativos vinculados.
                     </p>
                 </div>
 

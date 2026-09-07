@@ -1,7 +1,8 @@
 Feature: Desativar categoria
     Regras de negocio do DeactivateCategoryCommandHandler: falha se a categoria nao existe ou ja
-    esta inativa; caso contrario desativa a categoria (soft delete, sem cascata para os produtos
-    ja cadastrados nela) e dispara a sincronizacao do cardapio com o Ifood.
+    esta inativa; falha tambem se houver produto ativo vinculado a ela (precisa desativar os
+    produtos primeiro); caso contrario desativa a categoria (soft delete) e dispara a
+    sincronizacao do cardapio com o Ifood.
 
 Scenario: Desativar categoria inexistente deve falhar
     Given nao ha nenhuma categoria cadastrada com o id 1
@@ -13,8 +14,16 @@ Scenario: Desativar categoria ja inativa deve falhar
     When eu tento desativar a categoria 1
     Then a operacao deve falhar com o erro "Category.NotFound"
 
-Scenario: Desativar categoria ativa deve ter sucesso
+Scenario: Desativar categoria com produto ativo vinculado deve falhar
     Given existe uma categoria ativa Bebidas com id 1
+    And a categoria 1 tem produto ativo vinculado
+    When eu tento desativar a categoria 1
+    Then a operacao deve falhar com o erro "Category.HasLinkedProducts"
+    And a categoria deve continuar ativa
+
+Scenario: Desativar categoria ativa sem produtos vinculados deve ter sucesso
+    Given existe uma categoria ativa Bebidas com id 1
+    And a categoria 1 nao tem produto ativo vinculado
     When eu tento desativar a categoria 1
     Then a operacao deve ter sucesso
     And a categoria deve estar inativa
