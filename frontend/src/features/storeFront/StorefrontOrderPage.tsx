@@ -191,6 +191,17 @@ const styles = `
     animation: spin 1s linear infinite;
   }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+  .payment-processing-overlay {
+    position: fixed; inset: 0; z-index: 10001;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;
+    background-color: rgba(9, 9, 11, 0.88);
+    backdrop-filter: blur(0.25rem);
+    color: #f4f4f5;
+    text-align: center;
+    padding: 1rem;
+  }
+  .payment-processing-overlay p { margin: 0; font-size: 0.95rem; color: #d4d4d8; max-width: 20rem; }
 `;
 
 async function fetchMenu(branchId: number): Promise<any> {
@@ -223,12 +234,14 @@ export function StorefrontOrderPage() {
 
     const [paymentResult, setPaymentResult] = useState<StorefrontPaymentResult | null>(null);
     const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null);
+    const [isChargingPayment, setIsChargingPayment] = useState(false);
     const pendingPaymentRef = useRef<{ method: PaymentMethod; cardData?: NewCardData } | null>(null);
 
     const chargeOnlinePayment = useCallback(async (orderId: number) => {
         const pending = pendingPaymentRef.current;
         if (!pending || pending.method === "MAQUININHA") return;
 
+        setIsChargingPayment(true);
         try {
             switch (pending.method) {
                 case "PIX": {
@@ -273,6 +286,8 @@ export function StorefrontOrderPage() {
                 color: "#ffffff",
                 confirmButtonColor: "#ef4444",
             });
+        } finally {
+            setIsChargingPayment(false);
         }
     }, []);
 
@@ -591,6 +606,13 @@ export function StorefrontOrderPage() {
                     setIsAuthModalOpen(false);
                 }}
             />
+
+            {isChargingPayment && (
+                <div className="payment-processing-overlay" role="status" aria-live="polite" data-testid="payment-processing-overlay">
+                    <div className="spinner" aria-hidden="true"></div>
+                    <p>Comunicando com a instituição financeira, aguarde…</p>
+                </div>
+            )}
 
             {paymentResult && paymentOrderId && (
                 <StorefrontPaymentModal
