@@ -94,4 +94,20 @@ public sealed class IfoodOrdersValidatorsTests
         => new VerifyIfoodOrderDeliveryCodeCommandValidator()
             .Validate(new VerifyIfoodOrderDeliveryCodeCommand(1, new string('9', 21)))
             .IsValid.Should().BeFalse();
+
+    [Fact]
+    public void MarkIfoodOrderReadyCommandValidator_WithValidCommand_ShouldBeValid()
+        => new MarkIfoodOrderReadyCommandValidator().Validate(new MarkIfoodOrderReadyCommand(1)).IsValid.Should().BeTrue();
+
+    [Fact]
+    public void MarkIfoodOrderReadyCommandValidator_WithZeroOrderId_ShouldBeInvalid()
+        => new MarkIfoodOrderReadyCommandValidator().Validate(new MarkIfoodOrderReadyCommand(0)).IsValid.Should().BeFalse();
+
+    [Fact]
+    public void StartIfoodOrderPreparationCommandValidator_WithValidCommand_ShouldBeValid()
+        => new StartIfoodOrderPreparationCommandValidator().Validate(new StartIfoodOrderPreparationCommand(1)).IsValid.Should().BeTrue();
+
+    [Fact]
+    public void StartIfoodOrderPreparationCommandValidator_WithZeroOrderId_ShouldBeInvalid()
+        => new StartIfoodOrderPreparationCommandValidator().Validate(new StartIfoodOrderPreparationCommand(0)).IsValid.Should().BeFalse();
 }

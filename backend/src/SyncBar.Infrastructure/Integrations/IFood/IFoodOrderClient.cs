@@ -134,7 +134,9 @@ internal sealed class IfoodOrderClient(
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{EventsBaseUrl}/events/acknowledgment")
         {
-            Content = JsonContent.Create(new { acknowledgedEventIds = eventIds }),
+            // Corpo documentado é um array de objetos {id}, não um envelope {acknowledgedEventIds:[...]}
+            // — ver Postman collection "Events" (POST /events/acknowledgment).
+            Content = JsonContent.Create(eventIds.Select(id => new { id })),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
@@ -199,12 +201,15 @@ internal sealed class IfoodOrderClient(
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        // 204 é o retorno documentado quando o pedido não pode mais ser cancelado (sem reasons).
+        if (response.StatusCode == HttpStatusCode.NoContent || !response.IsSuccessStatusCode)
             return [];
 
-        var payload = await response.Content.ReadFromJsonAsync<CancellationReasonsResponseDto>(cancellationToken: cancellationToken);
-        return (payload?.Reasons ?? [])
-            .Select(r => new IfoodCancellationReasonDto(r.Code, r.Description))
+        // Resposta é um array bruto ([{cancelCodeId, description}]), não um envelope {reasons:[...]}
+        // — ver Postman collection "Order" (GET .../cancellationReasons).
+        var payload = await response.Content.ReadFromJsonAsync<List<ReasonDto>>(cancellationToken: cancellationToken);
+        return (payload ?? [])
+            .Select(r => new IfoodCancellationReasonDto(r.CancelCodeId, r.Description))
             .ToList();
     }
 
@@ -212,7 +217,9 @@ internal sealed class IfoodOrderClient(
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{OrderBaseUrl}/orders/{orderId}/requestCancellation")
         {
-            Content = JsonContent.Create(new { reason = reasonCode }),
+            // O campo documentado para o código de cancelamento é "cancellationCode", não "reason"
+            // — ver Postman collection "Order" (POST .../requestCancellation).
+            Content = JsonContent.Create(new { cancellationCode = reasonCode }),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
@@ -514,9 +521,7 @@ internal sealed class IfoodOrderClient(
 
     private sealed record TakeoutDto(string? Mode);
 
-    private sealed record CancellationReasonsResponseDto(List<ReasonDto>? Reasons);
-
-    private sealed record ReasonDto(string Code, string Description);
+    private sealed record ReasonDto(string CancelCodeId, string Description);
 
     private sealed record TrackingResponseDto(double? Latitude, double? Longitude, DateTime? ExpectedDelivery, double? DeliveryEtaEnd, double? PickupEtaStart);
 

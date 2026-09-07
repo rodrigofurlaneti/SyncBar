@@ -177,21 +177,26 @@ internal sealed class IfoodMerchantClient(HttpClient httpClient) : IIfoodMerchan
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-            var root = ResolveArrayRoot(document.RootElement, "shifts", "openingHours", "data");
+            var root = document.RootElement;
 
+            // A doc oficial (coleção Postman) devolve um ARRAY de grupos, cada um com um
+            // "shifts": [...] aninhado — não um array plano de turnos. Antes desta correção o
+            // código tratava a raiz como se já fosse o array de turnos (via ResolveArrayRoot com
+            // a chave "shifts", que não confere pq a raiz É um array, então ResolveArrayRoot
+            // devolvia ela mesma sem descer no "shifts" de cada item) — cada item iterado era o
+            // objeto {shifts:[...]} inteiro, sem propriedade "dayOfWeek" própria, e todo turno
+            // era descartado silenciosamente (lista sempre vinha vazia). Trata os dois formatos:
+            // raiz já é o array de turnos (fallback) OU raiz é o array de grupos com "shifts".
             var shifts = new List<IfoodOpeningHourShift>();
-            if (root.ValueKind == JsonValueKind.Array)
+            foreach (var shiftElement in EnumerateShiftElements(root))
             {
-                foreach (var item in root.EnumerateArray())
-                {
-                    var dayOfWeek = ParseDayOfWeek(GetString(item, "dayOfWeek", "day"));
-                    var start = ParseTimeOfDay(GetString(item, "start", "startTime"));
-                    var durationMinutes = GetInt(item, "duration", "durationMinutes") ?? 0;
-                    if (dayOfWeek is null || start is null || durationMinutes <= 0)
-                        continue;
+                var dayOfWeek = ParseDayOfWeek(GetString(shiftElement, "dayOfWeek", "day"));
+                var start = ParseTimeOfDay(GetString(shiftElement, "start", "startTime"));
+                var durationMinutes = GetInt(shiftElement, "duration", "durationMinutes") ?? 0;
+                if (dayOfWeek is null || start is null || durationMinutes <= 0)
+                    continue;
 
-                    shifts.Add(new IfoodOpeningHourShift(dayOfWeek.Value, start.Value, durationMinutes));
-                }
+                shifts.Add(new IfoodOpeningHourShift(dayOfWeek.Value, start.Value, durationMinutes));
             }
 
             return new IfoodOpeningHoursResult(true, shifts, null);
@@ -207,6 +212,11 @@ internal sealed class IfoodMerchantClient(HttpClient httpClient) : IIfoodMerchan
     {
         var payload = new
         {
+            // storeId é exigido pelo corpo da requisição na doc oficial (coleção Postman —
+            // "Create an opening hours": {"storeId": "<uuid>", "shifts": [...]}) — antes desta
+            // correção o payload só enviava "shifts", sem "storeId", o que provavelmente causaria
+            // 400 Bad Request ("parâmetro faltando") mesmo com merchantId correto na URL.
+            storeId = merchantId,
             shifts = shifts.Select(s => new
             {
                 dayOfWeek = FormatDayOfWeek(s.DayOfWeek),
@@ -390,6 +400,43 @@ internal sealed class IfoodMerchantClient(HttpClient httpClient) : IIfoodMerchan
         }
 
         return root;
+    }
+
+    // Ver comentário em GetOpeningHoursAsync: a doc oficial (coleção Postman) devolve um ARRAY de
+    // grupos {shifts:[...]}. Aceita também um único objeto {shifts:[...]} na raiz (sem o array
+    // externo) e um array plano de turnos como fallback defensivo (mesmo padrão de "múltiplos
+    // formatos candidatos" usado no resto do client), cobrindo variações já vistas em resposta
+    // real/mocks de teste.
+    private static IEnumerable<JsonElement> EnumerateShiftElements(JsonElement root)
+    {
+        if (root.ValueKind == JsonValueKind.Object)
+        {
+            if (root.TryGetProperty("shifts", out var singleGroupShifts) && singleGroupShifts.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var shift in singleGroupShifts.EnumerateArray())
+                    yield return shift;
+            }
+            yield break;
+        }
+
+        if (root.ValueKind != JsonValueKind.Array)
+            yield break;
+
+        foreach (var group in root.EnumerateArray())
+        {
+            if (group.ValueKind == JsonValueKind.Object &&
+                group.TryGetProperty("shifts", out var nestedShifts) &&
+                nestedShifts.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var shift in nestedShifts.EnumerateArray())
+                    yield return shift;
+            }
+            else if (group.ValueKind == JsonValueKind.Object && group.TryGetProperty("dayOfWeek", out _))
+            {
+                // Formato plano (fallback): o próprio item já é um turno.
+                yield return group;
+            }
+        }
     }
 
     private static int? ParseDayOfWeek(string? value) => value?.Trim().ToUpperInvariant() switch
