@@ -68,10 +68,13 @@ public sealed class KeetaOAuthController(
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOAuthController), nameof(RefreshToken), async () =>
         {
-            var command = new RefreshKeetaAccessTokenCommand(request.CompanyId, request.BranchId);
+            if (request.CompanyId is null || request.BranchId is null)
+                return BadRequest(new { message = "CompanyId and BranchId are required." });
+
+            var command = new RefreshKeetaAccessTokenCommand(request.CompanyId.Value, request.BranchId.Value);
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 }
 
-public sealed record RefreshKeetaAccessTokenRequest(long CompanyId, long BranchId);
+public sealed record RefreshKeetaAccessTokenRequest(long? CompanyId, long? BranchId);

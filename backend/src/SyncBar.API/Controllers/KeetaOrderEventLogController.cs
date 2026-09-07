@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Integrations.Keeta.OrderEventLog.Create;
@@ -134,7 +135,7 @@ public sealed record CreateKeetaOrderEventLogRequest(
     string OrderId,
     string EventType,
     string? RawPayload,
-    DateTime EventCreatedAtUtc);
+    [property: JsonRequired] DateTime EventCreatedAtUtc);
 
 public sealed record UpdateKeetaOrderEventLogRequest(
     long? CompanyId,

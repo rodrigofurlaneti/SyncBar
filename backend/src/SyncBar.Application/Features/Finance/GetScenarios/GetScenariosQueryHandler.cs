@@ -155,8 +155,11 @@ internal sealed class GetScenariosQueryHandler(
         return scenarios;
     }
 
-    // Plano de estoque: distribui o alvo pelo mix real e converte em unidades.
-    private static IReadOnlyCollection<StockPlanItemResponse> BuildStockPlan(
+    // Plano de estoque: distribui o alvo pelo mix real e converte em unidades. Retorna List<T>
+    // (não IReadOnlyCollection<T>) porque é um método privado só usado dentro desta classe — o
+    // tipo concreto evita indireção de interface sem impactar o contrato público (ScenarioResponse
+    // continua expondo IReadOnlyCollection<StockPlanItemResponse>; List<T> é atribuível a ele).
+    private static List<StockPlanItemResponse> BuildStockPlan(
         decimal target,
         decimal mixTotal,
         IReadOnlyCollection<MixRevenueItem> mixRevenue,

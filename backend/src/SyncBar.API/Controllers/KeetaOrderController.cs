@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Integrations.Keeta.Order.Actions.AcceptRefund;
@@ -274,7 +275,7 @@ public sealed record CreateKeetaOrderRequest(
     string DeliveredBy,
     decimal? OrderAmount,
     string RawOrderJson,
-    DateTime OrderCreatedAtUtc);
+    [property: JsonRequired] DateTime OrderCreatedAtUtc);
 
 public sealed record UpdateKeetaOrderRequest(
     long? CompanyId,
