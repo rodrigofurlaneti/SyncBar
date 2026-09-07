@@ -2,6 +2,8 @@ using System.Reflection;
 using FluentAssertions;
 using MediatR;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+using SyncBar.Application.Abstractions.Integrations.Asaas;
 using SyncBar.Application.Features.Checkout.PayOrderWithPix;
 using SyncBar.Application.Features.Checkout.Shared;
 using SyncBar.Application.Features.Integrations.Asaas.Payment.Create;
@@ -17,6 +19,7 @@ public sealed class PayOrderWithPixCommandHandlerTests
 {
     private readonly ICheckoutOrderPreparer _checkoutPreparer = Substitute.For<ICheckoutOrderPreparer>();
     private readonly IAsaasIntegrationPaymentRepository _paymentRepository = Substitute.For<IAsaasIntegrationPaymentRepository>();
+    private readonly IAsaasService _asaasService = Substitute.For<IAsaasService>();
     private readonly ISender _mediator = Substitute.For<ISender>();
     private readonly ILogTrackerRepository _logRepository = Substitute.For<ILogTrackerRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
@@ -26,7 +29,7 @@ public sealed class PayOrderWithPixCommandHandlerTests
     public PayOrderWithPixCommandHandlerTests()
     {
         _handler = new PayOrderWithPixCommandHandler(
-            _checkoutPreparer, _paymentRepository, _mediator, _logRepository, _unitOfWork);
+            _checkoutPreparer, _paymentRepository, _asaasService, _mediator, _logRepository, _unitOfWork);
     }
 
     private static void SetId(Entity entity, long id)
@@ -109,6 +112,63 @@ public sealed class PayOrderWithPixCommandHandlerTests
         result.Value.PixQrCodeBase64.Should().Be("existing-qrcode");
         result.Value.PixPayload.Should().Be("existing-payload");
         await _mediator.DidNotReceive().Send(Arg.Any<CreateAsaasIntegrationPaymentCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    // Cobre o bug real: uma tentativa anterior criou a cobrança Pix no Asaas mas falhou ao buscar
+    // o QR Code (hiccup pontual do gateway) — o registro fica salvo com PixQrCodeBase64 nulo. Sem
+    // este re-fetch, a idempotência acima devolveria pra sempre esse mesmo registro quebrado, e o
+    // cliente nunca mais veria o QR Code, mesmo reabrindo a tela de pagamento.
+    [Fact]
+    public async Task Handle_ExistingPendingPaymentWithoutQrCode_ShouldRefetchAndPersistQrCode()
+    {
+        var order = CreateAwaitingPaymentOrder();
+        GivenPreparationSucceeds(order);
+
+        var existing = AsaasIntegrationPayment.Create(
+            order.BranchId, order.Id, order.CustomerId, "pay_pix_4", "PIX", 50m, DateTime.UtcNow.AddHours(1)).Value;
+        SetId(existing, 77);
+        _paymentRepository.GetByCustomerOrderIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(existing);
+
+        var trackedPayment = AsaasIntegrationPayment.Create(
+            order.BranchId, order.Id, order.CustomerId, "pay_pix_4", "PIX", 50m, DateTime.UtcNow.AddHours(1)).Value;
+        SetId(trackedPayment, 77);
+        _paymentRepository.GetByIdForUpdateAsync(77, Arg.Any<CancellationToken>()).Returns(trackedPayment);
+
+        _asaasService.GetPixQrCodeAsync("pay_pix_4", Arg.Any<CancellationToken>())
+            .Returns(new AsaasPixQrCodeResponse("refetched-qrcode", "refetched-payload", null));
+
+        var result = await _handler.Handle(new PayOrderWithPixCommand(order.Id), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.PixQrCodeBase64.Should().Be("refetched-qrcode");
+        result.Value.PixPayload.Should().Be("refetched-payload");
+        trackedPayment.PixQrCodeBase64.Should().Be("refetched-qrcode");
+        // 2 commits: o do re-fetch de QR Code (dentro do handler) + o do log de auditoria da
+        // BaseCommandHandler (sempre roda no finally, independente do resultado de negócio).
+        await _unitOfWork.Received(2).CommitAsync(Arg.Any<CancellationToken>());
+        await _mediator.DidNotReceive().Send(Arg.Any<CreateAsaasIntegrationPaymentCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    // Se o re-fetch também falhar (gateway ainda indisponível), a operação continua bem-sucedida
+    // (idempotente) devolvendo sem QR Code — o cliente pode tentar de novo depois.
+    [Fact]
+    public async Task Handle_ExistingPendingPaymentWithoutQrCode_WhenRefetchFails_ShouldStillSucceedWithoutQrCode()
+    {
+        var order = CreateAwaitingPaymentOrder();
+        GivenPreparationSucceeds(order);
+
+        var existing = AsaasIntegrationPayment.Create(
+            order.BranchId, order.Id, order.CustomerId, "pay_pix_5", "PIX", 50m, DateTime.UtcNow.AddHours(1)).Value;
+        SetId(existing, 78);
+        _paymentRepository.GetByCustomerOrderIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        _asaasService.GetPixQrCodeAsync("pay_pix_5", Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("Asaas indisponível"));
+
+        var result = await _handler.Handle(new PayOrderWithPixCommand(order.Id), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.PixQrCodeBase64.Should().BeNull();
+        await _paymentRepository.DidNotReceive().GetByIdForUpdateAsync(Arg.Any<long>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

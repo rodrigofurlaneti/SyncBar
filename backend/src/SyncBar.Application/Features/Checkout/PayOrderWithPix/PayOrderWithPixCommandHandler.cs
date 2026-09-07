@@ -1,4 +1,5 @@
 using MediatR;
+using SyncBar.Application.Abstractions.Integrations.Asaas;
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Features.Checkout.Shared;
 using SyncBar.Application.Features.Integrations.Asaas.Payment.Create;
@@ -12,11 +13,14 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithPix
     {
         private readonly ICheckoutOrderPreparer _checkoutPreparer;
         private readonly IAsaasIntegrationPaymentRepository _asaasPaymentRepository;
+        private readonly IAsaasService _asaasService;
         private readonly ISender _mediator;
+        private readonly IUnitOfWork _unitOfWork;
 
         public PayOrderWithPixCommandHandler(
             ICheckoutOrderPreparer checkoutPreparer,
             IAsaasIntegrationPaymentRepository asaasPaymentRepository,
+            IAsaasService asaasService,
             ISender mediator,
             ILogTrackerRepository logRepository,
             IUnitOfWork unitOfWork)
@@ -24,7 +28,9 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithPix
         {
             _checkoutPreparer = checkoutPreparer;
             _asaasPaymentRepository = asaasPaymentRepository;
+            _asaasService = asaasService;
             _mediator = mediator;
+            _unitOfWork = unitOfWork;
         }
 
         public override async Task<Result<PayOrderWithPixResponse>> Handle(
@@ -50,12 +56,43 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithPix
                     {
                         if (string.Equals(existingPayment.Status, "PENDING", StringComparison.OrdinalIgnoreCase))
                         {
+                            var qrCodeBase64 = existingPayment.PixQrCodeBase64;
+                            var pixPayload = existingPayment.PixPayload;
+
+                            // Uma tentativa anterior pode ter criado a cobrança no Asaas com sucesso mas
+                            // falhado ao buscar o QR Code (hiccup pontual do gateway) — sem isto, a
+                            // idempotência acima devolveria pra sempre o mesmo registro sem QR Code,
+                            // já que nunca mais tentaria buscar de novo (a tela do storefront ficaria
+                            // presa mostrando só "Aguardando confirmação...", sem nunca exibir o QR).
+                            if (string.IsNullOrEmpty(qrCodeBase64) &&
+                                string.Equals(existingPayment.BillingType, "PIX", StringComparison.OrdinalIgnoreCase))
+                            {
+                                try
+                                {
+                                    var qrCode = await _asaasService.GetPixQrCodeAsync(existingPayment.AsaasPaymentId, cancellationToken);
+                                    qrCodeBase64 = qrCode.EncodedImage;
+                                    pixPayload = qrCode.Payload;
+
+                                    var trackedPayment = await _asaasPaymentRepository.GetByIdForUpdateAsync(existingPayment.Id, cancellationToken);
+                                    if (trackedPayment is not null)
+                                    {
+                                        trackedPayment.SetPixDetails(qrCodeBase64, pixPayload);
+                                        await _unitOfWork.CommitAsync(cancellationToken);
+                                    }
+                                }
+                                catch (HttpRequestException)
+                                {
+                                    // Ainda indisponível no Asaas — devolve sem QR Code; o cliente pode
+                                    // tentar novamente (reabrir o pagamento repete este mesmo fluxo).
+                                }
+                            }
+
                             return Result.Success(new PayOrderWithPixResponse(
                                 existingPayment.Id,
                                 existingPayment.AsaasPaymentId,
                                 existingPayment.Status,
-                                existingPayment.PixQrCodeBase64,
-                                existingPayment.PixPayload,
+                                qrCodeBase64,
+                                pixPayload,
                                 existingPayment.InvoiceUrl,
                                 existingPayment.Value));
                         }
