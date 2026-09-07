@@ -514,7 +514,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
         return CustomerOrder.Create(
             assignment.BranchId, null, null, assignment.EmployeeId, null,
             $"Pedido Ifood #{details.DisplayId ?? IfoodOrderId}", now, null, orderTypeId,
-            customerName, details.CustomerPhone,
+            OrderOriginIds.IFood, customerName, details.CustomerPhone,
             orderTypeId == OrderTypeIds.Delivery ? (details.DeliveryAddressFormatted ?? "Endereço não informado") : null);
     }
 

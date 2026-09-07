@@ -17,6 +17,7 @@ public sealed class CustomerOrder : AggregateRoot
     public long EmployeeId { get; private set; }
     public long OrderStatusId { get; private set; }
     public long OrderTypeId { get; private set; }
+    public long OrderOriginId { get; private set; }
     public string? CustomerName { get; private set; }
     public string? CustomerPhone { get; private set; }
     public string? DeliveryAddress { get; private set; }
@@ -34,8 +35,24 @@ public sealed class CustomerOrder : AggregateRoot
     public DateTime? UpdatedAt { get; private set; }
     public bool IsActive { get; private set; }
     public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
+
     private CustomerOrder() : base(0) { }
-    private CustomerOrder(long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes, decimal? creditLimitAmount, long orderTypeId, string? customerName, string? customerPhone, string? deliveryAddress, long? customerId, DateTime Now) : base(0)
+
+    private CustomerOrder(
+        long branchId,
+        long? diningTableId,
+        long? comandaId,
+        long employeeId,
+        int? guestCount,
+        string? notes,
+        decimal? creditLimitAmount,
+        long orderTypeId,
+        long orderOriginId,
+        string? customerName,
+        string? customerPhone,
+        string? deliveryAddress,
+        long? customerId,
+        DateTime Now) : base(0)
     {
         CreditLimitAmount = comandaId is null ? null : creditLimitAmount;
         BranchId = branchId;
@@ -45,6 +62,7 @@ public sealed class CustomerOrder : AggregateRoot
         GuestCount = guestCount;
         Notes = notes;
         OrderTypeId = orderTypeId;
+        OrderOriginId = orderOriginId;
         CustomerName = customerName;
         CustomerPhone = customerPhone;
         DeliveryAddress = deliveryAddress;
@@ -58,8 +76,12 @@ public sealed class CustomerOrder : AggregateRoot
     public static Result<CustomerOrder> Create(
         long branchId, long? diningTableId, long? comandaId, long employeeId, int? guestCount, string? notes,
         DateTime Now,
-        decimal? creditLimitAmount = null, long orderTypeId = OrderTypeIds.Mesa,
-        string? customerName = null, string? customerPhone = null, string? deliveryAddress = null,
+        decimal? creditLimitAmount = null,
+        long orderTypeId = OrderTypeIds.Mesa,
+        long orderOriginId = 1, // Padrão 1 = LOCAL conforme a tabela OrderOrigin
+        string? customerName = null,
+        string? customerPhone = null,
+        string? deliveryAddress = null,
         long? customerId = null)
     {
         if (orderTypeId == OrderTypeIds.Mesa && diningTableId is null && comandaId is null)
@@ -71,10 +93,12 @@ public sealed class CustomerOrder : AggregateRoot
         if (orderTypeId == OrderTypeIds.Delivery && string.IsNullOrWhiteSpace(deliveryAddress))
             return Result.Failure<CustomerOrder>(
                 new Error("CustomerOrder.MissingDeliveryAddress", "Delivery orders require a delivery address."));
+
         return Result.Success(new CustomerOrder(
             branchId, diningTableId, comandaId, employeeId, guestCount, notes, creditLimitAmount,
-            orderTypeId, customerName, customerPhone, deliveryAddress, customerId, Now));
+            orderTypeId, orderOriginId, customerName, customerPhone, deliveryAddress, customerId, Now));
     }
+
     public Result ForceCancelItemForTransfer(long orderItemId, DateTime Now, long? actorEmployeeId = null)
     {
         if (!IsOpen())
@@ -89,6 +113,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public Result AddItemWithPromotion(Product product, decimal quantity, string? notes, Promotion? activePromotion, long employeeId, DateTime Now)
     {
         var unitPrice = product.SalePrice;
@@ -134,18 +159,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
-    /// <summary>
-    /// Adiciona ao pedido um item vindo de uma transferência (mesa↔mesa ou comanda↔comanda),
-    /// já nascendo com o status original do item na origem (Lançado, Enviado à Cozinha, Pronto,
-    /// Entregue etc.), em vez de sempre nascer "Lançado" e precisar de um UpdateItemStatus posterior.
-    /// Existe para evitar reprocurar o item recém-criado por Id logo em seguida: como o Id só é
-    /// atribuído pelo EF Core no SaveChanges, todo item novo ainda não salvo tem Id == 0 — ao
-    /// transferir vários itens em lote num único commit, mais de um item novo compartilha Id == 0
-    /// simultaneamente, e um lookup por Id (FirstOrDefault(i => i.Id == 0)) acaba pegando o primeiro
-    /// item com Id 0 da lista, não necessariamente o que acabou de ser adicionado — corrompendo o
-    /// status restaurado (ou falhando com "FinalStatus" quando esse primeiro item já está
-    /// Entregue/Cancelado). Setar o status direto na criação, por referência, elimina esse problema.
-    /// </summary>
+
     public Result AddTransferredItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, long originalStatusId, DateTime Now)
     {
         if (!IsOpen())
@@ -169,6 +183,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public Result AddPizzaItem(
         long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now,
         long pizzaSizeId, long? pizzaCrustId, long? pizzaEdgeId, IReadOnlyCollection<long> pizzaFlavorIds)
@@ -196,6 +211,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public Result AddComplement(long orderItemId, long complementId, decimal unitPriceCharged, DateTime Now)
     {
         if (!IsOpen())
@@ -225,6 +241,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public Result UpdateItemStatus(long orderItemId, long orderItemStatusId, DateTime Now, long? actorEmployeeId = null)
     {
         if (!IsOpen())
@@ -240,6 +257,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public Result ApplyDiscount(decimal discountAmount, DateTime Now)
     {
         if (!IsOpen())
@@ -254,6 +272,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public Result Close(decimal serviceFeeRate, DateTime Now)
     {
         if (!IsOpen())
@@ -269,6 +288,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public Result RaiseCreditLimit(decimal newLimitAmount, DateTime Now)
     {
         if (ComandaId is null)
@@ -281,6 +301,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public Result RemoveServiceFee(DateTime Now)
     {
         if (OrderStatusId != OrderStatusIds.AguardandoPagamento)
@@ -295,6 +316,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public Result MarkAsPaid(DateTime Now)
     {
         if (OrderStatusId != OrderStatusIds.AguardandoPagamento)
@@ -305,6 +327,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public Result ReopenForPayment(DateTime Now)
     {
         if (OrderStatusId != OrderStatusIds.Pago)
@@ -315,6 +338,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public Result ReopenForConsumption(DateTime Now)
     {
         if (OrderStatusId != OrderStatusIds.AguardandoPagamento)
@@ -326,6 +350,7 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public Result Cancel(DateTime Now)
     {
         if (OrderStatusId == OrderStatusIds.Pago)
@@ -338,13 +363,16 @@ public sealed class CustomerOrder : AggregateRoot
         UpdatedAt = Now;
         return Result.Success();
     }
+
     public void Deactivate(DateTime Now)
     {
         IsActive = false;
         UpdatedAt = Now;
     }
+
     private bool IsOpen()
         => OrderStatusId is OrderStatusIds.Aberto or OrderStatusIds.EmAndamento or OrderStatusIds.AguardandoPagamento;
+
     private void RecalculateTotals()
     {
         SubtotalAmount = _items

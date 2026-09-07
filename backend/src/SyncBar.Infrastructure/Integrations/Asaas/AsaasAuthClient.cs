@@ -33,7 +33,7 @@ public class AsaasAuthClient
         if (string.IsNullOrWhiteSpace(apiKey))
             throw new InvalidOperationException($"Asaas ApiKey não configurada para o ambiente {(_isProduction ? "Produção" : "Sandbox")}.");
 
-        if (!baseUrl.EndsWith("/"))
+        if (!baseUrl.EndsWith('/'))
         {
             baseUrl += "/";
         }

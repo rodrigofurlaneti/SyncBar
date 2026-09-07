@@ -33,7 +33,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = UnitOfMeasure.Create(invalidName, "kg");
+            var result = UnitOfMeasure.Create(invalidName!, "kg");
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -48,7 +48,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceAbbreviation_ShouldReturnFailureResult(string? invalidAbbreviation)
         {
             // Act
-            var result = UnitOfMeasure.Create("Kilogram", invalidAbbreviation);
+            var result = UnitOfMeasure.Create("Kilogram", invalidAbbreviation!);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

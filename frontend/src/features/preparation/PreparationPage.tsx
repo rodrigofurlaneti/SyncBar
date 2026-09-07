@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2"; // Adicionado SweetAlert2 para feedback não-intrusivo
 import { advanceItemStatus, getPreparationQueue } from "./api";
 import { useAuthStore } from "../../stores/authStore";
-import { OrderItemStatus, orderItemStatusLabel, OrderType } from "../../lib/types";
+import { OrderItemStatus, orderItemStatusLabel, OrderOrigin, orderOriginLabel, OrderType } from "../../lib/types";
 import type { PreparationItemResponse } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
 
@@ -235,15 +235,26 @@ export function PreparationPage() {
                                     <span className="display" style={{ fontSize: "1.35rem" }}>
                                         {ticketTitle}
                                     </span>
-                                    {ticket.orderTypeId !== OrderType.Mesa && (
-                                        <span className="chip" style={{ "--dot": "var(--reserved)" } as React.CSSProperties}>
-                                            {ticket.orderTypeId === OrderType.Delivery
-                                                ? "DELIVERY"
-                                                : ticket.orderTypeId === OrderType.WebSite
-                                                    ? "AUTOATENDIMENTO WEB SITE"
-                                                    : "RETIRADA"}
-                                        </span>
-                                    )}
+                                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                        {ticket.orderTypeId !== OrderType.Mesa && (
+                                            <span className="chip" style={{ "--dot": "var(--reserved)" } as React.CSSProperties}>
+                                                {ticket.orderTypeId === OrderType.Delivery
+                                                    ? "DELIVERY"
+                                                    : ticket.orderTypeId === OrderType.WebSite
+                                                        ? "AUTOATENDIMENTO WEB SITE"
+                                                        : "RETIRADA"}
+                                            </span>
+                                        )}
+                                        {ticket.orderOriginId !== OrderOrigin.Local && (
+                                            <span
+                                                className="chip"
+                                                data-testid={`kds-origin-${ticket.customerOrderId}`}
+                                                style={{ "--dot": "var(--busy)" } as React.CSSProperties}
+                                            >
+                                                {orderOriginLabel[ticket.orderOriginId] ?? ticket.orderOriginName}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <span className="mono-num" style={{ color: "var(--ink-faint)", fontSize: "0.8rem" }}>
                                     #{ticket.customerOrderId} ·{" "}

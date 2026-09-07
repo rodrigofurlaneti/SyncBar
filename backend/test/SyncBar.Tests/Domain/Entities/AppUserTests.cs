@@ -44,7 +44,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceUserName_ShouldReturnFailureResult(string? invalidUserName)
         {
             // Act
-            var result = AppUser.Create(1, null, invalidUserName, "jdoe@example.com", "hash");
+            var result = AppUser.Create(1, null, invalidUserName!, "jdoe@example.com", "hash");
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -59,7 +59,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceEmail_ShouldReturnFailureResult(string? invalidEmail)
         {
             // Act
-            var result = AppUser.Create(1, null, "jdoe", invalidEmail, "hash");
+            var result = AppUser.Create(1, null, "jdoe", invalidEmail!, "hash");
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -74,7 +74,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespacePasswordHash_ShouldReturnFailureResult(string? invalidPasswordHash)
         {
             // Act
-            var result = AppUser.Create(1, null, "jdoe", "jdoe@example.com", invalidPasswordHash);
+            var result = AppUser.Create(1, null, "jdoe", "jdoe@example.com", invalidPasswordHash!);
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -177,7 +177,7 @@ namespace SyncBar.Tests.Domain.Entities
             var user = AppUser.Create(1, null, "jdoe", "jdoe@example.com", "old-hash").Value;
 
             // Act
-            var result = user.ChangePasswordHash(invalidHash);
+            var result = user.ChangePasswordHash(invalidHash!);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

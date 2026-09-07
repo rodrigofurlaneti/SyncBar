@@ -41,6 +41,31 @@ public static class OrderTypeIds
     public const long WebSite = 4;
 }
 
+// Lookup seedado em orderorigin (ver sql de seed) — canal por onde o pedido chegou.
+// LOCAL: garçom lança direto na mesa/comanda (inclui autoatendimento via QR Code, ainda presencial).
+// WEBSITE: cliente faz o pedido pelo site (fluxo Storefront). IFOOD/KEETA: pedido sincronizado
+// da respectiva integração de delivery.
+public static class OrderOriginIds
+{
+    public const long Local = 1;
+    public const long WebSite = 2;
+    public const long IFood = 3;
+    public const long Keeta = 4;
+
+    // Nome fixo dos 4 OrderOrigin seedados globalmente (CompanyId/BranchId nulos na tabela) —
+    // resolvido aqui sem consulta ao banco, compartilhado por todo response que precisa exibir a
+    // origem do pedido (cardápio, fila de preparo, board de delivery). Um id fora do intervalo
+    // seedado (origem customizada futura) cai no fallback.
+    public static string GetName(long orderOriginId) => orderOriginId switch
+    {
+        Local => "LOCAL",
+        WebSite => "WEBSITE",
+        IFood => "IFOOD",
+        Keeta => "KEETA",
+        _ => $"Origem {orderOriginId}",
+    };
+}
+
 // Não é lookup seedado (sem tabela própria) — só uma constante de código para a
 // coluna TINYINT ReservationStatusId (CHECK 1-5 em BarRestaurante_ReservaMesa.sql).
 public static class ReservationStatusIds

@@ -45,6 +45,7 @@ namespace SyncBar.Tests.Infrastructure.Persistence.Repositories
         {
             Context.Dispose();
             Connection.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 

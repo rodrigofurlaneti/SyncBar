@@ -387,6 +387,7 @@ public sealed class AddPublicOrderItemCommandHandlerTests
         capturedOrder!.DiningTableId.Should().Be(table.Id);
         capturedOrder.ComandaId.Should().BeNull();
         capturedOrder.OrderTypeId.Should().Be(OrderTypeIds.Mesa);
+        capturedOrder.OrderOriginId.Should().Be(OrderOriginIds.Local);
         capturedOrder.EmployeeId.Should().Be(SelfServiceEmployeeId);
         capturedOrder.Items.Should().ContainSingle();
         capturedOrder.Items.First().Quantity.Should().Be(2);
@@ -441,6 +442,7 @@ public sealed class AddPublicOrderItemCommandHandlerTests
         capturedOrder.Should().NotBeNull();
         capturedOrder!.DiningTableId.Should().BeNull();
         capturedOrder.ComandaId.Should().Be(comanda.Id);
+        capturedOrder.OrderOriginId.Should().Be(OrderOriginIds.Local);
         capturedOrder.CreditLimitAmount.Should().Be(1000m);
         capturedOrder.Notes.Should().Contain("Mesa 7");
         table.TableStatusId.Should().Be(TableStatusIds.Ocupada);

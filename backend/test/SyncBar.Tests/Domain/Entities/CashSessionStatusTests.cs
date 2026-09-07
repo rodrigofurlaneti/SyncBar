@@ -31,7 +31,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = CashSessionStatus.Create(invalidName);
+            var result = CashSessionStatus.Create(invalidName!);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

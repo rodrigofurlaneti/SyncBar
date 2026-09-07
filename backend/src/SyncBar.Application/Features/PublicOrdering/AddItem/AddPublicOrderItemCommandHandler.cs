@@ -211,7 +211,7 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
         // mas o compilador não rastreia essa garantia entre métodos — CS8629 com -warnaserror
         var created = CustomerOrder.Create(
             table.BranchId, table.Id, null, branch.SelfServiceEmployeeId.GetValueOrDefault(),
-            null, "Pedido via QR Code", currentTime, null, OrderTypeIds.Mesa);
+            null, "Pedido via QR Code", currentTime, null, OrderTypeIds.Mesa, OrderOriginIds.Local);
 
         if (created.IsFailure)
             return Result.Failure<(CustomerOrder, bool)>(created.Error);
@@ -240,7 +240,7 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
         var created = CustomerOrder.Create(
             table.BranchId, null, comanda.Id, branch.SelfServiceEmployeeId.GetValueOrDefault(),
             null, $"Mesa {table.Number} — Pedido via QR Code", currentTime,
-            comandaSetting?.DefaultLimitAmount, OrderTypeIds.Mesa);
+            comandaSetting?.DefaultLimitAmount, OrderTypeIds.Mesa, OrderOriginIds.Local);
 
         if (created.IsFailure)
             return Result.Failure<(CustomerOrder, bool)>(created.Error);

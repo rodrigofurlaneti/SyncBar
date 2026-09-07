@@ -86,6 +86,7 @@ namespace SyncBar.Application.Features.Storefront.AddOrder
                         Now: currentTime,
                         creditLimitAmount: null,
                         orderTypeId: OrderTypeIds.WebSite,
+                        orderOriginId: OrderOriginIds.WebSite,
                         customerName: request.CustomerName,
                         customerPhone: request.CustomerPhone,
                         deliveryAddress: deliveryAddressFormatted,

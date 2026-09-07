@@ -37,7 +37,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = PizzaFlavor.Create(1, invalidName, null);
+            var result = PizzaFlavor.Create(1, invalidName!, null);
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -72,7 +72,7 @@ namespace SyncBar.Tests.Domain.Entities
             var flavor = PizzaFlavor.Create(1, "Calabresa", "Descrição").Value;
 
             // Act
-            var result = flavor.UpdateDetails(invalidName, "Nova descrição");
+            var result = flavor.UpdateDetails(invalidName!, "Nova descrição");
 
             // Assert
             result.IsSuccess.Should().BeFalse();

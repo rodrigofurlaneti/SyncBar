@@ -51,7 +51,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceLegalName_ShouldReturnFailureResult(string? invalidLegalName)
         {
             // Act
-            var result = Company.Create(invalidLegalName, "Trade Name", "12345678000199", null, null);
+            var result = Company.Create(invalidLegalName!, "Trade Name", "12345678000199", null, null);
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -66,7 +66,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceTradeName_ShouldReturnFailureResult(string? invalidTradeName)
         {
             // Act
-            var result = Company.Create("Legal Name", invalidTradeName, "12345678000199", null, null);
+            var result = Company.Create("Legal Name", invalidTradeName!, "12345678000199", null, null);
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -81,7 +81,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceCnpj_ShouldReturnFailureResult(string? invalidCnpj)
         {
             // Act
-            var result = Company.Create("Legal Name", "Trade Name", invalidCnpj, null, null);
+            var result = Company.Create("Legal Name", "Trade Name", invalidCnpj!, null, null);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

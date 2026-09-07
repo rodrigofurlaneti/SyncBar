@@ -51,7 +51,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = Product.Create(1, 2, 3, invalidName, null, null, 10m, null, false, null);
+            var result = Product.Create(1, 2, 3, invalidName!, null, null, 10m, null, false, null);
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -93,7 +93,7 @@ namespace SyncBar.Tests.Domain.Entities
             var product = Product.Create(1, 2, 3, "Cerveja", null, null, 10m, null, false, null).Value;
 
             // Act
-            var result = product.UpdateDetails(2, 3, invalidName, null, null, 10m, null, false, null);
+            var result = product.UpdateDetails(2, 3, invalidName!, null, null, 10m, null, false, null);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

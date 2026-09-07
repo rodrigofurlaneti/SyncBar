@@ -39,6 +39,13 @@ internal sealed class CustomerOrderRepository(AppDbContext context) : ICustomerO
             .Where(x => x.BranchId == branchId && x.IsActive && x.OpenedAt >= from && x.OpenedAt < to)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyCollection<CustomerOrder>> GetByBranchAndOriginAsync(
+        long branchId, long orderOriginId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
+        => await context.CustomerOrders.AsNoTracking()
+            .Include(x => x.Items)
+            .Where(x => x.BranchId == branchId && x.OrderOriginId == orderOriginId && x.IsActive && x.OpenedAt >= from && x.OpenedAt < to)
+            .ToListAsync(cancellationToken);
+
     public async Task<bool> HasOpenOrderForTableAsync(long diningTableId, CancellationToken cancellationToken = default)
         => await context.CustomerOrders.AsNoTracking()
             .AnyAsync(x => x.DiningTableId == diningTableId && x.IsActive && OpenStatuses.Contains(x.OrderStatusId), cancellationToken);
@@ -61,14 +68,14 @@ internal sealed class CustomerOrderRepository(AppDbContext context) : ICustomerO
         => await context.CustomerOrders.AddAsync(entity, cancellationToken);
 
     public async Task<CustomerOrder?> GetOpenByComandaAsync(long comandaId, CancellationToken cancellationToken = default)
-    => await context.CustomerOrders
-        .AsNoTracking()
-        .Include(o => o.Items)
-        .FirstOrDefaultAsync(o => o.ComandaId == comandaId && o.ClosedAt == null && o.IsActive, cancellationToken);
+        => await context.CustomerOrders
+            .AsNoTracking()
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.ComandaId == comandaId && o.ClosedAt == null && o.IsActive, cancellationToken);
 
     public async Task<CustomerOrder?> GetOpenByTableAsync(long diningTableId, CancellationToken cancellationToken = default)
-            => await context.CustomerOrders
-                .AsNoTracking()
-                .Include(o => o.Items)
-                .FirstOrDefaultAsync(o => o.DiningTableId == diningTableId && o.ClosedAt == null && o.IsActive, cancellationToken);
+        => await context.CustomerOrders
+            .AsNoTracking()
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.DiningTableId == diningTableId && o.ClosedAt == null && o.IsActive, cancellationToken);
 }

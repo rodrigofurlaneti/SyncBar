@@ -33,7 +33,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceCode_ShouldReturnFailureResult(string? invalidCode)
         {
             // Act
-            var result = AppFeature.Create(invalidCode, "Valid Name");
+            var result = AppFeature.Create(invalidCode!, "Valid Name");
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -48,7 +48,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = AppFeature.Create("VALID_CODE", invalidName);
+            var result = AppFeature.Create("VALID_CODE", invalidName!);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

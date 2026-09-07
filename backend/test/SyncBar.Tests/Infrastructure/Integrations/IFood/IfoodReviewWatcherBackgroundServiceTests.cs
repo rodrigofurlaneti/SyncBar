@@ -242,7 +242,7 @@ public sealed class IfoodReviewWatcherBackgroundServiceTests
         SetupReviews(Review("r-1", new DateTime(2026, 1, 1)), Review("r-2", new DateTime(2026, 1, 2), comment: longComment));
         await RunCycleAsync();
 
-        _alertStore.Received(1).Raise(1, 10, "Loja Centro", Arg.Any<string>(), Arg.Is<string>(m => m.Contains("…") && !m.Contains(longComment)), Arg.Any<IfoodOperationalAlertSeverity>());
+        _alertStore.Received(1).Raise(1, 10, "Loja Centro", Arg.Any<string>(), Arg.Is<string>(m => m.Contains('…') && !m.Contains(longComment)), Arg.Any<IfoodOperationalAlertSeverity>());
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-namespace SyncBar.Application.Features.Orders;
+﻿namespace SyncBar.Application.Features.Orders;
 
 // ComplementItemName não é resolvido aqui (OrderItemComplement só conhece o ComplementId,
 // cross-aggregate) — o front-end casa pelo Id usando o catálogo de complementos já carregado
@@ -14,6 +14,7 @@ public sealed record OrderItemResponse(
     decimal DiscountAmount,
     decimal TotalAmount,
     string? Notes,
+    long? EmployeeId,
     IReadOnlyCollection<OrderItemComplementResponse> Complements);
 
 public sealed record OrderResponse(
@@ -21,7 +22,7 @@ public sealed record OrderResponse(
     long BranchId,
     long? DiningTableId,
     long? ComandaId,
-    long EmployeeId,
+    long? EmployeeId,
     long OrderStatusId,
     int? GuestCount,
     DateTime OpenedAt,
@@ -34,6 +35,8 @@ public sealed record OrderResponse(
     decimal? CreditLimitAmount,
     string? Notes,
     long OrderTypeId,
+    long OrderOriginId,
+    string OrderOriginName,
     string? CustomerName,
     string? CustomerPhone,
     string? DeliveryAddress,

@@ -37,7 +37,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceIfoodPizzaId_ShouldReturnFailureResult(string? invalidIfoodPizzaId)
         {
             // Act
-            var result = IfoodPizzaMapping.Create(1, 2, invalidIfoodPizzaId);
+            var result = IfoodPizzaMapping.Create(1, 2, invalidIfoodPizzaId!);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

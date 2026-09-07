@@ -52,7 +52,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         return await ExecuteWithLogAsync(
             nameof(AddOrderItemCommandHandler),
             nameof(Handle),
-            null, 
+            null,
             async (userIdBox) =>
             {
                 userIdBox.Value = request.EmployeeId;
@@ -201,7 +201,7 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         if (stockResult.IsFailure)
             return Result.Failure(stockResult.Error);
 
-        long? movementEmployeeId = employeeId != 0 ? employeeId : null;
+        long? movementEmployeeId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : null;
 
         var movementResult = StockMovement.Create(
             stockItemId: stockSnapshot.ProductId,
@@ -235,9 +235,6 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         if (resolvedComplements.Count == 0)
             return Result.Success();
 
-        // Só a linha principal recebe complementos (o item bônus da promoção EmDobro
-        // não recebe), então a baixa do produto vinculado segue a quantidade dessa
-        // linha — nunca a soma de todas as linhas recém-lançadas.
         var primaryItem = order.Items.ElementAt(itemCountBefore);
         var primaryQuantity = primaryItem.Quantity;
         var complementItemIds = resolvedComplements.Select(c => c.ComplementItemId).Distinct().ToList();
@@ -246,10 +243,6 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
             .Where(ci => ci.LinkedProductId.HasValue)
             .ToDictionary(ci => ci.Id, ci => ci.LinkedProductId!.Value);
 
-        // O repositório devolve um snapshot novo a cada consulta, então dois
-        // complementos que apontam pro MESMO produto vinculado precisam compartilhar
-        // a mesma instância — senão cada um deduz sobre o saldo original e o estoque
-        // pode ficar negativo sem falhar a checagem de suficiência.
         var linkedStocksByProductId = new Dictionary<long, ProductStock?>();
 
         foreach (var (complementId, _, complementItemId) in resolvedComplements)
@@ -287,13 +280,13 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         }
 
         if (linkedStock is null)
-            return Result.Success(); // Produto vinculado não é controlado por estoque — nada a baixar.
+            return Result.Success();
 
         var linkedStockResult = linkedStock.Deduct(primaryQuantity);
         if (linkedStockResult.IsFailure)
             return Result.Failure(linkedStockResult.Error);
 
-        var linkedMovementEmployeeId = employeeId is > 0 ? employeeId : null;
+        long? linkedMovementEmployeeId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : null;
         var linkedMovementResult = StockMovement.Create(
             stockItemId: linkedStock.ProductId,
             stockMovementTypeId: 2, // Tipo: Venda/Saída

@@ -57,7 +57,7 @@ namespace SyncBar.Tests.Domain.Entities
         {
             // Act
             var result = IfoodOrder.Create(1, 2, "abc-123", "#001", "merchant-1", "DELIVERY", "Ifood",
-                blankTiming, null, DateTime.Now, false);
+                blankTiming!, null, DateTime.Now, false);
 
             // Assert
             result.IsSuccess.Should().BeTrue();
@@ -71,7 +71,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceIfoodOrderId_ShouldReturnFailureResult(string? invalidId)
         {
             // Act
-            var result = IfoodOrder.Create(1, 2, invalidId, "#001", "merchant-1", "DELIVERY", "Ifood",
+            var result = IfoodOrder.Create(1, 2, invalidId!, "#001", "merchant-1", "DELIVERY", "Ifood",
                 "IMMEDIATE", null, DateTime.Now, false);
 
             // Assert
@@ -87,7 +87,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceMerchantId_ShouldReturnFailureResult(string? invalidMerchantId)
         {
             // Act
-            var result = IfoodOrder.Create(1, 2, "abc-123", "#001", invalidMerchantId, "DELIVERY", "Ifood",
+            var result = IfoodOrder.Create(1, 2, "abc-123", "#001", invalidMerchantId!, "DELIVERY", "Ifood",
                 "IMMEDIATE", null, DateTime.Now, false);
 
             // Assert

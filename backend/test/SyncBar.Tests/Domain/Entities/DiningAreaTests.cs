@@ -48,7 +48,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = DiningArea.Create(1, invalidName);
+            var result = DiningArea.Create(1, invalidName!);
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -81,7 +81,7 @@ namespace SyncBar.Tests.Domain.Entities
             var diningArea = DiningArea.Create(1, "Salão Principal").Value;
 
             // Act
-            diningArea.UpdateName(invalidName);
+            diningArea.UpdateName(invalidName!);
 
             // Assert
             diningArea.Name.Should().Be("Salão Principal");

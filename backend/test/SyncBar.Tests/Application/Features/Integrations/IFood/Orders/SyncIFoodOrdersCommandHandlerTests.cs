@@ -276,6 +276,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         getCustomerOrder()!.Items.Should().BeEmpty();
+        getCustomerOrder()!.OrderOriginId.Should().Be(OrderOriginIds.IFood);
         getIfoodOrder()!.HasUnmappedItems.Should().BeTrue();
         await _orderClient.Received(1).AcknowledgeEventsAsync(ValidToken, Arg.Is<IReadOnlyCollection<string>>(ids => ids.Contains("evt-1")), Arg.Any<CancellationToken>());
     }

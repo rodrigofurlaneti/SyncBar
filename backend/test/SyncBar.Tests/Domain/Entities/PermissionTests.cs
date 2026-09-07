@@ -35,7 +35,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceCode_ShouldReturnFailureResult(string? invalidCode)
         {
             // Act
-            var result = Permission.Create(invalidCode, "Edit Menu", "Menu");
+            var result = Permission.Create(invalidCode!, "Edit Menu", "Menu");
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -50,7 +50,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = Permission.Create("MENU_EDIT", invalidName, "Menu");
+            var result = Permission.Create("MENU_EDIT", invalidName!, "Menu");
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -65,7 +65,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceModuleName_ShouldReturnFailureResult(string? invalidModuleName)
         {
             // Act
-            var result = Permission.Create("MENU_EDIT", "Edit Menu", invalidModuleName);
+            var result = Permission.Create("MENU_EDIT", "Edit Menu", invalidModuleName!);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

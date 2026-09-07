@@ -36,7 +36,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceCode_ShouldReturnFailureResult(string? invalidCode)
         {
             // Act
-            var result = Comanda.Create(1, 1, invalidCode);
+            var result = Comanda.Create(1, 1, invalidCode!);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

@@ -41,7 +41,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceLegalName_ShouldReturnFailureResult(string? invalidLegalName)
         {
             // Act
-            var result = Supplier.Create(1, invalidLegalName, null, null, null, null);
+            var result = Supplier.Create(1, invalidLegalName!, null, null, null, null);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

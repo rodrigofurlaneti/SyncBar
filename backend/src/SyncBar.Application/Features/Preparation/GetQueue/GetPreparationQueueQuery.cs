@@ -19,6 +19,8 @@ public sealed record PreparationTicketResponse(
     int? TableNumber,
     string? ComandaCode,
     long OrderTypeId,
+    long OrderOriginId,
+    string OrderOriginName,
     string? CustomerName,
     DateTime OpenedAt,
     IReadOnlyCollection<PreparationItemResponse> Items);

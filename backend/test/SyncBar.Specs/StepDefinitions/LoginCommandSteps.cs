@@ -66,10 +66,10 @@ public sealed class LoginCommandSteps
     public void GivenASenhaInformadaEstaCorreta()
     {
         _passwordHasher.Setup(h => h.Verify(It.IsAny<string>(), _user!.PasswordHash)).Returns(true);
-        _userRepository.Setup(r => r.GetRoleNamesAsync(_user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<string>());
-        _userRepository.Setup(r => r.GetPermissionCodesAsync(_user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<string>());
+        _userRepository.Setup(r => r.GetRoleNamesAsync(_user!.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<string>());
+        _userRepository.Setup(r => r.GetPermissionCodesAsync(_user!.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<string>());
         _jwtTokenProvider
-            .Setup(p => p.GenerateToken(_user, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<IReadOnlyCollection<string>>()))
+            .Setup(p => p.GenerateToken(_user!, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<IReadOnlyCollection<string>>()))
             .Returns(new AccessToken("access-token-value", DateTime.Now.AddHours(1)));
         _jwtTokenProvider.Setup(p => p.GenerateRefreshToken()).Returns("refresh-token-value");
     }
@@ -96,7 +96,7 @@ public sealed class LoginCommandSteps
     public void ThenAOperacaoDeveFalharComOErro(string errorCode)
     {
         _result!.IsFailure.Should().BeTrue();
-        _result.Error.Code.Should().Be(errorCode);
+        _result!.Error.Code.Should().Be(errorCode);
     }
 
     [Then(@"a operacao deve ter sucesso")]
