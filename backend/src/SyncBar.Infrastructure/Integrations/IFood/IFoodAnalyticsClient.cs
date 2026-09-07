@@ -40,9 +40,16 @@ internal sealed class IfoodAnalyticsClient(HttpClient httpClient) : IIfoodAnalyt
                     new { from = periodStart.ToString("yyyy-MM-dd"), to = periodEnd.ToString("yyyy-MM-dd") },
                 },
                 groupBy = new { fields = new[] { "salesChannel" } },
+                // Na doc oficial (coleção Postman) o array de funções de agregação de cada métrica
+                // tem o mesmo tamanho para todas as métricas do payload (e mesmo tamanho de
+                // "dateIntervals") — ex.: com 2 dateIntervals, TODAS as métricas usam array de 2
+                // elementos. Antes desta correção "gmv" pedia 2 funções (["sum","avg"]) enquanto as
+                // demais métricas pediam só 1, inconsistente entre si e com o único dateInterval
+                // enviado aqui (1 elemento) — risco de 400 Bad Request no Ifood. Corrigido para 1
+                // elemento em todas as métricas, alinhado ao único dateInterval do período pedido.
                 metrics = new Dictionary<string, string[]>
                 {
-                    ["gmv"] = ["sum", "avg"],
+                    ["gmv"] = ["sum"],
                     ["gmvWithoutDelivery"] = ["sum"],
                     ["feesGrossValue"] = ["sum"],
                     ["netDeliveryFee"] = ["sum"],

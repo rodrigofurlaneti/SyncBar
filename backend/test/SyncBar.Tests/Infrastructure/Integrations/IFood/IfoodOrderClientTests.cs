@@ -221,11 +221,22 @@ public sealed class IfoodOrderClientTests
     [Fact]
     public async Task GetCancellationReasonsAsync_Success_ShouldMapReasons()
     {
-        _handler.EnqueueJson(HttpStatusCode.OK, """{"reasons":[{"code":"1","description":"Cliente desistiu"}]}""");
+        // Resposta real do Ifood é um array bruto de {cancelCodeId, description}, sem envelope.
+        _handler.EnqueueJson(HttpStatusCode.OK, """[{"cancelCodeId":"1","description":"Cliente desistiu"}]""");
 
         var result = await _client.GetCancellationReasonsAsync("tok", "order-1", CancellationToken.None);
 
         result.Should().ContainSingle(r => r.Code == "1" && r.Description == "Cliente desistiu");
+    }
+
+    [Fact]
+    public async Task GetCancellationReasonsAsync_NoContent_ShouldReturnEmpty()
+    {
+        _handler.EnqueueJson(HttpStatusCode.NoContent, "");
+
+        var result = await _client.GetCancellationReasonsAsync("tok", "order-1", CancellationToken.None);
+
+        result.Should().BeEmpty();
     }
 
     [Fact]

@@ -46,13 +46,16 @@ internal sealed class IfoodFinancialClient(HttpClient httpClient) : IIfoodFinanc
     public async Task<IReadOnlyCollection<IfoodSettlementDto>> GetSettlementsAsync(
         string accessToken, string merchantId, DateTime periodStart, DateTime periodEnd, CancellationToken cancellationToken = default)
     {
-        // A coleção Postman oficial não documenta filtros de data pra este endpoint (ao contrário
-        // de v2.0/v2.1) — periodStart/periodEnd ficam na assinatura por compatibilidade com quem
-        // já chama este método (sync diário), mas não são enviados como query.
-        var url = $"{BaseUrlV3}/{Uri.EscapeDataString(merchantId)}/settlements";
+        // Corrigido: a doc oficial (Postman v3.0) exige EXPLICITAMENTE beginPaymentDate+endPaymentDate
+        // OU beginCalculationDate+endCalculationDate ("mandatory in the request") — sem nenhum dos
+        // dois pares a API responde 400. Usamos o par de cálculo (calculation), que é o que casa
+        // com a semântica de periodStart/periodEnd já recebidos por este método (janela de sync).
+        var url = $"{BaseUrlV3}/{Uri.EscapeDataString(merchantId)}/settlements" +
+                   $"?beginCalculationDate={periodStart:yyyy-MM-dd}&endCalculationDate={periodEnd:yyyy-MM-dd}";
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        SetAcceptHeader(request);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
@@ -115,7 +118,7 @@ internal sealed class IfoodFinancialClient(HttpClient httpClient) : IIfoodFinanc
         string accessToken, string merchantId, CancellationToken cancellationToken = default)
     {
         var url = $"{BaseUrlV3}/{Uri.EscapeDataString(merchantId)}/anticipations";
-        return await GetRawReportAsync(url, accessToken, cancellationToken);
+        return await GetRawReportAsync(url, accessToken, "application/json", cancellationToken);
     }
 
     public async Task<IfoodFinancialReportResultDto> GetSalesV3Async(
@@ -123,7 +126,7 @@ internal sealed class IfoodFinancialClient(HttpClient httpClient) : IIfoodFinanc
     {
         var url = $"{BaseUrlV3}/{Uri.EscapeDataString(merchantId)}/sales" +
                    $"?beginSalesDate={periodStart:yyyy-MM-dd}&endSalesDate={periodEnd:yyyy-MM-dd}&page={page}";
-        return await GetRawReportAsync(url, accessToken, cancellationToken);
+        return await GetRawReportAsync(url, accessToken, "application/json", cancellationToken);
     }
 
     public async Task<IfoodReconciliationOnDemandRequestDto> RequestReconciliationOnDemandAsync(
@@ -175,7 +178,12 @@ internal sealed class IfoodFinancialClient(HttpClient httpClient) : IIfoodFinanc
         string? periodId, DateTime? rangeStart, DateTime? rangeEnd, CancellationToken cancellationToken = default)
     {
         var url = BuildReportUrl(merchantId, reportType, periodId, rangeStart, rangeEnd);
-        return await GetRawReportAsync(url, accessToken, cancellationToken);
+        // "Get payment details" é o único endpoint do catálogo cuja doc oficial pede
+        // Accept: application/json;charset=UTF-8 — os demais pedem application/json puro.
+        var acceptValue = reportType == IfoodFinancialReportType.PaymentDetails
+            ? "application/json;charset=UTF-8"
+            : "application/json";
+        return await GetRawReportAsync(url, accessToken, acceptValue, cancellationToken);
     }
 
     // Mapeia cada tipo de relatório pro path e pros nomes reais de query param, confirmados
@@ -217,11 +225,19 @@ internal sealed class IfoodFinancialClient(HttpClient httpClient) : IIfoodFinanc
                 $"{BaseUrlV21}/{id}/sales{Query(("periodId", periodId), ("beginLastProcessingDate", start), ("endLastProcessingDate", end), ("beginOrderDate", start), ("endOrderDate", end))}",
             IfoodFinancialReportType.AnticipationsV3 =>
                 $"{BaseUrlV3}/{id}/anticipations",
+            // "page" é enviado no exemplo oficial da doc (query obrigatória de paginação) —
+            // faltava aqui (o método dedicado GetSalesV3Async já enviava corretamente).
             IfoodFinancialReportType.SalesV3 =>
-                $"{BaseUrlV3}/{id}/sales{Query(("beginSalesDate", start), ("endSalesDate", end))}",
+                $"{BaseUrlV3}/{id}/sales{Query(("beginSalesDate", start), ("endSalesDate", end), ("page", "1"))}",
             _ => throw new ArgumentOutOfRangeException(nameof(reportType), reportType, null),
         };
     }
+
+    // Todos os endpoints do Financial (v2.0/v2.1/v3.0) documentam um header Accept explícito na
+    // coleção Postman oficial — "application/json" na maioria, "application/json;charset=UTF-8"
+    // só em "Get payment details". Faltava em todas as chamadas (Accept nunca era setado).
+    private static void SetAcceptHeader(HttpRequestMessage request, string acceptValue = "application/json")
+        => request.Headers.TryAddWithoutValidation("Accept", acceptValue);
 
     private static string Query(params (string Key, string? Value)[] parameters)
     {
@@ -248,6 +264,7 @@ internal sealed class IfoodFinancialClient(HttpClient httpClient) : IIfoodFinanc
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        SetAcceptHeader(request);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
@@ -267,10 +284,12 @@ internal sealed class IfoodFinancialClient(HttpClient httpClient) : IIfoodFinanc
         return result;
     }
 
-    private async Task<IfoodFinancialReportResultDto> GetRawReportAsync(string url, string accessToken, CancellationToken cancellationToken)
+    private async Task<IfoodFinancialReportResultDto> GetRawReportAsync(
+        string url, string accessToken, string acceptValue, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        SetAcceptHeader(request, acceptValue);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)

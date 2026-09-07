@@ -48,6 +48,32 @@ internal sealed class IfoodCatalogClient(HttpClient httpClient) : IIfoodCatalogC
 
     public Task<IfoodCatalogActionResult> UpsertItemAsync(string accessToken, string merchantId, IfoodUpsertItemRequest request, CancellationToken cancellationToken = default)
     {
+        // Fase 10 (correção): a doc oficial (exemplos de "Create or update an item" e "Get item
+        // flat" na collection Postman v2) mostra que optionGroups[] referencia suas opções por
+        // "optionIds" (array de strings) — as opções em si (com "productId", não um objeto
+        // "product" aninhado) vivem soltas no array raiz "options". A forma anterior aninhava um
+        // array "options" dentro de cada optionGroup (com um objeto "product" embutido), o que não
+        // corresponde a nenhum schema documentado pelo Ifood.
+        var allOptions = (request.OptionGroups ?? []).SelectMany(og => og.Options).ToList();
+
+        var products = new List<object>
+        {
+            new
+            {
+                id = request.ProductId.ToString(),
+                name = request.ProductName,
+                description = request.ProductDescription,
+                externalCode = request.ProductExternalCode,
+            },
+        };
+        products.AddRange(allOptions.Select(o => new
+        {
+            id = o.ProductId.ToString(),
+            name = o.Name,
+            description = (string?)null,
+            externalCode = (string?)null,
+        }));
+
         var payload = new
         {
             item = new
@@ -59,16 +85,7 @@ internal sealed class IfoodCatalogClient(HttpClient httpClient) : IIfoodCatalogC
                 price = new { value = request.Price },
                 externalCode = request.ExternalCode,
             },
-            products = new[]
-            {
-                new
-                {
-                    id = request.ProductId.ToString(),
-                    name = request.ProductName,
-                    description = request.ProductDescription,
-                    externalCode = request.ProductExternalCode,
-                },
-            },
+            products,
             // Fase 6a (extensão): grupos de complemento reais quando o produto tiver
             // ProductComplementGroup vinculado — vazio (comportamento anterior) caso contrário.
             optionGroups = (request.OptionGroups ?? []).Select(og => new
@@ -78,20 +95,15 @@ internal sealed class IfoodCatalogClient(HttpClient httpClient) : IIfoodCatalogC
                 status = "AVAILABLE",
                 min = og.MinOptions,
                 max = og.MaxOptions,
-                options = og.Options.Select(o => new
-                {
-                    id = o.OptionId.ToString(),
-                    status = o.Available ? "AVAILABLE" : "UNAVAILABLE",
-                    price = new { value = o.Price },
-                    product = new
-                    {
-                        id = o.ProductId.ToString(),
-                        name = o.Name,
-                    },
-                }).ToArray(),
+                optionIds = og.Options.Select(o => o.OptionId.ToString()).ToArray(),
             }).ToArray(),
-            // "options" no nível raiz do payload é usado só por combos (Fase 6c) — continua vazio.
-            options = Array.Empty<object>(),
+            options = allOptions.Select(o => new
+            {
+                id = o.OptionId.ToString(),
+                status = o.Available ? "AVAILABLE" : "UNAVAILABLE",
+                productId = o.ProductId.ToString(),
+                price = new { value = o.Price },
+            }).ToArray(),
         };
 
         return SendActionAsync(HttpMethod.Put, $"{BaseUrlV2}/merchants/{merchantId}/items", accessToken, payload, cancellationToken);

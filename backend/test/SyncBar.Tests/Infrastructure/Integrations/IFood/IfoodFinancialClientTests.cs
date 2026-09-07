@@ -101,7 +101,8 @@ public sealed class IfoodFinancialClientTests
         s.Id.Should().Be("s-1");
         s.Amount.Should().Be(50);
         s.BankCode.Should().Be("001");
-        _handler.Requests[^1].RequestUri!.ToString().Should().EndWith("settlements");
+        var url = _handler.Requests[^1].RequestUri!.ToString();
+        url.Should().Contain("/settlements").And.Contain("beginCalculationDate=").And.Contain("endCalculationDate=");
     }
 
     [Fact]
