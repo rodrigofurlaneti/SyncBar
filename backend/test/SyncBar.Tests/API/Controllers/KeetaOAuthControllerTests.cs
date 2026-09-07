@@ -109,4 +109,15 @@ public sealed class KeetaOAuthControllerTests
 
         result.Should().BeOfType<BadRequestObjectResult>();
     }
+
+    [Fact]
+    public async Task RefreshToken_MissingCompanyOrBranchId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        ControllerTestHelpers.AttachHttpContext(_controller);
+
+        var result = await _controller.RefreshToken(new RefreshKeetaAccessTokenRequest(null, 2), CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<RefreshKeetaAccessTokenCommand>(), Arg.Any<CancellationToken>());
+    }
 }

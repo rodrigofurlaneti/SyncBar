@@ -25,7 +25,7 @@ public sealed class CustomerAddress : AggregateRoot
         long? customerId,
         string street,
         string number,
-        string supplement,
+        string? supplement,
         string zipCode) : base(0)
     {
         CompanyId = companyId;
@@ -33,7 +33,7 @@ public sealed class CustomerAddress : AggregateRoot
         CustomerId = customerId;
         Street = street;
         Number = number;
-        Supplement = supplement;
+        Supplement = supplement ?? string.Empty;
         ZipCode = zipCode;
         IsActive = true;
         CreatedAt = DateTime.Now;
@@ -45,7 +45,7 @@ public sealed class CustomerAddress : AggregateRoot
         long? customerId,
         string street,
         string number,
-        string supplement,
+        string? supplement,
         string zipCode)
     {
         if (string.IsNullOrWhiteSpace(street))
@@ -58,7 +58,12 @@ public sealed class CustomerAddress : AggregateRoot
         return Result.Success(new CustomerAddress(companyId, branchId, customerId, street, number, supplement, zipCode));
     }
 
-    public Result UpdateDetails(string street, string number, string supplement, string zipCode)
+    // Supplement (complemento) é o único campo de endereço genuinamente opcional — Street/Number/
+    // ZipCode são exigidos acima. O parâmetro é `string?` porque isso reflete a nulabilidade real:
+    // Nullable Reference Types é uma checagem só em tempo de compilação, então um `string`
+    // "não anulável" ainda pode chegar null aqui vindo de desserialização JSON — daí o `?? string.Empty`
+    // continuar existindo, agora sem ser um "unreachable code" para o analisador.
+    public Result UpdateDetails(string street, string number, string? supplement, string zipCode)
     {
         if (string.IsNullOrWhiteSpace(street))
             return Result.Failure(new Error("CustomerAddress.EmptyStreet", "Street is required."));
@@ -70,7 +75,7 @@ public sealed class CustomerAddress : AggregateRoot
         Street = street;
         Number = number;
         Supplement = supplement ?? string.Empty;
-        ZipCode = zipCode ?? string.Empty;
+        ZipCode = zipCode;
         UpdatedAt = DateTime.Now;
         return Result.Success();
     }

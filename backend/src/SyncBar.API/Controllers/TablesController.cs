@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -44,9 +45,11 @@ public sealed class TablesController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 }
-// Os três flags são deliberadamente bool não anuláveis: este é um PUT que substitui o estado
-// completo de validação de leitura da mesa de uma vez (não um PATCH parcial), então "false" por
-// omissão é o comportamento de negócio esperado (desabilita a validação não informada) e não um
-// caso de under-posting silencioso — diferente de um Id/valor monetário que nunca deveria ter um
-// zero implícito.
-public sealed record SetReadingValidationRequest(bool IsCameraInputEnabled, bool IsBarcodeEnabled, bool IsQrCodeEnabled);
+// Os três flags continuam bool não anuláveis (é um PUT que substitui o estado completo de
+// validação de leitura da mesa de uma vez, não um PATCH parcial — não faz sentido tratá-los como
+// opcionais), mas agora exigem presença explícita no JSON via [JsonRequired]: evita que uma
+// omissão silenciosa vire "false" sem o cliente ter de fato decidido desabilitar aquela validação.
+public sealed record SetReadingValidationRequest(
+    [property: JsonRequired] bool IsCameraInputEnabled,
+    [property: JsonRequired] bool IsBarcodeEnabled,
+    [property: JsonRequired] bool IsQrCodeEnabled);
