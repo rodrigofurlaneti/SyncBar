@@ -25,8 +25,9 @@ namespace SyncBar.Specs.Features
         private static string[] featureTags = ((string[])(null));
         
         private static global::Reqnroll.FeatureInfo featureInfo = new global::Reqnroll.FeatureInfo(new global::System.Globalization.CultureInfo("en-US"), "Features", "Desativar categoria", @"    Regras de negocio do DeactivateCategoryCommandHandler: falha se a categoria nao existe ou ja
-    esta inativa; caso contrario desativa a categoria (soft delete, sem cascata para os produtos
-    ja cadastrados nela) e dispara a sincronizacao do cardapio com o Ifood.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
+    esta inativa; falha tambem se houver produto ativo vinculado a ela (precisa desativar os
+    produtos primeiro); caso contrario desativa a categoria (soft delete) e dispara a
+    sincronizacao do cardapio com o Ifood.", global::Reqnroll.ProgrammingLanguage.CSharp, featureTags);
         
         private Xunit.Abstractions.ITestOutputHelper _testOutputHelper;
         
@@ -137,7 +138,7 @@ namespace SyncBar.Specs.Features
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Desativar categoria inexistente deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 6
+#line 7
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -147,13 +148,13 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 7
+#line 8
     await testRunner.GivenAsync("nao ha nenhuma categoria cadastrada com o id 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 8
+#line 9
     await testRunner.WhenAsync("eu tento desativar a categoria 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 9
+#line 10
     await testRunner.ThenAsync("a operacao deve falhar com o erro \"Category.NotFound\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
@@ -168,7 +169,7 @@ this.ScenarioInitialize(scenarioInfo);
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Desativar categoria ja inativa deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 11
+#line 12
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -178,28 +179,28 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 12
+#line 13
     await testRunner.GivenAsync("uma categoria Bebidas com id 1 ja esta inativa", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 13
+#line 14
     await testRunner.WhenAsync("eu tento desativar a categoria 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 14
+#line 15
     await testRunner.ThenAsync("a operacao deve falhar com o erro \"Category.NotFound\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Desativar categoria ativa deve ter sucesso")]
+        [Xunit.SkippableFactAttribute(DisplayName="Desativar categoria com produto ativo vinculado deve falhar")]
         [Xunit.TraitAttribute("FeatureTitle", "Desativar categoria")]
-        [Xunit.TraitAttribute("Description", "Desativar categoria ativa deve ter sucesso")]
-        public async global::System.Threading.Tasks.Task DesativarCategoriaAtivaDeveTerSucesso()
+        [Xunit.TraitAttribute("Description", "Desativar categoria com produto ativo vinculado deve falhar")]
+        public async global::System.Threading.Tasks.Task DesativarCategoriaComProdutoAtivoVinculadoDeveFalhar()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Desativar categoria ativa deve ter sucesso", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 16
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Desativar categoria com produto ativo vinculado deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 17
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -209,16 +210,56 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 17
+#line 18
     await testRunner.GivenAsync("existe uma categoria ativa Bebidas com id 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 18
-    await testRunner.WhenAsync("eu tento desativar a categoria 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
 #line 19
-    await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.AndAsync("a categoria 1 tem produto ativo vinculado", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
 #line 20
+    await testRunner.WhenAsync("eu tento desativar a categoria 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 21
+    await testRunner.ThenAsync("a operacao deve falhar com o erro \"Category.HasLinkedProducts\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 22
+    await testRunner.AndAsync("a categoria deve continuar ativa", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+            }
+            await this.ScenarioCleanupAsync();
+        }
+        
+        [Xunit.SkippableFactAttribute(DisplayName="Desativar categoria ativa sem produtos vinculados deve ter sucesso")]
+        [Xunit.TraitAttribute("FeatureTitle", "Desativar categoria")]
+        [Xunit.TraitAttribute("Description", "Desativar categoria ativa sem produtos vinculados deve ter sucesso")]
+        public async global::System.Threading.Tasks.Task DesativarCategoriaAtivaSemProdutosVinculadosDeveTerSucesso()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Desativar categoria ativa sem produtos vinculados deve ter sucesso", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 24
+this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                await this.ScenarioStartAsync();
+#line 25
+    await testRunner.GivenAsync("existe uma categoria ativa Bebidas com id 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
+#line hidden
+#line 26
+    await testRunner.AndAsync("a categoria 1 nao tem produto ativo vinculado", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
+#line hidden
+#line 27
+    await testRunner.WhenAsync("eu tento desativar a categoria 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
+#line hidden
+#line 28
+    await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+#line hidden
+#line 29
     await testRunner.AndAsync("a categoria deve estar inativa", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
