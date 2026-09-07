@@ -71,10 +71,21 @@ public sealed class KeetaRefundDisputeController(
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public Task<IActionResult> Create(
-        [FromBody] CreateKeetaIntegrationRefundDisputeCommand command,
+        [FromBody] CreateKeetaRefundDisputeRequest request,
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaRefundDisputeController), nameof(Create), async () =>
         {
+            if (request.CompanyId is null || request.BranchId is null || request.AfterSaleOrderId is null || request.RefundAmount is null)
+                return BadRequest(new { message = "CompanyId, BranchId, AfterSaleOrderId and RefundAmount are required." });
+
+            var command = new CreateKeetaIntegrationRefundDisputeCommand(
+                request.CompanyId.Value,
+                request.BranchId.Value,
+                request.OrderId,
+                request.AfterSaleOrderId.Value,
+                request.RefundAmount.Value,
+                request.ApplyReason);
+
             var result = await Mediator.Send(command, ct);
             return result.IsFailure
                 ? HandleFailure(result)
@@ -91,8 +102,14 @@ public sealed class KeetaRefundDisputeController(
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaRefundDisputeController), nameof(Update), async () =>
         {
+            // Accepted é a própria decisão que este endpoint existe para registrar (aceitar ou negar
+            // a disputa de reembolso) — um "false" implícito por omissão poderia gravar silenciosamente
+            // uma negativa que o chamador nunca decidiu, então também exige valor explícito.
+            if (request.CompanyId is null || request.Accepted is null)
+                return BadRequest(new { message = "CompanyId and Accepted are required." });
+
             var command = new UpdateKeetaIntegrationRefundDisputeCommand(
-                id, request.CompanyId, request.Accepted, request.DenialReasonCode, request.DenialReasonText);
+                id, request.CompanyId.Value, request.Accepted.Value, request.DenialReasonCode, request.DenialReasonText);
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
@@ -113,8 +130,16 @@ public sealed class KeetaRefundDisputeController(
         });
 }
 
+public sealed record CreateKeetaRefundDisputeRequest(
+    long? CompanyId,
+    long? BranchId,
+    string OrderId,
+    long? AfterSaleOrderId,
+    decimal? RefundAmount,
+    string ApplyReason);
+
 public sealed record UpdateKeetaRefundDisputeRequest(
-    long CompanyId,
-    bool Accepted,
+    long? CompanyId,
+    bool? Accepted,
     string? DenialReasonCode = null,
     string? DenialReasonText = null);

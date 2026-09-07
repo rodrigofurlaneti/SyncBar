@@ -86,7 +86,7 @@ public sealed class AsaasIntegrationPayment : AggregateRoot
             installmentCount));
     }
 
-    public void SetPixDetails(string qrCodeBase64, string payload)
+    public void SetPixDetails(string? qrCodeBase64, string? payload)
     {
         PixQrCodeBase64 = qrCodeBase64;
         PixPayload = payload;

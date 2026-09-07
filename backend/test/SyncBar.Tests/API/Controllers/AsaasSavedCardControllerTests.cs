@@ -118,17 +118,18 @@ public sealed class AsaasSavedCardControllerTests
         result.Should().BeOfType<BadRequestObjectResult>();
     }
 
-    private static CreateAsaasIntegrationSavedCardCommand ValidCreateCommand() =>
+    private static CreateAsaasSavedCardRequest ValidCreateRequest() =>
         new(1, 1, "Joao Silva", "4111111111111111", "12", "2030", "123");
 
     [Fact]
     public async Task Create_Success_ShouldReturnCreatedAtActionPointingToGetById()
     {
-        var command = ValidCreateCommand();
+        var request = ValidCreateRequest();
         var response = new CreateAsaasIntegrationSavedCardResponse(5L, 1, 1, "VISA", "1111", false);
-        _mediator.Send(command, Arg.Any<CancellationToken>()).Returns(Result.Success(response));
+        _mediator.Send(Arg.Is<CreateAsaasIntegrationSavedCardCommand>(c => c.CustomerId == 1 && c.CompanyId == 1), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(response));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         var created = result.Should().BeOfType<CreatedAtActionResult>().Subject;
         created.ActionName.Should().Be(nameof(_controller.GetById));
@@ -139,13 +140,24 @@ public sealed class AsaasSavedCardControllerTests
     [Fact]
     public async Task Create_Failure_ShouldReturnMappedErrorResult()
     {
-        var command = ValidCreateCommand();
-        _mediator.Send(command, Arg.Any<CancellationToken>())
+        var request = ValidCreateRequest();
+        _mediator.Send(Arg.Any<CreateAsaasIntegrationSavedCardCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure<CreateAsaasIntegrationSavedCardResponse>(new Error("Customer.NotFound", "cliente nao encontrado")));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task Create_MissingCustomerIdOrCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new CreateAsaasSavedCardRequest(null, 1, "Joao Silva", "4111111111111111", "12", "2030", "123");
+
+        var result = await _controller.Create(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<CreateAsaasIntegrationSavedCardCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -173,6 +185,17 @@ public sealed class AsaasSavedCardControllerTests
     }
 
     [Fact]
+    public async Task Update_MissingCustomerIdOrCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new UpdateAsaasSavedCardRequest(1, null);
+
+        var result = await _controller.Update(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<UpdateAsaasIntegrationSavedCardCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task SetDefault_Success_ShouldSendCommandWithSetAsDefaultTrueAndReturnNoContent()
     {
         var request = new SetDefaultSavedCardRequest(1, 1);
@@ -194,6 +217,17 @@ public sealed class AsaasSavedCardControllerTests
         var result = await _controller.SetDefault(999, request, CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task SetDefault_MissingCustomerIdOrCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new SetDefaultSavedCardRequest(null, 1);
+
+        var result = await _controller.SetDefault(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<UpdateAsaasIntegrationSavedCardCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

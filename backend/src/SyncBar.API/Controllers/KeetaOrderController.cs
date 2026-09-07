@@ -99,10 +99,32 @@ public sealed class KeetaOrderController(
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public Task<IActionResult> Create(
-        [FromBody] CreateKeetaIntegrationOrderCommand command,
+        [FromBody] CreateKeetaOrderRequest request,
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOrderController), nameof(Create), async () =>
         {
+            if (request.CompanyId is null || request.BranchId is null || request.CustomerId is null ||
+                request.CustomerOrderId is null || request.KeetaMerchantId is null || request.OrderAmount is null)
+                return BadRequest(new
+                {
+                    message = "CompanyId, BranchId, CustomerId, CustomerOrderId, KeetaMerchantId and OrderAmount are required."
+                });
+
+            var command = new CreateKeetaIntegrationOrderCommand(
+                request.CompanyId.Value,
+                request.BranchId.Value,
+                request.CustomerId.Value,
+                request.CustomerOrderId.Value,
+                request.KeetaOrderId,
+                request.DisplayId,
+                request.InternalMerchantId,
+                request.KeetaMerchantId.Value,
+                request.OrderType,
+                request.DeliveredBy,
+                request.OrderAmount.Value,
+                request.RawOrderJson,
+                request.OrderCreatedAtUtc);
+
             var result = await Mediator.Send(command, ct);
             return result.IsFailure
                 ? HandleFailure(result)
@@ -119,7 +141,10 @@ public sealed class KeetaOrderController(
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOrderController), nameof(Update), async () =>
         {
-            var command = new UpdateKeetaIntegrationOrderCommand(id, request.CompanyId, request.Status);
+            if (request.CompanyId is null)
+                return BadRequest(new { message = "CompanyId is required." });
+
+            var command = new UpdateKeetaIntegrationOrderCommand(id, request.CompanyId.Value, request.Status);
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
@@ -236,8 +261,23 @@ public sealed class KeetaOrderController(
         });
 }
 
+public sealed record CreateKeetaOrderRequest(
+    long? CompanyId,
+    long? BranchId,
+    long? CustomerId,
+    long? CustomerOrderId,
+    string KeetaOrderId,
+    string DisplayId,
+    string InternalMerchantId,
+    long? KeetaMerchantId,
+    string OrderType,
+    string DeliveredBy,
+    decimal? OrderAmount,
+    string RawOrderJson,
+    DateTime OrderCreatedAtUtc);
+
 public sealed record UpdateKeetaOrderRequest(
-    long CompanyId,
+    long? CompanyId,
     string? Status = null);
 
 public sealed record ConfirmKeetaOrderRequest(string? Reason = null, int? PreparationTimeMinutes = null);

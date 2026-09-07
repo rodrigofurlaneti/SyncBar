@@ -20,7 +20,10 @@ namespace SyncBar.API.Controllers
         public Task<IActionResult> PayWithPix([FromBody] CheckoutPixRequest request, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CheckoutController), nameof(PayWithPix), async () =>
             {
-                var result = await Mediator.Send(new PayOrderWithPixCommand(request.CustomerOrderId), ct);
+                if (request.CustomerOrderId is null)
+                    return BadRequest(new { message = "CustomerOrderId is required." });
+
+                var result = await Mediator.Send(new PayOrderWithPixCommand(request.CustomerOrderId.Value), ct);
                 return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
             });
 
@@ -28,8 +31,11 @@ namespace SyncBar.API.Controllers
         public Task<IActionResult> PayWithCreditCard([FromBody] CheckoutCreditCardRequest request, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CheckoutController), nameof(PayWithCreditCard), async () =>
             {
+                if (request.CustomerOrderId is null)
+                    return BadRequest(new { message = "CustomerOrderId is required." });
+
                 var result = await Mediator.Send(
-                    new PayOrderWithCreditCardCommand(request.CustomerOrderId, request.SavedCardId, request.Card, request.SaveCard),
+                    new PayOrderWithCreditCardCommand(request.CustomerOrderId.Value, request.SavedCardId, request.Card, request.SaveCard),
                     ct);
                 return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
             });
@@ -38,18 +44,21 @@ namespace SyncBar.API.Controllers
         public Task<IActionResult> PayWithBoleto([FromBody] CheckoutBoletoRequest request, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CheckoutController), nameof(PayWithBoleto), async () =>
             {
-                var result = await Mediator.Send(new PayOrderWithBoletoCommand(request.CustomerOrderId), ct);
+                if (request.CustomerOrderId is null)
+                    return BadRequest(new { message = "CustomerOrderId is required." });
+
+                var result = await Mediator.Send(new PayOrderWithBoletoCommand(request.CustomerOrderId.Value), ct);
                 return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
             });
     }
 
-    public sealed record CheckoutPixRequest(long CustomerOrderId);
+    public sealed record CheckoutPixRequest(long? CustomerOrderId);
 
     public sealed record CheckoutCreditCardRequest(
-        long CustomerOrderId,
+        long? CustomerOrderId,
         long? SavedCardId,
         CreditCardDataRequest? Card,
         bool SaveCard = false);
 
-    public sealed record CheckoutBoletoRequest(long CustomerOrderId);
+    public sealed record CheckoutBoletoRequest(long? CustomerOrderId);
 }

@@ -62,10 +62,24 @@ public sealed class AsaasSavedCardController(
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<IActionResult> Create(
-        [FromBody] CreateAsaasIntegrationSavedCardCommand command,
+        [FromBody] CreateAsaasSavedCardRequest request,
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AsaasSavedCardController), nameof(Create), async () =>
         {
+            if (request.CustomerId is null || request.CompanyId is null)
+                return BadRequest(new { message = "CustomerId and CompanyId are required." });
+
+            var command = new CreateAsaasIntegrationSavedCardCommand(
+                request.CustomerId.Value,
+                request.CompanyId.Value,
+                request.HolderName,
+                request.CardNumber,
+                request.ExpiryMonth,
+                request.ExpiryYear,
+                request.Ccv,
+                request.SetAsDefault,
+                request.BranchId);
+
             var result = await Mediator.Send(command, ct);
             return result.IsFailure
                 ? HandleFailure(result)
@@ -82,10 +96,13 @@ public sealed class AsaasSavedCardController(
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AsaasSavedCardController), nameof(Update), async () =>
         {
+            if (request.CustomerId is null || request.CompanyId is null)
+                return BadRequest(new { message = "CustomerId and CompanyId are required." });
+
             var command = new UpdateAsaasIntegrationSavedCardCommand(
                 id,
-                request.CustomerId,
-                request.CompanyId,
+                request.CustomerId.Value,
+                request.CompanyId.Value,
                 request.HolderName,
                 request.ExpiryMonth,
                 request.ExpiryYear,
@@ -105,10 +122,13 @@ public sealed class AsaasSavedCardController(
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(AsaasSavedCardController), nameof(SetDefault), async () =>
         {
+            if (request.CustomerId is null || request.CompanyId is null)
+                return BadRequest(new { message = "CustomerId and CompanyId are required." });
+
             var command = new UpdateAsaasIntegrationSavedCardCommand(
                 id,
-                request.CustomerId,
-                request.CompanyId,
+                request.CustomerId.Value,
+                request.CompanyId.Value,
                 SetAsDefault: true);
 
             var result = await Mediator.Send(command, ct);
@@ -132,14 +152,25 @@ public sealed class AsaasSavedCardController(
         });
 }
 
+public sealed record CreateAsaasSavedCardRequest(
+    long? CustomerId,
+    long? CompanyId,
+    string HolderName,
+    string CardNumber,
+    string ExpiryMonth,
+    string ExpiryYear,
+    string Ccv,
+    bool SetAsDefault = false,
+    long? BranchId = null);
+
 public sealed record UpdateAsaasSavedCardRequest(
-    long CustomerId,
-    long CompanyId,
+    long? CustomerId,
+    long? CompanyId,
     string? HolderName = null,
     string? ExpiryMonth = null,
     string? ExpiryYear = null,
     bool? SetAsDefault = null);
 
 public sealed record SetDefaultSavedCardRequest(
-    long CustomerId,
-    long CompanyId);
+    long? CustomerId,
+    long? CompanyId);

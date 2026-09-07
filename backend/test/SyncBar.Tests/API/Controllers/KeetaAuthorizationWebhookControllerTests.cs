@@ -21,25 +21,23 @@ public sealed class KeetaAuthorizationWebhookControllerTests
         _controller = new KeetaAuthorizationWebhookController(_mediator);
     }
 
-    private void SetupRequest(string body, string? signature = "sig-1")
+    private void SetupRequest(string body)
     {
         var httpContext = new DefaultHttpContext
         {
             Request = { Body = new MemoryStream(Encoding.UTF8.GetBytes(body)) },
         };
-        if (signature is not null)
-            httpContext.Request.Headers["X-App-Signature"] = signature;
         _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
     }
 
     [Fact]
     public async Task Receive_Success_ShouldForwardPayloadAndSignatureAndReturnOk()
     {
-        SetupRequest("""{"opType":1}""", "sig-1");
+        SetupRequest("""{"opType":1}""");
         _mediator.Send(Arg.Is<ProcessKeetaAuthorizationWebhookCommand>(c => c.RawPayload.Contains("opType") && c.Signature == "sig-1"), Arg.Any<CancellationToken>())
             .Returns(Result.Success());
 
-        var result = await _controller.Receive(CancellationToken.None);
+        var result = await _controller.Receive("sig-1", CancellationToken.None);
 
         result.Should().BeOfType<OkResult>();
     }
@@ -49,11 +47,11 @@ public sealed class KeetaAuthorizationWebhookControllerTests
     [InlineData("Keeta.MissingSignature")]
     public async Task Receive_SignatureFailure_ShouldReturnUnauthorized(string errorCode)
     {
-        SetupRequest("{}", null);
+        SetupRequest("{}");
         _mediator.Send(Arg.Any<ProcessKeetaAuthorizationWebhookCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure(new Error(errorCode, "assinatura invalida")));
 
-        var result = await _controller.Receive(CancellationToken.None);
+        var result = await _controller.Receive(null, CancellationToken.None);
 
         result.Should().BeOfType<UnauthorizedResult>();
     }
@@ -65,7 +63,7 @@ public sealed class KeetaAuthorizationWebhookControllerTests
         _mediator.Send(Arg.Any<ProcessKeetaAuthorizationWebhookCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure(new Error("Keeta.InvalidPayload", "payload invalido")));
 
-        var result = await _controller.Receive(CancellationToken.None);
+        var result = await _controller.Receive("sig-1", CancellationToken.None);
 
         result.Should().BeOfType<BadRequestResult>();
     }
@@ -77,7 +75,7 @@ public sealed class KeetaAuthorizationWebhookControllerTests
         _mediator.Send(Arg.Any<ProcessKeetaAuthorizationWebhookCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure(new Error("Keeta.Unknown", "erro desconhecido")));
 
-        var result = await _controller.Receive(CancellationToken.None);
+        var result = await _controller.Receive("sig-1", CancellationToken.None);
 
         result.Should().BeOfType<OkResult>();
     }

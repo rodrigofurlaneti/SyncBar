@@ -48,16 +48,15 @@ public sealed class KeetaOAuthController(
         var logRepo = HttpContext.RequestServices.GetRequiredService<ILogTrackerRepository>();
         var uow = HttpContext.RequestServices.GetRequiredService<IUnitOfWork>();
 
-        IActionResult? handled = null;
+        var succeeded = false;
         await ExecuteWithLogAsync(logRepo, uow, nameof(KeetaOAuthController), nameof(Callback), async () =>
         {
             var command = new HandleKeetaOAuthCallbackCommand(companyId, branchId, authId, state, keetaMerchantId, code);
             var result = await Mediator.Send(command, ct);
-            handled = result.IsFailure ? HandleFailure(result) : Ok(result.Value);
-            return handled;
+            succeeded = result.IsSuccess;
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
-        var succeeded = handled is OkObjectResult;
         return Redirect($"/integracoes/keeta?keetaAuth={(succeeded ? "success" : "error")}");
     }
 

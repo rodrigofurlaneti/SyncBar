@@ -21,15 +21,12 @@ public sealed class KeetaOrderEventWebhookControllerTests
         _controller = new KeetaOrderEventWebhookController(_mediator);
     }
 
-    private void SetupRequest(string body, string? appId = "app-1", string? merchantIdHeader = "123", string? signature = "sig-1")
+    private void SetupRequest(string body)
     {
         var httpContext = new DefaultHttpContext
         {
             Request = { Body = new MemoryStream(Encoding.UTF8.GetBytes(body)) },
         };
-        if (appId is not null) httpContext.Request.Headers["X-App-Id"] = appId;
-        if (merchantIdHeader is not null) httpContext.Request.Headers["X-App-MerchantId"] = merchantIdHeader;
-        if (signature is not null) httpContext.Request.Headers["X-App-Signature"] = signature;
         _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
     }
 
@@ -41,7 +38,7 @@ public sealed class KeetaOrderEventWebhookControllerTests
                 c.RawPayload.Contains("evt-1") && c.AppId == "app-1" && c.KeetaMerchantId == 123 && c.Signature == "sig-1"),
             Arg.Any<CancellationToken>()).Returns(Result.Success());
 
-        var result = await _controller.Receive(CancellationToken.None);
+        var result = await _controller.Receive("app-1", "123", "sig-1", CancellationToken.None);
 
         result.Should().BeOfType<NoContentResult>();
     }
@@ -49,10 +46,10 @@ public sealed class KeetaOrderEventWebhookControllerTests
     [Fact]
     public async Task Receive_NonNumericMerchantIdHeader_ShouldSendNullMerchantId()
     {
-        SetupRequest("{}", merchantIdHeader: "not-a-number");
+        SetupRequest("{}");
         _mediator.Send(Arg.Any<ProcessKeetaNewEventWebhookCommand>(), Arg.Any<CancellationToken>()).Returns(Result.Success());
 
-        await _controller.Receive(CancellationToken.None);
+        await _controller.Receive("app-1", "not-a-number", "sig-1", CancellationToken.None);
 
         await _mediator.Received(1).Send(Arg.Is<ProcessKeetaNewEventWebhookCommand>(c => c.KeetaMerchantId == null), Arg.Any<CancellationToken>());
     }
@@ -66,7 +63,7 @@ public sealed class KeetaOrderEventWebhookControllerTests
         _mediator.Send(Arg.Any<ProcessKeetaNewEventWebhookCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure(new Error(errorCode, "assinatura invalida")));
 
-        var result = await _controller.Receive(CancellationToken.None);
+        var result = await _controller.Receive("app-1", "123", "sig-1", CancellationToken.None);
 
         result.Should().BeOfType<UnauthorizedResult>();
     }
@@ -80,7 +77,7 @@ public sealed class KeetaOrderEventWebhookControllerTests
         _mediator.Send(Arg.Any<ProcessKeetaNewEventWebhookCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure(new Error(errorCode, "erro")));
 
-        var result = await _controller.Receive(CancellationToken.None);
+        var result = await _controller.Receive("app-1", "123", "sig-1", CancellationToken.None);
 
         result.Should().BeOfType<BadRequestResult>();
     }
@@ -92,7 +89,7 @@ public sealed class KeetaOrderEventWebhookControllerTests
         _mediator.Send(Arg.Any<ProcessKeetaNewEventWebhookCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure(new Error("Keeta.Unknown", "erro desconhecido")));
 
-        var result = await _controller.Receive(CancellationToken.None);
+        var result = await _controller.Receive("app-1", "123", "sig-1", CancellationToken.None);
 
         result.Should().BeOfType<NoContentResult>();
     }

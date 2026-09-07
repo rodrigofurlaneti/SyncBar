@@ -187,17 +187,18 @@ public sealed class AsaasSettingControllerTests
         result.Should().BeOfType<BadRequestObjectResult>();
     }
 
-    private static CreateAsaasIntegrationSettingCommand ValidCreateCommand() =>
+    private static CreateAsaasSettingRequest ValidCreateRequest() =>
         new(1, null, "api-key-123", "webhook-token", "sandbox");
 
     [Fact]
     public async Task Create_Success_ShouldReturnCreatedAtActionPointingToGetById()
     {
-        var command = ValidCreateCommand();
+        var request = ValidCreateRequest();
         var response = new CreateAsaasIntegrationSettingResponse(5L, 1, null, "sandbox", true);
-        _mediator.Send(command, Arg.Any<CancellationToken>()).Returns(Result.Success(response));
+        _mediator.Send(Arg.Is<CreateAsaasIntegrationSettingCommand>(c => c.CompanyId == 1), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(response));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         var created = result.Should().BeOfType<CreatedAtActionResult>().Subject;
         created.ActionName.Should().Be(nameof(_controller.GetById));
@@ -208,13 +209,24 @@ public sealed class AsaasSettingControllerTests
     [Fact]
     public async Task Create_Failure_ShouldReturnMappedErrorResult()
     {
-        var command = ValidCreateCommand();
-        _mediator.Send(command, Arg.Any<CancellationToken>())
+        var request = ValidCreateRequest();
+        _mediator.Send(Arg.Any<CreateAsaasIntegrationSettingCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure<CreateAsaasIntegrationSettingResponse>(new Error("AsaasIntegrationSetting.AlreadyExists", "configuracao ja existe")));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         result.Should().BeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task Create_MissingCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new CreateAsaasSettingRequest(null, null, "api-key-123", "webhook-token", "sandbox");
+
+        var result = await _controller.Create(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<CreateAsaasIntegrationSettingCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -239,6 +251,17 @@ public sealed class AsaasSettingControllerTests
         var result = await _controller.Update(999, request, CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task Update_MissingCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new UpdateAsaasSettingRequest(null);
+
+        var result = await _controller.Update(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<UpdateAsaasIntegrationSettingCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

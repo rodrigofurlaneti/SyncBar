@@ -84,5 +84,51 @@ public sealed class GetIfoodOrderVirtualBagQueryHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Ifood.NotConnected");
-    }  
+    }
+
+    [Fact]
+    public async Task Handle_WhenVirtualBagFetchFails_ShouldReturnFailureWithClientErrorMessage()
+    {
+        var IfoodOrder = CreateIfoodOrder();
+        GivenAConnectedBranchWithValidToken(IfoodOrder);
+        var failedBag = new IfoodVirtualBagResult(
+            Success: false, Id: null, ShortCode: null, Status: null, CreatedAt: null,
+            MerchantName: null, CustomerName: null, Items: [], GrossValueAmount: null,
+            GrossValueCurrency: null, RawPayload: null, ErrorMessage: "Ifood indisponível");
+        _orderClient.GetVirtualBagAsync(ValidToken, IfoodOrderExternalId, Arg.Any<CancellationToken>()).Returns(failedBag);
+        var sut = CreateSut();
+
+        var result = await sut.Handle(new GetIfoodOrderVirtualBagQuery(1), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Ifood.VirtualBagFailed");
+        result.Error.Message.Should().Be("Ifood indisponível");
+    }
+
+    [Fact]
+    public async Task Handle_WhenVirtualBagFetchSucceeds_ShouldReturnMappedResponse()
+    {
+        var IfoodOrder = CreateIfoodOrder();
+        GivenAConnectedBranchWithValidToken(IfoodOrder);
+        var bag = SuccessfulBag();
+        _orderClient.GetVirtualBagAsync(ValidToken, IfoodOrderExternalId, Arg.Any<CancellationToken>()).Returns(bag);
+        var sut = CreateSut();
+
+        var result = await sut.Handle(new GetIfoodOrderVirtualBagQuery(1), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Id.Should().Be(bag.Id);
+        result.Value.ShortCode.Should().Be(bag.ShortCode);
+        result.Value.Status.Should().Be(bag.Status);
+        result.Value.MerchantName.Should().Be(bag.MerchantName);
+        result.Value.CustomerName.Should().Be(bag.CustomerName);
+        result.Value.GrossValueAmount.Should().Be(bag.GrossValueAmount);
+        result.Value.GrossValueCurrency.Should().Be(bag.GrossValueCurrency);
+        result.Value.RawPayload.Should().Be(bag.RawPayload);
+        var item = result.Value.Items.Should().ContainSingle().Subject;
+        item.UniqueId.Should().Be("u-1");
+        item.Name.Should().Be("Cerveja Long Neck");
+        item.Quantity.Should().Be(2);
+        item.Ean.Should().Be("7890000000001");
+    }
 }

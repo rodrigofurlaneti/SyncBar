@@ -4,9 +4,9 @@ namespace SyncBar.Domain.Repositories;
 
 public interface ICustomerAppUserRepository
 {
-    Task<IEnumerable<CustomerAppUser?>> GetByCustomerId(long customerId, CancellationToken cancellationToken = default);
-    Task<IEnumerable<CustomerAppUser?>> GetByBranchId(long branchId, CancellationToken cancellationToken = default);
-    Task<IEnumerable<CustomerAppUser?>> GetByCompanyId(long companyId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<CustomerAppUser>> GetByCustomerId(long customerId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<CustomerAppUser>> GetByBranchId(long branchId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<CustomerAppUser>> GetByCompanyId(long companyId, CancellationToken cancellationToken = default);
     Task<CustomerAppUser?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
     Task<CustomerAppUser?> GetByEmailForUpdateAsync(string email, long companyId, CancellationToken cancellationToken = default);
     Task AddAsync(CustomerAppUser entity, CancellationToken cancellationToken = default);

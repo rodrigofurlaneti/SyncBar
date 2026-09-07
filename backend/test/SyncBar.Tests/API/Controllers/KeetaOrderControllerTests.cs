@@ -195,17 +195,20 @@ public sealed class KeetaOrderControllerTests
         result.Should().BeOfType<BadRequestObjectResult>();
     }
 
-    private static CreateKeetaIntegrationOrderCommand ValidCreateCommand() =>
+    private static CreateKeetaOrderRequest ValidCreateRequest() =>
         new(1, 1, 1, 1, "ko_1", "1234", "int_1", 10, "DELIVERY", "KEETA", 50m, "{}", DateTime.UtcNow);
 
     [Fact]
     public async Task Create_Success_ShouldReturnCreatedAtActionPointingToGetById()
     {
-        var command = ValidCreateCommand();
+        var request = ValidCreateRequest();
         var response = new CreateKeetaIntegrationOrderResponse(5L, 1, 1, "ko_1", "1234", "PLACED", 50m);
-        _mediator.Send(command, Arg.Any<CancellationToken>()).Returns(Result.Success(response));
+        _mediator.Send(Arg.Is<CreateKeetaIntegrationOrderCommand>(c =>
+                c.CompanyId == 1 && c.BranchId == 1 && c.CustomerId == 1 && c.CustomerOrderId == 1 &&
+                c.KeetaMerchantId == 10 && c.OrderAmount == 50m),
+            Arg.Any<CancellationToken>()).Returns(Result.Success(response));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         var created = result.Should().BeOfType<CreatedAtActionResult>().Subject;
         created.ActionName.Should().Be(nameof(_controller.GetById));
@@ -216,13 +219,24 @@ public sealed class KeetaOrderControllerTests
     [Fact]
     public async Task Create_Failure_ShouldReturnMappedErrorResult()
     {
-        var command = ValidCreateCommand();
-        _mediator.Send(command, Arg.Any<CancellationToken>())
+        var request = ValidCreateRequest();
+        _mediator.Send(Arg.Any<CreateKeetaIntegrationOrderCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure<CreateKeetaIntegrationOrderResponse>(new Error("KeetaIntegrationOrder.AlreadyExists", "pedido ja existe")));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         result.Should().BeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task Create_MissingRequiredFields_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new CreateKeetaOrderRequest(1, 1, 1, 1, "ko_1", "1234", "int_1", 10, "DELIVERY", "KEETA", null, "{}", DateTime.UtcNow);
+
+        var result = await _controller.Create(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<CreateKeetaIntegrationOrderCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -247,6 +261,17 @@ public sealed class KeetaOrderControllerTests
         var result = await _controller.Update(999, request, CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task Update_MissingCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new UpdateKeetaOrderRequest(null);
+
+        var result = await _controller.Update(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<UpdateKeetaIntegrationOrderCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

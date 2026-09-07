@@ -100,10 +100,21 @@ public sealed class KeetaSettingController(
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public Task<IActionResult> Create(
-        [FromBody] CreateKeetaIntegrationSettingCommand command,
+        [FromBody] CreateKeetaSettingRequest request,
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaSettingController), nameof(Create), async () =>
         {
+            if (request.CompanyId is null || request.BranchId is null)
+                return BadRequest(new { message = "CompanyId and BranchId are required." });
+
+            var command = new CreateKeetaIntegrationSettingCommand(
+                request.CompanyId.Value,
+                request.BranchId.Value,
+                request.ClientId,
+                request.ClientSecret,
+                request.AppId,
+                request.BaseUrl);
+
             var result = await Mediator.Send(command, ct);
             return result.IsFailure
                 ? HandleFailure(result)
@@ -120,9 +131,12 @@ public sealed class KeetaSettingController(
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaSettingController), nameof(Update), async () =>
         {
+            if (request.CompanyId is null)
+                return BadRequest(new { message = "CompanyId is required." });
+
             var command = new UpdateKeetaIntegrationSettingCommand(
                 id,
-                request.CompanyId,
+                request.CompanyId.Value,
                 request.ClientId,
                 request.ClientSecret,
                 request.AppId,
@@ -148,8 +162,16 @@ public sealed class KeetaSettingController(
         });
 }
 
+public sealed record CreateKeetaSettingRequest(
+    long? CompanyId,
+    long? BranchId,
+    string ClientId,
+    string ClientSecret,
+    string AppId,
+    string? BaseUrl = null);
+
 public sealed record UpdateKeetaSettingRequest(
-    long CompanyId,
+    long? CompanyId,
     string? ClientId = null,
     string? ClientSecret = null,
     string? AppId = null,

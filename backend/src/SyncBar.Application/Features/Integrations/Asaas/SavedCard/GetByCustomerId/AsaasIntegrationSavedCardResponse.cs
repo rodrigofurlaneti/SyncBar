@@ -6,9 +6,9 @@
         long CompanyId,
         string CardBrand,
         string Last4Digits,
-        string HolderName,
-        string ExpiryMonth,
-        string ExpiryYear,
+        string? HolderName,
+        string? ExpiryMonth,
+        string? ExpiryYear,
         bool IsDefault,
         DateTime CreatedAt,
         bool IsActive);

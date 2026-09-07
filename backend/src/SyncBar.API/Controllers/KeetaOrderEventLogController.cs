@@ -70,10 +70,22 @@ public sealed class KeetaOrderEventLogController(
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public Task<IActionResult> Create(
-        [FromBody] CreateKeetaIntegrationOrderEventLogCommand command,
+        [FromBody] CreateKeetaOrderEventLogRequest request,
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOrderEventLogController), nameof(Create), async () =>
         {
+            if (request.CompanyId is null || request.BranchId is null)
+                return BadRequest(new { message = "CompanyId and BranchId are required." });
+
+            var command = new CreateKeetaIntegrationOrderEventLogCommand(
+                request.CompanyId.Value,
+                request.BranchId.Value,
+                request.EventId,
+                request.OrderId,
+                request.EventType,
+                request.RawPayload,
+                request.EventCreatedAtUtc);
+
             var result = await Mediator.Send(command, ct);
             return result.IsFailure
                 ? HandleFailure(result)
@@ -90,8 +102,11 @@ public sealed class KeetaOrderEventLogController(
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaOrderEventLogController), nameof(Update), async () =>
         {
+            if (request.CompanyId is null)
+                return BadRequest(new { message = "CompanyId is required." });
+
             var command = new UpdateKeetaIntegrationOrderEventLogCommand(
-                id, request.CompanyId, request.MarkAsProcessed, request.ErrorMessage);
+                id, request.CompanyId.Value, request.MarkAsProcessed, request.ErrorMessage);
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
@@ -112,7 +127,16 @@ public sealed class KeetaOrderEventLogController(
         });
 }
 
+public sealed record CreateKeetaOrderEventLogRequest(
+    long? CompanyId,
+    long? BranchId,
+    string EventId,
+    string OrderId,
+    string EventType,
+    string? RawPayload,
+    DateTime EventCreatedAtUtc);
+
 public sealed record UpdateKeetaOrderEventLogRequest(
-    long CompanyId,
+    long? CompanyId,
     bool MarkAsProcessed = false,
     string? ErrorMessage = null);

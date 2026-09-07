@@ -17,6 +17,7 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 ConfigureLogging(builder);
+ValidateDatabaseConnectionString(builder.Configuration);
 // DataProtection é configurado em AddInfrastructure (caminho multiplataforma, baseado em
 // AppContext.BaseDirectory) — não duplicar aqui. Havia uma segunda chamada a
 // AddDataProtection().PersistKeysToFileSystem() com um caminho absoluto do Windows
@@ -261,6 +262,25 @@ static void ValidateJwtSecret(IConfiguration configuration)
         throw new InvalidOperationException(
             "Jwt:Secret inválido. Defina Jwt__Secret com um segredo real " +
             "(mínimo 32 caracteres, recomendado 64) antes de iniciar a aplicação.");
+    }
+}
+
+// appsettings.json/appsettings.Development.json trazem apenas o placeholder
+// ("TROCAR-VIA-VARIAVEL-DE-AMBIENTE") como senha do MySQL — nunca uma credencial real
+// versionada no repositório. Falha rápido aqui em vez de deixar a aplicação subir e só
+// falhar depois (na migration ou no health check) com um erro de conexão confuso.
+// Configure a senha real via variável de ambiente ConnectionStrings__DefaultConnection
+// (ou dotnet user-secrets em desenvolvimento local).
+static void ValidateDatabaseConnectionString(IConfiguration configuration)
+{
+    var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "";
+    if (string.IsNullOrWhiteSpace(connectionString) ||
+        connectionString.Contains("TROCAR", StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException(
+            "ConnectionStrings:DefaultConnection inválida. Defina " +
+            "ConnectionStrings__DefaultConnection com a string de conexão real " +
+            "(incluindo a senha) antes de iniciar a aplicação.");
     }
 }
 

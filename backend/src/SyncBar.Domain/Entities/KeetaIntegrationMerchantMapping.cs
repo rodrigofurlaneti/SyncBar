@@ -5,9 +5,9 @@ namespace SyncBar.Domain.Entities
     {
         public long CompanyId { get; private set; }
         public long BranchId { get; private set; }
-        public string InternalMerchantId { get; private set; }
+        public string InternalMerchantId { get; private set; } = null!;
         public long KeetaMerchantId { get; private set; }
-        public string StoreName { get; private set; }
+        public string StoreName { get; private set; } = null!;
         public string? TimeZone { get; private set; }
         public bool IsAuthorized { get; private set; }
         public bool IsOnboarded { get; private set; }

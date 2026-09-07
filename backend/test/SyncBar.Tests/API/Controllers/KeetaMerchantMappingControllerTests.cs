@@ -164,16 +164,17 @@ public sealed class KeetaMerchantMappingControllerTests
         result.Should().BeOfType<BadRequestObjectResult>();
     }
 
-    private static CreateKeetaIntegrationMerchantMappingCommand ValidCreateCommand() => new(1, 1, "int_1", 10, "Loja Centro");
+    private static CreateKeetaMerchantMappingRequest ValidCreateRequest() => new(1, 1, "int_1", 10, "Loja Centro");
 
     [Fact]
     public async Task Create_Success_ShouldReturnCreatedAtActionPointingToGetById()
     {
-        var command = ValidCreateCommand();
+        var request = ValidCreateRequest();
         var response = new CreateKeetaIntegrationMerchantMappingResponse(5L, 1, 1, "int_1", 10, "Loja Centro");
-        _mediator.Send(command, Arg.Any<CancellationToken>()).Returns(Result.Success(response));
+        _mediator.Send(Arg.Is<CreateKeetaIntegrationMerchantMappingCommand>(c => c.CompanyId == 1 && c.BranchId == 1 && c.KeetaMerchantId == 10), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(response));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         var created = result.Should().BeOfType<CreatedAtActionResult>().Subject;
         created.ActionName.Should().Be(nameof(_controller.GetById));
@@ -184,13 +185,24 @@ public sealed class KeetaMerchantMappingControllerTests
     [Fact]
     public async Task Create_Failure_ShouldReturnMappedErrorResult()
     {
-        var command = ValidCreateCommand();
-        _mediator.Send(command, Arg.Any<CancellationToken>())
+        var request = ValidCreateRequest();
+        _mediator.Send(Arg.Any<CreateKeetaIntegrationMerchantMappingCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure<CreateKeetaIntegrationMerchantMappingResponse>(new Error("KeetaIntegrationMerchantMapping.AlreadyExists", "vinculo ja existe")));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         result.Should().BeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task Create_MissingRequiredFields_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new CreateKeetaMerchantMappingRequest(1, 1, "int_1", null, "Loja Centro");
+
+        var result = await _controller.Create(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<CreateKeetaIntegrationMerchantMappingCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -215,6 +227,17 @@ public sealed class KeetaMerchantMappingControllerTests
         var result = await _controller.Update(999, request, CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task Update_MissingCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new UpdateKeetaMerchantMappingRequest(null);
+
+        var result = await _controller.Update(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<UpdateKeetaIntegrationMerchantMappingCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -187,16 +187,17 @@ public sealed class KeetaSettingControllerTests
         result.Should().BeOfType<BadRequestObjectResult>();
     }
 
-    private static CreateKeetaIntegrationSettingCommand ValidCreateCommand() => new(1, 1, "client-id", "client-secret", "app-id");
+    private static CreateKeetaSettingRequest ValidCreateRequest() => new(1, 1, "client-id", "client-secret", "app-id");
 
     [Fact]
     public async Task Create_Success_ShouldReturnCreatedAtActionPointingToGetById()
     {
-        var command = ValidCreateCommand();
+        var request = ValidCreateRequest();
         var response = new CreateKeetaIntegrationSettingResponse(5L, 1, 1, "https://api.keeta.com");
-        _mediator.Send(command, Arg.Any<CancellationToken>()).Returns(Result.Success(response));
+        _mediator.Send(Arg.Is<CreateKeetaIntegrationSettingCommand>(c => c.CompanyId == 1 && c.BranchId == 1), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(response));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         var created = result.Should().BeOfType<CreatedAtActionResult>().Subject;
         created.ActionName.Should().Be(nameof(_controller.GetById));
@@ -207,13 +208,24 @@ public sealed class KeetaSettingControllerTests
     [Fact]
     public async Task Create_Failure_ShouldReturnMappedErrorResult()
     {
-        var command = ValidCreateCommand();
-        _mediator.Send(command, Arg.Any<CancellationToken>())
+        var request = ValidCreateRequest();
+        _mediator.Send(Arg.Any<CreateKeetaIntegrationSettingCommand>(), Arg.Any<CancellationToken>())
             .Returns(Result.Failure<CreateKeetaIntegrationSettingResponse>(new Error("KeetaIntegrationSetting.AlreadyExists", "configuracao ja existe")));
 
-        var result = await _controller.Create(command, CancellationToken.None);
+        var result = await _controller.Create(request, CancellationToken.None);
 
         result.Should().BeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task Create_MissingRequiredFields_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new CreateKeetaSettingRequest(1, null, "client-id", "client-secret", "app-id");
+
+        var result = await _controller.Create(request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<CreateKeetaIntegrationSettingCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -238,6 +250,17 @@ public sealed class KeetaSettingControllerTests
         var result = await _controller.Update(999, request, CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task Update_MissingCompanyId_ShouldReturnBadRequestWithoutCallingMediator()
+    {
+        var request = new UpdateKeetaSettingRequest(null);
+
+        var result = await _controller.Update(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<UpdateKeetaIntegrationSettingCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

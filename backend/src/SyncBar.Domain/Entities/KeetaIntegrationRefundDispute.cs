@@ -11,12 +11,12 @@ namespace SyncBar.Domain.Entities
     {
         public long CompanyId { get; private set; }
         public long BranchId { get; private set; }
-        public string OrderId { get; private set; }
+        public string OrderId { get; private set; } = null!;
         public long AfterSaleOrderId { get; private set; }
         public decimal RefundAmount { get; private set; }
-        public string Currency { get; private set; }
-        public string ApplyReason { get; private set; }
-        public string ResolutionStatus { get; private set; }
+        public string Currency { get; private set; } = null!;
+        public string ApplyReason { get; private set; } = null!;
+        public string ResolutionStatus { get; private set; } = null!;
         public string? DenialReasonCode { get; private set; }
         public string? DenialReasonText { get; private set; }
         public DateTime ReceivedAtUtc { get; private set; }

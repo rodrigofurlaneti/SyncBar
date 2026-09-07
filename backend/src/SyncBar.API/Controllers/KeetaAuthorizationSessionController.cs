@@ -50,10 +50,19 @@ public sealed class KeetaAuthorizationSessionController(
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public Task<IActionResult> Create(
-        [FromBody] CreateKeetaIntegrationAuthorizationSessionCommand command,
+        [FromBody] CreateKeetaAuthorizationSessionRequest request,
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaAuthorizationSessionController), nameof(Create), async () =>
         {
+            if (request.CompanyId is null || request.BranchId is null || request.OperationType is null)
+                return BadRequest(new { message = "CompanyId, BranchId and OperationType are required." });
+
+            var command = new CreateKeetaIntegrationAuthorizationSessionCommand(
+                request.CompanyId.Value,
+                request.BranchId.Value,
+                request.AuthId,
+                request.OperationType.Value);
+
             var result = await Mediator.Send(command, ct);
             return result.IsFailure
                 ? HandleFailure(result)
@@ -70,9 +79,12 @@ public sealed class KeetaAuthorizationSessionController(
         CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(KeetaAuthorizationSessionController), nameof(Update), async () =>
         {
+            if (request.CompanyId is null)
+                return BadRequest(new { message = "CompanyId is required." });
+
             var command = new UpdateKeetaIntegrationAuthorizationSessionCommand(
                 id,
-                request.CompanyId,
+                request.CompanyId.Value,
                 request.KeetaMerchantId,
                 request.AuthorizationCode,
                 request.State,
@@ -98,8 +110,14 @@ public sealed class KeetaAuthorizationSessionController(
         });
 }
 
+public sealed record CreateKeetaAuthorizationSessionRequest(
+    long? CompanyId,
+    long? BranchId,
+    string AuthId,
+    int? OperationType);
+
 public sealed record UpdateKeetaAuthorizationSessionRequest(
-    long CompanyId,
+    long? CompanyId,
     long? KeetaMerchantId = null,
     string? AuthorizationCode = null,
     string? State = null,

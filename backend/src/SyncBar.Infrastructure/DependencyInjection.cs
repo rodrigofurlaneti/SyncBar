@@ -11,6 +11,7 @@ using SyncBar.Infrastructure.Fiscal;
 using SyncBar.Infrastructure.Integrations.Asaas;
 using SyncBar.Infrastructure.Integrations.Ifood;
 using SyncBar.Infrastructure.Integrations.Keeta;
+using SyncBar.Infrastructure.Integrations.WhatsApp;
 using SyncBar.Infrastructure.Payments;
 using SyncBar.Infrastructure.Persistence;
 using SyncBar.Infrastructure.Persistence.Repositories;
@@ -206,6 +207,14 @@ public static class DependencyInjection
         services.AddHttpClient<KeetaOrderClient>();
         services.AddScoped<SyncBar.Application.Abstractions.Integrations.Keeta.IKeetaOrderClient>(sp => sp.GetRequiredService<KeetaOrderClient>());
         services.AddHostedService<KeetaEventPollingBackgroundService>();
+
+        services.Configure<WhatsAppSettings>(configuration.GetSection("WhatsApp"));
+        services.AddHttpClient<SyncBar.Application.Abstractions.Notifications.IWhatsAppService, WhatsAppService>((sp, client) =>
+        {
+            var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<WhatsAppSettings>>().Value;
+            client.BaseAddress = new Uri(settings.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
 
         return services;
     }

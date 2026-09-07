@@ -4,6 +4,10 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<LangVersion>13</LangVersion>
+		<!-- Exigido pelo código gerado pelo LibraryImportAttribute (P/Invoke) usado em
+		     WindowsRawPrinterTransport. É um switch de compilação do projeto inteiro — habilita a
+		     sintaxe `unsafe`, mas isso não é usado manualmente em nenhum outro lugar do projeto. -->
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 
 	<ItemGroup>

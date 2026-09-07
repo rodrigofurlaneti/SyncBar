@@ -4,12 +4,21 @@ using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 namespace SyncBar.Application.Features.CustomerAddresses.Create
 {
-    internal sealed class CreateCustomerAddressCommandHandler(
-        ICustomerAddressRepository customerAddressRepository,
-        ILogTrackerRepository logRepository,
-        IUnitOfWork unitOfWork)
-        : BaseCommandHandler<CreateCustomerAddressCommand, long>(logRepository, unitOfWork)
+    internal sealed class CreateCustomerAddressCommandHandler : BaseCommandHandler<CreateCustomerAddressCommand, long>
     {
+        private readonly ICustomerAddressRepository _customerAddressRepository;
+        private readonly IUnitOfWork _unitOfWork;
+
+        public CreateCustomerAddressCommandHandler(
+            ICustomerAddressRepository customerAddressRepository,
+            ILogTrackerRepository logRepository,
+            IUnitOfWork unitOfWork)
+            : base(logRepository, unitOfWork)
+        {
+            _customerAddressRepository = customerAddressRepository;
+            _unitOfWork = unitOfWork;
+        }
+
         public override async Task<Result<long>> Handle(CreateCustomerAddressCommand request, CancellationToken cancellationToken)
         {
             return await ExecuteWithLogAsync(
@@ -25,7 +34,7 @@ namespace SyncBar.Application.Features.CustomerAddresses.Create
                         request.Street,
                         request.Number,
                         request.Supplement,
-                        request.ZipCode
+                        request.ZipCode ?? string.Empty
                     );
 
                     if (addressResult.IsFailure)
@@ -33,8 +42,8 @@ namespace SyncBar.Application.Features.CustomerAddresses.Create
 
                     var address = addressResult.Value;
 
-                    await customerAddressRepository.AddAsync(address, cancellationToken);
-                    await unitOfWork.CommitAsync(cancellationToken);
+                    await _customerAddressRepository.AddAsync(address, cancellationToken);
+                    await _unitOfWork.CommitAsync(cancellationToken);
 
                     return Result.Success(address.Id);
                 });

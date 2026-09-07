@@ -8,7 +8,7 @@ namespace SyncBar.Domain.Entities
         public string? ClientId { get; private set; }
         public string? ClientSecret { get; private set; }
         public string? AppId { get; private set; }
-        public string BaseUrl { get; private set; }
+        public string BaseUrl { get; private set; } = null!;
         public string? CurrentAccessToken { get; private set; }
         public DateTime? TokenExpiresAtUtc { get; private set; }
         public DateTime UpdatedAtUtc { get; private set; }
