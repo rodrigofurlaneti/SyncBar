@@ -36,7 +36,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceToken_ShouldReturnFailureResult(string? invalidToken)
         {
             // Act
-            var result = RefreshToken.Create(1, invalidToken, DateTime.Now.AddDays(1));
+            var result = RefreshToken.Create(1, invalidToken!, DateTime.Now.AddDays(1));
 
             // Assert
             result.IsSuccess.Should().BeFalse();

@@ -94,6 +94,8 @@ internal sealed class GetPreparationQueueQueryHandler(
                             : null,
                         comandaCode,
                         order.OrderTypeId,
+                        order.OrderOriginId,
+                        OrderOriginIds.GetName(order.OrderOriginId),
                         order.CustomerName,
                         order.OpenedAt,
                         pendingItems));

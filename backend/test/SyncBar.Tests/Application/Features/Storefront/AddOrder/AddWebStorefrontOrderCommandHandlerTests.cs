@@ -3,6 +3,7 @@ using NSubstitute;
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Application.Features.Orders.AddItem;
 using SyncBar.Application.Features.Storefront.AddOrder;
+using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -337,6 +338,7 @@ public sealed class AddWebStorefrontOrderCommandHandlerTests
         capturedOrder!.EmployeeId.Should().Be(SelfServiceEmployeeId);
         capturedOrder.CustomerId.Should().BeNull();
         capturedOrder.Items.Should().ContainSingle();
+        capturedOrder.OrderOriginId.Should().Be(OrderOriginIds.WebSite);
         await _customerAddressRepository.DidNotReceiveWithAnyArgs().GetByCustomerIdAsync(default, default);
         await _customerAddressRepository.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
         await _printingService.Received(1).PrintOrderItemsAsync(

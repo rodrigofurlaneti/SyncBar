@@ -6,7 +6,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import { OrderDrawer } from "./OrderDrawer";
 import { OpenDeliveryOrderDialog } from "./OpenDeliveryOrderDialog";
-import { OrderItemStatus, OrderStatus, OrderType, formatBRL } from "../../lib/types";
+import { OrderItemStatus, OrderOrigin, orderOriginLabel, OrderStatus, OrderType, formatBRL } from "../../lib/types";
 import type { OrderResponse } from "../../lib/types";
 
 import bagImg from "../../image/bag.png";
@@ -130,9 +130,18 @@ const FULL_COLUMNS: ColumnDef[] = [
 
 const SIMPLE_COLUMNS = FULL_COLUMNS.filter(c => c.id !== "agendamento" && c.id !== "cancelado");
 
+const ORIGIN_BADGE_STYLE: Record<number, { bg: string; color: string; icon: string }> = {
+    [OrderOrigin.Local]: { bg: "#F5F5F5", color: "#555", icon: "📞" },
+    [OrderOrigin.WebSite]: { bg: "#E8F0FE", color: "#1A56DB", icon: "🌐" },
+    [OrderOrigin.IFood]: { bg: "#FFEBEE", color: "#EA1D2C", icon: "🍔" },
+    [OrderOrigin.Keeta]: { bg: "#F3E8FF", color: "#7C3AED", icon: "🛍️" },
+};
+
 function OrderCard({ order, stage, dense, onOpen, onSendToKitchen, onMarkReady, onMarkOnRoute, busy }: any) {
     const customerName = order.customerName?.trim() || `Pedido #${order.id}`;
     const channelLabel = getChannel(order) === "delivery" ? "DELIVERY" : "RETIRADA";
+    const originBadge = ORIGIN_BADGE_STYLE[order.orderOriginId as number] ?? ORIGIN_BADGE_STYLE[OrderOrigin.Local];
+    const originLabel = orderOriginLabel[order.orderOriginId as number] ?? order.orderOriginName ?? "Local";
 
     const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
 
@@ -142,11 +151,19 @@ function OrderCard({ order, stage, dense, onOpen, onSendToKitchen, onMarkReady, 
             textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: 12,
             boxShadow: "0 2px 8px rgba(0,0,0,0.04)", transition: "transform 0.1s"
         }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
                 <span style={{ fontWeight: 800, fontSize: "1.1rem", color: "#1A1A1A" }}>#{order.id}</span>
-                <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: 6, background: "#F5F5F5", color: "#555", display: "flex", alignItems: "center", gap: 4 }}>
-                    {channelLabel === "DELIVERY" ? "🛵" : "🏬"} {channelLabel}
-                </span>
+                <div style={{ display: "flex", gap: 6 }}>
+                    <span
+                        data-testid={`order-origin-${order.id}`}
+                        style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: 6, background: originBadge.bg, color: originBadge.color, display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                        {originBadge.icon} {originLabel.toUpperCase()}
+                    </span>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "4px 8px", borderRadius: 6, background: "#F5F5F5", color: "#555", display: "flex", alignItems: "center", gap: 4 }}>
+                        {channelLabel === "DELIVERY" ? "🛵" : "🏬"} {channelLabel}
+                    </span>
+                </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

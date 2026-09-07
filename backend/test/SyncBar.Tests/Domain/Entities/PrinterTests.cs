@@ -60,7 +60,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = Printer.Create(1, invalidName, Printer.ConnectionWindows, "Driver", null, null, true, false);
+            var result = Printer.Create(1, invalidName!, Printer.ConnectionWindows, "Driver", null, null, true, false);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

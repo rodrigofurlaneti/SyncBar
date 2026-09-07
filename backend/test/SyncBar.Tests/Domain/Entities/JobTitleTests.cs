@@ -34,7 +34,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = JobTitle.Create(1, invalidName);
+            var result = JobTitle.Create(1, invalidName!);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

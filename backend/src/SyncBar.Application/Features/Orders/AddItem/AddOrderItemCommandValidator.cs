@@ -1,4 +1,4 @@
-using FluentValidation;
+﻿using FluentValidation;
 
 namespace SyncBar.Application.Features.Orders.AddItem;
 

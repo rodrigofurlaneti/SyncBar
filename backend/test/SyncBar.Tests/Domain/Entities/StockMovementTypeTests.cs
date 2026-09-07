@@ -34,7 +34,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = StockMovementType.Create(invalidName, true);
+            var result = StockMovementType.Create(invalidName!, true);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

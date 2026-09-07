@@ -45,7 +45,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceCustomerName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = TableReservation.Create(1, null, invalidName, "11999999999", 4, DateTime.Now.AddDays(1), null);
+            var result = TableReservation.Create(1, null, invalidName!, "11999999999", 4, DateTime.Now.AddDays(1), null);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

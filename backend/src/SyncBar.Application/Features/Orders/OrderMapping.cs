@@ -1,4 +1,5 @@
-﻿using SyncBar.Domain.Entities;
+﻿using SyncBar.Domain.Constants;
+using SyncBar.Domain.Entities;
 
 namespace SyncBar.Application.Features.Orders
 {
@@ -13,6 +14,8 @@ namespace SyncBar.Application.Features.Orders
                 order.CreditLimitAmount,
                 order.Notes,
                 order.OrderTypeId,
+                order.OrderOriginId,
+                OrderOriginIds.GetName(order.OrderOriginId),
                 order.CustomerName,
                 order.CustomerPhone,
                 order.DeliveryAddress,
@@ -27,6 +30,7 @@ namespace SyncBar.Application.Features.Orders
                         i.DiscountAmount,
                         i.TotalAmount,
                         i.Notes,
+                        i.EmployeeId,
                         i.Complements
                             .Where(c => c.IsActive)
                             .Select(c => new OrderItemComplementResponse(c.Id, c.ComplementId, c.UnitPriceCharged))

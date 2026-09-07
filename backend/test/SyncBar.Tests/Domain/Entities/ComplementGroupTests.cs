@@ -40,7 +40,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = ComplementGroup.Create(1, invalidName, 2, 0, 1);
+            var result = ComplementGroup.Create(1, invalidName!, 2, 0, 1);
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -113,7 +113,7 @@ namespace SyncBar.Tests.Domain.Entities
             var group = ComplementGroup.Create(1, "Old Name", 2, 0, 1).Value;
 
             // Act
-            var result = group.UpdateDetails(invalidName, 2, 0, 1);
+            var result = group.UpdateDetails(invalidName!, 2, 0, 1);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

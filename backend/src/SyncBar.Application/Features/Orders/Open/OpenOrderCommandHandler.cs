@@ -113,6 +113,6 @@ internal sealed class OpenOrderCommandHandler : BaseCommandHandler<OpenOrderComm
         return CustomerOrder.Create(
             request.BranchId, request.DiningTableId, request.ComandaId,
             request.EmployeeId, request.GuestCount, request.Notes, currentTime, creditLimit,
-            request.OrderTypeId, request.CustomerName, request.CustomerPhone, request.DeliveryAddress);
+            request.OrderTypeId, OrderOriginIds.Local, request.CustomerName, request.CustomerPhone, request.DeliveryAddress);
     }
 }

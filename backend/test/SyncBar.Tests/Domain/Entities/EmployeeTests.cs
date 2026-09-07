@@ -48,7 +48,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = Employee.Create(1, 2, invalidName, "12345678900", null, null, DateTime.Now, null, null);
+            var result = Employee.Create(1, 2, invalidName!, "12345678900", null, null, DateTime.Now, null, null);
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -63,7 +63,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceCpf_ShouldReturnFailureResult(string? invalidCpf)
         {
             // Act
-            var result = Employee.Create(1, 2, "Joao Silva", invalidCpf, null, null, DateTime.Now, null, null);
+            var result = Employee.Create(1, 2, "Joao Silva", invalidCpf!, null, null, DateTime.Now, null, null);
 
             // Assert
             result.IsSuccess.Should().BeFalse();
@@ -101,7 +101,7 @@ namespace SyncBar.Tests.Domain.Entities
             var employee = Employee.Create(1, 2, "Joao Silva", "12345678900", null, null, DateTime.Now, null, null).Value;
 
             // Act
-            var result = employee.UpdateDetails(2, invalidName, null, null, null);
+            var result = employee.UpdateDetails(2, invalidName!, null, null, null);
 
             // Assert
             result.IsSuccess.Should().BeFalse();

@@ -16,4 +16,5 @@ public interface ICustomerOrderRepository
     Task AddAsync(CustomerOrder entity, CancellationToken cancellationToken = default);
     Task<CustomerOrder?> GetOpenByComandaAsync(long comandaId, CancellationToken cancellationToken = default);
     Task<CustomerOrder?> GetOpenByTableAsync(long diningTableId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<CustomerOrder>> GetByBranchAndOriginAsync(long branchId, long orderOriginId, DateTime from, DateTime to, CancellationToken cancellationToken = default);
 }

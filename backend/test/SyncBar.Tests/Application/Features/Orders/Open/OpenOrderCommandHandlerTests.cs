@@ -146,7 +146,8 @@ public sealed class OpenOrderCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         table.TableStatusId.Should().Be(TableStatusIds.Ocupada);
-        await _orderRepository.Received(1).AddAsync(Arg.Any<CustomerOrder>(), Arg.Any<CancellationToken>());
+        await _orderRepository.Received(1).AddAsync(
+            Arg.Is<CustomerOrder>(o => o.OrderOriginId == OrderOriginIds.Local), Arg.Any<CancellationToken>());
         await _comandaSettingRepository.DidNotReceive().GetByBranchAsync(Arg.Any<long>(), Arg.Any<CancellationToken>());
         await _unitOfWork.Received(2).CommitAsync(Arg.Any<CancellationToken>());
     }

@@ -77,7 +77,7 @@ public sealed class KeetaEventPollingBackgroundServiceTests
         await RunCycleAsync();
 
         await _mediator.Received(1).Send(
-            Arg.Is<PollKeetaEventsCommand>(c => c.CompanyId == 1 && c.BranchId == 10 && c.MerchantIds.SequenceEqual(new[] { "MERCH-A", "MERCH-B" })),
+            Arg.Is<PollKeetaEventsCommand>(c => c.CompanyId == 1 && c.BranchId == 10 && c.MerchantIds!.SequenceEqual(new[] { "MERCH-A", "MERCH-B" })),
             Arg.Any<CancellationToken>());
     }
 

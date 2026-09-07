@@ -15,7 +15,6 @@ using SyncBar.Infrastructure.Integrations.WhatsApp;
 using SyncBar.Infrastructure.Payments;
 using SyncBar.Infrastructure.Persistence;
 using SyncBar.Infrastructure.Persistence.Repositories;
-using SyncBar.Infrastructure.Persistence.Repositories;
 using SyncBar.Infrastructure.Printing;
 using SyncBar.Infrastructure.Security;
 using SyncBar.Infrastructure.Storage;

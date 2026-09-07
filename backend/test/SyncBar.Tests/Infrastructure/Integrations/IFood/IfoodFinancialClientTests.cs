@@ -251,23 +251,27 @@ public sealed class IfoodFinancialClientTests
         result.Should().BeNull();
     }
 
-    public static IEnumerable<object[]> ReportTypeUrlCases()
+    public static TheoryData<IfoodFinancialReportType, string> ReportTypeUrlCases()
     {
-        yield return [IfoodFinancialReportType.SalesAdjustments, "salesAdjustments"];
-        yield return [IfoodFinancialReportType.Payments, "payments"];
-        yield return [IfoodFinancialReportType.PaymentDetails, "paymentDetails"];
-        yield return [IfoodFinancialReportType.Occurrences, "occurrences"];
-        yield return [IfoodFinancialReportType.MaintenanceFees, "maintenanceFees"];
-        yield return [IfoodFinancialReportType.IncomeTaxes, "incomeTaxes"];
-        yield return [IfoodFinancialReportType.Periods, "periods"];
-        yield return [IfoodFinancialReportType.ChargeCancellations, "chargeCancellations"];
-        yield return [IfoodFinancialReportType.Cancellations, "cancellations"];
-        yield return [IfoodFinancialReportType.ReceivableRecords, "receivableRecords"];
-        yield return [IfoodFinancialReportType.SalesBenefits, "salesBenefits"];
-        yield return [IfoodFinancialReportType.AdjustmentsBenefits, "adjustmentsBenefits"];
-        yield return [IfoodFinancialReportType.SalesV21, "sales"];
-        yield return [IfoodFinancialReportType.AnticipationsV3, "anticipations"];
-        yield return [IfoodFinancialReportType.SalesV3, "sales"];
+        var data = new TheoryData<IfoodFinancialReportType, string>
+        {
+            { IfoodFinancialReportType.SalesAdjustments, "salesAdjustments" },
+            { IfoodFinancialReportType.Payments, "payments" },
+            { IfoodFinancialReportType.PaymentDetails, "paymentDetails" },
+            { IfoodFinancialReportType.Occurrences, "occurrences" },
+            { IfoodFinancialReportType.MaintenanceFees, "maintenanceFees" },
+            { IfoodFinancialReportType.IncomeTaxes, "incomeTaxes" },
+            { IfoodFinancialReportType.Periods, "periods" },
+            { IfoodFinancialReportType.ChargeCancellations, "chargeCancellations" },
+            { IfoodFinancialReportType.Cancellations, "cancellations" },
+            { IfoodFinancialReportType.ReceivableRecords, "receivableRecords" },
+            { IfoodFinancialReportType.SalesBenefits, "salesBenefits" },
+            { IfoodFinancialReportType.AdjustmentsBenefits, "adjustmentsBenefits" },
+            { IfoodFinancialReportType.SalesV21, "sales" },
+            { IfoodFinancialReportType.AnticipationsV3, "anticipations" },
+            { IfoodFinancialReportType.SalesV3, "sales" }
+        };
+        return data;
     }
 
     [Theory]

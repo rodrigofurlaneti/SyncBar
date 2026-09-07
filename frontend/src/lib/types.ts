@@ -50,6 +50,8 @@ export interface OrderResponse {
   notes: string | null;
   items: OrderItemResponse[];
   orderTypeId?: number;
+  orderOriginId?: number;
+  orderOriginName?: string;
   customerName?: string | null;
   customerPhone?: string | null;
   deliveryAddress?: string | null;
@@ -482,6 +484,8 @@ export interface PreparationTicketResponse {
   tableNumber: number | null;
   comandaCode: string | null;
   orderTypeId: number;
+  orderOriginId: number;
+  orderOriginName: string;
   customerName: string | null;
   openedAt: string;
   items: PreparationItemResponse[];
@@ -733,6 +737,23 @@ export const orderTypeLabel: Record<number, string> = {
   2: "Retirada",
   3: "Delivery",
   4: "WebSite"
+};
+
+// Canal por onde o pedido chegou (tabela orderorigin) — diferente de OrderType (mesa/retirada/
+// delivery/site), que é sobre COMO o pedido é atendido. Um pedido WebSite, por exemplo, sempre tem
+// OrderOrigin.WebSite, mas pode ter OrderType Retirada OU Delivery dependendo da escolha do cliente.
+export const OrderOrigin = {
+  Local: 1,
+  WebSite: 2,
+  IFood: 3,
+  Keeta: 4,
+} as const;
+
+export const orderOriginLabel: Record<number, string> = {
+  1: "Local",
+  2: "Site",
+  3: "iFood",
+  4: "Keeta",
 };
 
 export interface PublicMenuResponse {

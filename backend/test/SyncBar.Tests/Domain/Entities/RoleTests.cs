@@ -35,7 +35,7 @@ namespace SyncBar.Tests.Domain.Entities
         public void Create_WithEmptyOrWhitespaceName_ShouldReturnFailureResult(string? invalidName)
         {
             // Act
-            var result = Role.Create(1, invalidName, "Description test");
+            var result = Role.Create(1, invalidName!, "Description test");
 
             // Assert
             result.IsSuccess.Should().BeFalse();
