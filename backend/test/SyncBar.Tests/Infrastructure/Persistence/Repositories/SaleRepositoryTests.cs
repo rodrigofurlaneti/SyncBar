@@ -162,6 +162,40 @@ namespace SyncBar.Tests.Infrastructure.Persistence.Repositories
         }
 
         [Fact]
+        public async Task GetActiveByCustomerOrderIdAsync_ActiveSaleExists_ReturnsUntrackedSaleWithPayments()
+        {
+            var sale = CreateSale(customerOrderId: 42);
+            sale.AddPayment(paymentMethodId: 1, amount: 100m, changeAmount: null, authorizationCode: null, allowsChange: false);
+            await SeedAsync(sale);
+
+            var result = await _repository.GetActiveByCustomerOrderIdAsync(42);
+
+            result.Should().NotBeNull();
+            result!.Payments.Should().ContainSingle();
+            Context.Entry(result).State.Should().Be(EntityState.Detached);
+        }
+
+        [Fact]
+        public async Task GetActiveByCustomerOrderIdAsync_NoSaleForOrder_ReturnsNull()
+        {
+            var result = await _repository.GetActiveByCustomerOrderIdAsync(999);
+
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task GetActiveByCustomerOrderIdAsync_SaleIsInactive_ReturnsNull()
+        {
+            var sale = CreateSale(customerOrderId: 42);
+            sale.Deactivate();
+            await SeedAsync(sale);
+
+            var result = await _repository.GetActiveByCustomerOrderIdAsync(42);
+
+            result.Should().BeNull();
+        }
+
+        [Fact]
         public async Task AddAsync_ValidSale_PersistsToDatabase()
         {
             var sale = CreateSale(branchId: 7, saleNumber: 99);

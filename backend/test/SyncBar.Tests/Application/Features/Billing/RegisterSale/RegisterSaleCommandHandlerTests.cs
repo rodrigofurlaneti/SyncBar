@@ -5,6 +5,7 @@ using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Application.Features.Billing.RegisterSale;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
+using SyncBar.Domain.Exceptions;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 using Xunit;
@@ -42,7 +43,7 @@ public sealed class RegisterSaleCommandHandlerTests
 
         // Defaults sensatos — cada teste sobrescreve o que precisar.
         _saleRepository.GetNextSaleNumberAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(777L);
-        _saleRepository.ExistsActiveByOrderAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(false);
+        _saleRepository.GetActiveByCustomerOrderIdAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns((Sale?)null);
         _partialPaymentRepository.GetByOrderAsync(Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<OrderPartialPayment>());
 
@@ -118,6 +119,9 @@ public sealed class RegisterSaleCommandHandlerTests
     private static RegisterSaleCommand BuildCommand(
         long customerOrderId, long cashSessionId, IReadOnlyCollection<SalePaymentInput> payments, long employeeId = 5)
         => new(customerOrderId, cashSessionId, employeeId, payments);
+
+    private static void SetId(Entity entity, long id)
+        => typeof(Entity).GetProperty(nameof(Entity.Id))!.SetValue(entity, id);
 
     // ---------- 1-2. Pedido inválido ----------
 
@@ -201,24 +205,70 @@ public sealed class RegisterSaleCommandHandlerTests
         await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
     }
 
-    // ---------- 4. Venda duplicada ----------
+    // ---------- 4. Idempotência: pedido já tem venda ativa ----------
 
+    // Cobre o bug real relatado: reenvio (clique duplo, timeout+nova tentativa, F5) de uma
+    // confirmação de pagamento cujo pedido já tem uma venda ativa registrada não deve mais
+    // devolver o erro técnico "Order already has an active sale" — deve devolver sucesso
+    // apontando pra venda já existente, sem tentar persistir uma nova nem tocar em mesa/comanda/
+    // estoque de novo (a operação inteira é pulada, não só a criação da Sale).
     [Fact]
-    public async Task Handle_OrderAlreadyHasActiveSale_ShouldReturnSaleDuplicate()
+    public async Task Handle_OrderAlreadyHasActiveSale_ShouldReturnExistingSaleIdIdempotently()
     {
-        var order = CreateAwaitingPaymentOrder(201, 3m, 202, 2m);
-        var session = CreateOpenCashSession();
-        _orderRepository.GetByIdForUpdateAsync(100, Arg.Any<CancellationToken>()).Returns(order);
-        _cashSessionRepository.GetByIdAsync(10, Arg.Any<CancellationToken>()).Returns(session);
-        _saleRepository.ExistsActiveByOrderAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(true);
+        var existingSale = Sale.Create(1, 100, 10, 5, 500, 90m, 0m, 0m).Value;
+        SetId(existingSale, 4242);
+        _saleRepository.GetActiveByCustomerOrderIdAsync(100, Arg.Any<CancellationToken>()).Returns(existingSale);
         var command = BuildCommand(100, 10, [new SalePaymentInput(PaymentMethodIds.Pix, 90m, null, null)]);
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Sale.Duplicate");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(4242L);
+        await _orderRepository.DidNotReceive().GetByIdForUpdateAsync(Arg.Any<long>(), Arg.Any<CancellationToken>());
         await _saleRepository.DidNotReceive().AddAsync(Arg.Any<Sale>(), Arg.Any<CancellationToken>());
+        await _diningTableRepository.DidNotReceive().GetByIdForUpdateAsync(Arg.Any<long>(), Arg.Any<CancellationToken>());
+        // Só o commit do log de auditoria — nenhum commit de negócio, já que nada foi alterado.
         await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
+    }
+
+    // Corrida de verdade: duas requisições passam pela checagem de idempotência quase ao mesmo
+    // tempo (nenhuma vê a venda da outra ainda) — o índice único UQ_Sale_CustomerOrderId barra a
+    // segunda no commit, traduzido pra ConcurrencyException por AppDbContext.CommitAsync(). A
+    // recuperação deve reconsultar e devolver sucesso com o Id da venda que venceu a corrida.
+    [Fact]
+    public async Task Handle_ConcurrencyExceptionOnCommit_ShouldRecoverAndReturnWinningSaleId()
+    {
+        var order = CreateAwaitingPaymentOrder(201, 3m, 202, 2m);
+        var session = CreateOpenCashSession();
+        var table = DiningTable.Create(1, TableStatusIds.Ocupada, number: 5, capacity: 4).Value;
+        var comanda = Comanda.Create(1, ComandaStatusIds.EmUso, "C001").Value;
+        _orderRepository.GetByIdForUpdateAsync(100, Arg.Any<CancellationToken>()).Returns(order);
+        _cashSessionRepository.GetByIdAsync(10, Arg.Any<CancellationToken>()).Returns(session);
+        _diningTableRepository.GetByIdForUpdateAsync(50, Arg.Any<CancellationToken>()).Returns(table);
+        _comandaRepository.GetByIdForUpdateAsync(60, Arg.Any<CancellationToken>()).Returns(comanda);
+
+        var winnerSale = Sale.Create(1, 100, 10, 5, 501, 90m, 0m, 0m).Value;
+        SetId(winnerSale, 9001);
+
+        var firstCall = true;
+        _unitOfWork.CommitAsync(Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            if (!firstCall) return Task.FromResult(1);
+            firstCall = false;
+            // Primeira chamada é o commit de negócio (dentro do try/catch do handler) — simula a
+            // corrida perdida. A segunda chamada (log de auditoria da BaseCommandHandler) deve
+            // suceder normalmente.
+            _saleRepository.GetActiveByCustomerOrderIdAsync(100, Arg.Any<CancellationToken>()).Returns(winnerSale);
+            throw new ConcurrencyException("conflito simulado");
+        });
+
+        var command = BuildCommand(100, 10, [new SalePaymentInput(PaymentMethodIds.Pix, 90m, null, null)]);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(9001L);
+        await _unitOfWork.Received(2).CommitAsync(Arg.Any<CancellationToken>());
     }
 
     // ---------- 5. Pagamento inválido ----------

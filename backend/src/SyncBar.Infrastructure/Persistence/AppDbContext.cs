@@ -234,5 +234,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
         {
             throw new ConcurrencyException("Ocorreu um conflito de concorrência ao persistir as alterações.", ex);
         }
+        catch (DbUpdateException ex)
+        {
+            // Cobre violação de índice único (ex.: UQ_Sale_CustomerOrderId) quando duas requisições
+            // para o mesmo recurso vencem a checagem "existe?" da aplicação quase ao mesmo tempo e
+            // uma delas perde na gravação — traduzido pro mesmo tipo de exceção de domínio usado
+            // para conflito de concorrência, pra quem chama poder tratar (ex.: reconsultar o
+            // registro vencedor) sem precisar depender de um tipo do EF Core na camada de Application.
+            throw new ConcurrencyException("Ocorreu um conflito ao persistir as alterações — outro registro concorrente pode ter vencido a gravação.", ex);
+        }
     }
 }

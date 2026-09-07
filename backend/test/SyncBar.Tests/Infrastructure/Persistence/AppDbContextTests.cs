@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using SyncBar.Domain.Entities;
+using SyncBar.Domain.Exceptions;
 using Xunit;
 
 namespace SyncBar.Tests.Infrastructure.Persistence
@@ -28,6 +29,26 @@ namespace SyncBar.Tests.Infrastructure.Persistence
             var affectedRows = await Context.CommitAsync();
 
             affectedRows.Should().Be(0);
+        }
+
+        // Cobre a corrida de verdade do bug "Order already has an active sale": duas vendas ativas
+        // para o mesmo pedido violam UQ_Sale_CustomerOrderId (índice único filtrado por IsActive=1)
+        // — o CommitAsync deve traduzir o DbUpdateException genérico do EF (não o
+        // DbUpdateConcurrencyException de RowVersion) para o ConcurrencyException de domínio, que o
+        // RegisterSaleCommandHandler sabe recuperar.
+        [Fact]
+        public async Task CommitAsync_UniqueConstraintViolation_ThrowsDomainConcurrencyException()
+        {
+            var first = Sale.Create(1, 100, 10, 5, 1, 100m, 0m, 0m).Value;
+            await Context.AddAsync(first);
+            await Context.CommitAsync();
+
+            var second = Sale.Create(1, 100, 10, 5, 2, 100m, 0m, 0m).Value;
+            await Context.AddAsync(second);
+
+            var act = () => Context.CommitAsync();
+
+            await act.Should().ThrowAsync<ConcurrencyException>();
         }
 
         [Fact]

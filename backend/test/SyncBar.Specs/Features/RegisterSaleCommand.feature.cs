@@ -229,14 +229,17 @@ this.ScenarioInitialize(scenarioInfo);
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Registrar venda de pedido que ja tem venda ativa deve falhar")]
+        [Xunit.SkippableFactAttribute(DisplayName="Registrar venda de pedido que ja tem venda ativa deve ter sucesso de forma idempo" +
+            "tente")]
         [Xunit.TraitAttribute("FeatureTitle", "Registrar venda")]
-        [Xunit.TraitAttribute("Description", "Registrar venda de pedido que ja tem venda ativa deve falhar")]
-        public async global::System.Threading.Tasks.Task RegistrarVendaDePedidoQueJaTemVendaAtivaDeveFalhar()
+        [Xunit.TraitAttribute("Description", "Registrar venda de pedido que ja tem venda ativa deve ter sucesso de forma idempo" +
+            "tente")]
+        public async global::System.Threading.Tasks.Task RegistrarVendaDePedidoQueJaTemVendaAtivaDeveTerSucessoDeFormaIdempotente()
         {
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Registrar venda de pedido que ja tem venda ativa deve falhar", null, tagsOfScenario, argumentsOfScenario, featureTags);
+            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Registrar venda de pedido que ja tem venda ativa deve ter sucesso de forma idempo" +
+                    "tente", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 23
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
@@ -261,7 +264,7 @@ this.ScenarioInitialize(scenarioInfo);
                         "amento de 100.00 no metodo 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
 #line 28
-    await testRunner.ThenAsync("a operacao deve falhar com o erro \"Sale.Duplicate\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
+    await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
             }
             await this.ScenarioCleanupAsync();

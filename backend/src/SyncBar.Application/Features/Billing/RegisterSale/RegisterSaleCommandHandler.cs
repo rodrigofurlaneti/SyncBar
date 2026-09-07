@@ -2,6 +2,7 @@
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
+using SyncBar.Domain.Exceptions;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
 
@@ -57,6 +58,17 @@ internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSa
         {
             userIdBox.Value = request.EmployeeId;
 
+            // Idempotência: se esse pedido já tem uma venda ativa, o pagamento já foi registrado
+            // com sucesso antes (reenvio por clique duplo, timeout de rede seguido de nova
+            // tentativa, F5 na tela de pagamento, etc.) — devolve sucesso apontando pra venda já
+            // existente em vez de um erro técnico assustador ("Order already has an active sale")
+            // para uma operação que, do ponto de vista do operador, já deu certo. Verificado ANTES
+            // do status do pedido porque, no caminho feliz, a venda e o MarkAsPaid do pedido são
+            // persistidos no mesmo commit — se a venda existe, o pedido já está Pago.
+            var existingSale = await _saleRepository.GetActiveByCustomerOrderIdAsync(request.CustomerOrderId, cancellationToken);
+            if (existingSale is not null)
+                return Result.Success(existingSale.Id);
+
             var orderResult = await ValidateOrderAsync(request.CustomerOrderId, cancellationToken);
             if (orderResult.IsFailure)
                 return Result.Failure<long>(orderResult.Error);
@@ -66,10 +78,6 @@ internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSa
             if (sessionResult.IsFailure)
                 return Result.Failure<long>(sessionResult.Error);
             var session = sessionResult.Value;
-
-            var duplicateCheck = await EnsureNoDuplicateSaleAsync(order.Id, cancellationToken);
-            if (duplicateCheck.IsFailure)
-                return Result.Failure<long>(duplicateCheck.Error);
 
             var saleResult = await CreateSaleAsync(order, session, request, cancellationToken);
             if (saleResult.IsFailure)
@@ -93,7 +101,24 @@ internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSa
             await DecreaseStockForPaidItemsAsync(order, request.EmployeeId, currentTime, cancellationToken);
 
             await _saleRepository.AddAsync(sale, cancellationToken);
-            await _unitOfWork.CommitAsync(cancellationToken);
+
+            try
+            {
+                await _unitOfWork.CommitAsync(cancellationToken);
+            }
+            catch (ConcurrencyException)
+            {
+                // Corrida de verdade: duas requisições passaram pela checagem de idempotência
+                // acima quase ao mesmo tempo, antes de qualquer uma commitar. O índice único
+                // UQ_Sale_CustomerOrderId (filtrado por IsActive=1) impede as duas de vencerem —
+                // quem perde cai aqui. Em vez de estourar um 500 genérico, reconsulta: a
+                // concorrente que venceu já persistiu a venda, então trata como sucesso idempotente.
+                var winnerSale = await _saleRepository.GetActiveByCustomerOrderIdAsync(request.CustomerOrderId, cancellationToken);
+                if (winnerSale is not null)
+                    return Result.Success(winnerSale.Id);
+
+                throw;
+            }
 
             await PrintReceiptSafelyAsync(sale.Id, cancellationToken);
 
@@ -119,14 +144,6 @@ internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSa
             return Result.Failure<CashSession>(new Error("CashSession.NotOpen", "Cash session is not open."));
 
         return Result.Success(session);
-    }
-
-    private async Task<Result> EnsureNoDuplicateSaleAsync(long orderId, CancellationToken cancellationToken)
-    {
-        if (await _saleRepository.ExistsActiveByOrderAsync(orderId, cancellationToken))
-            return Result.Failure(new Error("Sale.Duplicate", "Order already has an active sale."));
-
-        return Result.Success();
     }
 
     private async Task<Result<Sale>> CreateSaleAsync(

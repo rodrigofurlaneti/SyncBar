@@ -41,6 +41,11 @@ internal sealed class SaleRepository(AppDbContext context) : ISaleRepository
         => await context.Sales.AsNoTracking()
             .AnyAsync(x => x.CustomerOrderId == customerOrderId && x.IsActive, cancellationToken);
 
+    public async Task<Sale?> GetActiveByCustomerOrderIdAsync(long customerOrderId, CancellationToken cancellationToken = default)
+        => await context.Sales.AsNoTracking()
+            .Include(x => x.Payments)
+            .FirstOrDefaultAsync(x => x.CustomerOrderId == customerOrderId && x.IsActive, cancellationToken);
+
     public async Task AddAsync(Sale entity, CancellationToken cancellationToken = default)
         => await context.Sales.AddAsync(entity, cancellationToken);
 }
