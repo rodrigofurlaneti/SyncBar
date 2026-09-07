@@ -20,12 +20,12 @@ Scenario: Registrar venda com a sessao de caixa fechada deve falhar
     When eu registro a venda do pedido 1 na sessao de caixa 10 do funcionario 5 com um pagamento de 100.00 no metodo 1
     Then a operacao deve falhar com o erro "CashSession.NotOpen"
 
-Scenario: Registrar venda de pedido que ja tem venda ativa deve falhar
+Scenario: Registrar venda de pedido que ja tem venda ativa deve ter sucesso de forma idempotente
     Given um pedido de mesa 1 aguardando pagamento com total de 100.00
     And a sessao de caixa 10 esta aberta para vendas
     And o pedido ja possui uma venda ativa registrada
     When eu registro a venda do pedido 1 na sessao de caixa 10 do funcionario 5 com um pagamento de 100.00 no metodo 1
-    Then a operacao deve falhar com o erro "Sale.Duplicate"
+    Then a operacao deve ter sucesso
 
 Scenario: Registrar venda com troco em pagamento que nao e dinheiro deve falhar
     Given um pedido de mesa 1 aguardando pagamento com total de 100.00

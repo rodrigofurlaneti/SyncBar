@@ -80,9 +80,12 @@ public sealed class RegisterSaleCommandSteps
 
     [Given(@"o pedido ja possui uma venda ativa registrada")]
     public void GivenOPedidoJaPossuiUmaVendaAtivaRegistrada()
-        => _saleRepository
-            .Setup(r => r.ExistsActiveByOrderAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+    {
+        var existingSale = Sale.Create(1, 1, 10, 5, 1, 100m, 0m, 0m).Value;
+        _saleRepository
+            .Setup(r => r.GetActiveByCustomerOrderIdAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingSale);
+    }
 
     [When(@"eu registro a venda do pedido (.*) na sessao de caixa (.*) do funcionario (.*) com um pagamento de (.*) no metodo (.*)")]
     public async Task WhenEuRegistroAVendaComUmPagamento(

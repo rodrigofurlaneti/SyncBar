@@ -11,5 +11,6 @@ public interface ISaleRepository
     Task<long> GetNextSaleNumberAsync(long branchId, CancellationToken cancellationToken = default);
     // Espelha UQ_Sale_CustomerOrderId (filtrado por IsActive = 1).
     Task<bool> ExistsActiveByOrderAsync(long customerOrderId, CancellationToken cancellationToken = default);
+    Task<Sale?> GetActiveByCustomerOrderIdAsync(long customerOrderId, CancellationToken cancellationToken = default);
     Task AddAsync(Sale entity, CancellationToken cancellationToken = default);
 }

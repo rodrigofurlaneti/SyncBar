@@ -118,6 +118,18 @@ export function PaymentPanel({ order, onPaid }: Props) {
             onPaid();
         },
         onError: (e) => {
+            // Salvaguarda defensiva: o backend agora trata reenvio (clique duplo, timeout+nova
+            // tentativa) da confirmação de pagamento como sucesso idempotente, então este código de
+            // erro não deveria mais ocorrer em uso normal. Mantido aqui só para nunca expor o texto
+            // técnico "Order already has an active sale" caso ainda apareça (ex.: build antigo em
+            // cache) — trata como sucesso, já que a conta já foi paga por outra tentativa.
+            if (e instanceof ApiError && e.code === "Sale.Duplicate") {
+                setError(null);
+                Toast.fire({ icon: "info", title: "Esta conta já está sendo processada ou já foi paga. Atualizando status..." });
+                onPaid();
+                return;
+            }
+
             const msg = e instanceof ApiError ? e.message : "Falha ao registrar pagamento.";
             setError(msg);
             Swal.fire("Erro", msg, "error");
