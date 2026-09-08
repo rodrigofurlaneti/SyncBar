@@ -6,13 +6,14 @@ import {
   acceptIFoodDispute,
   assignIFoodDriver,
   cancelIFoodOrder,
-  cancelIFoodOrderDriverRequest,
+  cancelIFoodOrderShippingDriver,
   confirmIFoodUserAddress,
   denyIFoodDeliveryAddressChange,
   dispatchIFoodLogistics,
   getIFoodCancellationReasons,
   getIFoodLogisticsDeliveries,
   getIFoodOrderTracking,
+  getIFoodOrderShippingQuote,
   getIFoodOrders,
   getIFoodOrderVirtualBag,
   markIFoodArrivedAtDestination,
@@ -22,13 +23,14 @@ import {
   rejectIFoodDispute,
   requestIFoodDeliveryAddressChange,
   requestIFoodDisputeAlternative,
-  requestIFoodOrderDriver,
+  requestIFoodOrderShippingDriver,
   startIFoodOrderPreparation,
   validateIFoodPickupCode,
   verifyIFoodDeliveryCode,
   verifyIFoodOrderDeliveryCode,
   type IFoodLogisticsDeliveryResponse,
   type IFoodOrderResponse,
+  type IFoodShippingQuoteResponse,
 } from "./api";
 import { useAuthStore } from "../../stores/authStore";
 import { useToast } from "../../ui/Toast";
@@ -823,6 +825,50 @@ function ValidatePickupCodeModal({
 // Order (distintos dos homônimos em Shipping/Logistics já cobertos no resto da tela). São
 // endpoints pouco usados no fluxo do dia a dia do SyncBar (só vende FOOD/FOOD_SELF_SERVICE, não
 // Grocery), por isso ficam agrupados aqui em vez de espalhados pelo card do pedido.
+function ShippingDriverActions({ orderId }: { orderId: number }) {
+  const toast = useToast();
+  const [quote, setQuote] = useState<IFoodShippingQuoteResponse | null>(null);
+  const [requested, setRequested] = useState(false);
+  const showError = (error: Error) => toast.error(error.message || "Não foi possível solicitar a entrega. Verifique a contratação no Portal do Parceiro.");
+  const quotation = useMutation({
+    mutationFn: () => getIFoodOrderShippingQuote(orderId),
+    onMutate: () => setQuote(null),
+    onSuccess: setQuote,
+    onError: showError,
+  });
+  const requestDriver = useMutation({
+    mutationFn: async () => {
+      if (!quote || (quote.expirationAt && Date.parse(quote.expirationAt) <= Date.now()))
+        throw new Error("Cotação expirada. Consulte a disponibilidade novamente.");
+      await requestIFoodOrderShippingDriver(orderId, quote.quoteId);
+    },
+    onSuccess: () => {
+      setRequested(true);
+      setQuote(null);
+      toast.success("Solicitação recebida. Aguardando atribuição do entregador iFood.");
+    },
+    onError: showError,
+  });
+  const cancelDriver = useMutation({
+    mutationFn: () => cancelIFoodOrderShippingDriver(orderId),
+    onSuccess: () => { setRequested(false); toast.success("Cancelamento da solicitação enviado ao iFood."); },
+    onError: showError,
+  });
+  return <section style={{ display: "grid", gap: 8 }} aria-label="Entregador iFood">
+    <strong>Solicitar entregador iFood</strong>
+    <small>Consulte a cobertura e o custo para usar um entregador iFood como apoio à sua frota.</small>
+    {!requested && <Button variant="ghost" loading={quotation.isPending} disabled={requestDriver.isPending}
+      onClick={() => quotation.mutate()}>Consultar disponibilidade</Button>}
+    {quote && <>
+      <span>Custo: {quote.netValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+      <Button variant="primary" loading={requestDriver.isPending} onClick={() => requestDriver.mutate()}>Confirmar solicitação</Button>
+    </>}
+    {requested && <span role="status">Aguardando atribuição do entregador.</span>}
+    <Button variant="ghost" loading={cancelDriver.isPending} disabled={requestDriver.isPending}
+      onClick={() => cancelDriver.mutate()}>Cancelar solicitação de entregador</Button>
+  </section>;
+}
+
 function OrderAdvancedActionsModal({ order, onClose }: { order: IFoodOrderResponse; onClose: () => void }) {
   const toast = useToast();
   const [showBag, setShowBag] = useState(false);
@@ -845,17 +891,6 @@ function OrderAdvancedActionsModal({ order, onClose }: { order: IFoodOrderRespon
     enabled: showBag,
   });
 
-  const requestDriverMutation = useMutation({
-    mutationFn: () => requestIFoodOrderDriver(order.id),
-    onSuccess: () => toast.success("Entregador solicitado (módulo Order) no iFood."),
-    onError: () => toast.error("Não foi possível solicitar o entregador no iFood."),
-  });
-
-  const cancelDriverMutation = useMutation({
-    mutationFn: () => cancelIFoodOrderDriverRequest(order.id),
-    onSuccess: () => toast.success("Solicitação de entregador cancelada (módulo Order) no iFood."),
-    onError: () => toast.error("Não foi possível cancelar a solicitação no iFood."),
-  });
 
   const verifyCodeMutation = useMutation({
     mutationFn: () => verifyIFoodOrderDeliveryCode(order.id, code.trim()),
@@ -938,17 +973,9 @@ function OrderAdvancedActionsModal({ order, onClose }: { order: IFoodOrderRespon
           )}
         </div>
 
-        <div style={{ display: "grid", gap: 8 }}>
-          <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>Entregador (endpoint próprio do módulo Order)</span>
-          <div className="ui-row" style={{ gap: 8 }}>
-            <Button variant="ghost" size="sm" loading={requestDriverMutation.isPending} onClick={() => requestDriverMutation.mutate()}>
-              Solicitar
-            </Button>
-            <Button variant="ghost" size="sm" loading={cancelDriverMutation.isPending} onClick={() => cancelDriverMutation.mutate()}>
-              Cancelar solicitação
-            </Button>
-          </div>
-        </div>
+        {order.ifoodOrderType === "DELIVERY" && order.deliveredBy === "MERCHANT" &&
+          !["CANCELLED", "CONCLUDED", "DELIVERED", "CANCELLATION_REQUESTED"].includes(order.status) &&
+          <ShippingDriverActions orderId={order.id} />}
 
         <div style={{ display: "grid", gap: 8 }}>
           <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>Verificar código de entrega (módulo Order)</span>

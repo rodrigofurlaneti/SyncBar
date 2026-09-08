@@ -23,10 +23,44 @@ public sealed class RequestIfoodOrderShippingDriverCommandHandlerTests
     {
         _handler = new RequestIfoodOrderShippingDriverCommandHandler(
             _orderRepository, _branchRepository, _tokenProvider, _shippingClient, _logRepository, _unitOfWork);
+        _shippingClient.GetDeliveryAvailabilitiesForOrderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new IfoodShippingQuoteResult(true, null, "quote-1", 10, 0, 10, 10, 20, 1000, DateTime.UtcNow.AddHours(1)));
+    }
+
+    [Theory]
+    [InlineData("TAKEOUT", "MERCHANT")]
+    [InlineData("DELIVERY", "IFOOD")]
+    [InlineData("DELIVERY", null)]
+    public async Task Handle_IneligibleOrder_ShouldNotCallShipping(string type, string? deliveredBy)
+    {
+        var order = IfoodOrder.Create(10, 1, "order-1", null, "merchant-1", type, deliveredBy,
+            "IMMEDIATE", null, DateTime.UtcNow, false).Value;
+        _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(order);
+
+        var result = await _handler.Handle(new RequestIfoodOrderShippingDriverCommand(1, "quote-1"), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        await _shippingClient.DidNotReceiveWithAnyArgs().RequestDriverForOrderAsync(default!, default!, default!, default);
+        await _shippingClient.DidNotReceiveWithAnyArgs().GetDeliveryAvailabilitiesForOrderAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Handle_UnavailableCoverage_ShouldNotRequestDriver()
+    {
+        _orderRepository.GetByIdForUpdateAsync(1, Arg.Any<CancellationToken>()).Returns(CreateOrder());
+        _branchRepository.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(CreateBranch());
+        _tokenProvider.GetAccessTokenAsync(1, Arg.Any<CancellationToken>()).Returns("token-1");
+        _shippingClient.GetDeliveryAvailabilitiesForOrderAsync("token-1", "ifood-order-1", Arg.Any<CancellationToken>())
+            .Returns(new IfoodShippingQuoteResult(false, "Fora da cobertura", null, 0, 0, 0, 0, 0, 0, null));
+
+        var result = await _handler.Handle(new RequestIfoodOrderShippingDriverCommand(1, "quote-1"), CancellationToken.None);
+
+        result.Error.Code.Should().Be("IfoodShipping.Unavailable");
+        await _shippingClient.DidNotReceiveWithAnyArgs().RequestDriverForOrderAsync(default!, default!, default!, default);
     }
 
     private static IfoodOrder CreateOrder() =>
-        IfoodOrder.Create(10, 1, "ifood-order-1", null, "merchant-1", "DELIVERY", null, "IMMEDIATE", null, DateTime.UtcNow, false).Value;
+        IfoodOrder.Create(10, 1, "ifood-order-1", null, "merchant-1", "DELIVERY", "MERCHANT", "IMMEDIATE", null, DateTime.UtcNow, false).Value;
 
     private static Branch CreateBranch()
         => Branch.Create(

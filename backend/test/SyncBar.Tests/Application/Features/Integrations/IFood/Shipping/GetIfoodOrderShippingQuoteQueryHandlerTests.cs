@@ -26,7 +26,7 @@ public sealed class GetIfoodOrderShippingQuoteQueryHandlerTests
     }
 
     private static IfoodOrder CreateOrder() =>
-        IfoodOrder.Create(10, 1, "ifood-order-1", null, "merchant-1", "DELIVERY", null, "IMMEDIATE", null, DateTime.UtcNow, false).Value;
+        IfoodOrder.Create(10, 1, "ifood-order-1", null, "merchant-1", "DELIVERY", "MERCHANT", "IMMEDIATE", null, DateTime.UtcNow, false).Value;
 
     private static Branch CreateBranch()
         => Branch.Create(

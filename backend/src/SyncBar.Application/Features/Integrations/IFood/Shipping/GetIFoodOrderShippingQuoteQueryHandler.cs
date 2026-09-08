@@ -26,6 +26,10 @@ internal sealed class GetIfoodOrderShippingQuoteQueryHandler(
                 if (IfoodOrder is null)
                     return Result.Failure<IfoodShippingQuoteResponse>(new Error("IfoodOrder.NotFound", "Pedido Ifood não encontrado."));
 
+                var eligibility = IfoodShippingEligibility.Validate(IfoodOrder);
+                if (eligibility.IsFailure)
+                    return Result.Failure<IfoodShippingQuoteResponse>(eligibility.Error);
+
                 var branch = await branchRepository.GetByIdAsync(IfoodOrder.BranchId, cancellationToken);
                 if (branch is null)
                     return Result.Failure<IfoodShippingQuoteResponse>(new Error("Branch.NotFound", "Filial não encontrada."));
