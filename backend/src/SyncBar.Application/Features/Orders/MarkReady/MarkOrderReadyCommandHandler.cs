@@ -10,6 +10,7 @@ internal sealed class MarkOrderReadyCommandHandler(
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : BaseCommandHandler<MarkOrderReadyCommand>(logRepository, unitOfWork)
 {
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
     public override Task<Result> Handle(MarkOrderReadyCommand request, CancellationToken cancellationToken) =>
         ExecuteWithLogAsync(nameof(MarkOrderReadyCommandHandler), nameof(Handle), null, async _ =>
         {
@@ -20,7 +21,7 @@ internal sealed class MarkOrderReadyCommandHandler(
             var result = order.MarkReadyForDispatch(timeProvider.GetLocalNow().DateTime);
             if (result.IsFailure) return result;
 
-            await unitOfWork.CommitAsync(cancellationToken);
+            await _unitOfWork.CommitAsync(cancellationToken);
             return Result.Success();
         });
 }

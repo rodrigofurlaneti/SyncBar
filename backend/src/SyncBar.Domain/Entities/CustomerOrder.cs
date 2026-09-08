@@ -351,11 +351,7 @@ public sealed class CustomerOrder : AggregateRoot
         return Result.Success();
     }
 
-    // Confirma explicitamente que o pedido entrou em preparo — normalmente supérfluo, já que
-    // AddItem já promove Aberto->EmAndamento ao lançar o primeiro item. Existe pra cobrir pedidos
-    // que chegam via integração (ex.: iFood) já criados mas com itens ainda não conciliados com o
-    // catálogo (EAN sem mapeamento): sem nenhum item lançado, AddItem nunca roda e o pedido fica
-    // preso em Aberto, invisível pro operador tentar agir sobre ele na tela de Delivery/Preparo.
+    // Conclui o preparo de entrega/retirada no agregado, sem notificações de salão.
     public Result MarkReadyForDispatch(DateTime now)
     {
         if (DiningTableId.HasValue || ComandaId.HasValue)
@@ -381,6 +377,7 @@ public sealed class CustomerOrder : AggregateRoot
         return Result.Success();
     }
 
+    // Confirma o preparo também para pedidos importados sem itens conciliados no catálogo.
     public Result StartPreparation(DateTime Now)
     {
         if (!IsOpen())

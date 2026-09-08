@@ -1596,8 +1596,7 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
     : DEFAULT_PAYMENT_METHOD_FLAGS;
   const flags: PaymentMethodFlags = { ...baseFlags, ...overrides };
   const isDirty = Object.keys(overrides).length > 0;
-  // A configuração encontrada é da própria filial só quando o BranchId bate — caso contrário
-  // (BranchId null ou de outra filial) o resolve caiu no fallback da matriz.
+  // Atualiza apenas o escopo selecionado; uma configuração herdada gera uma nova filial.
   const isOwnBranchSetting = setting?.branchId === scopeBranchId;
 
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ["branchPaymentMethodSettings"] });
