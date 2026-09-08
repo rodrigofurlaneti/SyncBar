@@ -33,7 +33,7 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
@@ -117,7 +117,7 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
@@ -199,10 +199,14 @@ jobs:
             echo "HEALTH CHECK"
             echo "=========================================="
 
-            # Aguarda 15 segundos para dar tempo do EF Core rodar as migrations e a API subir
-            sleep 15
-
-            curl -fsS http://localhost:8080/health
+            # A API pode aguardar banco/migrations durante a inicialização.
+            # Connection reset/refused também devem ser repetidos, com prazo limitado.
+            if ! curl -fsS --retry 30 --retry-all-errors --retry-delay 3 \
+              --retry-max-time 180 --connect-timeout 5 --max-time 10 http://localhost:8080/health; then
+              echo "API não ficou saudável dentro do prazo. Verifique os logs do container api."
+              sudo docker compose ps
+              exit 1
+            fi
 
             echo ""
 

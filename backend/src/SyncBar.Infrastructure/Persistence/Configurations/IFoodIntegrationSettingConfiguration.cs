@@ -13,6 +13,7 @@ internal sealed class IfoodIntegrationSettingConfiguration : IEntityTypeConfigur
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
         builder.Property(x => x.ClientId).HasMaxLength(200);
+        builder.Property(x => x.EventDeliveryMode).HasMaxLength(16).HasDefaultValue("Polling").IsRequired();
         builder.Property(x => x.ClientSecretEncrypted).HasColumnType("varchar(1000)");
         builder.Property(x => x.IfoodCustomerId).HasMaxLength(100);
         builder.Property(x => x.Enabled).HasColumnType("bit").IsRequired();

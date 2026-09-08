@@ -40,11 +40,53 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
     private readonly ILogTrackerRepository _logRepository = Substitute.For<ILogTrackerRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
-    private SyncIfoodOrdersCommandHandler CreateSut() => new(
+    private SyncIfoodOrdersCommandHandler CreateSut(IIfoodEventInbox? inbox = null) => new(
         _settingRepository, _tokenProvider, _orderClient, _merchantMappingRepository, _IfoodOrderRepository,
         _customerOrderRepository, _productRepository, _categoryRepository, _unitOfMeasureRepository,
         _branchRepository, _complementGroupRepository,
-        _complementMappingRepository, TimeProvider.System, _cache, _logRepository, _unitOfWork);
+        _complementMappingRepository, TimeProvider.System, _cache, _logRepository, _unitOfWork, eventInbox: inbox);
+
+    [Fact]
+    public async Task WebhookMode_DoesNotPoll()
+    {
+        var setting = IfoodIntegrationSetting.Create(CompanyId).Value;
+        setting.SaveCredentials("client", "encrypted", true, null);
+        setting.SetEventDeliveryMode("Webhook");
+        _settingRepository.GetByCompanyAsync(CompanyId, Arg.Any<CancellationToken>()).Returns(setting);
+        (await CreateSut().Handle(new SyncIfoodOrdersCommand(CompanyId), default)).IsSuccess.Should().BeTrue();
+        await _orderClient.DidNotReceiveWithAnyArgs().PollEventsAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task ReceivedEvent_UsesSharedProcessorWithoutPollingOrRemoteAck()
+    {
+        GivenIntegrationEnabledWithValidToken();
+        GivenAnActiveMerchantMapping();
+        var order = IfoodOrder.Create(1, BranchId, IfoodOrderExternalId, "001", MerchantId,
+            "DELIVERY", "MERCHANT", "IMMEDIATE", null, DateTime.UtcNow, false).Value;
+        _IfoodOrderRepository.GetByIfoodOrderIdForUpdateAsync(IfoodOrderExternalId, Arg.Any<CancellationToken>()).Returns(order);
+        var evt = new IfoodPollingEvent("received-1", "CFM", "CONFIRMED", IfoodOrderExternalId, DateTime.UtcNow);
+        var result = await CreateSut().Handle(new SyncIfoodOrdersCommand(CompanyId, [evt]), default);
+        result.IsSuccess.Should().BeTrue();
+        order.Status.Should().Be("CONFIRMED");
+        await _orderClient.DidNotReceiveWithAnyArgs().PollEventsAsync(default!, default!, default);
+        await _orderClient.DidNotReceiveWithAnyArgs().AcknowledgeEventsAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Polling_DoesNotAckWhenDurableEnqueueFails()
+    {
+        GivenIntegrationEnabledWithValidToken();
+        GivenAnActiveMerchantMapping();
+        var evt = new IfoodPollingEvent("event-1", "CFM", "CONFIRMED", IfoodOrderExternalId, DateTime.UtcNow);
+        _orderClient.PollEventsAsync(ValidToken, Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>()).Returns(new[] { evt });
+        var inbox = Substitute.For<IIfoodEventInbox>();
+        inbox.EnqueueAsync(CompanyId, evt.Id, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("Database unavailable")));
+        try { await CreateSut(inbox).Handle(new SyncIfoodOrdersCommand(CompanyId), default); }
+        catch (InvalidOperationException) { }
+        await _orderClient.DidNotReceiveWithAnyArgs().AcknowledgeEventsAsync(default!, default!, default);
+    }
 
     // Cenário padrão pra criação do produto placeholder "Não mapeado (iFood)" ter sucesso —
     // testes que precisam do caminho "sem categoria/unidade cadastrada" sobrescrevem isto.

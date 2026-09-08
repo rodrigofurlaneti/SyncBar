@@ -13,15 +13,20 @@
 -- scripts 2026-09-01_add_diningtable_reading_validation_flags.sql e
 -- 2026-09-03_add_shift_closing.sql) — execute diretamente contra o banco `barrestaurantedb`.
 --
--- NAO idempotente: rode uma unica vez.
+-- Reexecutável: adiciona somente estruturas ausentes. Selecione o banco correto na conexão.
 -- =====================================================================================
 
-USE `barrestaurantedb`;
+SET @cash_reconciliation_ddl = IF(
+  EXISTS(SELECT 1 FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'cashsession' AND column_name = 'TotalDifferenceAmount'),
+  'SELECT 1',
+  'ALTER TABLE `cashsession` ADD COLUMN `TotalDifferenceAmount` decimal(18,2) NULL AFTER `DifferenceAmount`'
+);
+PREPARE cash_reconciliation_stmt FROM @cash_reconciliation_ddl;
+EXECUTE cash_reconciliation_stmt;
+DEALLOCATE PREPARE cash_reconciliation_stmt;
 
-ALTER TABLE `cashsession`
-  ADD COLUMN `TotalDifferenceAmount` decimal(18,2) NULL AFTER `DifferenceAmount`;
-
-CREATE TABLE `cashsessionpaymentreconciliation` (
+CREATE TABLE IF NOT EXISTS `cashsessionpaymentreconciliation` (
   `Id` bigint NOT NULL AUTO_INCREMENT,
   `CashSessionId` bigint NOT NULL,
   `PaymentMethodId` bigint NOT NULL,

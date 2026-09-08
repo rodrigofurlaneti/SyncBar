@@ -66,6 +66,7 @@ export function IFoodIntegrationPage() {
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [enabled, setEnabled] = useState(false);
+  const [eventDeliveryMode, setEventDeliveryMode] = useState<"Polling" | "Webhook">("Polling");
   const [ifoodCustomerId, setIfoodCustomerId] = useState("");
   const [initializedCompanyId, setInitializedCompanyId] = useState<number | null>(null);
   const [tab, setTab] = useState<IFoodTabId>("credentials");
@@ -82,6 +83,7 @@ export function IFoodIntegrationPage() {
     if (settingsQuery.data && initializedCompanyId !== companyId) {
       setClientId(settingsQuery.data.clientId ?? "");
       setEnabled(settingsQuery.data.enabled);
+      setEventDeliveryMode(settingsQuery.data.eventDeliveryMode ?? "Polling");
       setIfoodCustomerId(settingsQuery.data.ifoodCustomerId ?? "");
       setInitializedCompanyId(companyId);
     }
@@ -94,6 +96,7 @@ export function IFoodIntegrationPage() {
         clientId: clientId.trim(),
         clientSecret: clientSecret.trim(),
         enabled,
+        eventDeliveryMode,
         ifoodCustomerId: ifoodCustomerId.trim(),
       }),
     onSuccess: () => {
@@ -246,6 +249,26 @@ export function IFoodIntegrationPage() {
                 hint="Não é segredo — fica salvo em texto puro. Sem ele, o resto da integração funciona normalmente, só o campo de tempo de preparo fica desabilitado."
               />
 
+              <SelectField label="Recebimento de eventos" value={eventDeliveryMode}
+                disabled={saveMutation.isPending}
+                onChange={(e) => setEventDeliveryMode(e.target.value as "Polling" | "Webhook")}>
+                <option value="Polling">Polling — consultar eventos periodicamente</option>
+                <option value="Webhook">Webhook — receber eventos do iFood</option>
+              </SelectField>
+              {eventDeliveryMode === "Webhook" && <>
+                <TextField label="URL do webhook iFood" readOnly
+                  value={`${window.location.origin}/api/webhook/ifood/${companyId}`}
+                  hint="Cadastre esta URL no aplicativo iFood, com HTTPS público. Ela é exclusiva do iFood." />
+                <p role="note" style={{ color: "var(--ink-dim)", margin: 0 }}>
+                  Ao salvar Webhook, as consultas de eventos por polling serão interrompidas.
+                  Ative e teste a URL no portal iFood para começar a receber pedidos.
+                  Prefira presença por loja para anunciar somente as lojas vinculadas.
+                  Para voltar ao polling, selecione Polling aqui e desative o webhook no portal.
+                </p>
+                {window.location.protocol !== "https:" && <p role="alert" style={{ color: "var(--danger)", margin: 0 }}>
+                  Este endereço usa HTTP. Publique o sistema com HTTPS antes de configurar o webhook no iFood.
+                </p>}
+              </>}
               <Field label="Integração ativa">
                 {() => (
                   <Switch

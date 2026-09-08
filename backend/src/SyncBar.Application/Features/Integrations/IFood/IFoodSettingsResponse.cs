@@ -8,4 +8,5 @@ public sealed record IfoodSettingsResponse(
     bool Enabled,
     DateTime? LastConnectionTestAt,
     bool? LastConnectionTestSucceeded,
-    string? IfoodCustomerId);
+    string? IfoodCustomerId,
+    string EventDeliveryMode = "Polling");
