@@ -65,7 +65,7 @@ namespace SyncBar.Tests.Infrastructure.Persistence.Configurations
             var indexes = EntityType.GetIndexes().ToList();
 
             indexes.Should().Contain(i =>
-                i.GetDatabaseName() == "UQ_CashSessionPaymentReconciliation_CashSessionId_PaymentMethodId" &&
+                i.GetDatabaseName() == "UQ_CashReconciliation_Session_Method" &&
                 i.IsUnique &&
                 i.Properties.Select(p => p.Name).SequenceEqual(new[]
                 {

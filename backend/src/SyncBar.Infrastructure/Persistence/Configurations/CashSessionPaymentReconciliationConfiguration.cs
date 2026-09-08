@@ -22,7 +22,7 @@ internal sealed class CashSessionPaymentReconciliationConfiguration : IEntityTyp
         // No maximo uma linha de conferencia ativa por forma de pagamento por sessao de caixa.
         builder.HasIndex(x => new { x.CashSessionId, x.PaymentMethodId })
             .IsUnique()
-            .HasDatabaseName("UQ_CashSessionPaymentReconciliation_CashSessionId_PaymentMethodId");
+            .HasDatabaseName("UQ_CashReconciliation_Session_Method");
 
         builder.HasIndex(x => x.PaymentMethodId).HasDatabaseName("IX_CashSessionPaymentReconciliation_PaymentMethodId");
 

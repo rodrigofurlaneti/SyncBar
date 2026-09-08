@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS `cashsessionpaymentreconciliation` (
   `UpdatedAt` datetime(6) NULL,
   `IsActive` tinyint(1) NOT NULL,
   PRIMARY KEY (`Id`),
-  UNIQUE KEY `UQ_CashSessionPaymentReconciliation_CashSessionId_PaymentMethodId` (`CashSessionId`, `PaymentMethodId`),
+  UNIQUE KEY `UQ_CashReconciliation_Session_Method` (`CashSessionId`, `PaymentMethodId`),
   KEY `IX_CashSessionPaymentReconciliation_PaymentMethodId` (`PaymentMethodId`),
   CONSTRAINT `FK_CashSessionPaymentReconciliation_CashSession` FOREIGN KEY (`CashSessionId`) REFERENCES `cashsession` (`Id`),
   CONSTRAINT `FK_CashSessionPaymentReconciliation_PaymentMethod` FOREIGN KEY (`PaymentMethodId`) REFERENCES `paymentmethod` (`Id`)
