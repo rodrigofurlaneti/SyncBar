@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SyncBar.Application.Features.Shift.CloseShift;
 using SyncBar.Application.Features.Shift.GetById;
+using SyncBar.Application.Features.Shift.GetHistory;
+using SyncBar.Application.Features.Shift.GetOpenShift;
 using SyncBar.Application.Features.Shift.OpenShift;
 using SyncBar.Domain.Repositories;
 
@@ -19,6 +21,23 @@ public sealed class ShiftClosingController(
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ShiftClosingController), nameof(GetById), async () =>
         {
             var result = await Mediator.Send(new GetShiftClosingByIdQuery(id), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpGet("open")]
+    public Task<IActionResult> GetOpen([FromQuery] long branchId, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ShiftClosingController), nameof(GetOpen), async () =>
+        {
+            var result = await Mediator.Send(new GetOpenShiftClosingQuery(branchId), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        });
+
+    [HttpGet("history")]
+    public Task<IActionResult> GetHistory(
+        [FromQuery] long branchId, [FromQuery] int referenceYear, [FromQuery] int referenceMonth, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(ShiftClosingController), nameof(GetHistory), async () =>
+        {
+            var result = await Mediator.Send(new GetShiftClosingHistoryQuery(branchId, referenceYear, referenceMonth), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 

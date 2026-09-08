@@ -527,6 +527,27 @@ export const CashSessionStatus = {
   Conferido: 3,
 } as const;
 
+export interface ShiftClosingResponse {
+  id: number;
+  branchId: number;
+  shiftClosingStatusId: number;
+  openedByEmployeeId: number;
+  closedByEmployeeId: number | null;
+  periodStart: string;
+  periodEnd: string | null;
+  cashSessionsCount: number;
+  totalOpeningAmount: number;
+  totalExpectedAmount: number;
+  totalRealizedAmount: number;
+  totalDifferenceAmount: number;
+  notes: string | null;
+}
+
+export const ShiftClosingStatus = {
+  Aberto: 1,
+  Fechado: 2,
+} as const;
+
 export interface PromotionResponse {
   id: number;
   productId: number;
