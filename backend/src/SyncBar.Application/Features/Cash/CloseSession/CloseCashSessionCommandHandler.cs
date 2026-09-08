@@ -56,12 +56,13 @@ internal sealed class CloseCashSessionCommandHandler : BaseCommandHandler<CloseC
                 // Esperado por forma de pagamento: agregado das vendas liquidadas da sessao,
                 // mesma logica do GetCashSummaryQueryHandler — nunca confiamos num "esperado"
                 // vindo do cliente, so no valor conferido (CountedAmount).
-                var expectedByMethod = sales
-                    .Where(s => s.IsActive)
-                    .SelectMany(s => s.Payments)
-                    .Where(p => p.IsActive)
-                    .GroupBy(p => p.PaymentMethodId)
-                    .ToDictionary(g => g.Key, g => g.Sum(p => p.Amount - (p.ChangeAmount ?? 0)));
+                var expectedByMethod = CashMath.PaymentTotals(sales, partials);
+                var counts = request.PaymentMethodCounts ?? [];
+                var countedMethods = counts.Select(c => c.PaymentMethodId).ToHashSet();
+                if (countedMethods.Count != counts.Count || counts.Any(c => c.PaymentMethodId is not (2 or 3 or 4)))
+                    return Result.Failure<CloseCashSessionResponse>(new Error("CashSession.InvalidReconciliation", "Informe cada modalidade de cartão/Pix uma única vez."));
+                if (expectedByMethod.Any(p => p.Key is 2 or 3 or 4 && p.Value != 0 && !countedMethods.Contains(p.Key)))
+                    return Result.Failure<CloseCashSessionResponse>(new Error("CashSession.MissingReconciliation", "Confira todas as modalidades com recebimentos antes de fechar o caixa."));
 
                 var paymentReconciliations = new List<CashSessionPaymentReconciliation>();
                 foreach (var count in request.PaymentMethodCounts ?? [])

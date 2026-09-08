@@ -1595,25 +1595,25 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
       }
     : DEFAULT_PAYMENT_METHOD_FLAGS;
   const flags: PaymentMethodFlags = { ...baseFlags, ...overrides };
-  const isDirty = Object.keys(overrides).length > 0;
+  const isDirty = Object.entries(overrides).some(([key, value]) => baseFlags[key as keyof PaymentMethodFlags] !== value);
   // Atualiza apenas o escopo selecionado; uma configuração herdada gera uma nova filial.
   const isOwnBranchSetting = setting?.branchId === scopeBranchId;
-
-  const refresh = () => void queryClient.invalidateQueries({ queryKey: ["branchPaymentMethodSettings"] });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (isOwnBranchSetting && setting) {
         await updatePaymentMethodSetting(setting.id, { companyId, ...flags });
+        return { ...setting, ...flags };
       } else {
-        await createPaymentMethodSetting({ companyId, branchId: scopeBranchId, ...flags });
+        return await createPaymentMethodSetting({ companyId, branchId: scopeBranchId, ...flags });
       }
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
       setError(null);
+      queryClient.setQueryData(["branchPaymentMethodSettings", "resolve", companyId, scopeBranchId], saved);
       setOverrides({});
       toast.success("Métodos de pagamento salvos.");
-      refresh();
+      void queryClient.invalidateQueries({ queryKey: ["storefront", "payment-methods"] });
     },
     onError: (e) => setError(apiErrorMessage(e, "Não foi possível salvar os métodos de pagamento.")),
   });

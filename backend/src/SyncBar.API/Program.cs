@@ -27,7 +27,7 @@ ValidateDatabaseConnectionString(builder.Configuration);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-builder.Services.AddControllers().AddJsonOptions(options =>
+builder.Services.AddControllers(options => options.Conventions.Add(new SyncBar.API.Authorization.FeatureAccessConvention())).AddJsonOptions(options =>
     options.JsonSerializerOptions.Converters.Add(new SyncBar.API.Serialization.UtcDateTimeConverter()));
 builder.Services.AddFluentValidationAutoValidation();
 
@@ -143,9 +143,12 @@ static void ConfigureAuthentication(WebApplicationBuilder builder)
     builder.Services.AddAuthorization(options =>
     {
         // Uma policy por tela — controllers usam [Authorize(Policy = "Feature:X")].
-        foreach (var code in SyncBar.Domain.Constants.FeatureCodes.All)
+        foreach (var code in SyncBar.Domain.Constants.FeatureCodes.All.Concat(SyncBar.API.Authorization.FeatureAccessConvention.Controllers.Values).Distinct())
             options.AddPolicy($"Feature:{code}", policy =>
-                policy.Requirements.Add(new SyncBar.API.Authorization.FeatureRequirement(code)));
+            {
+                policy.RequireAuthenticatedUser();
+                policy.Requirements.Add(new SyncBar.API.Authorization.FeatureRequirement(code));
+            });
     });
     builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
         SyncBar.API.Authorization.FeatureAuthorizationHandler>();

@@ -53,6 +53,10 @@ internal sealed class ValidateTableReadingCommandHandler : BaseCommandHandler<Va
                 }
                 else if (method is "barcode" or "qrcode")
                 {
+                    var scanned = request.ScannedValue?.Trim().TrimEnd('/');
+                    if (scanned != table.Number.ToString() && scanned != request.TableToken.ToString()
+                        && !(Uri.TryCreate(scanned, UriKind.Absolute, out var url) && url.AbsolutePath.TrimEnd('/').EndsWith('/' + request.TableToken.ToString(), StringComparison.OrdinalIgnoreCase)))
+                        return Result.Failure(new Error("TableReadingValidation.CodeMismatch", "O código lido não corresponde à mesa."));
                     proofDescription = $"código lido: {request.ScannedValue}";
                 }
                 else

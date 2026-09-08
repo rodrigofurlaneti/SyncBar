@@ -316,9 +316,9 @@ export function UsersPage() {
                         <input data-testid="input-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
                     </label>
                     <label style={{ display: "grid", gap: 4 }}>
-                        <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Funcionário vinculado (opcional)</span>
+                        <span style={{ color: "var(--ink-dim)", fontSize: "0.85rem" }}>Funcionário vinculado</span>
                         <select data-testid="select-employee" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
-                            <option value="">Nenhum</option>
+                            <option value="">Selecione um funcionário</option>
                             {(employeesQuery.data ?? []).map((emp) => (
                                 <option key={emp.id} value={emp.id}>{emp.name}</option>
                             ))}
@@ -331,7 +331,7 @@ export function UsersPage() {
                         className="btn-primary"
                         disabled={
                             userName.trim() === "" || email.trim() === "" || password.length < 8 ||
-                            selectedRoles.length === 0 || createMutation.isPending
+                            employeeId === "" || selectedRoles.length === 0 || createMutation.isPending
                         }
                         onClick={() => createMutation.mutate()}
                     >

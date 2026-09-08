@@ -59,7 +59,7 @@ internal sealed class GetMyFeaturesQueryHandler(
             return;
 
         var employee = await employeeRepository.GetByIdAsync(user.EmployeeId.Value, cancellationToken);
-        if (employee is null)
+        if (employee is null || !employee.IsActive)
             return;
 
         var byJobTitle = await jobTitleFeatureRepository.GetByJobTitleAsync(employee.JobTitleId, cancellationToken);

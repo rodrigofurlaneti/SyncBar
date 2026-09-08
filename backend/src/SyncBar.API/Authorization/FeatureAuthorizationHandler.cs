@@ -27,7 +27,7 @@ internal sealed class FeatureAuthorizationHandler(IMediator mediator)
             return;
 
         var result = await mediator.Send(new GetMyFeaturesQuery(userId, false));
-        if (result.IsSuccess && result.Value.Features.Contains(requirement.FeatureCode))
+        if (result.IsSuccess && requirement.FeatureCode.Split(',').Any(result.Value.Features.Contains))
             context.Succeed(requirement);
     }
 }

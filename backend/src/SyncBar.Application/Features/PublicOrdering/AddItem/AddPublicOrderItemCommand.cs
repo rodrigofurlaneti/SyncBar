@@ -14,4 +14,6 @@ public sealed record AddPublicOrderItemCommand(
     decimal Quantity,
     string? Notes,
     IReadOnlyCollection<OrderItemComplementSelection>? Complements = null,
-    string? ComandaCode = null) : ICommand<long>;
+    string? ComandaCode = null,
+    string? ReadingProof = null,
+    long? ExpectedOrderId = null) : ICommand<long>;

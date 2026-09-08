@@ -1,3 +1,5 @@
+const readingProofs = new Map<string, string>();
+const activeOrders = new Map<string, number>();
 // Chamadas sem autenticação — o "segredo" é o token do QR Code da mesa.
 import type { OrderItemComplementSelection, PublicMenuResponse } from "../../lib/types";
 
@@ -67,8 +69,8 @@ export const addPublicOrderItem = (
 ): Promise<{ orderId: number }> =>
     publicApi<{ orderId: number }>(`/api/publicordering/${token}/items`, {
         method: "POST",
-        body: JSON.stringify({ productId, quantity, notes, complements: complements ?? null, comandaCode: comandaCode || null }),
-    });
+        body: JSON.stringify({ productId, quantity, notes, complements: complements ?? null, comandaCode: comandaCode || null, readingProof: readingProofs.get(`${token}:${comandaCode ?? ""}`), expectedOrderId: activeOrders.get(`${token}:${comandaCode ?? ""}`) }),
+    }).then(result => { activeOrders.set(`${token}:${comandaCode ?? ""}`, result.orderId); return result; });
 
 export const getPublicBill = (token: string): Promise<PublicBillResponse> =>
     publicApi<PublicBillResponse>(`/api/publicordering/${token}/bill`);
@@ -85,10 +87,10 @@ export const validateComandaReading = (
     comandaCode: string,
     payload: { method: "camera" | "barcode" | "qrcode"; scannedValue?: string; photoBase64?: string },
 ): Promise<void> =>
-    publicApi<void>(`/api/publicordering/${token}/comandas/${comandaCode}/reading-validation`, {
+    publicApi<{ proof: string }>(`/api/publicordering/${token}/comandas/${comandaCode}/reading-validation`, {
         method: "POST",
         body: JSON.stringify(payload),
-    });
+    }).then(result => { readingProofs.set(`${token}:${"comandaCode" in payload ? "" : ""}`, result.proof); });
 
 // Irmã da validação de comanda acima, mas pra MESA — usada quando a "Visualização do
 // Cliente (QR Code)" está desligada (sem fluxo de comanda pro cliente) e mesmo assim
@@ -99,7 +101,8 @@ export const validateTableReading = (
     token: string,
     payload: { method: "camera" | "barcode" | "qrcode"; scannedValue?: string; photoBase64?: string },
 ): Promise<void> =>
-    publicApi<void>(`/api/publicordering/${token}/reading-validation`, {
+    publicApi<{ proof: string }>(`/api/publicordering/${token}/reading-validation`, {
         method: "POST",
         body: JSON.stringify(payload),
-    });
+    }).then(result => { readingProofs.set(`${token}:${"comandaCode" in payload ? "" : ""}`, result.proof); });
+

@@ -210,6 +210,7 @@ public static class DependencyInjection
         services.AddScoped<SyncBar.Application.Abstractions.Integrations.Keeta.IKeetaOrderClient>(sp => sp.GetRequiredService<KeetaOrderClient>());
         services.AddHostedService<KeetaEventPollingBackgroundService>();
 
+        services.AddSingleton<SyncBar.Application.Abstractions.Security.IReadingProofService, SyncBar.Infrastructure.Authentication.ReadingProofService>();
         services.Configure<WhatsAppSettings>(configuration.GetSection("WhatsApp"));
         services.AddHttpClient<SyncBar.Application.Abstractions.Notifications.IWhatsAppService, WhatsAppService>((sp, client) =>
         {
