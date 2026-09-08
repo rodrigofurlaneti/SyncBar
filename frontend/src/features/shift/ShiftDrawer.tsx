@@ -42,7 +42,8 @@ export function ShiftDrawer({ onClose }: Props) {
     const noShift =
         shiftQuery.isError &&
         shiftQuery.error instanceof ApiError &&
-        shiftQuery.error.status === 404;
+        shiftQuery.error.status === 404 &&
+        shiftQuery.error.code === "ShiftClosing.NotFound";
 
     const invalidateShift = () => void queryClient.invalidateQueries({ queryKey: ["shift"] });
 
@@ -74,6 +75,12 @@ export function ShiftDrawer({ onClose }: Props) {
     return (
         <Overlay title="Turno Comercial" onClose={onClose} wide data-testid="shift-drawer-overlay">
             {shiftQuery.isLoading && <p style={{ color: "var(--ink-dim)" }} data-testid="loading-text">Carregando…</p>}
+
+            {shiftQuery.isError && !noShift && (
+                <p className="error-text" role="alert" data-testid="shift-query-error">
+                    {shiftQuery.error instanceof ApiError ? shiftQuery.error.message : "Não foi possível consultar o turno."}
+                </p>
+            )}
 
             {closeResult && (
                 <div className="ticket" style={{ padding: 18, display: "grid", gap: 8 }} data-testid="close-result-view">
