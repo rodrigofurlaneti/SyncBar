@@ -19,6 +19,7 @@ import { ScenariosPage } from "./features/finance/ScenariosPage";
 import { ReportsPage } from "./features/finance/ReportsPage";
 import { PreparationPage } from "./features/preparation/PreparationPage";
 import { CashHistoryPage } from "./features/cash/CashHistoryPage";
+import { ShiftHistoryPage } from "./features/shift/ShiftHistoryPage";
 import { PromotionsPage } from "./features/promotions/PromotionsPage";
 import { PrintingPage } from "./features/printing/PrintingPage";
 import { PurchasingPage } from "./features/purchasing/PurchasingPage";
@@ -110,6 +111,7 @@ export default function App() {
                 <Route path="/relatorios" element={<ManagerGate><ReportsPage /></ManagerGate>} />
                 <Route path="/preparo" element={<FeatureGate code="Preparo"><PreparationPage /></FeatureGate>} />
                 <Route path="/fechamentos" element={<ManagerGate><CashHistoryPage /></ManagerGate>} />
+                <Route path="/turnos" element={<ManagerGate><ShiftHistoryPage /></ManagerGate>} />
                 <Route path="/promocoes" element={<ManagerGate><PromotionsPage /></ManagerGate>} />
                 <Route path="/impressao" element={<ManagerGate><PrintingPage /></ManagerGate>} />
                 <Route path="/compras" element={<FeatureGate code="Estoque"><PurchasingPage /></FeatureGate>} />

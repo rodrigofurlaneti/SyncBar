@@ -4,6 +4,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
 import { CashDrawer } from "../features/cash/CashDrawer";
+import { ShiftDrawer } from "../features/shift/ShiftDrawer";
 import { useMyFeatures } from "../features/access/hooks";
 import { IFoodAlertsBell } from "./IFoodAlertsBell";
 import logoAsaas from "../image/asaas.png"; 
@@ -27,6 +28,7 @@ export function AppShell() {
     const { userName, branchId, companyId, clear } = useAuthStore();
     const { theme, toggleTheme } = useThemeStore();
     const [cashOpen, setCashOpen] = useState(false);
+    const [shiftOpen, setShiftOpen] = useState(false);
     const [navOpen, setNavOpen] = useState(false);
     const featuresQuery = useMyFeatures();
     const access = featuresQuery.data;
@@ -256,6 +258,11 @@ export function AppShell() {
                         Caixa
                     </button>
                 )}
+                {access?.canManageAccess && (
+                    <button type="button" className="btn-ghost" onClick={() => setShiftOpen(true)}>
+                        Turno
+                    </button>
+                )}
                 {access?.canManageAccess && <IFoodAlertsBell companyId={companyId} />}
                 <button
                     type="button"
@@ -297,6 +304,7 @@ export function AppShell() {
             </div>
 
             {cashOpen && <CashDrawer onClose={() => setCashOpen(false)} />}
+            {shiftOpen && <ShiftDrawer onClose={() => setShiftOpen(false)} />}
         </div>
     );
 }

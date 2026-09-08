@@ -6,6 +6,8 @@ using SyncBar.API.Controllers;
 using SyncBar.Application.Features.Shift;
 using SyncBar.Application.Features.Shift.CloseShift;
 using SyncBar.Application.Features.Shift.GetById;
+using SyncBar.Application.Features.Shift.GetHistory;
+using SyncBar.Application.Features.Shift.GetOpenShift;
 using SyncBar.Application.Features.Shift.OpenShift;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -51,6 +53,53 @@ public sealed class ShiftClosingControllerTests
         var result = await _controller.GetById(999, CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task GetOpen_Success_ShouldReturnOkWithValue()
+    {
+        var response = SampleResponse();
+        _mediator.Send(Arg.Is<GetOpenShiftClosingQuery>(q => q.BranchId == 3), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(response));
+
+        var result = await _controller.GetOpen(3, CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>().Which.Value.Should().Be(response);
+    }
+
+    [Fact]
+    public async Task GetOpen_Failure_ShouldReturnMappedErrorResult()
+    {
+        _mediator.Send(Arg.Any<GetOpenShiftClosingQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Failure<ShiftClosingResponse>(new Error("ShiftClosing.NotFound", "nenhum turno aberto")));
+
+        var result = await _controller.GetOpen(3, CancellationToken.None);
+
+        result.Should().BeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task GetHistory_Success_ShouldReturnOkWithValue()
+    {
+        IReadOnlyCollection<ShiftClosingResponse> history = [SampleResponse()];
+        _mediator.Send(Arg.Is<GetShiftClosingHistoryQuery>(q => q.BranchId == 3 && q.ReferenceYear == 2026 && q.ReferenceMonth == 8),
+            Arg.Any<CancellationToken>()).Returns(Result.Success(history));
+
+        var result = await _controller.GetHistory(3, 2026, 8, CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>().Which.Value.Should().Be(history);
+    }
+
+    [Fact]
+    public async Task GetHistory_Failure_ShouldReturnMappedErrorResult()
+    {
+        _mediator.Send(Arg.Any<GetShiftClosingHistoryQuery>(), Arg.Any<CancellationToken>())
+            .Returns(Result.Failure<IReadOnlyCollection<ShiftClosingResponse>>(
+                new Error("ShiftClosingHistory.InvalidMonth", "mes invalido")));
+
+        var result = await _controller.GetHistory(3, 2026, 13, CancellationToken.None);
+
+        result.Should().BeOfType<BadRequestObjectResult>();
     }
 
     [Fact]

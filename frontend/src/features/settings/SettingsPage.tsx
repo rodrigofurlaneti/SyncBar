@@ -30,6 +30,7 @@ const cards = [
     { to: "/acessos", label: "Acessos", desc: "Papéis e permissões dos usuários" },
     { to: "/faturamento", label: "Faturamento", desc: "Custos e metas do mês" },
     { to: "/fechamentos", label: "Fechamentos", desc: "Histórico de sessões de caixa" },
+    { to: "/turnos", label: "Turnos", desc: "Histórico de fechamentos de turno comercial" },
     { to: "/relatorios", label: "Relatórios", desc: "Vendas, produtos e taxa de serviço" },
     { to: "/cenarios", label: "Cenários", desc: "Projeções e simulações" },
     { to: "/promocoes", label: "Promoções", desc: "Ofertas e descontos ativos" },

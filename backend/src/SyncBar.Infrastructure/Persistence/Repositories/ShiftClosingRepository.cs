@@ -19,6 +19,12 @@ internal sealed class ShiftClosingRepository(AppDbContext context) : IShiftClosi
             .FirstOrDefaultAsync(x => x.BranchId == branchId && x.IsActive
                 && x.ShiftClosingStatusId == ShiftClosingStatusIds.Aberto, cancellationToken);
 
+    public async Task<IReadOnlyCollection<ShiftClosing>> GetHistoryByBranchAsync(
+        long branchId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
+        => await context.ShiftClosings.AsNoTracking()
+            .Where(x => x.BranchId == branchId && x.IsActive && x.PeriodStart >= from && x.PeriodStart < to)
+            .ToListAsync(cancellationToken);
+
     public async Task AddAsync(ShiftClosing entity, CancellationToken cancellationToken = default)
         => await context.ShiftClosings.AddAsync(entity, cancellationToken);
 }

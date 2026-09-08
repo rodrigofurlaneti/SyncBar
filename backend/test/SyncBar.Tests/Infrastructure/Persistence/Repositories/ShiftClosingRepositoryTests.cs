@@ -98,6 +98,42 @@ namespace SyncBar.Tests.Infrastructure.Persistence.Repositories
         }
 
         [Fact]
+        public async Task GetHistoryByBranchAsync_ShiftsWithinPeriod_ReturnsMatchingShifts()
+        {
+            var shiftClosing = await SeedAsync(CreateShiftClosing(branchId: 8));
+            var from = shiftClosing.PeriodStart.AddDays(-1);
+            var to = shiftClosing.PeriodStart.AddDays(1);
+
+            var result = await _repository.GetHistoryByBranchAsync(8, from, to);
+
+            result.Should().ContainSingle(x => x.Id == shiftClosing.Id);
+        }
+
+        [Fact]
+        public async Task GetHistoryByBranchAsync_ShiftOutsidePeriod_ReturnsEmptyList()
+        {
+            var shiftClosing = await SeedAsync(CreateShiftClosing(branchId: 9));
+            var from = shiftClosing.PeriodStart.AddDays(1);
+            var to = shiftClosing.PeriodStart.AddDays(2);
+
+            var result = await _repository.GetHistoryByBranchAsync(9, from, to);
+
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task GetHistoryByBranchAsync_DifferentBranch_ReturnsEmptyList()
+        {
+            var shiftClosing = await SeedAsync(CreateShiftClosing(branchId: 10));
+            var from = shiftClosing.PeriodStart.AddDays(-1);
+            var to = shiftClosing.PeriodStart.AddDays(1);
+
+            var result = await _repository.GetHistoryByBranchAsync(11, from, to);
+
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
         public async Task AddAsync_ValidShiftClosing_PersistsToDatabase()
         {
             var shiftClosing = CreateShiftClosing(branchId: 7);
