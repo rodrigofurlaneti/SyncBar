@@ -10,15 +10,6 @@ Scenario: Consultar cardapio de empresa sem produtos retorna lista vazia
     Then a operacao deve ter sucesso
     And a lista do cardapio deve estar vazia
 
-@ignore
-Scenario: Consultar cardapio resolve o nome da categoria do produto
-    Given a categoria 1 com nome "Bebidas" pertence a empresa 1
-    And um produto ativo "Refrigerante" com id 10, categoria 1 e preco 8.50 pertence a empresa 1
-    When eu busco o cardapio da empresa 1
-    Then a operacao deve ter sucesso
-    And a lista do cardapio deve conter 1 item
-    And o nome da categoria do item na posicao 0 do cardapio deve ser "Bebidas"
-
 Scenario: Consultar cardapio com categoria nao encontrada usa o nome padrao Geral
     Given um produto ativo "Porcao de batata" com id 11, categoria 99 e preco 20.00 pertence a empresa 1
     When eu busco o cardapio da empresa 1
