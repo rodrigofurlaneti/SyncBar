@@ -12,6 +12,7 @@ interface Props {
   dismissable?: boolean;
   /** rótulo acessível quando não há title visível */
   ariaLabel?: string;
+  "data-testid"?: string;
 }
 
 const FOCUSABLE =
@@ -29,6 +30,7 @@ export function Modal({
   wide = false,
   dismissable = true,
   ariaLabel,
+  "data-testid": testId,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -121,6 +123,7 @@ export function Modal({
         aria-labelledby={title ? titleId : undefined}
         aria-label={title ? undefined : ariaLabel}
         tabIndex={-1}
+        data-testid={testId}
       >
         {title && (
           <div className="modal-head">

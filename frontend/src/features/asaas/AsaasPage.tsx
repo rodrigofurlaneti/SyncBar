@@ -1626,23 +1626,23 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
               Filial {branchId}
             </span>
             {isOwnBranchSetting ? (
-              <span className="chip" style={{ "--dot": "var(--ok)" } as CSSProperties}>
+              <span className="chip" data-testid="payment-methods-own-chip" style={{ "--dot": "var(--ok)" } as CSSProperties}>
                 Configuração própria da filial
               </span>
             ) : setting ? (
-              <span className="chip" style={{ "--dot": "var(--ink-faint)" } as CSSProperties}>
+              <span className="chip" data-testid="payment-methods-inherited-chip" style={{ "--dot": "var(--ink-faint)" } as CSSProperties}>
                 Herdando a configuração padrão da empresa
               </span>
             ) : (
-              <span className="chip" style={{ "--dot": "var(--ink-faint)" } as CSSProperties}>
+              <span className="chip" data-testid="payment-methods-none-chip" style={{ "--dot": "var(--ink-faint)" } as CSSProperties}>
                 Nenhuma configuração cadastrada — usando o padrão (tudo ligado)
               </span>
             )}
           </div>
 
-          <div style={{ display: "grid", gap: 2 }}>
+          <div style={{ display: "grid", gap: 2 }} data-testid="payment-methods-list">
             {PAYMENT_METHOD_ITEMS.map((item) => (
-              <div key={item.key} className="ticket-row" style={{ alignItems: "center" }}>
+              <div key={item.key} className="ticket-row" style={{ alignItems: "center" }} data-testid={`payment-method-row-${item.key}`}>
                 <div style={{ display: "grid", gap: 2, maxWidth: 520 }}>
                   <span style={{ fontWeight: 600 }}>
                     <span aria-hidden="true">{item.icon}</span> {item.title}
@@ -1652,23 +1652,40 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
                 <div className="ui-row" style={{ gap: 10, alignItems: "center" }}>
                   <span
                     className="chip"
+                    data-testid={`payment-method-status-${item.key}`}
                     style={{ "--dot": flags[item.key] ? "var(--ok)" : "var(--danger)" } as CSSProperties}
                   >
                     {flags[item.key] ? "Ligada" : "Desligada"}
                   </span>
-                  <Switch checked={flags[item.key]} onChange={(v) => toggle(item.key, v)} label={item.title} />
+                  <Switch
+                    checked={flags[item.key]}
+                    onChange={(v) => toggle(item.key, v)}
+                    label={item.title}
+                    data-testid={`payment-method-switch-${item.key}`}
+                  />
                 </div>
               </div>
             ))}
           </div>
 
-          {error && <p className="error-text">{error}</p>}
+          {error && <p className="error-text" data-testid="payment-methods-error">{error}</p>}
 
           <div className="ui-row" style={{ justifyContent: "flex-end", gap: 10 }}>
-            <Button variant="ghost" disabled={!isDirty || saveMutation.isPending} onClick={() => setOverrides({})}>
+            <Button
+              variant="ghost"
+              disabled={!isDirty || saveMutation.isPending}
+              onClick={() => setOverrides({})}
+              data-testid="payment-methods-cancel-btn"
+            >
               Cancelar
             </Button>
-            <Button variant="primary" disabled={!isDirty} loading={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
+            <Button
+              variant="primary"
+              disabled={!isDirty}
+              loading={saveMutation.isPending}
+              onClick={() => saveMutation.mutate()}
+              data-testid="payment-methods-save-btn"
+            >
               Salvar alterações
             </Button>
           </div>
