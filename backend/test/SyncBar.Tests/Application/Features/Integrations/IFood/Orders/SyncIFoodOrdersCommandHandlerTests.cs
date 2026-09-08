@@ -31,6 +31,8 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
     private readonly IIfoodOrderRepository _IfoodOrderRepository = Substitute.For<IIfoodOrderRepository>();
     private readonly ICustomerOrderRepository _customerOrderRepository = Substitute.For<ICustomerOrderRepository>();
     private readonly IProductRepository _productRepository = Substitute.For<IProductRepository>();
+    private readonly ICategoryRepository _categoryRepository = Substitute.For<ICategoryRepository>();
+    private readonly IUnitOfMeasureRepository _unitOfMeasureRepository = Substitute.For<IUnitOfMeasureRepository>();
     private readonly IBranchRepository _branchRepository = Substitute.For<IBranchRepository>();
     private readonly IComplementGroupRepository _complementGroupRepository = Substitute.For<IComplementGroupRepository>();
     private readonly IIfoodComplementMappingRepository _complementMappingRepository = Substitute.For<IIfoodComplementMappingRepository>();
@@ -40,8 +42,20 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
 
     private SyncIfoodOrdersCommandHandler CreateSut() => new(
         _settingRepository, _tokenProvider, _orderClient, _merchantMappingRepository, _IfoodOrderRepository,
-        _customerOrderRepository, _productRepository, _branchRepository, _complementGroupRepository,
+        _customerOrderRepository, _productRepository, _categoryRepository, _unitOfMeasureRepository,
+        _branchRepository, _complementGroupRepository,
         _complementMappingRepository, TimeProvider.System, _cache, _logRepository, _unitOfWork);
+
+    // Cenário padrão pra criação do produto placeholder "Não mapeado (iFood)" ter sucesso —
+    // testes que precisam do caminho "sem categoria/unidade cadastrada" sobrescrevem isto.
+    private void GivenCategoryAndUnitOfMeasureAvailableForPlaceholder()
+    {
+        var category = Category.Create(CompanyId, "Categoria Padrão", 1).Value;
+        _categoryRepository.GetByCompanyAsync(CompanyId, Arg.Any<CancellationToken>())
+            .Returns(new List<Category> { category });
+        var unit = UnitOfMeasure.Create("Unidade", "un").Value;
+        _unitOfMeasureRepository.GetFirstActiveAsync(Arg.Any<CancellationToken>()).Returns(unit);
+    }
 
     // ---- helpers de cenário ----
 
@@ -255,13 +269,18 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         await _orderClient.DidNotReceive().AcknowledgeEventsAsync(Arg.Any<string>(), Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
     }
 
+    // Cobre o bug real: um item do iFood sem EAN cadastrado no catálogo local não pode mais
+    // resultar num pedido com 0 itens (travava pra sempre em "Aberto", invisível na fila de
+    // preparo) — precisa lançar usando o produto placeholder "Não mapeado (iFood)", preservando o
+    // nome real do item do iFood nas observações.
     [Fact]
-    public async Task Handle_ConfirmedEvent_WithUnmappedItem_ShouldFlagHasUnmappedItemsButStillCreateOrder()
+    public async Task Handle_ConfirmedEvent_WithUnmappedItem_ShouldAddPlaceholderItemAndFlagHasUnmappedItems()
     {
         GivenIntegrationEnabledWithValidToken();
         GivenAnActiveMerchantMapping();
         GivenBranchWithSelfServiceEmployee();
         GivenIfoodConfirmsTheOrder();
+        GivenCategoryAndUnitOfMeasureAvailableForPlaceholder();
         _orderClient.PollEventsAsync(ValidToken, Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns(new List<IfoodPollingEvent> { ConfirmedEvent() });
         _IfoodOrderRepository.GetByIfoodOrderIdAsync(IfoodOrderExternalId, Arg.Any<CancellationToken>()).Returns((IfoodOrder?)null);
@@ -275,10 +294,69 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         var result = await sut.Handle(new SyncIfoodOrdersCommand(CompanyId), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        getCustomerOrder()!.Items.Should().BeEmpty();
+        var orderItem = getCustomerOrder()!.Items.Should().ContainSingle().Subject;
+        orderItem.UnitPrice.Should().Be(10m);
+        orderItem.Notes.Should().Be("iFood: Item Misterioso");
         getCustomerOrder()!.OrderOriginId.Should().Be(OrderOriginIds.IFood);
         getIfoodOrder()!.HasUnmappedItems.Should().BeTrue();
+        await _productRepository.Received(1).AddAsync(
+            Arg.Is<Product>(p => p.Name == "Não mapeado (iFood)"), Arg.Any<CancellationToken>());
         await _orderClient.Received(1).AcknowledgeEventsAsync(ValidToken, Arg.Is<IReadOnlyCollection<string>>(ids => ids.Contains("evt-1")), Arg.Any<CancellationToken>());
+    }
+
+    // Uma segunda ocorrência (mesma empresa, item diferente sem EAN) deve reaproveitar o MESMO
+    // produto placeholder já criado, em vez de criar um novo a cada pedido — GetByBarcodeAsync com
+    // o barcode reservado já devolve o placeholder existente.
+    [Fact]
+    public async Task Handle_ConfirmedEvent_WithUnmappedItem_WhenPlaceholderAlreadyExists_ShouldReuseItWithoutCreatingAnother()
+    {
+        GivenIntegrationEnabledWithValidToken();
+        GivenAnActiveMerchantMapping();
+        GivenBranchWithSelfServiceEmployee();
+        GivenIfoodConfirmsTheOrder();
+        var existingPlaceholder = Product.Create(CompanyId, 1, 1, "Não mapeado (iFood)", null, "__IFOOD_UNMAPPED_PLACEHOLDER__", 0m, null, false, null).Value;
+        _productRepository.GetByBarcodeAsync(CompanyId, "__IFOOD_UNMAPPED_PLACEHOLDER__", Arg.Any<CancellationToken>())
+            .Returns(existingPlaceholder);
+        _orderClient.PollEventsAsync(ValidToken, Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<IfoodPollingEvent> { ConfirmedEvent() });
+        _IfoodOrderRepository.GetByIfoodOrderIdAsync(IfoodOrderExternalId, Arg.Any<CancellationToken>()).Returns((IfoodOrder?)null);
+        _orderClient.GetOrderDetailsAsync(ValidToken, IfoodOrderExternalId, Arg.Any<CancellationToken>()).Returns(OrderDetailsWithItems(
+            new IfoodOrderItemDto(null, "outro-codigo-desconhecido", "Outro Item Misterioso", 1, 8m, [])));
+        var getCustomerOrder = CaptureCustomerOrderAdded().Get;
+        CaptureIfoodOrderAdded();
+        var sut = CreateSut();
+
+        var result = await sut.Handle(new SyncIfoodOrdersCommand(CompanyId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        getCustomerOrder()!.Items.Should().ContainSingle(i => i.ProductId == existingPlaceholder.Id);
+        await _productRepository.DidNotReceive().AddAsync(Arg.Any<Product>(), Arg.Any<CancellationToken>());
+    }
+
+    // Se a empresa não tem nenhuma categoria cadastrada, não há como criar o placeholder — mantém
+    // o comportamento antigo de pular o item (nunca deve travar/lançar exceção).
+    [Fact]
+    public async Task Handle_ConfirmedEvent_WithUnmappedItem_WhenNoCategoryAvailable_ShouldSkipItemButStillSucceed()
+    {
+        GivenIntegrationEnabledWithValidToken();
+        GivenAnActiveMerchantMapping();
+        GivenBranchWithSelfServiceEmployee();
+        GivenIfoodConfirmsTheOrder();
+        _categoryRepository.GetByCompanyAsync(CompanyId, Arg.Any<CancellationToken>()).Returns(new List<Category>());
+        _orderClient.PollEventsAsync(ValidToken, Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<IfoodPollingEvent> { ConfirmedEvent() });
+        _IfoodOrderRepository.GetByIfoodOrderIdAsync(IfoodOrderExternalId, Arg.Any<CancellationToken>()).Returns((IfoodOrder?)null);
+        _orderClient.GetOrderDetailsAsync(ValidToken, IfoodOrderExternalId, Arg.Any<CancellationToken>()).Returns(OrderDetailsWithItems(
+            new IfoodOrderItemDto(null, "codigo-desconhecido", "Item Misterioso", 1, 10m, [])));
+        var getCustomerOrder = CaptureCustomerOrderAdded().Get;
+        var getIfoodOrder = CaptureIfoodOrderAdded();
+        var sut = CreateSut();
+
+        var result = await sut.Handle(new SyncIfoodOrdersCommand(CompanyId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        getCustomerOrder()!.Items.Should().BeEmpty();
+        getIfoodOrder()!.HasUnmappedItems.Should().BeTrue();
     }
 
     [Fact]

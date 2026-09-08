@@ -68,10 +68,15 @@ function deriveStage(order: OrderResponse, onRoute: Set<number>): Stage {
     const activeItems = order.items.filter((i) => i.orderItemStatusId !== OrderItemStatus.Cancelado);
     const allReady = activeItems.length > 0 && activeItems.every((i) => READY_ITEM_STATUSES.has(i.orderItemStatusId));
     const anyStarted = activeItems.some((i) => i.orderItemStatusId >= OrderItemStatus.EnviadoCozinha);
+    // Pedido sem nenhum item rastreável (ex.: itens do iFood que não conciliaram com o catálogo)
+    // mas que já foi explicitamente enviado p/ cozinha (orderStatusId promovido p/ EmAndamento) —
+    // sem isto, "anyStarted" nunca fica true (não há item pra checar) e o card ficava preso pra
+    // sempre em "novo", mesmo com o clique em "Enviar p/ cozinha" tendo funcionado no backend.
+    const startedWithoutTrackableItems = activeItems.length === 0 && order.orderStatusId === OrderStatus.EmAndamento;
 
     if (order.orderStatusId === OrderStatus.AguardandoPagamento || allReady)
         return onRoute.has(order.id) ? "rota" : "aguardando";
-    if (anyStarted) return "cozinha";
+    if (anyStarted || startedWithoutTrackableItems) return "cozinha";
     return "novo";
 }
 

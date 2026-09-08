@@ -21,6 +21,8 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
     private readonly IIfoodOrderRepository _IfoodOrderRepository;
     private readonly ICustomerOrderRepository _customerOrderRepository;
     private readonly IProductRepository _productRepository;
+    private readonly ICategoryRepository _categoryRepository;
+    private readonly IUnitOfMeasureRepository _unitOfMeasureRepository;
     private readonly IBranchRepository _branchRepository;
     private readonly IComplementGroupRepository _complementGroupRepository;
     private readonly IIfoodComplementMappingRepository _complementMappingRepository;
@@ -28,6 +30,11 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
     private readonly IMemoryCache _cache;
     private readonly ILogTrackerRepository _logRepository;
     private readonly IUnitOfWork _unitOfWork;
+
+    // Barcode reservado (nunca digitável por um humano cadastrando produto de verdade) usado pra
+    // identificar/reaproveitar o produto placeholder "Não mapeado (iFood)" por empresa — ver
+    // GetOrCreateUnmappedPlaceholderProductAsync.
+    private const string UnmappedPlaceholderBarcode = "__IFOOD_UNMAPPED_PLACEHOLDER__";
 
     public SyncIfoodOrdersCommandHandler(
         IIfoodIntegrationSettingRepository settingRepository,
@@ -37,6 +44,8 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
         IIfoodOrderRepository IfoodOrderRepository,
         ICustomerOrderRepository customerOrderRepository,
         IProductRepository productRepository,
+        ICategoryRepository categoryRepository,
+        IUnitOfMeasureRepository unitOfMeasureRepository,
         IBranchRepository branchRepository,
         IComplementGroupRepository complementGroupRepository,
         IIfoodComplementMappingRepository complementMappingRepository,
@@ -54,6 +63,8 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
         _IfoodOrderRepository = IfoodOrderRepository;
         _customerOrderRepository = customerOrderRepository;
         _productRepository = productRepository;
+        _categoryRepository = categoryRepository;
+        _unitOfMeasureRepository = unitOfMeasureRepository;
         _branchRepository = branchRepository;
         _complementGroupRepository = complementGroupRepository;
         _complementMappingRepository = complementMappingRepository;
@@ -524,6 +535,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
     {
         var hasUnmappedItems = false;
         Dictionary<long, (Complement Complement, long ComplementGroupId)>? complementsById = null;
+        Domain.Entities.Product? placeholderProduct = null;
 
         foreach (var item in items)
         {
@@ -531,14 +543,26 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
             if (!string.IsNullOrWhiteSpace(item.Ean))
                 product = await _productRepository.GetByBarcodeAsync(companyId, item.Ean, cancellationToken);
 
+            string? itemNotes = null;
             if (product is null)
             {
                 hasUnmappedItems = true;
-                continue; // item não identificado no catálogo — sinalizado no pedido, não bloqueia a confirmação
+
+                // Item do iFood sem produto correspondente no catálogo local (EAN não cadastrado)
+                // — em vez de descartar o item silenciosamente (o pedido chegava com 0 itens,
+                // travado pra sempre em "Aberto" e invisível na fila de preparo), lança usando um
+                // produto placeholder reaproveitável, preservando o nome real do iFood nas
+                // observações do item pra equipe saber o que preparar.
+                placeholderProduct ??= await GetOrCreateUnmappedPlaceholderProductAsync(companyId, cancellationToken);
+                if (placeholderProduct is null)
+                    continue; // sem categoria/unidade de medida cadastrada — não há como criar o placeholder
+
+                product = placeholderProduct;
+                itemNotes = $"iFood: {item.Name}";
             }
 
             var itemCountBefore = customerOrder.Items.Count;
-            customerOrder.AddItem(product.Id, item.UnitPrice, item.Quantity <= 0 ? 1 : item.Quantity, null, employeeId, now);
+            customerOrder.AddItem(product.Id, item.UnitPrice, item.Quantity <= 0 ? 1 : item.Quantity, itemNotes, employeeId, now);
             if (customerOrder.Items.Count == itemCountBefore)
                 continue; // AddItem falhou (quantidade inválida etc.) — item já teria virado hasUnmappedItems se fosse o caso
 
@@ -552,6 +576,37 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
         }
 
         return hasUnmappedItems;
+    }
+
+    private async Task<Domain.Entities.Product?> GetOrCreateUnmappedPlaceholderProductAsync(long companyId, CancellationToken cancellationToken)
+    {
+        var existing = await _productRepository.GetByBarcodeAsync(companyId, UnmappedPlaceholderBarcode, cancellationToken);
+        if (existing is not null)
+            return existing;
+
+        var categories = await _categoryRepository.GetByCompanyAsync(companyId, cancellationToken);
+        var category = categories.FirstOrDefault();
+        if (category is null)
+            return null;
+
+        var unitOfMeasure = await _unitOfMeasureRepository.GetFirstActiveAsync(cancellationToken);
+        if (unitOfMeasure is null)
+            return null;
+
+        var productResult = Domain.Entities.Product.Create(
+            companyId, category.Id, unitOfMeasure.Id,
+            "Não mapeado (iFood)",
+            "Item recebido do iFood sem produto correspondente no catálogo. Cadastre o produto real e vincule o EAN em Config > Cardápio.",
+            UnmappedPlaceholderBarcode,
+            salePrice: 0m, costPrice: null, isStockControlled: false, preparationTimeMinutes: null);
+
+        if (productResult.IsFailure)
+            return null;
+
+        await _productRepository.AddAsync(productResult.Value, cancellationToken);
+        await _unitOfWork.CommitAsync(cancellationToken); // precisa do Id gerado pra ser reaproveitado
+
+        return productResult.Value;
     }
 
     private async Task AddComplementsToOrderItemAsync(
