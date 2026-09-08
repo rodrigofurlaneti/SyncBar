@@ -84,8 +84,8 @@ const isOwnFleetEligible = (order: IFoodOrderResponse) =>
 // acima) e não usa o endpoint de tracking do módulo Order.
 const isIFoodTrackingEligible = (order: IFoodOrderResponse) =>
   order.ifoodOrderType === "DELIVERY" &&
-  order.deliveredBy === "IFOOD" &&
-  (order.status === "DISPATCHED" || order.status === "READY_TO_PICKUP");
+  (order.deliveredBy === "IFOOD" || order.deliveredBy === "MERCHANT") &&
+  !["CANCELLED", "CONCLUDED", "DELIVERED"].includes(order.status);
 
 // Código de retirada — pedidos de retirada no balcão (TAKEOUT), quando já estão prontos.
 const isPickupCodeEligible = (order: IFoodOrderResponse) =>

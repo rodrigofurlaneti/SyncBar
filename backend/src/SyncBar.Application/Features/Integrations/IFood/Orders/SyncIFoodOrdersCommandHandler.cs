@@ -310,6 +310,8 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
 
             case "ASSIGN_DRIVER":
             case "REQUEST_DRIVER_SUCCESS":
+            case "DELIVERY_CONCLUDED":
+            case "DELIVERY_CANCELLED":
                 return shippingHandled;
             case "ORDER_PATCHED":
             case "CANCELLATION_REQUEST_FAILED":

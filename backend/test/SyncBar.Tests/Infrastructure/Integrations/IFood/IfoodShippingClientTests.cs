@@ -156,7 +156,7 @@ public sealed class IfoodShippingClientTests
 
         result.Success.Should().BeTrue();
         result.Latitude.Should().Be(-23.5);
-        result.DeliveryEtaEndMinutes.Should().Be(15);
+        result.DeliveryEtaEndMinutes.Should().Be(15d / 60d);
     }
 
     [Fact]

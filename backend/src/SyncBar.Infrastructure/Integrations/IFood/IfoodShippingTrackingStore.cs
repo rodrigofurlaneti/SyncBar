@@ -10,23 +10,22 @@ internal sealed class IfoodShippingTrackingStore(AppDbContext db, TimeProvider t
     public async Task<bool> ApplyEventAsync(long companyId, IfoodPollingEvent evt, CancellationToken ct)
     {
         var code = evt.FullCode ?? evt.Code;
-        if (code is not ("ASSIGN_DRIVER" or "REQUEST_DRIVER_SUCCESS" or "DELIVERED" or "CONCLUDED" or "CANCELLED")) return false;
+        if (code is not ("ASSIGN_DRIVER" or "REQUEST_DRIVER_SUCCESS" or "DELIVERED" or "CONCLUDED" or "CANCELLED" or "DELIVERY_CONCLUDED" or "DELIVERY_CANCELLED")) return false;
         var row = await db.Set<IfoodShippingTracking>().SingleOrDefaultAsync(value => value.CompanyId == companyId && value.OrderId == evt.OrderId, ct);
-        if (code is "DELIVERED" or "CONCLUDED" or "CANCELLED")
+        if (row is null)
         {
-            if (row is null) return false;
-            row.Stop();
-            await db.SaveChangesAsync(ct);
-            return true;
+            var branchId = await db.Set<IfoodOrder>().Where(value => value.IfoodOrderId == evt.OrderId && value.IsActive)
+                .Select(value => (long?)value.BranchId).FirstOrDefaultAsync(ct)
+                ?? await db.Set<IfoodShippingDelivery>().Where(value => value.IfoodDeliveryId == evt.OrderId && value.IsActive)
+                    .Select(value => (long?)value.BranchId).FirstOrDefaultAsync(ct);
+            if (branchId is null || !await db.Set<Branch>().AnyAsync(value => value.Id == branchId && value.CompanyId == companyId, ct)) return false;
+            row = IfoodShippingTracking.Assigned(companyId, branchId.Value, evt.OrderId, time.GetUtcNow().UtcDateTime);
+            db.Add(row);
         }
-        if (row is not null) return true;
-
-        var branchId = await db.Set<IfoodOrder>().Where(value => value.IfoodOrderId == evt.OrderId && value.IsActive)
-            .Select(value => (long?)value.BranchId).FirstOrDefaultAsync(ct)
-            ?? await db.Set<IfoodShippingDelivery>().Where(value => value.IfoodDeliveryId == evt.OrderId && value.IsActive)
-                .Select(value => (long?)value.BranchId).FirstOrDefaultAsync(ct);
-        if (branchId is null || !await db.Set<Branch>().AnyAsync(value => value.Id == branchId && value.CompanyId == companyId, ct)) return false;
-        db.Add(IfoodShippingTracking.Assigned(companyId, branchId.Value, evt.OrderId, time.GetUtcNow().UtcDateTime));
+        if (code is "DELIVERED" or "CONCLUDED" or "CANCELLED" or "DELIVERY_CONCLUDED" or "DELIVERY_CANCELLED")
+        {
+            row.Stop();
+        }
         await db.SaveChangesAsync(ct);
         return true;
     }

@@ -25,6 +25,17 @@ As integrações não estão completas. A existência de controllers e testes un
 
 ## Arquitetura de Events
 
+### Atualização verificada — Shipping
+
+- Solicitação de apoio à frota pela tela de pedidos usa Shipping, com consulta de cotação, exibição de custo e confirmação. Backend bloqueia pedidos não DELIVERY, encerrados ou sem entrega MERCHANT e consulta disponibilidade antes do POST. A cotação escolhida pelo operador continua sendo enviada ao provedor.
+- Solicitações externas validam o formulário e as coordenadas e verificam cobertura antes de criar a entrega. Ainda recebem os dados manualmente; a montagem automática a partir de CustomerOrder/CustomerAddress permanece pendente.
+- ASSIGN_DRIVER e REQUEST_DRIVER_SUCCESS passam a registrar rastreamento persistente antes do ACK. Eventos terminais encerram esse rastreamento; repetição da atribuição não reativa uma entrega encerrada.
+- Worker consulta posições a cada 30 segundos com reserva atômica no banco por pedido. As telas leem snapshots, sem provocar chamadas adicionais ao tracking remoto. 404 significa posição pendente; estimativas recebidas em segundos são convertidas para minutos.
+- Testes com SQLite verificam persistência, isolamento por empresa, repetição de eventos, espera pela atribuição, intervalo entre consultas por duas instâncias e parada no encerramento. Isso não substitui validação de concorrência e migração em MySQL nem homologação no iFood.
+- Validação atual: 6.471 testes do backend aprovados; TypeScript compilado. SonarQube, execução visual do novo fluxo e integração real não executados nesta etapa.
+- **Antes de publicar:** aplicar `sql/2026-09-08_add_ifood_shipping_tracking.sql` no banco correto. Não foi aplicado nesta revisão. A ausência da tabela impede o worker e as consultas de snapshots.
+- Pendências: vínculo automático dos pedidos externos com o POS, reconciliação de todos os eventos logísticos com o status exibido da entrega, validação dos filtros/categorias com pedidos sob demanda reais e homologação da contratação/cobertura. Não marcar o cartão inteiro como 100% concluído.
+
 Manter polling como método operacional atual. Ele já está registrado como BackgroundService e não depende de configurar entrada pública. Endpoints usados: `/events/v1.0/events:polling` e `/events/v1.0/events/acknowledgment`. Webhook iFood não foi habilitado no Portal. A decisão não deve gerar ingestão duplicada sem armazenamento idempotente persistente.
 
 ## Analytics

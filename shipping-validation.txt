@@ -2,4 +2,4 @@ C:\Users\AMD\source\repos\SyncBar\backend\test\SyncBar.Tests\Infrastructure\Inte
 Execução de teste para C:\Users\AMD\source\repos\SyncBar\backend\test\SyncBar.Tests\bin\Debug\net9.0\SyncBar.Tests.dll (.NETCoreApp,Version=v9.0)
 1 arquivos de teste no total corresponderam ao padrão especificado.
 
-Aprovado!  – Com falha:     0, Aprovado:   208, Ignorado:     0, Total:   208, Duração: 2 s - SyncBar.Tests.dll (net9.0)
+Aprovado!  – Com falha:     0, Aprovado:     2, Ignorado:     0, Total:     2, Duração: 1 s - SyncBar.Tests.dll (net9.0)

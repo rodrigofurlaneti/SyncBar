@@ -55,6 +55,19 @@ internal sealed class RequestIfoodShippingDriverCommandHandler : BaseCommandHand
 
                 var (_, merchantId, token, _) = resolved.Value;
 
+                var validation = await new RequestIfoodShippingDriverCommandValidator().ValidateAsync(request, cancellationToken);
+                if (!validation.IsValid)
+                    return Result.Failure<long>(new Error("IfoodShipping.InvalidRequest", validation.Errors[0].ErrorMessage));
+                if (request.Latitude is null || request.Longitude is null ||
+                    !double.IsFinite(request.Latitude.Value) || !double.IsFinite(request.Longitude.Value) ||
+                    Math.Abs(request.Latitude.Value) > 90 || Math.Abs(request.Longitude.Value) > 180)
+                    return Result.Failure<long>(new Error("IfoodShipping.InvalidCoordinates", "Informe coordenadas válidas para verificar a cobertura da entrega."));
+                var availability = await _shippingClient.GetDeliveryAvailabilitiesAsync(token, merchantId,
+                    request.Latitude.Value, request.Longitude.Value, cancellationToken);
+                if (!availability.Success || string.IsNullOrWhiteSpace(availability.QuoteId))
+                    return Result.Failure<long>(new Error("IfoodShipping.Unavailable", availability.ErrorMessage
+                        ?? "Entrega indisponível. Verifique a cobertura e a contratação no Portal do Parceiro."));
+
                 var items = request.Items
                     .Select(i => new IfoodShippingItemPayload(
                         i.Name, i.ExternalCode, i.Quantity, i.UnitPrice, i.UnitPrice * i.Quantity, i.UnitPrice * i.Quantity))
