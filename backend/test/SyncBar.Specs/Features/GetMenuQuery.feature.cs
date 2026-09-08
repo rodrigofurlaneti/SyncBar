@@ -164,48 +164,6 @@ this.ScenarioInitialize(scenarioInfo);
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Consultar cardapio resolve o nome da categoria do produto", Skip="Ignored")]
-        [Xunit.TraitAttribute("FeatureTitle", "Consultar cardapio")]
-        [Xunit.TraitAttribute("Description", "Consultar cardapio resolve o nome da categoria do produto")]
-        public async global::System.Threading.Tasks.Task ConsultarCardapioResolveONomeDaCategoriaDoProduto()
-        {
-            string[] tagsOfScenario = new string[] {
-                    "ignore"};
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Consultar cardapio resolve o nome da categoria do produto", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 14
-this.ScenarioInitialize(scenarioInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                testRunner.SkipScenario();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 15
-    await testRunner.GivenAsync("a categoria 1 com nome \"Bebidas\" pertence a empresa 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
-#line hidden
-#line 16
-    await testRunner.AndAsync("um produto ativo \"Refrigerante\" com id 10, categoria 1 e preco 8.50 pertence a em" +
-                        "presa 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 17
-    await testRunner.WhenAsync("eu busco o cardapio da empresa 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 18
-    await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 19
-    await testRunner.AndAsync("a lista do cardapio deve conter 1 item", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 20
-    await testRunner.AndAsync("o nome da categoria do item na posicao 0 do cardapio deve ser \"Bebidas\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
         [Xunit.SkippableFactAttribute(DisplayName="Consultar cardapio com categoria nao encontrada usa o nome padrao Geral")]
         [Xunit.TraitAttribute("FeatureTitle", "Consultar cardapio")]
         [Xunit.TraitAttribute("Description", "Consultar cardapio com categoria nao encontrada usa o nome padrao Geral")]
@@ -214,7 +172,7 @@ this.ScenarioInitialize(scenarioInfo);
             string[] tagsOfScenario = ((string[])(null));
             global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
             global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Consultar cardapio com categoria nao encontrada usa o nome padrao Geral", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 22
+#line 13
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
@@ -224,17 +182,17 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 await this.ScenarioStartAsync();
-#line 23
+#line 14
     await testRunner.GivenAsync("um produto ativo \"Porcao de batata\" com id 11, categoria 99 e preco 20.00 pertenc" +
                         "e a empresa 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
 #line hidden
-#line 24
+#line 15
     await testRunner.WhenAsync("eu busco o cardapio da empresa 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
 #line hidden
-#line 25
+#line 16
     await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
 #line hidden
-#line 26
+#line 17
     await testRunner.AndAsync("o nome da categoria do item na posicao 0 do cardapio deve ser \"Geral\"", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
 #line hidden
             }
