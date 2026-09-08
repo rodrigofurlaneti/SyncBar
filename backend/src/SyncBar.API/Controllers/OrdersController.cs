@@ -109,6 +109,14 @@ public sealed class OrdersController(
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
+    [HttpPut("{id:long}/ready-for-dispatch")]
+    public Task<IActionResult> MarkReadyForDispatch(long id, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(MarkReadyForDispatch), async () =>
+        {
+            var result = await Mediator.Send(new SyncBar.Application.Features.Orders.MarkReady.MarkOrderReadyCommand(id), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
     [HttpPut("{id:long}/start-preparation")]
     public Task<IActionResult> StartPreparation(long id, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(StartPreparation), async () =>

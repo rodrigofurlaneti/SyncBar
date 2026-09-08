@@ -1,4 +1,12 @@
 import { api } from "../../lib/apiClient";
+import { resolvePaymentMethodSetting, type BranchPaymentMethodSettingResponse } from "../asaas/api";
+
+export const getStorefrontPaymentMethods = async (branchId: number, companyId?: number): Promise<BranchPaymentMethodSettingResponse | null> => {
+    const setting = await api<BranchPaymentMethodSettingResponse | null>(`/api/branch-payment-method-settings/branch/${branchId}`);
+    if (setting) return setting;
+    if (!companyId) throw new Error("Empresa da filial indisponível. Atualize o cardápio e tente novamente.");
+    return resolvePaymentMethodSetting(companyId, branchId);
+};
 
 export type NewCardPayload = {
     holderName: string;

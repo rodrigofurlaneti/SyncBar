@@ -356,6 +356,31 @@ public sealed class CustomerOrder : AggregateRoot
     // que chegam via integração (ex.: iFood) já criados mas com itens ainda não conciliados com o
     // catálogo (EAN sem mapeamento): sem nenhum item lançado, AddItem nunca roda e o pedido fica
     // preso em Aberto, invisível pro operador tentar agir sobre ele na tela de Delivery/Preparo.
+    public Result MarkReadyForDispatch(DateTime now)
+    {
+        if (DiningTableId.HasValue || ComandaId.HasValue)
+            return Result.Failure(new Error("CustomerOrder.NotDelivery", "Esta ação é exclusiva de pedidos de entrega ou retirada."));
+        if (!IsOpen())
+            return Result.Failure(new Error(NotOpenErrorCode, OrderNotOpenMessage));
+        if (OrderStatusId != OrderStatusIds.EmAndamento)
+            return Result.Failure(new Error("CustomerOrder.NotInPreparation", "Envie o pedido para preparo antes de marcar como pronto."));
+
+        foreach (var item in _items.Where(i => i.IsActive &&
+            i.OrderItemStatusId != OrderItemStatusIds.Cancelado &&
+            i.OrderItemStatusId != OrderItemStatusIds.Entregue &&
+            i.OrderItemStatusId != OrderItemStatusIds.Pronto))
+        {
+            var result = item.UpdateStatus(OrderItemStatusIds.Pronto, null, now);
+            if (result.IsFailure) return result;
+        }
+
+        // A etapa do pedido também avança quando itens de integração ainda não
+        // possuem correspondência no catálogo. Não altera valores ou taxas.
+        OrderStatusId = OrderStatusIds.AguardandoPagamento;
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
     public Result StartPreparation(DateTime Now)
     {
         if (!IsOpen())

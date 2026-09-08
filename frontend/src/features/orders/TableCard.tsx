@@ -38,7 +38,7 @@ export interface TableCardProps {
     /** true quando não há pedido nem a mesa está Livre (ex.: Reservada/Interditada sem conta
      * aberta) — nada de útil acontece nesse clique, então desabilita em vez de um clique morto. */
     disabled?: boolean;
-    onOpen: () => void;
+    onOpen: (id: number) => void;
 }
 
 // <TableCard/> é "burro": só recebe dados já resolvidos (status, contagem de itens, total) e um
@@ -67,7 +67,7 @@ function TableCardComponent({ id, number, statusId, capacity, itemsCount, totalV
             className="table-tile"
             data-testid={`table-tile-${id}`}
             style={{ "--status": color } as React.CSSProperties}
-            onClick={onOpen}
+            onClick={() => onOpen(id)}
             disabled={disabled}
             aria-label={ariaLabel}
         >

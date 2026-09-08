@@ -3,5 +3,6 @@ namespace SyncBar.Application.Features.Storefront.GetBranchMenu
 {
     public sealed record BranchMenuResponse(
         string BranchName,
-        List<MenuItemResponse> Items);
+        List<MenuItemResponse> Items,
+        long? CompanyId = null);
 }

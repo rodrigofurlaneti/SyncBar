@@ -7,6 +7,7 @@ interface Props {
   onClose: () => void;
   children: ReactNode;
   title?: ReactNode;
+  footer?: ReactNode;
   variant?: "center" | "drawer";
   wide?: boolean;
   /** fecha ao clicar no fundo (default: true) */
@@ -27,6 +28,7 @@ export function Modal({
   onClose,
   children,
   title,
+  footer,
   variant = "center",
   wide = false,
   dismissable = true,
@@ -118,7 +120,7 @@ export function Modal({
     >
       <div
         ref={panelRef}
-        className={`modal-panel rise ${isDrawer ? "is-drawer" : "is-center"} ${wide ? "is-wide" : ""}`}
+        className={`modal-panel rise ${isDrawer ? "is-drawer" : "is-center"} ${wide ? "is-wide" : ""} ${footer ? "has-footer" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
@@ -136,7 +138,8 @@ export function Modal({
             </Button>
           </div>
         )}
-        {children}
+        {footer ? <div className="modal-body">{children}</div> : children}
+        {footer && <div className="modal-footer">{footer}</div>}
       </div>
     </div>,
     document.body,

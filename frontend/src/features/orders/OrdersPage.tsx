@@ -15,6 +15,8 @@ import { Overlay } from "./Overlay";
 import { StorefrontHubModal } from "../storeFront/StorefrontHubModal";
 import { TableCard, TableCardSkeleton } from "./TableCard";
 import { ComandaCard, ComandaCardSkeleton } from "./ComandaCard";
+import { EmptyState } from "../../ui/EmptyState";
+import { useCallback } from "react";
 
 const iconStyle = { width: 22, height: 22, color: "var(--amber)", flexShrink: 0 };
 
@@ -93,6 +95,20 @@ export function OrdersPage() {
         return map;
     }, [ordersQuery.data]);
 
+    const openTable = useCallback((id: number) => {
+        const order = orderByTable.get(id);
+        const table = tablesQuery.data?.find(item => item.id === id);
+        if (order) setSelectedOrderId(order.id);
+        else if (table?.tableStatusId === TableStatus.Livre) setOpeningTable(table);
+    }, [orderByTable, tablesQuery.data]);
+
+    const openComanda = useCallback((id: number) => {
+        const order = orderByComanda.get(id);
+        const comanda = comandasQuery.data?.find(item => item.id === id);
+        if (order) setSelectedOrderId(order.id);
+        else if (comanda?.comandaStatusId === ComandaStatus.Disponivel) setOpeningComanda(comanda);
+    }, [orderByComanda, comandasQuery.data]);
+
     const filteredComandas = useMemo(
         () =>
             (comandasQuery.data ?? []).filter((c) =>
@@ -169,14 +185,13 @@ export function OrdersPage() {
                                           totalValue={order?.totalAmount}
                                           openedAt={order?.openedAt}
                                           disabled={!order && !isFree}
-                                          onOpen={() => {
-                                              if (order) setSelectedOrderId(order.id);
-                                              else if (isFree) setOpeningTable(table);
-                                          }}
+                                          onOpen={openTable}
                                       />
                                   );
                               })}
                     </div>
+                    {tablesQuery.isSuccess && tablesQuery.data.length === 0 &&
+                        <EmptyState title="Nenhuma mesa cadastrada" description="Cadastre as mesas desta filial para começar a abrir contas no salão." />}
                 </section>
 
                 <section className="rise rise-2" style={{ marginTop: 34 }}>
@@ -194,6 +209,7 @@ export function OrdersPage() {
                         )}
                         <input
                             placeholder="nº…"
+                            aria-label="Buscar comanda pelo número"
                             inputMode="numeric"
                             value={comandaSearch}
                             onChange={(e) => setComandaSearch(e.target.value)}
@@ -220,14 +236,14 @@ export function OrdersPage() {
                                           statusId={comanda.comandaStatusId}
                                           totalValue={order?.totalAmount}
                                           disabled={!order && !isAvailable}
-                                          onOpen={() => {
-                                              if (order) setSelectedOrderId(order.id);
-                                              else if (isAvailable) setOpeningComanda(comanda);
-                                          }}
+                                          onOpen={openComanda}
                                       />
                                   );
                               })}
                     </div>
+                    {comandasQuery.isSuccess && filteredComandas.length === 0 &&
+                        <EmptyState title={comandaSearch ? "Nenhuma comanda encontrada" : "Nenhuma comanda cadastrada"}
+                            description={comandaSearch ? "Tente buscar por outro número." : "Cadastre comandas para abrir contas individuais nesta filial."} />}
                 </section>
             </main>
 

@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2"; // Adicionado SweetAlert2
-import { getOpenOrdersByBranch, getOrder, updateItemStatus, startOrderPreparation } from "./api";
+import { getOpenOrdersByBranch, getOrder, updateItemStatus, startOrderPreparation, markOrderReadyForDispatch } from "./api";
 import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import { OrderDrawer } from "./OrderDrawer";
@@ -328,12 +328,20 @@ export function DeliveryBoardPage() {
     });
 
     const markReady = useMutation({
-        mutationFn: async (order: OrderResponse) => {
-            const pending = order.items.filter((i) => i.orderItemStatusId !== OrderItemStatus.Cancelado && !READY_ITEM_STATUSES.has(i.orderItemStatusId));
-            await Promise.all(pending.map((i) => updateItemStatus(order.id, i.id, OrderItemStatus.Pronto, employeeId)));
+        mutationFn: (order: OrderResponse) => markOrderReadyForDispatch(order.id),
+        onSuccess: (_data, order) => {
+            queryClient.setQueryData<OrderResponse[]>(["orders", "open", branchId], orders => orders?.map(current =>
+                current.id === order.id ? {
+                    ...current,
+                    orderStatusId: OrderStatus.AguardandoPagamento,
+                    items: current.items.map(item => item.orderItemStatusId === OrderItemStatus.Cancelado || READY_ITEM_STATUSES.has(item.orderItemStatusId)
+                        ? item : { ...item, orderItemStatusId: OrderItemStatus.Pronto }),
+                } : current));
+            Toast.fire({ icon: "success", title: `Pedido #${order.id} pronto.` });
+            setPendingOrderId(null);
+            refresh();
         },
-        onSuccess: (_data, order) => { Toast.fire({ icon: "success", title: `Pedido #${order.id} pronto.` }); setPendingOrderId(null); refresh(); },
-        onError: (e) => { onErr("Falha ao marcar.")(e); setPendingOrderId(null); },
+        onError: (e) => { onErr("Falha ao marcar.")(e); setPendingOrderId(null); refresh(); },
     });
 
     const handleSendToKitchen = (o: OrderResponse) => { setPendingOrderId(o.id); sendToKitchen.mutate(o); };

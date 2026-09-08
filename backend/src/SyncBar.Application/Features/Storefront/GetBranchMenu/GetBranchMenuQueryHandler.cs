@@ -51,7 +51,7 @@ internal sealed class GetBranchMenuQueryHandler(
                         p.ImageUrl,
                         complementsByProduct.TryGetValue(p.Id, out var groups) ? groups : []))
                     .ToList();
-                return Result.Success(new BranchMenuResponse(branch.Name, items));
+                return Result.Success(new BranchMenuResponse(branch.Name, items, branch.CompanyId));
             });
     }
 }

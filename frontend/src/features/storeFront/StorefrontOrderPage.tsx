@@ -580,6 +580,8 @@ export function StorefrontOrderPage() {
             </button>
 
             <StorefrontCartDrawer
+                branchId={branchId}
+                companyId={menuQuery.data?.companyId}
                 isOpen={isCartOpen}
                 onClose={() => setIsCartOpen(false)}
                 items={cartItems}

@@ -60,9 +60,9 @@ export function PaymentPanel({ order, onPaid }: Props) {
     });
 
     const noSession =
-        sessionQuery.isError &&
+        (sessionQuery.isSuccess && !sessionQuery.data) || (sessionQuery.isError &&
         sessionQuery.error instanceof ApiError &&
-        sessionQuery.error.status === 404;
+        sessionQuery.error.status === 404);
 
     const noCashAccess =
         sessionQuery.isError &&
@@ -83,21 +83,25 @@ export function PaymentPanel({ order, onPaid }: Props) {
         },
     });
 
-    const amountDue = order.totalAmount - order.partialPaidAmount;
-    const totalPaid = rows.reduce((sum, row) => sum + parseAmount(row.amount), 0);
+    const amountDue = Math.max(0, Math.round((order.totalAmount - (order.partialPaidAmount ?? 0)) * 100)) / 100;
+    const totalPaid = rows.reduce((sum, row) => sum + Math.round(parseAmount(row.amount) * 100), 0) / 100;
     const cashPaid = rows
         .filter((row) => row.paymentMethodId === PaymentMethod.Dinheiro)
-        .reduce((sum, row) => sum + parseAmount(row.amount), 0);
+        .reduce((sum, row) => sum + Math.round(parseAmount(row.amount) * 100), 0) / 100;
     const change = Math.max(0, Number((totalPaid - amountDue).toFixed(2)));
     const changeValid = change === 0 || cashPaid >= change;
-    const canConfirm = totalPaid >= amountDue && changeValid && rows.every((r) => parseAmount(r.amount) > 0);
+    const canConfirm = sessionQuery.isSuccess && !!sessionQuery.data?.id && totalPaid >= amountDue && changeValid && rows.every((r) => Math.round(parseAmount(r.amount) * 100) > 0);
 
     const payMutation = useMutation({
         mutationFn: () => {
+            if (!sessionQuery.isSuccess || !sessionQuery.data?.id)
+                throw new ApiError(0, "CashSession.Unavailable", "Não foi possível verificar o caixa. Atualize e tente novamente.");
+            if (!canConfirm)
+                throw new ApiError(0, "Payment.InvalidAmount", "Confira os valores do pagamento antes de confirmar.");
             // Troco é abatido do (primeiro) pagamento em dinheiro.
             let changeLeft = change;
             const payments: SalePaymentInput[] = rows.map((row) => {
-                const amount = parseAmount(row.amount);
+                const amount = Math.round(parseAmount(row.amount) * 100) / 100;
                 let changeAmount: number | null = null;
                 if (row.paymentMethodId === PaymentMethod.Dinheiro && changeLeft > 0) {
                     changeAmount = Math.min(changeLeft, amount);
@@ -110,7 +114,7 @@ export function PaymentPanel({ order, onPaid }: Props) {
                     authorizationCode: row.authorizationCode.trim() === "" ? null : row.authorizationCode.trim(),
                 };
             });
-            return registerSale(order.id, sessionQuery.data!.id, employeeId ?? 1, payments);
+            return registerSale(order.id, sessionQuery.data.id, employeeId ?? 1, payments);
         },
         onSuccess: () => {
             setError(null);
@@ -132,7 +136,6 @@ export function PaymentPanel({ order, onPaid }: Props) {
 
             const msg = e instanceof ApiError ? e.message : "Falha ao registrar pagamento.";
             setError(msg);
-            Swal.fire("Erro", msg, "error");
         },
     });
 
@@ -194,6 +197,12 @@ export function PaymentPanel({ order, onPaid }: Props) {
                 </button>
             </div>
         );
+
+    if (sessionQuery.isError || !sessionQuery.data?.id)
+        return <div role="alert" style={{ display: "grid", gap: 12 }}>
+            <p className="error-text">Não foi possível verificar o caixa. Tente novamente antes de confirmar o pagamento.</p>
+            <button type="button" className="btn-ghost" onClick={() => void sessionQuery.refetch()}>Verificar caixa novamente</button>
+        </div>;
 
     return (
         <div style={{ display: "grid", gap: 12 }} data-testid="payment-panel">
@@ -301,7 +310,7 @@ export function PaymentPanel({ order, onPaid }: Props) {
                 )}
             </div>
 
-            {error && <p className="error-text" data-testid="payment-error-msg">{error}</p>}
+            {error && <p role="alert" className="error-text" data-testid="payment-error-msg">{error}</p>}
 
             <button
                 type="button"
