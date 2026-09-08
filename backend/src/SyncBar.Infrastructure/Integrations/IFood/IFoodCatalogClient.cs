@@ -64,6 +64,10 @@ internal sealed class IfoodCatalogClient(HttpClient httpClient) : IIfoodCatalogC
                 name = request.ProductName,
                 description = request.ProductDescription,
                 externalCode = request.ProductExternalCode,
+                optionGroups = (request.OptionGroups ?? []).Select(group => new
+                {
+                    id = group.GroupId.ToString(), min = group.MinOptions, max = group.MaxOptions
+                }).ToArray(),
             },
         };
         products.AddRange(allOptions.Select(o => new
@@ -81,6 +85,7 @@ internal sealed class IfoodCatalogClient(HttpClient httpClient) : IIfoodCatalogC
                 id = request.ItemId.ToString(),
                 type = "DEFAULT",
                 categoryId = request.IfoodCategoryId,
+                productId = request.ProductId.ToString(),
                 status = request.Available ? "AVAILABLE" : "UNAVAILABLE",
                 price = new { value = request.Price },
                 externalCode = request.ExternalCode,
@@ -92,6 +97,7 @@ internal sealed class IfoodCatalogClient(HttpClient httpClient) : IIfoodCatalogC
             {
                 id = og.GroupId.ToString(),
                 name = og.Name,
+                optionGroupType = "OFFER_UNIT",
                 status = "AVAILABLE",
                 min = og.MinOptions,
                 max = og.MaxOptions,

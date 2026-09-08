@@ -22,7 +22,8 @@ namespace SyncBar.API.Controllers;
 public sealed class PublicOrderingController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
-    IUnitOfWork unitOfWork) : ApiController(mediator)
+    IUnitOfWork unitOfWork,
+    SyncBar.Application.Abstractions.Security.IReadingProofService readingProof) : ApiController(mediator)
 {
     [HttpGet("{token:guid}/menu")]
     public Task<IActionResult> GetMenu(Guid token, CancellationToken ct) =>
@@ -53,7 +54,7 @@ public sealed class PublicOrderingController(
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PublicOrderingController), nameof(AddItem), async () =>
         {
             var result = await Mediator.Send(new AddPublicOrderItemCommand(
-                token, request.ProductId, request.Quantity, request.Notes, request.Complements, request.ComandaCode), ct);
+                token, request.ProductId, request.Quantity, request.Notes, request.Complements, request.ComandaCode, request.ReadingProof, request.ExpectedOrderId), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(new { orderId = result.Value });
         });
 
@@ -64,7 +65,7 @@ public sealed class PublicOrderingController(
         {
             var result = await Mediator.Send(new ValidateComandaReadingCommand(
                 token, code, request.Method, request.ScannedValue, request.PhotoBase64), ct);
-            return result.IsFailure ? HandleFailure(result) : NoContent();
+            return result.IsFailure ? HandleFailure(result) : Ok(new { proof = readingProof.Issue(token, code, request.Method) });
         });
 
     [HttpPost("{token:guid}/reading-validation")]
@@ -73,7 +74,7 @@ public sealed class PublicOrderingController(
         {
             var result = await Mediator.Send(new ValidateTableReadingCommand(
                 token, request.Method, request.ScannedValue, request.PhotoBase64), ct);
-            return result.IsFailure ? HandleFailure(result) : NoContent();
+            return result.IsFailure ? HandleFailure(result) : Ok(new { proof = readingProof.Issue(token, null, request.Method) });
         });
 }
 
@@ -82,7 +83,9 @@ public sealed record AddPublicOrderItemRequest(
     [property: JsonRequired] decimal Quantity,
     string? Notes,
     IReadOnlyCollection<OrderItemComplementSelection>? Complements = null,
-    string? ComandaCode = null);
+    string? ComandaCode = null,
+    string? ReadingProof = null,
+    long? ExpectedOrderId = null);
 
 public sealed record ValidateComandaReadingRequest(
     [property: JsonRequired] string Method,

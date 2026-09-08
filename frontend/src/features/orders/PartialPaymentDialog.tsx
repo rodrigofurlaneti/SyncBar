@@ -1,4 +1,7 @@
-﻿import { useState } from "react";
+import { useCashRegister } from "../cash/useCashRegister";
+import { usePaymentMethods } from "../cash/usePaymentMethods";
+import { CashRegisterField } from "../cash/CashRegisterField";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Swal from "sweetalert2"; // Adicionado SweetAlert2
 import { getOpenSession } from "../cash/api";
@@ -6,10 +9,8 @@ import { registerPartialPayment } from "../billing/api";
 import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import {
-    DEFAULT_CASH_REGISTER_ID,
     PaymentMethod,
     formatBRL,
-    paymentMethodLabel,
 } from "../../lib/types";
 import type { OrderResponse } from "../../lib/types";
 import { Overlay } from "./Overlay";
@@ -41,6 +42,9 @@ const Toast = Swal.mixin({
 
 export function PartialPaymentDialog({ order, onClose, onRegistered }: Props) {
     const { employeeId } = useAuthStore();
+    const cashRegister = useCashRegister(order.branchId);
+    const registerId = cashRegister.registerId;
+    const paymentMethods = usePaymentMethods(order.branchId);
     const [amount, setAmount] = useState("");
     const [methodId, setMethodId] = useState<number>(PaymentMethod.Dinheiro);
     const [authorizationCode, setAuthorizationCode] = useState("");
@@ -50,9 +54,10 @@ export function PartialPaymentDialog({ order, onClose, onRegistered }: Props) {
     const remaining = order.totalAmount - order.partialPaidAmount;
 
     const sessionQuery = useQuery({
-        queryKey: ["cash", "open", DEFAULT_CASH_REGISTER_ID],
-        queryFn: () => getOpenSession(DEFAULT_CASH_REGISTER_ID),
+        queryKey: ["cash", "open", registerId!],
+        queryFn: () => getOpenSession(registerId!),
         retry: false,
+        enabled: !!registerId,
     });
 
     const noSession =
@@ -60,11 +65,13 @@ export function PartialPaymentDialog({ order, onClose, onRegistered }: Props) {
         sessionQuery.error instanceof ApiError &&
         (sessionQuery.error.status === 404 || sessionQuery.error.status === 403);
 
-    const value = parseNum(amount);
+    const value = paymentMethods.allowed(methodId) ? parseNum(amount) : null;
 
     const mutation = useMutation({
-        mutationFn: () =>
-            registerPartialPayment({
+        mutationFn: () => {
+            if (!sessionQuery.isSuccess || !sessionQuery.data?.id || value === null || !paymentMethods.allowed(methodId))
+                throw new Error("Confira o caixa e a forma de pagamento antes de confirmar.");
+            return registerPartialPayment({
                 customerOrderId: order.id,
                 cashSessionId: sessionQuery.data!.id,
                 employeeId: employeeId ?? 1,
@@ -72,7 +79,8 @@ export function PartialPaymentDialog({ order, onClose, onRegistered }: Props) {
                 amount: value ?? 0,
                 authorizationCode: authorizationCode.trim() === "" ? null : authorizationCode.trim(),
                 payerName: payerName.trim() === "" ? null : payerName.trim(),
-            }),
+            });
+        },
         onSuccess: () => {
             Toast.fire({ icon: "success", title: "Pagamento parcial registrado." });
             onRegistered();
@@ -86,6 +94,8 @@ export function PartialPaymentDialog({ order, onClose, onRegistered }: Props) {
 
     return (
         <Overlay title="Pagamento parcial" onClose={onClose} data-testid="partial-payment-overlay">
+            <CashRegisterField branchId={order.branchId} />
+            {paymentMethods.isError && <p role="alert" className="error-text">Não foi possível consultar as formas de pagamento. <button type="button" onClick={() => void paymentMethods.refetch()}>Tentar novamente</button></p>}
             <p style={{ color: "var(--ink-dim)", fontSize: "0.9rem", margin: 0 }}>
                 Cliente saindo antes? Registre o valor pago — a mesa continua aberta e o
                 restante é cobrado no fechamento. Restante atual:{" "}
@@ -118,7 +128,7 @@ export function PartialPaymentDialog({ order, onClose, onRegistered }: Props) {
                         onChange={(e) => setMethodId(Number(e.target.value))}
                         data-testid="select-payment-method"
                     >
-                        {Object.entries(paymentMethodLabel).map(([id, label]) => (
+                        {paymentMethods.methods.map(([id, label]) => (
                             <option key={id} value={id}>{label}</option>
                         ))}
                     </select>
@@ -156,7 +166,7 @@ export function PartialPaymentDialog({ order, onClose, onRegistered }: Props) {
                 <button
                     type="button"
                     className="btn-primary"
-                    disabled={value === null || value > remaining || noSession || sessionQuery.isLoading || mutation.isPending}
+                    disabled={value === null || value > remaining || !sessionQuery.isSuccess || !sessionQuery.data?.id || noSession || mutation.isPending}
                     onClick={() => mutation.mutate()}
                     data-testid="btn-submit-partial-payment"
                 >
@@ -166,3 +176,4 @@ export function PartialPaymentDialog({ order, onClose, onRegistered }: Props) {
         </Overlay>
     );
 }
+

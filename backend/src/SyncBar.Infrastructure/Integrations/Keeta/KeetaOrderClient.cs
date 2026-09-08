@@ -144,14 +144,12 @@ public sealed class KeetaOrderClient : IKeetaOrderClient
         CancellationToken cancellationToken = default)
     {
         var credentials = await _credentialsResolver.ResolveAsync(companyId, branchId, cancellationToken);
-        var baseUrl = credentials.BaseUrl.EndsWith('/') ? credentials.BaseUrl : credentials.BaseUrl + "/";
-        _http.BaseAddress = new Uri(baseUrl);
 
         var tokenResult = await _tokenProvider.GetValidAccessTokenAsync(companyId, branchId, cancellationToken: cancellationToken);
         if (tokenResult.IsFailure)
             throw new InvalidOperationException($"Não foi possível obter um access_token Keeta válido: {tokenResult.Error.Message}");
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, "v1/events:polling");
+        using var request = KeetaSignedRequest.Create(credentials, HttpMethod.Get, "v1/events:polling");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenResult.Value);
 
         if (merchantIds is { Count: > 0 })
@@ -207,17 +205,12 @@ public sealed class KeetaOrderClient : IKeetaOrderClient
     private async Task PostAsync<TPayload>(long companyId, long branchId, string relativeUrl, TPayload? payload, CancellationToken cancellationToken)
     {
         var credentials = await _credentialsResolver.ResolveAsync(companyId, branchId, cancellationToken);
-        var baseUrl = credentials.BaseUrl.EndsWith('/') ? credentials.BaseUrl : credentials.BaseUrl + "/";
-        _http.BaseAddress = new Uri(baseUrl);
 
         var tokenResult = await _tokenProvider.GetValidAccessTokenAsync(companyId, branchId, cancellationToken: cancellationToken);
         if (tokenResult.IsFailure)
             throw new InvalidOperationException($"Não foi possível obter um access_token Keeta válido: {tokenResult.Error.Message}");
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, relativeUrl)
-        {
-            Content = JsonContent.Create(payload)
-        };
+        using var request = KeetaSignedRequest.Create(credentials, HttpMethod.Post, relativeUrl, payload);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenResult.Value);
 
         var response = await _http.SendAsync(request, cancellationToken);

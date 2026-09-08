@@ -514,6 +514,17 @@ export interface IFoodShippingItemInput {
   unitPrice: number;
 }
 
+export const getIFoodOrderShippingQuote = (orderId: number): Promise<IFoodShippingQuoteResponse> =>
+  api<IFoodShippingQuoteResponse>(`/api/integrations/ifood/shipping/order/${orderId}/quote`);
+
+export const requestIFoodOrderShippingDriver = (orderId: number, quoteId: string): Promise<void> =>
+  api<void>(`/api/integrations/ifood/shipping/order/${orderId}/request-driver`, {
+    method: "POST", body: JSON.stringify({ quoteId }),
+  });
+
+export const cancelIFoodOrderShippingDriver = (orderId: number): Promise<void> =>
+  api<void>(`/api/integrations/ifood/shipping/order/${orderId}/cancel-request-driver`, { method: "POST" });
+
 export interface RequestIFoodShippingDriverPayload {
   branchId: number;
   orderReference?: string;
@@ -687,6 +698,9 @@ export interface IFoodReviewOrderItem {
 }
 
 export interface IFoodReviewListItem {
+  status?: string | null;
+  visibility?: string | null;
+  firstReplyAt?: string | null;
   id: string;
   createdAt: string | null;
   discarded: boolean;
@@ -734,6 +748,9 @@ export interface IFoodReviewQuestion {
 }
 
 export interface IFoodReviewDetailResponse {
+  status?: string | null;
+  visibility?: string | null;
+  firstReplyAt?: string | null;
   id: string;
   createdAt: string | null;
   discarded: boolean;

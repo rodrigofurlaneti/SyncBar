@@ -15,19 +15,22 @@ internal sealed class CloseShiftClosingCommandHandler : BaseCommandHandler<Close
     private readonly ICashSessionRepository _cashSessionRepository;
     private readonly IShiftClosingSessionRepository _shiftClosingSessionRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICashSessionPaymentReconciliationRepository _reconciliations;
 
     public CloseShiftClosingCommandHandler(
         IShiftClosingRepository shiftClosingRepository,
         ICashSessionRepository cashSessionRepository,
         IShiftClosingSessionRepository shiftClosingSessionRepository,
         ILogTrackerRepository logRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICashSessionPaymentReconciliationRepository reconciliations)
         : base(logRepository, unitOfWork)
     {
         _shiftClosingRepository = shiftClosingRepository;
         _cashSessionRepository = cashSessionRepository;
         _shiftClosingSessionRepository = shiftClosingSessionRepository;
         _unitOfWork = unitOfWork;
+        _reconciliations = reconciliations;
     }
 
     public override Task<Result<ShiftClosingResponse>> Handle(CloseShiftClosingCommand request, CancellationToken cancellationToken) =>
@@ -52,7 +55,10 @@ internal sealed class CloseShiftClosingCommandHandler : BaseCommandHandler<Close
                     shift.BranchId, shift.PeriodStart, periodEnd, cancellationToken);
 
                 // O proprio Close() valida (e bloqueia) caixas ainda abertos pendentes no periodo.
-                var result = shift.Close(request.ClosedByEmployeeId, periodEnd, cashSessions, request.Notes);
+                var reconciliations = new List<CashSessionPaymentReconciliation>();
+                foreach (var session in cashSessions)
+                    reconciliations.AddRange(await _reconciliations.GetByCashSessionAsync(session.Id, cancellationToken));
+                var result = shift.Close(request.ClosedByEmployeeId, periodEnd, cashSessions, request.Notes, reconciliations);
                 if (result.IsFailure)
                     return Result.Failure<ShiftClosingResponse>(result.Error);
 

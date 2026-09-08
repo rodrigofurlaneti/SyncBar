@@ -25,6 +25,8 @@ public sealed class AsaasWebhookReceiverController(IMediator mediator) : Control
         if (result.IsFailure && result.Error.Code == "Asaas.InvalidWebhookToken")
             return Unauthorized();
 
+        if (result.IsFailure) return BadRequest(new ProblemDetails { Title = result.Error.Code, Detail = result.Error.Message });
+
         return Ok();
     }
 }

@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Swal from "sweetalert2";
+import { useRef } from "react";
 
 type StorefrontHubModalProps = {
     isOpen: boolean;
@@ -215,6 +216,8 @@ export function StorefrontHubModal({
 }: StorefrontHubModalProps) {
     const [activeTab, setActiveTab] = useState<"link" | "qrcode">("link");
     const [isQrLoaded, setIsQrLoaded] = useState(false);
+    const linkInputRef = useRef<HTMLInputElement>(null);
+    const [manualCopy, setManualCopy] = useState(false);
 
     // Memoriza a URL para evitar recálculos desnecessários
     const storefrontUrl = useMemo(() => {
@@ -242,8 +245,31 @@ export function StorefrontHubModal({
     }, [isOpen, onClose]);
 
     const handleCopy = useCallback(async () => {
+        setManualCopy(false);
+        let copied = false;
         try {
-            await navigator.clipboard.writeText(storefrontUrl);
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(storefrontUrl);
+                copied = true;
+            }
+        } catch {
+            // Permissão negada: tenta a cópia pela seleção do campo abaixo.
+        }
+        if (!copied) {
+            const input = linkInputRef.current;
+            const previousFocus = document.activeElement as HTMLElement | null;
+            input?.focus({ preventScroll: true });
+            input?.select();
+            input?.setSelectionRange(0, storefrontUrl.length);
+            try {
+                // Compatibilidade com acesso HTTP, onde navigator.clipboard não existe.
+                copied = !!input && document.execCommand("copy");
+            } catch {
+                copied = false;
+            }
+            if (copied) previousFocus?.focus({ preventScroll: true });
+        }
+        if (copied) {
             Swal.fire({
                 toast: true,
                 position: 'top-end',
@@ -254,14 +280,8 @@ export function StorefrontHubModal({
                 background: '#18181b',
                 color: '#fff'
             });
-        } catch {
-            Swal.fire({
-                title: "Erro",
-                text: "Não foi possível copiar o link.",
-                icon: "error",
-                background: '#18181b',
-                color: '#fff'
-            });
+        } else {
+            setManualCopy(true);
         }
     }, [storefrontUrl]);
 
@@ -333,6 +353,7 @@ export function StorefrontHubModal({
                                 Copie o link abaixo e mande para o cliente fazer o pedido direto do celular dele:
                             </p>
                             <input
+                                ref={linkInputRef}
                                 type="text"
                                 readOnly
                                 value={storefrontUrl}
@@ -346,6 +367,9 @@ export function StorefrontHubModal({
                             >
                                 <span aria-hidden="true">📋</span> Copiar Link do Cardápio
                             </button>
+                            {manualCopy && <p role="status" style={{ margin: 0, color: "#fbbf24", fontSize: "0.9rem" }}>
+                                O navegador bloqueou a cópia automática. O link está selecionado: pressione Ctrl+C (ou ⌘C) ou toque e segure para copiar.
+                            </p>}
                         </div>
                     ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", alignItems: "center", textAlign: "center" }}>

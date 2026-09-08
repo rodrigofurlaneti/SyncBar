@@ -1,4 +1,4 @@
-﻿namespace SyncBar.Application.Abstractions.Integrations.Ifood;
+namespace SyncBar.Application.Abstractions.Integrations.Ifood;
 
 public sealed record IfoodReviewOrderDto(DateTime? CreatedAt, string? Id, string? ShortId);
 
@@ -13,7 +13,7 @@ public sealed record IfoodReviewListItemDto(
     string? Reply,
     double? Score,
     string? SurveyId,
-    IfoodReviewOrderDto? Order);
+    IfoodReviewOrderDto? Order, string? Status = null, string? Visibility = null, DateTime? FirstReplyAt = null);
 
 public sealed record IfoodReviewListResultDto(
     long Page, long Size, long Total, long PageCount, IReadOnlyCollection<IfoodReviewListItemDto> Reviews);
@@ -35,7 +35,7 @@ public sealed record IfoodReviewDetailDto(
     double? Score,
     string? SurveyId,
     IfoodReviewOrderDto? Order,
-    IReadOnlyCollection<IfoodReviewQuestionDto> Questions);
+    IReadOnlyCollection<IfoodReviewQuestionDto> Questions, string? Status = null, string? Visibility = null, DateTime? FirstReplyAt = null);
 
 public sealed record IfoodReviewReplyResultDto(DateTime? CreatedAt, string Text, string ReviewId);
 

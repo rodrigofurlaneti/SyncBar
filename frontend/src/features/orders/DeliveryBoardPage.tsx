@@ -1,7 +1,7 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2"; // Adicionado SweetAlert2
-import { getOpenOrdersByBranch, getOrder, updateItemStatus, startOrderPreparation } from "./api";
+import { getOpenOrdersByBranch, getOrder, updateItemStatus, startOrderPreparation, markOrderReadyForDispatch } from "./api";
 import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import { OrderDrawer } from "./OrderDrawer";
@@ -328,12 +328,20 @@ export function DeliveryBoardPage() {
     });
 
     const markReady = useMutation({
-        mutationFn: async (order: OrderResponse) => {
-            const pending = order.items.filter((i) => i.orderItemStatusId !== OrderItemStatus.Cancelado && !READY_ITEM_STATUSES.has(i.orderItemStatusId));
-            await Promise.all(pending.map((i) => updateItemStatus(order.id, i.id, OrderItemStatus.Pronto, employeeId)));
+        mutationFn: (order: OrderResponse) => markOrderReadyForDispatch(order.id),
+        onSuccess: (_data, order) => {
+            queryClient.setQueryData<OrderResponse[]>(["orders", "open", branchId], orders => orders?.map(current =>
+                current.id === order.id ? {
+                    ...current,
+                    orderStatusId: OrderStatus.AguardandoPagamento,
+                    items: current.items.map(item => item.orderItemStatusId === OrderItemStatus.Cancelado || READY_ITEM_STATUSES.has(item.orderItemStatusId)
+                        ? item : { ...item, orderItemStatusId: OrderItemStatus.Pronto }),
+                } : current));
+            Toast.fire({ icon: "success", title: `Pedido #${order.id} pronto.` });
+            setPendingOrderId(null);
+            refresh();
         },
-        onSuccess: (_data, order) => { Toast.fire({ icon: "success", title: `Pedido #${order.id} pronto.` }); setPendingOrderId(null); refresh(); },
-        onError: (e) => { onErr("Falha ao marcar.")(e); setPendingOrderId(null); },
+        onError: (e) => { onErr("Falha ao marcar.")(e); setPendingOrderId(null); refresh(); },
     });
 
     const handleSendToKitchen = (o: OrderResponse) => { setPendingOrderId(o.id); sendToKitchen.mutate(o); };
@@ -350,23 +358,23 @@ export function DeliveryBoardPage() {
             backgroundPosition: "center",
             backgroundColor: "#FDF8F4",
             minHeight: "100vh",
-            padding: "32px 40px",
+            padding: "clamp(1rem, 3vw, 2.5rem)",
             fontFamily: "system-ui, -apple-system, sans-serif",
             display: "flex",
             flexDirection: "column"
         }}>
-            <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
+            <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32, flexWrap: "wrap", gap: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                     <div>
-                        <img src={motorcycleImg} alt="Moto de Delivery" style={{ width: "clamp(44px, 5vw, 72px)", height: "auto", objectFit: "contain", mixBlendMode: "multiply" }} />
+                        <img src={motorcycleImg} alt="Moto de Delivery" style={{ height: "clamp(2.75rem, 5vw, 4.5rem)", objectFit: "contain", mixBlendMode: "multiply" }} />
                     </div>
                     <div>
-                        <h1 style={{ fontSize: "2.4rem", fontWeight: 900, color: "#1A1A1A", margin: 0, textTransform: "uppercase", letterSpacing: "-1px" }}>Delivery</h1>
+                        <h1 style={{ fontSize: "clamp(1.75rem, 5vw, 2.4rem)", fontWeight: 900, color: "#1A1A1A", margin: 0, textTransform: "uppercase", letterSpacing: "-1px" }}>Delivery</h1>
                         <span style={{ color: "#777", fontSize: "0.95rem" }}>Movimente cada pedido pelas etapas até a entrega</span>
                     </div>
                 </div>
 
-                <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                     <div style={{ display: "flex", background: "#fff", borderRadius: 8, padding: 4, border: "1px solid #EAEAEA", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
                         <button
                             onClick={() => setViewMode("simples")}
@@ -386,7 +394,7 @@ export function DeliveryBoardPage() {
                 </div>
             </header>
 
-            <div style={{ display: "flex", gap: 16, marginBottom: 24, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 16, marginBottom: 24, alignItems: "center", flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 8 }}>
                     {(["todos", "delivery", "retirada"] as ChannelFilter[]).map((c) => (
                         <button key={c} data-testid={`btn-filter-${c}`} onClick={() => setChannelFilter(c)} style={{
@@ -399,7 +407,7 @@ export function DeliveryBoardPage() {
                     ))}
                 </div>
 
-                <div style={{ position: "relative", flex: 1, maxWidth: 400 }}>
+                <div style={{ position: "relative", flex: "1 1 16rem", minWidth: 0, maxWidth: "100%" }}>
                     <input
                         placeholder="Buscar pedido, cliente ou endereço..."
                         value={search} onChange={(e) => setSearch(e.target.value)}
@@ -499,3 +507,4 @@ function DashboardMetric({ icon, label, value, sub }: { icon: React.ReactNode, l
         </div>
     );
 }
+

@@ -23,7 +23,8 @@ internal sealed class CashSessionRepository(AppDbContext context) : ICashSession
         long branchId, DateTime from, DateTime to, CancellationToken cancellationToken = default)
         => await context.CashSessions.AsNoTracking()
             .Join(context.CashRegisters, s => s.CashRegisterId, r => r.Id, (s, r) => new { s, r })
-            .Where(x => x.r.BranchId == branchId && x.s.IsActive && x.s.OpenedAt >= from && x.s.OpenedAt < to)
+            .Where(x => x.r.BranchId == branchId && x.s.IsActive && x.s.OpenedAt < to
+                && (x.s.OpenedAt >= from || x.s.ClosedAt == null || x.s.ClosedAt >= from))
             .Select(x => x.s)
             .ToListAsync(cancellationToken);
 

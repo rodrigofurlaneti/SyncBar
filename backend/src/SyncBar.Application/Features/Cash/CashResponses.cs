@@ -20,7 +20,10 @@ public sealed record CashSummaryResponse(
     decimal SangriaTotal,
     decimal DespesaTotal,
     decimal PartialPaymentsTotal,
-    decimal ExpectedCashAmount);
+    decimal ExpectedCashAmount,
+    IReadOnlyCollection<CashMovementResponse>? Movements = null);
+
+public sealed record CashMovementResponse(long Id, long CashMovementTypeId, decimal Amount, string? Description, DateTime CreatedAt);
 
 public sealed record PaymentMethodReconciliationResponse(
     long PaymentMethodId,

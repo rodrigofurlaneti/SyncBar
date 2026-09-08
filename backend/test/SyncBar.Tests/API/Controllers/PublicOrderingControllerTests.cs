@@ -26,7 +26,7 @@ public sealed class PublicOrderingControllerTests
 
     public PublicOrderingControllerTests()
     {
-        _controller = new PublicOrderingController(_mediator, _logRepository, _unitOfWork);
+        _controller = new PublicOrderingController(_mediator, _logRepository, _unitOfWork, Substitute.For<SyncBar.Application.Abstractions.Security.IReadingProofService>());
         ControllerTestHelpers.AttachHttpContext(_controller);
     }
 
@@ -138,7 +138,7 @@ public sealed class PublicOrderingControllerTests
 
         var result = await _controller.ValidateComandaReading(token, "C1", request, CancellationToken.None);
 
-        result.Should().BeOfType<NoContentResult>();
+        result.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]
@@ -163,7 +163,7 @@ public sealed class PublicOrderingControllerTests
 
         var result = await _controller.ValidateTableReading(token, request, CancellationToken.None);
 
-        result.Should().BeOfType<NoContentResult>();
+        result.Should().BeOfType<OkObjectResult>();
     }
 
     [Fact]
@@ -178,3 +178,4 @@ public sealed class PublicOrderingControllerTests
         result.Should().BeOfType<NotFoundObjectResult>();
     }
 }
+

@@ -30,6 +30,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
     private readonly IMemoryCache _cache;
     private readonly ILogTrackerRepository _logRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IIfoodShippingTrackingStore? _shippingTracking;
 
     // Barcode reservado (nunca digitável por um humano cadastrando produto de verdade) usado pra
     // identificar/reaproveitar o produto placeholder "Não mapeado (iFood)" por empresa — ver
@@ -52,7 +53,8 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
         TimeProvider timeProviderCustom,
         IMemoryCache cache,
         ILogTrackerRepository logRepository,
-        IUnitOfWork unitOfWork
+        IUnitOfWork unitOfWork,
+        IIfoodShippingTrackingStore? shippingTracking = null
         )
         : base(logRepository, unitOfWork)
     {
@@ -72,6 +74,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
         _cache = cache;
         _logRepository = logRepository;
         _unitOfWork = unitOfWork;
+        _shippingTracking = shippingTracking;
     }
 
     public override async Task<Result> Handle(SyncIfoodOrdersCommand request, CancellationToken cancellationToken)
@@ -277,7 +280,9 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
         DateTime now, 
         CancellationToken cancellationToken)
     {
-        switch (evt.FullCode)
+        var shippingHandled = _shippingTracking is not null &&
+            await _shippingTracking.ApplyEventAsync(companyId, evt, cancellationToken);
+        switch (evt.FullCode ?? evt.Code)
         {
             case "PLACED":
                 return await ProcessNewOrderAsync(evt, companyId, token, mappingsByBranch, now, cancellationToken);
@@ -295,23 +300,29 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
                 return await ProcessStatusSyncAsync(evt.OrderId, ifoodOrder => ifoodOrder.SetStatus(IfoodOrderStatuses.Dispatched, now), cancellationToken);
 
             case "DELIVERED": // categoria FOOD_SELF_SERVICE
-                return await ProcessStatusSyncAsync(evt.OrderId, ifoodOrder => ifoodOrder.SetStatus(IfoodOrderStatuses.Delivered, now), cancellationToken);
+                return await ProcessStatusSyncAsync(evt.OrderId, ifoodOrder => ifoodOrder.SetStatus(IfoodOrderStatuses.Delivered, now), cancellationToken) || shippingHandled;
 
             case "CONCLUDED":
-                return await ProcessStatusSyncAsync(evt.OrderId, ifoodOrder => ifoodOrder.SetStatus(IfoodOrderStatuses.Concluded, now), cancellationToken);
+                return await ProcessStatusSyncAsync(evt.OrderId, ifoodOrder => ifoodOrder.SetStatus(IfoodOrderStatuses.Concluded, now), cancellationToken) || shippingHandled;
 
             case "CANCELLED":
-                return await ProcessCancelledAsync(evt, companyId, token, stopwatch, now, cancellationToken);
+                return await ProcessCancelledAsync(evt, companyId, token, stopwatch, now, cancellationToken) || shippingHandled;
 
-            case "ORDER_PATCHED":
             case "ASSIGN_DRIVER":
+            case "REQUEST_DRIVER_SUCCESS":
+            case "DELIVERY_CONCLUDED":
+            case "DELIVERY_CANCELLED":
+                return shippingHandled;
+            case "ORDER_PATCHED":
             case "CANCELLATION_REQUEST_FAILED":
             case "HANDSHAKE_DISPUTE":
             case "HANDSHAKE_SETTLEMENT":
             case "DELIVERY_ADDRESS_CHANGE":
             case "DELIVERY_PHONE_CHANGE":
+                // Não confirmar eventos cuja alteração de negócio ainda não foi aplicada.
+                return false;
             default:
-                return true;
+                return false;
         }
     }
 

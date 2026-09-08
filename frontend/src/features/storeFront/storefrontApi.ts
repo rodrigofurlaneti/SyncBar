@@ -9,6 +9,7 @@ export type StorefrontItemRequest = {
 };
 
 export type StorefrontMenuResponse = {
+    companyId: number;
     items: MenuItemResponse[];
 };
 

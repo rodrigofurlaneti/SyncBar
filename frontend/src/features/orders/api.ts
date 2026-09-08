@@ -52,6 +52,9 @@ export const updateItemStatus = (
 export const startOrderPreparation = (orderId: number): Promise<void> =>
   api<void>(`/api/orders/${orderId}/start-preparation`, { method: "PUT" });
 
+export const markOrderReadyForDispatch = (orderId: number): Promise<void> =>
+  api<void>(`/api/orders/${orderId}/ready-for-dispatch`, { method: "PUT" });
+
 export const applyDiscount = (orderId: number, discountAmount: number): Promise<void> =>
   api<void>(`/api/orders/${orderId}/discount`, {
     method: "PUT",

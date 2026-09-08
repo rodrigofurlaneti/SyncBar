@@ -7,10 +7,10 @@ namespace SyncBar.Application.Features.Integrations.WhatsApp.SendImage
 {
     internal sealed class SendWhatsAppImageCommandHandler : BaseCommandHandler<SendWhatsAppImageCommand>
     {
-        private readonly IWhatsAppService _whatsAppService;
+        private readonly IWhatsAppQueue _whatsAppService;
 
         public SendWhatsAppImageCommandHandler(
-            IWhatsAppService whatsAppService,
+            IWhatsAppQueue whatsAppService,
             ILogTrackerRepository logRepository,
             IUnitOfWork unitOfWork)
             : base(logRepository, unitOfWork)
@@ -24,7 +24,8 @@ namespace SyncBar.Application.Features.Integrations.WhatsApp.SendImage
                 nameof(SendWhatsAppImageCommandHandler),
                 nameof(Handle),
                 null,
-                (_) => _whatsAppService.SendImageAsync(request.PhoneNumber, request.Message, request.FileUrl, cancellationToken));
+                (_) => _whatsAppService.EnqueueAsync(request.PhoneNumber, request.Message, request.FileUrl, cancellationToken));
         }
     }
 }
+

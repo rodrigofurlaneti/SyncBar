@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using NSubstitute;
 using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Features.Integrations.Ifood.Orders;
@@ -18,7 +18,7 @@ public sealed class GetIfoodOrderTrackingQueryHandlerTests
     private readonly IIfoodOrderRepository _IfoodOrderRepository = Substitute.For<IIfoodOrderRepository>();
     private readonly IBranchRepository _branchRepository = Substitute.For<IBranchRepository>();
     private readonly IIfoodTokenProvider _tokenProvider = Substitute.For<IIfoodTokenProvider>();
-    private readonly IIfoodOrderClient _orderClient = Substitute.For<IIfoodOrderClient>();
+    private readonly IIfoodShippingTrackingStore _orderClient = Substitute.For<IIfoodShippingTrackingStore>();
     private readonly ILogTrackerRepository _logRepository = Substitute.For<ILogTrackerRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
@@ -84,8 +84,8 @@ public sealed class GetIfoodOrderTrackingQueryHandlerTests
     public async Task Handle_WhenIfoodHasNoTrackingYet_ShouldSucceedWithAllNullFields()
     {
         GivenAConnectedBranchWithValidToken(CreateIfoodOrder());
-        _orderClient.GetOrderTrackingAsync(ValidToken, IfoodOrderExternalId, Arg.Any<CancellationToken>())
-            .Returns((IfoodOrderTrackingDto?)null);
+        _orderClient.ReadAsync(CompanyId, IfoodOrderExternalId, Arg.Any<CancellationToken>())
+            .Returns((IfoodShippingTrackingResult)null!);
         var sut = CreateSut();
 
         var result = await sut.Handle(new GetIfoodOrderTrackingQuery(1), CancellationToken.None);

@@ -1,11 +1,13 @@
 import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "./Button";
 
 interface Props {
   onClose: () => void;
   children: ReactNode;
   title?: ReactNode;
+  footer?: ReactNode;
   variant?: "center" | "drawer";
   wide?: boolean;
   /** fecha ao clicar no fundo (default: true) */
@@ -26,6 +28,7 @@ export function Modal({
   onClose,
   children,
   title,
+  footer,
   variant = "center",
   wide = false,
   dismissable = true,
@@ -108,7 +111,7 @@ export function Modal({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intencional: só no mount/unmount, ver comentário acima
   }, []);
 
-  return (
+  return createPortal(
     <div
       className={`modal-backdrop ${isDrawer ? "is-drawer" : "is-center"}`}
       onMouseDown={(e) => {
@@ -117,7 +120,7 @@ export function Modal({
     >
       <div
         ref={panelRef}
-        className={`modal-panel rise ${isDrawer ? "is-drawer" : "is-center"} ${wide ? "is-wide" : ""}`}
+        className={`modal-panel rise ${isDrawer ? "is-drawer" : "is-center"} ${wide ? "is-wide" : ""} ${footer ? "has-footer" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
@@ -135,8 +138,10 @@ export function Modal({
             </Button>
           </div>
         )}
-        {children}
+        {footer ? <div className="modal-body">{children}</div> : children}
+        {footer && <div className="modal-footer">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

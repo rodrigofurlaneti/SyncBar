@@ -1,4 +1,4 @@
-﻿namespace SyncBar.Application.Features.Integrations.Ifood.Review;
+namespace SyncBar.Application.Features.Integrations.Ifood.Review;
 
 public sealed record IfoodReviewOrderResponse(DateTime? CreatedAt, string? Id, string? ShortId);
 
@@ -12,7 +12,7 @@ public sealed record IfoodReviewListItemResponse(
     string? ModerationStatus,
     string? Reply,
     double? Score,
-    IfoodReviewOrderResponse? Order);
+    IfoodReviewOrderResponse? Order, string? Status = null, string? Visibility = null, DateTime? FirstReplyAt = null);
 
 public sealed record IfoodReviewListResponse(
     long Page, long Size, long Total, long PageCount, IReadOnlyCollection<IfoodReviewListItemResponse> Reviews);
@@ -33,7 +33,7 @@ public sealed record IfoodReviewDetailResponse(
     string? Reply,
     double? Score,
     IfoodReviewOrderResponse? Order,
-    IReadOnlyCollection<IfoodReviewQuestionResponse> Questions);
+    IReadOnlyCollection<IfoodReviewQuestionResponse> Questions, string? Status = null, string? Visibility = null, DateTime? FirstReplyAt = null);
 
 public sealed record IfoodReviewReplyResponse(DateTime? CreatedAt, string Text, string ReviewId);
 

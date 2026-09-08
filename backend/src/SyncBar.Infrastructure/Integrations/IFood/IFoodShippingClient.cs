@@ -133,6 +133,8 @@ internal sealed class IfoodShippingClient(HttpClient httpClient) : IIfoodShippin
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             using var response = await httpClient.SendAsync(request, cancellationToken);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return new IfoodShippingTrackingResult(true, null, null, null, null, null, null);
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -143,7 +145,7 @@ internal sealed class IfoodShippingClient(HttpClient httpClient) : IIfoodShippin
             if (dto is null)
                 return new IfoodShippingTrackingResult(false, "Resposta vazia do Ifood.", null, null, null, null, null);
 
-            return new IfoodShippingTrackingResult(true, null, dto.Latitude, dto.Longitude, dto.ExpectedDelivery, dto.DeliveryEtaEnd, dto.PickupEtaStart);
+            return new IfoodShippingTrackingResult(true, null, dto.Latitude, dto.Longitude, dto.ExpectedDelivery, dto.DeliveryEtaEnd / 60d, dto.PickupEtaStart / 60d);
         }
         catch (Exception ex)
         {

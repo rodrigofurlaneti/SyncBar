@@ -15,11 +15,3 @@ Scenario: Consultar categorias para gerenciamento inclui categorias inativas
     When eu busco as categorias para gerenciamento da empresa 1
     Then a operacao deve ter sucesso
     And a categoria "Promocoes antigas" na lista de gerenciamento deve estar inativa
-
-@ignore
-Scenario: Consultar categorias para gerenciamento conta os produtos de cada categoria
-    Given a categoria ativa "Bebidas" com id 1 e ordem 0 esta cadastrada na empresa 1 para gerenciamento
-    And existem 3 produtos cadastrados na categoria 1
-    When eu busco as categorias para gerenciamento da empresa 1
-    Then a operacao deve ter sucesso
-    And a categoria "Bebidas" na lista de gerenciamento deve ter 3 produtos

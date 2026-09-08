@@ -59,7 +59,8 @@ public sealed class ShiftClosing : AggregateRoot
         long closedByEmployeeId,
         DateTime periodEnd,
         IReadOnlyCollection<CashSession> cashSessions,
-        string? notes)
+        string? notes,
+        IReadOnlyCollection<CashSessionPaymentReconciliation>? reconciliations = null)
     {
         if (!IsOpen())
             return Result.Failure(new Error("ShiftClosing.NotOpen", "Only an open shift can be closed."));
@@ -76,8 +77,10 @@ public sealed class ShiftClosing : AggregateRoot
 
         CashSessionsCount = activeSessions.Count;
         TotalOpeningAmount = activeSessions.Sum(s => s.OpeningAmount);
-        TotalExpectedAmount = activeSessions.Sum(s => s.ExpectedAmount ?? 0);
-        TotalRealizedAmount = activeSessions.Sum(s => s.ClosingAmount ?? 0);
+        var sessionIds = activeSessions.Select(s => s.Id).ToHashSet();
+        var electronic = (reconciliations ?? []).Where(r => r.IsActive && sessionIds.Contains(r.CashSessionId)).ToList();
+        TotalExpectedAmount = activeSessions.Sum(s => s.ExpectedAmount ?? 0) + electronic.Sum(r => r.ExpectedAmount);
+        TotalRealizedAmount = activeSessions.Sum(s => s.ClosingAmount ?? 0) + electronic.Sum(r => r.CountedAmount);
         TotalDifferenceAmount = TotalRealizedAmount - TotalExpectedAmount;
 
         ClosedByEmployeeId = closedByEmployeeId;

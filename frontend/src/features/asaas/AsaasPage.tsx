@@ -363,7 +363,18 @@ function SettingsSection({ companyId }: { companyId: number }) {
       )}
 
       {editing && (
-        <Modal title={`Editar configuração — ${editing.branchId ? `Filial ${editing.branchId}` : "Padrão da empresa"}`} onClose={() => setEditingId(null)}>
+        <Modal
+          title={`Editar configuração — ${editing.branchId ? `Filial ${editing.branchId}` : "Padrão da empresa"}`}
+          onClose={() => setEditingId(null)}
+          footer={
+            <div className="ui-row ui-row-wrap" style={{ gap: 10, justifyContent: "end" }}>
+              <Button variant="ghost" onClick={() => setEditingId(null)}>Cancelar</Button>
+              <Button variant="primary" loading={updateMutation.isPending} onClick={() => updateMutation.mutate()}>
+                Salvar alterações
+              </Button>
+            </div>
+          }
+        >
           <div style={{ display: "grid", gap: 12 }}>
             <TextField
               label="Nova chave de API (opcional)"
@@ -391,9 +402,6 @@ function SettingsSection({ companyId }: { companyId: number }) {
 
             {error && <p className="error-text">{error}</p>}
 
-            <Button variant="primary" block loading={updateMutation.isPending} onClick={() => updateMutation.mutate()}>
-              Salvar alterações
-            </Button>
           </div>
         </Modal>
       )}
@@ -1337,11 +1345,20 @@ function WebhooksSection({ companyId }: { companyId: number }) {
   const markMutation = useMutation({
     mutationFn: (vars: { log: AsaasWebhookLogResponse; status: number; errorMessage?: string | null }) =>
       updateAsaasWebhookLogStatus(vars.log.id, companyId, vars.status, vars.errorMessage),
-    onSuccess: () => {
+    onSuccess: (_, { log, status, errorMessage }) => {
+      queryClient.setQueriesData<AsaasWebhookLogResponse[]>(
+        { queryKey: ["asaas", "webhooks"] },
+        (logs) => logs?.map((item) => item.id === log.id && item.companyId === log.companyId
+          ? { ...item, status, errorMessage: status === WebhookLogStatus.Failed ? errorMessage ?? null : null }
+          : item),
+      );
       toast.success("Status do webhook atualizado.");
       refresh();
     },
-    onError: (e) => toast.error(apiErrorMessage(e, "Não foi possível atualizar o status.")),
+    onError: (e) => {
+      toast.error(apiErrorMessage(e, "Não foi possível atualizar o status."));
+      refresh();
+    },
   });
 
   const deleteMutation = useMutation({
@@ -1448,7 +1465,7 @@ function WebhooksSection({ companyId }: { companyId: number }) {
                   </Button>
                 )}
                 {log.status !== WebhookLogStatus.Failed && (
-                  <Button variant="ghost" size="sm" onClick={() => void markFailed(log)}>
+                  <Button variant="ghost" size="sm" disabled={markMutation.isPending} onClick={() => void markFailed(log)}>
                     Marcar falha
                   </Button>
                 )}
@@ -1559,10 +1576,12 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
   const toast = useToast();
   const [overrides, setOverrides] = useState<Partial<PaymentMethodFlags>>({});
   const [error, setError] = useState<string | null>(null);
+  const [scope, setScope] = useState<"branch" | "company">("branch");
+  const scopeBranchId = scope === "branch" ? branchId : null;
 
   const settingQuery = useQuery({
-    queryKey: ["branchPaymentMethodSettings", "resolve", companyId, branchId],
-    queryFn: () => resolvePaymentMethodSetting(companyId, branchId),
+    queryKey: ["branchPaymentMethodSettings", "resolve", companyId, scopeBranchId],
+    queryFn: () => resolvePaymentMethodSetting(companyId, scopeBranchId),
   });
 
   const setting = settingQuery.data ?? null;
@@ -1576,26 +1595,25 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
       }
     : DEFAULT_PAYMENT_METHOD_FLAGS;
   const flags: PaymentMethodFlags = { ...baseFlags, ...overrides };
-  const isDirty = Object.keys(overrides).length > 0;
-  // A configuração encontrada é da própria filial só quando o BranchId bate — caso contrário
-  // (BranchId null ou de outra filial) o resolve caiu no fallback da matriz.
-  const isOwnBranchSetting = setting?.branchId === branchId;
-
-  const refresh = () => void queryClient.invalidateQueries({ queryKey: ["branchPaymentMethodSettings"] });
+  const isDirty = Object.entries(overrides).some(([key, value]) => baseFlags[key as keyof PaymentMethodFlags] !== value);
+  // Atualiza apenas o escopo selecionado; uma configuração herdada gera uma nova filial.
+  const isOwnBranchSetting = setting?.branchId === scopeBranchId;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (isOwnBranchSetting && setting) {
         await updatePaymentMethodSetting(setting.id, { companyId, ...flags });
+        return { ...setting, ...flags };
       } else {
-        await createPaymentMethodSetting({ companyId, branchId, ...flags });
+        return await createPaymentMethodSetting({ companyId, branchId: scopeBranchId, ...flags });
       }
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
       setError(null);
+      queryClient.setQueryData(["branchPaymentMethodSettings", "resolve", companyId, scopeBranchId], saved);
       setOverrides({});
       toast.success("Métodos de pagamento salvos.");
-      refresh();
+      void queryClient.invalidateQueries({ queryKey: ["storefront", "payment-methods"] });
     },
     onError: (e) => setError(apiErrorMessage(e, "Não foi possível salvar os métodos de pagamento.")),
   });
@@ -1617,17 +1635,25 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
       </div>
 
       {settingQuery.isError && <QueryError error={settingQuery.error} what="os métodos de pagamento" />}
+      <SelectField label="Escopo" value={scope} disabled={saveMutation.isPending} onChange={e => {
+        setScope(e.target.value as "branch" | "company");
+        setOverrides({});
+        setError(null);
+      }}>
+        <option value="company">Matriz (Geral)</option>
+        <option value="branch">Filial {branchId}</option>
+      </SelectField>
       {settingQuery.isLoading && <SkeletonList rows={5} rowHeight={72} />}
 
-      {!settingQuery.isLoading && (
+      {!settingQuery.isLoading && !settingQuery.isError && (
         <>
           <div className="ui-row ui-row-wrap" style={{ gap: 8, alignItems: "center" }}>
             <span className="chip" style={{ "--dot": "var(--busy)" } as CSSProperties}>
-              Filial {branchId}
+              {scope === "branch" ? `Filial ${branchId}` : "Matriz (Geral)"}
             </span>
             {isOwnBranchSetting ? (
               <span className="chip" data-testid="payment-methods-own-chip" style={{ "--dot": "var(--ok)" } as CSSProperties}>
-                Configuração própria da filial
+                {scope === "branch" ? "Configuração própria da filial" : "Configuração geral da matriz"}
               </span>
             ) : setting ? (
               <span className="chip" data-testid="payment-methods-inherited-chip" style={{ "--dot": "var(--ink-faint)" } as CSSProperties}>
@@ -1638,11 +1664,12 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
                 Nenhuma configuração cadastrada — usando o padrão (tudo ligado)
               </span>
             )}
+            {setting?.createdAt && <span>Criada em {new Date(setting.createdAt).toLocaleDateString("pt-BR")}{setting.updatedAt ? ` · atualizada em ${new Date(setting.updatedAt).toLocaleDateString("pt-BR")}` : ""}</span>}
           </div>
 
           <div style={{ display: "grid", gap: 2 }} data-testid="payment-methods-list">
             {PAYMENT_METHOD_ITEMS.map((item) => (
-              <div key={item.key} className="ticket-row" style={{ alignItems: "center" }} data-testid={`payment-method-row-${item.key}`}>
+              <div key={item.key} className="ticket-row payment-method-row" data-testid={`payment-method-row-${item.key}`}>
                 <div style={{ display: "grid", gap: 2, maxWidth: 520 }}>
                   <span style={{ fontWeight: 600 }}>
                     <span aria-hidden="true">{item.icon}</span> {item.title}
@@ -1653,7 +1680,7 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
                   <span
                     className="chip"
                     data-testid={`payment-method-status-${item.key}`}
-                    style={{ "--dot": flags[item.key] ? "var(--ok)" : "var(--danger)" } as CSSProperties}
+                    style={{ background: "#fff", color: flags[item.key] ? "#1d4ed8" : "#6b7280", "--dot": flags[item.key] ? "var(--ok)" : "var(--danger)" } as CSSProperties}
                   >
                     {flags[item.key] ? "Ligada" : "Desligada"}
                   </span>
@@ -1661,6 +1688,7 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
                     checked={flags[item.key]}
                     onChange={(v) => toggle(item.key, v)}
                     label={item.title}
+                    disabled={saveMutation.isPending || settingQuery.isFetching || settingQuery.isError}
                     data-testid={`payment-method-switch-${item.key}`}
                   />
                 </div>
@@ -1681,7 +1709,7 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
             </Button>
             <Button
               variant="primary"
-              disabled={!isDirty}
+              disabled={!isDirty || settingQuery.isFetching || settingQuery.isError}
               loading={saveMutation.isPending}
               onClick={() => saveMutation.mutate()}
               data-testid="payment-methods-save-btn"

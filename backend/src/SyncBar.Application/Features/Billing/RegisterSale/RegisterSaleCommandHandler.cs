@@ -1,4 +1,5 @@
-﻿using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Application.Features.Cash;
+using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
@@ -21,6 +22,7 @@ internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSa
     private readonly IOrderPartialPaymentRepository _partialPaymentRepository;
     private readonly IPrintingService _printingService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPaymentMethodAvailability _availability;
     private readonly TimeProvider _TimeProviderCustom;
 
     public RegisterSaleCommandHandler(
@@ -36,7 +38,7 @@ internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSa
         IPrintingService printingService,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork,
-        TimeProvider TimeProviderCustom)
+        TimeProvider TimeProviderCustom, IPaymentMethodAvailability availability)
         : base(logRepository, unitOfWork)
     {
         _orderRepository = orderRepository;
@@ -49,7 +51,7 @@ internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSa
         _stockMovementRepository = stockMovementRepository;
         _partialPaymentRepository = partialPaymentRepository;
         _printingService = printingService;
-        _unitOfWork = unitOfWork;
+        _unitOfWork = unitOfWork; _availability = availability;
         _TimeProviderCustom = TimeProviderCustom;
     }
 
@@ -73,6 +75,8 @@ internal sealed class RegisterSaleCommandHandler : BaseCommandHandler<RegisterSa
             if (orderResult.IsFailure)
                 return Result.Failure<long>(orderResult.Error);
             var order = orderResult.Value;
+            var available = await _availability.ValidateAsync(order.BranchId, request.Payments.Select(p => p.PaymentMethodId).ToList(), cancellationToken);
+            if (available.IsFailure) return Result.Failure<long>(available.Error);
 
             var sessionResult = await ValidateCashSessionAsync(request.CashSessionId, cancellationToken);
             if (sessionResult.IsFailure)

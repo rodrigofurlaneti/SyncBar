@@ -1,5 +1,6 @@
 using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Printing;
+using SyncBar.Application.Abstractions.Security;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -20,6 +21,7 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
     private readonly IPrintingService _printingService;
     private readonly TimeProvider _TimeProviderCustom;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IReadingProofService? _readingProof;
 
     public AddPublicOrderItemCommandHandler(
         IDiningTableRepository diningTableRepository,
@@ -33,7 +35,8 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
         IPrintingService printingService,
         TimeProvider TimeProviderCustom,
         ILogTrackerRepository logRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IReadingProofService? readingProof = null)
         : base(logRepository, unitOfWork)
     {
         _diningTableRepository = diningTableRepository;
@@ -47,6 +50,7 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
         _printingService = printingService;
         _TimeProviderCustom = TimeProviderCustom;
         _unitOfWork = unitOfWork;
+        _readingProof = readingProof;
     }
 
     public override async Task<Result<long>> Handle(AddPublicOrderItemCommand request, CancellationToken cancellationToken)
@@ -61,6 +65,20 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
                 if (tableResult.IsFailure)
                     return Result.Failure<long>(tableResult.Error);
                 var table = tableResult.Value;
+                var allowedMethods = new List<string>();
+                if (table.IsCameraInputEnabled) allowedMethods.Add("camera");
+                if (table.IsBarcodeEnabled) allowedMethods.Add("barcode");
+                if (table.IsQrCodeEnabled) allowedMethods.Add("qrcode");
+                if (allowedMethods.Count > 0 && (_readingProof is null || !_readingProof.Validate(request.ReadingProof, request.Token, request.ComandaCode, allowedMethods)))
+                    return Result.Failure<long>(new Error("Reading.Required", "Valide novamente a leitura da mesa/comanda antes de enviar o pedido."));
+
+                if (request.ExpectedOrderId.HasValue)
+                {
+                    var previous = await _orderRepository.GetByIdForUpdateAsync(request.ExpectedOrderId.Value, cancellationToken);
+                    if (previous is null || !previous.IsActive || previous.BranchId != table.BranchId
+                        || previous.OrderStatusId is not (OrderStatusIds.Aberto or OrderStatusIds.EmAndamento))
+                        return Result.Failure<long>(new Error("CustomerOrder.Closed", "Este pedido foi encerrado. Inicie um novo atendimento para continuar."));
+                }
 
                 var branchResult = await ValidateBranchAsync(table.BranchId, cancellationToken);
                 if (branchResult.IsFailure)

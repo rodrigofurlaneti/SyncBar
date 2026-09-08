@@ -29,7 +29,7 @@ public sealed class PayOrderWithPixCommandHandlerTests
     public PayOrderWithPixCommandHandlerTests()
     {
         _handler = new PayOrderWithPixCommandHandler(
-            _checkoutPreparer, _paymentRepository, _asaasService, _mediator, _logRepository, _unitOfWork);
+            _checkoutPreparer, _paymentRepository, _asaasService, _mediator, _logRepository, _unitOfWork, SyncBar.Tests.PaymentAvailabilityFixture.Allowed());
     }
 
     private static void SetId(Entity entity, long id)
@@ -204,3 +204,4 @@ public sealed class PayOrderWithPixCommandHandlerTests
         result.Error.Code.Should().Be("AsaasApi.Failure");
     }
 }
+

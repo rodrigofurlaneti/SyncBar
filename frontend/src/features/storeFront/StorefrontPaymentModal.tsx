@@ -8,9 +8,10 @@ import {
     type PixPaymentResult,
 } from "./checkoutApi";
 
-export type StorefrontPaymentMethod = "PIX" | "CREDITO" | "BOLETO";
+export type StorefrontPaymentMethod = "PIX" | "CREDITO" | "BOLETO" | "DEBITO";
 
 export type StorefrontPaymentResult =
+    | { method: "DEBITO"; data: import("./checkoutApi").HostedCardPaymentResult }
     | { method: "PIX"; data: PixPaymentResult }
     | { method: "CREDITO"; data: CreditCardPaymentResult }
     | { method: "BOLETO"; data: BoletoPaymentResult };
@@ -53,7 +54,8 @@ const styles = `
 
 const METHOD_LABEL: Record<StorefrontPaymentMethod, string> = {
     PIX: "Pix",
-    CREDITO: "Cartão",
+    CREDITO: "Cartão de Crédito",
+    DEBITO: "Cartão de Débito",
     BOLETO: "Boleto",
 };
 
@@ -128,6 +130,8 @@ export function StorefrontPaymentModal({ orderId, result, onClose }: StorefrontP
 
     const renderMethodBody = () => {
         switch (result.method) {
+            case "DEBITO":
+                return <><p>Conclua o pagamento de {formatBRL(result.data.value)} na fatura do Asaas.</p><a className="payment-btn payment-btn-primary" href={result.data.invoiceUrl} target="_blank" rel="noopener noreferrer">Abrir fatura para pagar</a></>;
             case "PIX": {
                 const { pixQrCodeBase64, pixPayload, value } = result.data;
                 return (
@@ -235,3 +239,4 @@ export function StorefrontPaymentModal({ orderId, result, onClose }: StorefrontP
         </div>
     );
 }
+

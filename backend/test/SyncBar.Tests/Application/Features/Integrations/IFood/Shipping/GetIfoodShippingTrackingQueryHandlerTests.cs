@@ -13,7 +13,7 @@ public sealed class GetIfoodShippingTrackingQueryHandlerTests
     private readonly IIfoodShippingDeliveryRepository _deliveryRepository = Substitute.For<IIfoodShippingDeliveryRepository>();
     private readonly IBranchRepository _branchRepository = Substitute.For<IBranchRepository>();
     private readonly IIfoodTokenProvider _tokenProvider = Substitute.For<IIfoodTokenProvider>();
-    private readonly IIfoodShippingClient _shippingClient = Substitute.For<IIfoodShippingClient>();
+    private readonly IIfoodShippingTrackingStore _shippingClient = Substitute.For<IIfoodShippingTrackingStore>();
     private readonly ILogTrackerRepository _logRepository = Substitute.For<ILogTrackerRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
@@ -56,7 +56,7 @@ public sealed class GetIfoodShippingTrackingQueryHandlerTests
         _deliveryRepository.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(delivery);
         _branchRepository.GetByIdAsync(delivery.BranchId, Arg.Any<CancellationToken>()).Returns(branch);
         _tokenProvider.GetAccessTokenAsync(branch.CompanyId, Arg.Any<CancellationToken>()).Returns("token-1");
-        _shippingClient.GetTrackingAsync("token-1", "delivery-1", Arg.Any<CancellationToken>())
+        _shippingClient.ReadAsync(1, "delivery-1", Arg.Any<CancellationToken>())
             .Returns(new IfoodShippingTrackingResult(false, "erro remoto", null, null, null, null, null));
 
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -75,7 +75,7 @@ public sealed class GetIfoodShippingTrackingQueryHandlerTests
         _branchRepository.GetByIdAsync(delivery.BranchId, Arg.Any<CancellationToken>()).Returns(branch);
         _tokenProvider.GetAccessTokenAsync(branch.CompanyId, Arg.Any<CancellationToken>()).Returns("token-1");
         var eta = DateTime.UtcNow.AddMinutes(20);
-        _shippingClient.GetTrackingAsync("token-1", "delivery-1", Arg.Any<CancellationToken>())
+        _shippingClient.ReadAsync(1, "delivery-1", Arg.Any<CancellationToken>())
             .Returns(new IfoodShippingTrackingResult(true, null, -23.5, -46.6, eta, 15, 5));
 
         var result = await _handler.Handle(query, CancellationToken.None);

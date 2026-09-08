@@ -24,7 +24,8 @@ namespace SyncBar.Application.Features.Integrations.Keeta.Order.Polling
 
         public async Task<bool> ProcessAsync(long companyId, long branchId, KeetaPolledEvent polledEvent, CancellationToken cancellationToken = default)
         {
-            if (await eventLogRepository.ExistsByEventIdAsync(polledEvent.EventId, cancellationToken))
+            var existingLog = await eventLogRepository.GetByEventIdAsync(polledEvent.EventId, cancellationToken);
+            if (existingLog?.ProcessedSuccessfully == true)
                 return true;
 
             var logResult = KeetaIntegrationOrderEventLog.Create(
@@ -34,7 +35,7 @@ namespace SyncBar.Application.Features.Integrations.Keeta.Order.Polling
             if (logResult.IsFailure)
                 return false;
 
-            var log = logResult.Value;
+            var log = existingLog ?? logResult.Value;
             var order = await orderRepository.GetByKeetaOrderIdAsync(polledEvent.OrderId, cancellationToken);
 
             bool processed;
@@ -59,7 +60,10 @@ namespace SyncBar.Application.Features.Integrations.Keeta.Order.Polling
                 processed = true;
             }
 
-            await eventLogRepository.AddAsync(log, cancellationToken);
+            if (existingLog is null)
+                await eventLogRepository.AddAsync(log, cancellationToken);
+            else
+                eventLogRepository.Update(log);
 
             return processed;
         }

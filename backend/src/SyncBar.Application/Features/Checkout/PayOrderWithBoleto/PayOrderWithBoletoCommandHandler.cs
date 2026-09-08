@@ -1,3 +1,4 @@
+using SyncBar.Application.Features.Cash;
 using MediatR;
 using SyncBar.Application.Abstractions.Integrations.Asaas;
 using SyncBar.Application.Abstractions.Messaging;
@@ -15,6 +16,7 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithBoleto
         private readonly IAsaasIntegrationPaymentRepository _asaasPaymentRepository;
         private readonly IAsaasService _asaasService;
         private readonly ISender _mediator;
+        private readonly IPaymentMethodAvailability _availability;
 
         public PayOrderWithBoletoCommandHandler(
             ICheckoutOrderPreparer checkoutPreparer,
@@ -22,13 +24,14 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithBoleto
             IAsaasService asaasService,
             ISender mediator,
             ILogTrackerRepository logRepository,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork, IPaymentMethodAvailability availability)
             : base(logRepository, unitOfWork)
         {
             _checkoutPreparer = checkoutPreparer;
             _asaasPaymentRepository = asaasPaymentRepository;
             _asaasService = asaasService;
             _mediator = mediator;
+            _availability = availability;
         }
 
         public override async Task<Result<PayOrderWithBoletoResponse>> Handle(
@@ -42,11 +45,15 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithBoleto
                 async (userIdBox) =>
                 {
                     // 1. Fecha o pedido (se ainda aberto) e garante cliente + vínculo Asaas
+                    var enabled = await _availability.ValidateOrderAsync(request.CustomerOrderId, [8], cancellationToken);
+                    if (enabled.IsFailure) return Result.Failure<PayOrderWithBoletoResponse>(enabled.Error);
                     var preparationResult = await _checkoutPreparer.PrepareAsync(request.CustomerOrderId, cancellationToken);
                     if (preparationResult.IsFailure)
                         return Result.Failure<PayOrderWithBoletoResponse>(preparationResult.Error);
 
                     var order = preparationResult.Value.Order;
+                    var available = await _availability.ValidateAsync(order.BranchId, [8], cancellationToken);
+                    if (available.IsFailure) return Result.Failure<PayOrderWithBoletoResponse>(available.Error);
 
                     // 2. Idempotência — reaproveita cobrança pendente em vez de gerar outra no Asaas
                     var existingPayment = await _asaasPaymentRepository.GetByCustomerOrderIdAsync(order.Id, cancellationToken);
@@ -120,3 +127,5 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithBoleto
         }
     }
 }
+
+

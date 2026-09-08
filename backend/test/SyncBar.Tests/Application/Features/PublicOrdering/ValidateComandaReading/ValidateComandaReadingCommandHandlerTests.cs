@@ -58,7 +58,7 @@ public sealed class ValidateComandaReadingCommandHandlerTests
     [Fact]
     public async Task Handle_QrCodeMethodWithScannedValue_ShouldSucceedAndSkipImageStorage()
     {
-        var command = new ValidateComandaReadingCommand(Guid.NewGuid(), "001", "qrcode", "SCANNED-CODE", null);
+        var command = new ValidateComandaReadingCommand(Guid.NewGuid(), "001", "qrcode", "001", null);
         var table = MakeTable();
         var comanda = MakeComanda();
         _diningTableRepository.GetByQrTokenAsync(command.TableToken, Arg.Any<CancellationToken>()).Returns(table);
@@ -108,3 +108,4 @@ public sealed class ValidateComandaReadingCommandHandlerTests
         result.Error.Code.Should().Be("ComandaReadingValidation.InvalidPhoto");
     }
 }
+

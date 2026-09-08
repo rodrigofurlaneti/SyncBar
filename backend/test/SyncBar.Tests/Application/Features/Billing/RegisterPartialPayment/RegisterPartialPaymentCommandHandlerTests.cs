@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using SyncBar.Application.Abstractions.Printing;
@@ -25,7 +25,7 @@ public sealed class RegisterPartialPaymentCommandHandlerTests
     {
         _handler = new RegisterPartialPaymentCommandHandler(
             _orderRepository, _cashSessionRepository, _partialPaymentRepository, _printingService,
-            _logRepository, _unitOfWork);
+            _logRepository, _unitOfWork, SyncBar.Tests.PaymentAvailabilityFixture.Allowed());
     }
 
     private static CustomerOrder CreateOrder(long? diningTableId, long? comandaId = null)

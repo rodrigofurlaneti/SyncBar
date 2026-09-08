@@ -38,20 +38,22 @@ namespace SyncBar.Application.Features.Integrations.Keeta.Order.Polling
 
                     var processed = 0;
                     var unprocessed = 0;
+                    var acknowledged = new List<KeetaPolledEvent>();
 
                     foreach (var polledEvent in events)
                     {
                         var wasProcessed = await _eventProcessor.ProcessAsync(request.CompanyId, request.BranchId, polledEvent, cancellationToken);
-                        if (wasProcessed) processed++; else unprocessed++;
+                        if (wasProcessed)
+                        {
+                            processed++;
+                            acknowledged.Add(polledEvent);
+                        }
+                        else unprocessed++;
                     }
 
-                    // Confirma TODOS os eventos polled (processados ou não) — eventos não
-                    // reconhecidos continuam sendo reenviados pela Keeta nos próximos ciclos, e
-                    // como já ficaram persistidos no log pelo processor acima, não há perda de
-                    // dados em deixar de reprocessá-los aqui.
-                    await _orderClient.AcknowledgeEventsAsync(request.CompanyId, request.BranchId, events, cancellationToken);
-
                     await _unitOfWork.CommitAsync(cancellationToken);
+                    if (acknowledged.Count > 0)
+                        await _orderClient.AcknowledgeEventsAsync(request.CompanyId, request.BranchId, acknowledged, cancellationToken);
 
                     return Result.Success(new PollKeetaEventsResponse(events.Count, processed, unprocessed));
                 });

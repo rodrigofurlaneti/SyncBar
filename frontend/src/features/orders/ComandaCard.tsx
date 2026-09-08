@@ -22,7 +22,7 @@ export interface ComandaCardProps {
     totalValue?: number;
     /** true quando não há pedido nem a comanda está Disponível (Extraviada/Bloqueada). */
     disabled?: boolean;
-    onOpen: () => void;
+    onOpen: (id: number) => void;
 }
 
 // Mesmo princípio do <TableCard/>: componente burro, só formata o que recebe.
@@ -41,7 +41,7 @@ function ComandaCardComponent({ id, code, statusId, totalValue, disabled, onOpen
             className={`comanda-tile${isBusy ? " is-busy" : ""}`}
             data-testid={`comanda-tile-${id}`}
             style={{ "--status": color } as React.CSSProperties}
-            onClick={onOpen}
+            onClick={() => onOpen(id)}
             disabled={disabled}
             aria-label={ariaLabel}
         >

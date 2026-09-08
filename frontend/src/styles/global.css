@@ -279,30 +279,32 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
    entre filiais do que travar num número fixo de colunas). */
 .table-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.875rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
 }
 @media (min-width: 40.0625rem) { /* 641px */
-  .table-grid { grid-template-columns: repeat(2, 1fr); }
+  .table-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 64.0625rem) { /* 1025px */
-  .table-grid { grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr)); }
+  .table-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr)); }
 }
 
 .table-tile {
+  min-width: 0;
+  cursor: pointer;
   position: relative;
   background: var(--bg-raise);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 1rem 1rem 0.875rem;
-  min-height: var(--touch); /* piso: nunca menor que um alvo de toque, mesmo com pouco conteúdo */
+  border-radius: 0.875rem;
+  padding: 1rem;
+  min-height: 11rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 0.5rem;
   text-align: left;
   overflow: hidden;
-  transition: border-color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+  transition: border-color 180ms var(--ease-standard), transform 180ms var(--ease-standard), background 180ms var(--ease-standard);
 }
 .table-tile::after {
   content: "";
@@ -324,7 +326,7 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
 .table-tile .num {
   font-family: var(--font-display);
   font-size: 3rem;
-  line-height: 0.9;
+  line-height: 1.1;
   color: var(--ink);
 }
 .table-tile-body {
@@ -343,29 +345,42 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
    bem menores, cabem mais por linha em cada faixa). */
 .comanda-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 6rem), 1fr));
   gap: 0.5rem;
 }
 @media (min-width: 40.0625rem) {
-  .comanda-grid { grid-template-columns: repeat(auto-fill, minmax(4.75rem, 1fr)); }
+  .comanda-grid { grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr)); }
 }
 
 .comanda-tile {
+  min-width: 0;
+  cursor: pointer;
   position: relative;
   background: var(--bg-raise);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  min-height: var(--touch);
+  border-radius: 0.625rem;
+  min-height: 4.5rem;
   display: grid;
   gap: 0.125rem;
   place-items: center;
-  padding: 0.5rem 0.25rem;
-  transition: border-color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+  padding: 0.75rem 0.5rem;
+  transition: border-color 180ms var(--ease-standard), transform 180ms var(--ease-standard), background 180ms var(--ease-standard);
 }
 .comanda-tile.is-busy { background: var(--bg-press); border-color: var(--status, var(--line)); }
 .comanda-tile:hover { border-color: var(--ink-faint); transform: translateY(-1px); }
 .comanda-tile:active { transform: translateY(0) scale(0.96); }
 .comanda-tile:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+.comanda-tile:disabled:hover { border-color: var(--line); }
+.table-tile:focus-visible, .comanda-tile:focus-visible { outline: 0.1875rem solid var(--amber); outline-offset: 0.1875rem; }
+.table-tile-body, .comanda-tile-code, .comanda-tile-total { overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) {
+  .table-tile, .comanda-tile { transition: none; }
+}
+.payment-method-row { align-items: center; gap: 1rem; }
+@media (max-width: 40rem) {
+  .payment-method-row { flex-direction: column; align-items: stretch; }
+  .payment-method-row > .ui-row { justify-content: space-between; }
+}
 .comanda-tile-code { font-family: var(--font-display); font-size: 1.5rem; color: var(--ink); }
 .comanda-tile.is-busy .comanda-tile-code { color: var(--status, var(--ink)); }
 .comanda-tile-total { font-size: 0.68rem; color: var(--ink-dim); }
@@ -620,9 +635,13 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
   display: grid;
   gap: 16px;
   align-content: start;
-  overflow-y: auto;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  overflow: auto;
 }
-.modal-panel.is-center { width: min(420px, 92vw); max-height: 92vh; }
+.modal-panel > * { min-width: 0; }
+.modal-panel.is-center { width: min(420px, 92vw); max-height: 90vh; max-height: 90dvh; }
 .modal-panel.is-center.is-wide { width: min(560px, 94vw); }
 .modal-panel.is-drawer {
   width: min(480px, 96vw);
@@ -637,13 +656,21 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
      overflow-y: auto) sangrando pelas bordas com margin negativa e devolvendo o respiro via
      padding próprio, com fundo sólido para não deixar o conteúdo por baixo transparecer. */
   position: sticky;
-  top: 0;
+  /* Compensa o padding do painel e a margem negativa: top: 0 deslocaria
+     o cabeçalho 22px sobre o conteúdo já na abertura do modal. */
+  top: -22px;
   z-index: 2;
   margin: -22px -22px 0;
   padding: 22px 22px 16px;
   background: var(--bg-raise);
   border-bottom: 1px solid var(--line);
 }
+.modal-head h3 { min-width: 0; overflow-wrap: anywhere; }
+.modal-head > button { flex-shrink: 0; }
+.modal-panel.has-footer { display: flex; flex-direction: column; padding: 0; gap: 0; overflow: hidden; }
+.modal-panel.has-footer .modal-head { position: static; margin: 0; flex-shrink: 0; }
+.modal-body { min-height: 0; padding: 16px 22px; overflow: auto; }
+.modal-footer { flex-shrink: 0; padding: 16px 22px; border-top: 1px solid var(--line); background: var(--bg-raise); }
 
 /* --- SweetAlert2 (confirmações/prompts/toasts) — tema SyncBar ------------- */
 .sb-swal-container {

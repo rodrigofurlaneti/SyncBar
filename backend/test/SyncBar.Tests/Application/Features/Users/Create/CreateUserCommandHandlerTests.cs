@@ -18,24 +18,46 @@ public sealed class CreateUserCommandHandlerTests
     private readonly ILogTrackerRepository _logRepository = Substitute.For<ILogTrackerRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
+    private readonly IBranchRepository _branches = Substitute.For<IBranchRepository>();
     private readonly CreateUserCommandHandler _handler;
 
     public CreateUserCommandHandlerTests()
     {
         _handler = new CreateUserCommandHandler(
             _userRepository, _employeeRepository, _roleRepository, _userRoleRepository,
-            _passwordHasher, _logRepository, _unitOfWork);
+            _passwordHasher, _logRepository, _unitOfWork, _branches);
+        _branches.GetByIdAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(Branch.Create(1, "Filial", null, null, null, null, null, null, null, null).Value);
+        _employeeRepository.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(CreateActiveEmployee());
     }
 
     private static Role CreateActiveRole(long companyId = 1, string name = "Gerente")
         => Role.Create(companyId, name, null).Value;
+
+    [Fact]
+    public async Task Handle_MissingEmployee_ShouldRejectBeforeHashing()
+    {
+        var result = await _handler.Handle(CreateValidCommand(employeeId: null), CancellationToken.None);
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Employee.Required");
+        _passwordHasher.DidNotReceive().Hash(Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task Handle_EmployeeFromAnotherCompany_ShouldReject()
+    {
+        _branches.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(Branch.Create(99, "Outra filial", null, null, null, null, null, null, null, null).Value);
+        var result = await _handler.Handle(CreateValidCommand(), CancellationToken.None);
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Employee.InvalidCompany");
+        _passwordHasher.DidNotReceive().Hash(Arg.Any<string>());
+    }
 
     private static Employee CreateActiveEmployee()
         => Employee.Create(
             branchId: 1, jobTitleId: 1, name: "Funcionario Teste", cpf: "12345678900",
             email: null, phone: null, hiredAt: DateTime.Now, dismissedAt: null, salary: null).Value;
 
-    private static CreateUserCommand CreateValidCommand(long? employeeId = null, IReadOnlyCollection<long>? roleIds = null)
+    private static CreateUserCommand CreateValidCommand(long? employeeId = 1, IReadOnlyCollection<long>? roleIds = null)
         => new(
             CompanyId: 1,
             EmployeeId: employeeId,
@@ -120,7 +142,7 @@ public sealed class CreateUserCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ValidRequestWithoutEmployee_ShouldHashPasswordAndPersistUserAndRoles()
+    public async Task Handle_ValidRequestWithEmployee_ShouldHashPasswordAndPersistUserAndRoles()
     {
         var command = CreateValidCommand(roleIds: [1, 2]);
         _userRepository.ExistsAsync(command.UserName, command.Email, Arg.Any<CancellationToken>()).Returns(false);
@@ -137,7 +159,7 @@ public sealed class CreateUserCommandHandlerTests
         await _userRepository.Received(1).AddAsync(
             Arg.Is<AppUser>(u =>
                 u.CompanyId == command.CompanyId &&
-                u.EmployeeId == null &&
+                u.EmployeeId == 1 &&
                 u.UserName == command.UserName &&
                 u.Email == command.Email &&
                 u.PasswordHash == "hash-fake" &&
@@ -186,3 +208,4 @@ public sealed class CreateUserCommandHandlerTests
         await _userRoleRepository.Received(2).AddAsync(Arg.Any<UserRole>(), Arg.Any<CancellationToken>());
     }
 }
+

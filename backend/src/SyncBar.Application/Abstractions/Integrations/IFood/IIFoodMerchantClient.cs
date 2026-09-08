@@ -1,6 +1,7 @@
 ﻿namespace SyncBar.Application.Abstractions.Integrations.Ifood;
 
 public sealed record IfoodMerchantValidation(string Id, string State, string? Message);
+public sealed record IfoodPreparationTimeResult(bool Success, int? Minutes, string? ErrorMessage);
 
 // Fase 13 — campo Available adicionado: a resposta bruta de GET /merchants/{id}/status já traz
 // um "available: boolean" por operação (mesmo shape do endpoint por operação, confirmado contra
@@ -99,6 +100,7 @@ public sealed record IfoodMerchantStatusByOperationResult(
 /// </summary>
 public interface IIfoodMerchantClient
 {
+    Task<IfoodPreparationTimeResult> GetPreparationTimeAsync(string accessToken, string merchantId, string customerId, CancellationToken cancellationToken = default);
     Task<IfoodMerchantStatusResult> GetStatusAsync(string accessToken, string merchantId, CancellationToken cancellationToken = default);
 
     Task<IfoodInterruptionsResult> GetInterruptionsAsync(string accessToken, string merchantId, CancellationToken cancellationToken = default);

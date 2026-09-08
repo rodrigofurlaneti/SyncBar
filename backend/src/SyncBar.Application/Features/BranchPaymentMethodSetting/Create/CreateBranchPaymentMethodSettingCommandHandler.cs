@@ -1,4 +1,4 @@
-﻿using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -78,7 +78,7 @@ namespace SyncBar.Application.Features.BranchPaymentMethodSetting.Create
                         setting.EnableCreditCard,
                         setting.EnableDebitCard,
                         setting.EnableCashMachine,
-                        setting.IsActive);
+                        setting.IsActive, setting.CreatedAt, setting.UpdatedAt);
 
                     return Result.Success(response);
                 });

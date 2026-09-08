@@ -30,8 +30,6 @@ public sealed class KeetaAuthClient : IKeetaAuthClient
     {
         var credentials = await _credentialsResolver.ResolveAsync(companyId, branchId, cancellationToken);
 
-        var baseUrl = credentials.BaseUrl.EndsWith('/') ? credentials.BaseUrl : credentials.BaseUrl + "/";
-        _http.BaseAddress = new Uri(baseUrl);
 
         return credentials;
     }
@@ -41,7 +39,8 @@ public sealed class KeetaAuthClient : IKeetaAuthClient
         var credentials = await ConfigureForTenantAsync(companyId, branchId, cancellationToken);
 
         var query = $"oauth/authorization/url?clientId={Uri.EscapeDataString(credentials.ClientId)}&redirectUri={Uri.EscapeDataString(redirectUri)}";
-        var response = await _http.GetAsync(query, cancellationToken);
+        using var request = KeetaSignedRequest.Create(credentials, HttpMethod.Get, query);
+        using var response = await _http.SendAsync(request, cancellationToken);
         await EnsureSuccessOrThrowKeetaErrorAsync(response, cancellationToken);
 
         var result = await response.Content.ReadFromJsonAsync<KeetaAuthorizationUrlDto>(cancellationToken: cancellationToken);
@@ -59,7 +58,8 @@ public sealed class KeetaAuthClient : IKeetaAuthClient
             GrantType = "app_level_token"
         };
 
-        var response = await _http.PostAsJsonAsync("oauth/token", payload, cancellationToken);
+        using var request = KeetaSignedRequest.Create(credentials, HttpMethod.Post, "oauth/token", payload);
+        using var response = await _http.SendAsync(request, cancellationToken);
         await EnsureSuccessOrThrowKeetaErrorAsync(response, cancellationToken);
 
         var result = await response.Content.ReadFromJsonAsync<KeetaTokenResponseDto>(cancellationToken: cancellationToken);
@@ -75,9 +75,9 @@ public sealed class KeetaAuthClient : IKeetaAuthClient
         int pageSize = 10,
         CancellationToken cancellationToken = default)
     {
-        await ConfigureForTenantAsync(companyId, branchId, cancellationToken);
+        var credentials = await ConfigureForTenantAsync(companyId, branchId, cancellationToken);
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"oauth/authorized/{authId}/merchantInfo?pageNum={pageNum}&pageSize={pageSize}");
+        using var request = KeetaSignedRequest.Create(credentials, HttpMethod.Get, $"oauth/authorized/{Uri.EscapeDataString(authId)}/merchantInfo?pageNum={pageNum}&pageSize={pageSize}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         var response = await _http.SendAsync(request, cancellationToken);

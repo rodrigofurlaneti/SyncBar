@@ -1,5 +1,7 @@
-﻿import { useState, useId, useEffect, useMemo, useCallback } from "react";
+import { useState, useId, useEffect, useMemo, useCallback } from "react";
 import Swal from "sweetalert2";
+import { useQuery } from "@tanstack/react-query";
+import { getStorefrontPaymentMethods } from "./checkoutApi";
 import { formatBRL } from "../../lib/types";
 import { getCustomerAddressesByCustomer, CustomerAddressResponse, registerCustomerAddress } from "./storefrontApi";
 
@@ -19,7 +21,7 @@ export type CustomerSessionData = {
     customerId?: number;
 };
 
-export type PaymentMethod = "PIX" | "MAQUININHA" | "CREDITO" | "BOLETO";
+export type PaymentMethod = "PIX" | "MAQUININHA" | "CREDITO" | "DEBITO" | "BOLETO";
 
 export type NewCardData = {
     holderName: string;
@@ -31,6 +33,8 @@ export type NewCardData = {
 };
 
 type StorefrontCartDrawerProps = {
+    branchId: number;
+    companyId?: number;
     isOpen: boolean;
     onClose: () => void;
     items: CartItem[];
@@ -111,6 +115,8 @@ export function StorefrontCartDrawer({
     onClose,
     items,
     initialStep = "review",
+    branchId,
+    companyId,
     onUpdateQuantity,
     onRemoveItem,
     onCheckout,
@@ -139,6 +145,28 @@ export function StorefrontCartDrawer({
     const [newZipCode, setNewZipCode] = useState("");
 
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("PIX");
+    const paymentSettings = useQuery({
+        queryKey: ["storefront-payment-methods", branchId, companyId],
+        queryFn: () => getStorefrontPaymentMethods(branchId, companyId),
+        enabled: isOpen && branchId > 0,
+        retry: false,
+        staleTime: 0,
+    });
+    const availableMethods = useMemo<PaymentMethod[]>(() => {
+        if (!paymentSettings.isSuccess || paymentSettings.isFetching) return [];
+        const settings = paymentSettings.data;
+        if (settings && !settings.isActive) return [];
+        // Sem configuração cadastrada, os métodos seguem o padrão do painel.
+        // O checkout online de cartão só possui integração de crédito.
+        return [
+            ...(!settings || settings.enablePix ? ["PIX" as const] : []),
+            ...(!settings || settings.enableCreditCard ? ["CREDITO" as const] : []),
+            ...(!settings || settings.enableDebitCard ? ["DEBITO" as const] : []),
+            ...(!settings || settings.enableBoleto ? ["BOLETO" as const] : []),
+            ...(!settings || settings.enableCashMachine ? ["MAQUININHA" as const] : []),
+        ];
+    }, [paymentSettings.data, paymentSettings.isSuccess, paymentSettings.isFetching]);
+    const selectedPaymentMethod = availableMethods.includes(paymentMethod) ? paymentMethod : availableMethods[0];
     const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
     const [isProcessingAddress, setIsProcessingAddress] = useState(false);
     const [isFetchingCep, setIsFetchingCep] = useState(false);
@@ -265,6 +293,8 @@ export function StorefrontCartDrawer({
             return;
         }
 
+        if (!selectedPaymentMethod) return;
+
         let currentAddressIdToSubmit = selectedAddressId;
 
         if (deliveryType === "DELIVERY" && isEditingAddress) {
@@ -284,7 +314,7 @@ export function StorefrontCartDrawer({
             setIsProcessingAddress(false);
         }
 
-        if (paymentMethod === "CREDITO") {
+        if (selectedPaymentMethod === "CREDITO") {
             if (!cardHolderName || !cardNumber || !cardExpiryMonth || !cardExpiryYear || !cardCcv) {
                 Swal.fire({ title: "Atenção", text: "Preencha todos os dados do cartão.", icon: "warning", background: '#18181b', color: '#fff' });
                 return;
@@ -297,8 +327,8 @@ export function StorefrontCartDrawer({
             deliveryType,
             deliveryType === "DELIVERY" ? currentAddressIdToSubmit : null,
             null,
-            paymentMethod,
-            paymentMethod === "CREDITO"
+            selectedPaymentMethod,
+            selectedPaymentMethod === "CREDITO"
                 ? {
                     holderName: cardHolderName,
                     number: cardNumber,
@@ -309,7 +339,7 @@ export function StorefrontCartDrawer({
                 }
                 : undefined
         );
-    }, [customerData, step, onCheckout, generalNotes, deliveryType, isEditingAddress, selectedAddressId, paymentMethod, newZipCode, newStreet, newNumber, newSupplement, newNeighborhood, onOpenAuthModal, cardHolderName, cardNumber, cardExpiryMonth, cardExpiryYear, cardCcv, saveCard]);
+    }, [customerData, step, onCheckout, generalNotes, deliveryType, isEditingAddress, selectedAddressId, selectedPaymentMethod, newZipCode, newStreet, newNumber, newSupplement, newNeighborhood, onOpenAuthModal, cardHolderName, cardNumber, cardExpiryMonth, cardExpiryYear, cardCcv, saveCard]);
 
     if (!isOpen) return null;
 
@@ -625,45 +655,54 @@ export function StorefrontCartDrawer({
 
                             <fieldset style={{ border: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.625rem", borderTop: "0.0625rem solid #27272a", paddingTop: "1rem" }}>
                                 <legend style={{ fontSize: "0.95rem", fontWeight: 600, color: "#f4f4f5", marginBottom: "0.625rem" }}>Forma de Pagamento</legend>
+                                {paymentSettings.isFetching && <p role="status">Carregando formas de pagamento...</p>}
+                                {paymentSettings.isError && <div role="alert">
+                                    Não foi possível carregar as formas de pagamento.
+                                    <button type="button" className="selection-btn" onClick={() => void paymentSettings.refetch()}>Tentar novamente</button>
+                                </div>}
+                                {paymentSettings.isSuccess && !paymentSettings.isFetching && availableMethods.length === 0 &&
+                                    <p role="status">Nenhuma forma de pagamento disponível. Entre em contato com a loja.</p>}
                                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: "0.625rem" }}>
-                                    <button
+                                    {availableMethods.includes("PIX") && <button
                                         type="button"
                                         onClick={() => setPaymentMethod("PIX")}
                                         className="selection-btn"
-                                        style={paymentMethod === "PIX" ? { borderColor: "#10b981", background: "rgba(16, 185, 129, 0.1)", color: "#10b981" } : {}}
-                                        aria-pressed={paymentMethod === "PIX"}
+                                        style={selectedPaymentMethod === "PIX" ? { borderColor: "#10b981", background: "rgba(16, 185, 129, 0.1)", color: "#10b981" } : {}}
+                                        aria-pressed={selectedPaymentMethod === "PIX"}
                                     >
                                         PIX (Online)
-                                    </button>
-                                    <button
+                                    </button>}
+                                    {availableMethods.includes("CREDITO") && <button
                                         type="button"
                                         onClick={() => setPaymentMethod("CREDITO")}
                                         className="selection-btn"
-                                        style={paymentMethod === "CREDITO" ? { borderColor: "#3b82f6", background: "rgba(59, 130, 246, 0.1)", color: "#3b82f6" } : {}}
-                                        aria-pressed={paymentMethod === "CREDITO"}
+                                        style={selectedPaymentMethod === "CREDITO" ? { borderColor: "#3b82f6", background: "rgba(59, 130, 246, 0.1)", color: "#3b82f6" } : {}}
+                                        aria-pressed={selectedPaymentMethod === "CREDITO"}
                                     >
-                                        Cartão (Crédito/Débito)
-                                    </button>
-                                    <button
+                                        Cartão de Crédito
+                                    </button>}
+                                    {availableMethods.includes("DEBITO") && <button type="button" className="selection-btn" aria-pressed={selectedPaymentMethod === "DEBITO"} style={selectedPaymentMethod === "DEBITO" ? { borderColor: "#3b82f6", color: "#3b82f6" } : {}} onClick={() => setPaymentMethod("DEBITO")}>Cartão de Débito (Asaas)</button>}
+                                    {selectedPaymentMethod === "DEBITO" && <p>Você concluirá o pagamento na página segura do Asaas.</p>}
+                                    {availableMethods.includes("BOLETO") && <button
                                         type="button"
                                         onClick={() => setPaymentMethod("BOLETO")}
                                         className="selection-btn"
-                                        style={paymentMethod === "BOLETO" ? { borderColor: "#a78bfa", background: "rgba(167, 139, 250, 0.1)", color: "#a78bfa" } : {}}
-                                        aria-pressed={paymentMethod === "BOLETO"}
+                                        style={selectedPaymentMethod === "BOLETO" ? { borderColor: "#a78bfa", background: "rgba(167, 139, 250, 0.1)", color: "#a78bfa" } : {}}
+                                        aria-pressed={selectedPaymentMethod === "BOLETO"}
                                     >
                                         Boleto
-                                    </button>
-                                    <button
+                                    </button>}
+                                    {availableMethods.includes("MAQUININHA") && <button
                                         type="button"
                                         onClick={() => setPaymentMethod("MAQUININHA")}
                                         className="selection-btn"
-                                        aria-pressed={paymentMethod === "MAQUININHA"}
+                                        aria-pressed={selectedPaymentMethod === "MAQUININHA"}
                                     >
                                         Maquininha
-                                    </button>
+                                    </button>}
                                 </div>
 
-                                {paymentMethod === "CREDITO" && (
+                                {selectedPaymentMethod === "CREDITO" && (
                                     <fieldset style={{ display: "flex", flexDirection: "column", gap: "0.75rem", background: "#09090b", padding: "1rem", borderRadius: "0.625rem", border: "0.0625rem solid #3f3f46", margin: 0 }}>
                                         <legend className="visually-hidden">Dados do cartão de crédito</legend>
 
@@ -780,7 +819,7 @@ export function StorefrontCartDrawer({
                             <button
                                 type="button"
                                 onClick={handleMainActionClick}
-                                disabled={isSubmitting || isProcessingAddress || isFetchingCep}
+                                disabled={isSubmitting || isProcessingAddress || isFetchingCep || (step === "delivery" && !selectedPaymentMethod)}
                                 data-testid="btn-submit-order"
                                 className="btn-primary"
                                 aria-live="polite"
@@ -798,3 +837,4 @@ export function StorefrontCartDrawer({
         </div>
     );
 }
+

@@ -438,7 +438,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
     // ---- evento fora de escopo ----
 
     [Fact]
-    public async Task Handle_UnknownEventCode_ShouldAcknowledgeWithoutProcessing()
+    public async Task Handle_UnimplementedEvent_ShouldRemainUnacknowledged()
     {
         GivenIntegrationEnabledWithValidToken();
         GivenAnActiveMerchantMapping();
@@ -449,7 +449,7 @@ public sealed class SyncIfoodOrdersCommandHandlerTests
         var result = await sut.Handle(new SyncIfoodOrdersCommand(CompanyId), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        await _orderClient.Received(1).AcknowledgeEventsAsync(ValidToken, Arg.Is<IReadOnlyCollection<string>>(ids => ids.Contains("evt-other")), Arg.Any<CancellationToken>());
+        await _orderClient.DidNotReceive().AcknowledgeEventsAsync(ValidToken, Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
         await _IfoodOrderRepository.DidNotReceive().GetByIfoodOrderIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

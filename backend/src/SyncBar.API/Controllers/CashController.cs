@@ -19,6 +19,21 @@ public sealed class CashController(
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
+    [HttpGet("registers/branch/{branchId:long}")]
+    public async Task<IActionResult> GetRegisters(long branchId, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new SyncBar.Application.Features.Cash.GetRegisters.GetCashRegistersQuery(branchId), ct);
+        return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+    }
+
+    [Authorize(Roles = ManagerRoles)]
+    [HttpPost("registers")]
+    public async Task<IActionResult> CreateRegister(SyncBar.Application.Features.Cash.GetRegisters.CreateCashRegisterCommand command, CancellationToken ct)
+    {
+        var result = await Mediator.Send(command, ct);
+        return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+    }
+
     [HttpGet("registers/{registerId:long}/open-session")]
     public Task<IActionResult> GetOpenSession(long registerId, CancellationToken ct) =>
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CashController), nameof(GetOpenSession), async () =>

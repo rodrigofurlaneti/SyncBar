@@ -14,6 +14,7 @@ internal sealed class CreateUserCommandHandler : BaseCommandHandler<CreateUserCo
     private readonly IUserRoleRepository _userRoleRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IBranchRepository _branchRepository;
 
     public CreateUserCommandHandler(
         IAppUserRepository userRepository,
@@ -22,7 +23,8 @@ internal sealed class CreateUserCommandHandler : BaseCommandHandler<CreateUserCo
         IUserRoleRepository userRoleRepository,
         IPasswordHasher passwordHasher,
         ILogTrackerRepository logRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IBranchRepository branchRepository)
         : base(logRepository, unitOfWork)
     {
         _userRepository = userRepository;
@@ -31,6 +33,7 @@ internal sealed class CreateUserCommandHandler : BaseCommandHandler<CreateUserCo
         _userRoleRepository = userRoleRepository;
         _passwordHasher = passwordHasher;
         _unitOfWork = unitOfWork;
+        _branchRepository = branchRepository;
     }
 
     public override async Task<Result<long>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
@@ -44,12 +47,14 @@ internal sealed class CreateUserCommandHandler : BaseCommandHandler<CreateUserCo
                 // Se o seu request possuir o Id do administrador que está criando o usuário, preencha:
 
                 // AppUser só pode ser vinculado a um Employee existente e ativo (evita FK órfã/exceção de banco).
-                if (request.EmployeeId is not null)
-                {
-                    var employee = await _employeeRepository.GetByIdAsync(request.EmployeeId.Value, cancellationToken);
-                    if (employee is null || !employee.IsActive)
-                        return Result.Failure<long>(new Error("Employee.NotFound", "Employee not found."));
-                }
+                if (request.EmployeeId is null)
+                    return Result.Failure<long>(new Error("Employee.Required", "Selecione um funcionário para o usuário."));
+                var employee = await _employeeRepository.GetByIdAsync(request.EmployeeId.Value, cancellationToken);
+                if (employee is null || !employee.IsActive)
+                    return Result.Failure<long>(new Error("Employee.NotFound", "Funcionário não encontrado."));
+                var branch = await _branchRepository.GetByIdAsync(employee.BranchId, cancellationToken);
+                if (branch is null || !branch.IsActive || branch.CompanyId != request.CompanyId)
+                    return Result.Failure<long>(new Error("Employee.InvalidCompany", "O funcionário não pertence à empresa selecionada."));
 
                 if (await _userRepository.ExistsAsync(request.UserName, request.Email, cancellationToken))
                     return Result.Failure<long>(new Error("AppUser.AlreadyExists", "User name or e-mail already in use."));

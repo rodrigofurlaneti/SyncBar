@@ -49,6 +49,20 @@ public sealed class RequestIfoodShippingDriverCommandHandlerTests
         _settingRepository.GetByCompanyAsync(branch.CompanyId, Arg.Any<CancellationToken>()).Returns(setting);
         _mappingRepository.GetByBranchAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(mapping);
         _tokenProvider.GetAccessTokenAsync(branch.CompanyId, Arg.Any<CancellationToken>()).Returns(token);
+        _shippingClient.GetDeliveryAvailabilitiesAsync(token, merchantId, Arg.Any<double>(), Arg.Any<double>(), Arg.Any<CancellationToken>())
+            .Returns(new IfoodShippingQuoteResult(true, null, "quote-1", 15, 0, 15, 10, 20, 1000, Now.AddHours(1)));
+    }
+
+    [Fact]
+    public async Task Handle_UnavailableCoverage_ShouldNotCreateExternalOrder()
+    {
+        SetupResolvedMerchant(CreateBranch());
+        _shippingClient.GetDeliveryAvailabilitiesAsync("token-1", "MERCH-1", Arg.Any<double>(), Arg.Any<double>(), Arg.Any<CancellationToken>())
+            .Returns(new IfoodShippingQuoteResult(false, "Sem cobertura", null, 0, 0, 0, 0, 0, 0, null));
+        var result = await _handler.Handle(ValidCommand(), default);
+        result.Error.Code.Should().Be("IfoodShipping.Unavailable");
+        await _shippingClient.DidNotReceiveWithAnyArgs().RequestDriverAsync(default!, default!, default!, default);
+        await _deliveryRepository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
     }
 
     private static RequestIfoodShippingDriverCommand ValidCommand() =>

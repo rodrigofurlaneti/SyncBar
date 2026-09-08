@@ -201,6 +201,7 @@ export interface PaymentMethodTotalResponse {
 }
 
 export interface CashSummaryResponse {
+  movements?: { id: number; cashMovementTypeId: number; amount: number; description: string | null; createdAt: string }[];
   cashSessionId: number;
   openingAmount: number;
   salesCount: number;

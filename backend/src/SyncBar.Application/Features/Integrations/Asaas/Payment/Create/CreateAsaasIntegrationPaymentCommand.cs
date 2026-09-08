@@ -16,5 +16,6 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Create
         DateTime DueDate,
         int InstallmentCount = 1,
         string? CreditCardToken = null,
-        CreditCardDataRequest? CreditCard = null) : ICommand<CreateAsaasIntegrationPaymentResponse>;
+        CreditCardDataRequest? CreditCard = null,
+        bool UseHostedCheckout = false) : ICommand<CreateAsaasIntegrationPaymentResponse>;
 }

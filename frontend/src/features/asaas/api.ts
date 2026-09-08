@@ -310,8 +310,7 @@ export const deleteAsaasSavedCard = (id: number, customerId: number, companyId: 
 
 // --- Webhooks (WebhookLog) -------------------------------------------------------------------
 
-// A API não registra JsonStringEnumConverter — o enum trafega como o inteiro ordinal
-// (Pending=0, Processed=1, Failed=2), não como string.
+// PATCH recebe o enum numérico; os DTOs de leitura retornam Status.ToString().
 export const WebhookLogStatus = {
   Pending: 0,
   Processed: 1,
@@ -321,7 +320,7 @@ export const WebhookLogStatus = {
 export const webhookLogStatusLabel: Record<number, string> = {
   0: "Pendente",
   1: "Processado",
-  2: "Falhou",
+  2: "Falha",
 };
 
 export interface AsaasWebhookLogResponse {
@@ -340,19 +339,28 @@ export interface AsaasWebhookLogResponse {
   processedAt: string | null;
 }
 
-export const getAsaasWebhookLogById = (id: number, companyId: number): Promise<AsaasWebhookLogResponse> =>
-  api<AsaasWebhookLogResponse>(`/api/asaas/webhook-logs/${id}?companyId=${companyId}`);
+type AsaasWebhookLogDto = Omit<AsaasWebhookLogResponse, "status"> & { status: string | number };
 
-export const getAsaasWebhookLogsByPaymentId = (
+function normalizeWebhookLog(log: AsaasWebhookLogDto): AsaasWebhookLogResponse {
+  const status = typeof log.status === "number"
+    ? log.status
+    : WebhookLogStatus[log.status as keyof typeof WebhookLogStatus] ?? -1;
+  return { ...log, status };
+}
+
+export const getAsaasWebhookLogById = async (id: number, companyId: number): Promise<AsaasWebhookLogResponse> =>
+  normalizeWebhookLog(await api<AsaasWebhookLogDto>(`/api/asaas/webhook-logs/${id}?companyId=${companyId}`));
+
+export const getAsaasWebhookLogsByPaymentId = async (
   companyId: number,
   paymentId: string,
 ): Promise<AsaasWebhookLogResponse[]> =>
-  api<AsaasWebhookLogResponse[]>(
+  (await api<AsaasWebhookLogDto[]>(
     `/api/asaas/webhook-logs/payment/${encodeURIComponent(paymentId)}?companyId=${companyId}`,
-  );
+  )).map(normalizeWebhookLog);
 
-export const getUnprocessedAsaasWebhookLogs = (companyId: number, limit = 50): Promise<AsaasWebhookLogResponse[]> =>
-  api<AsaasWebhookLogResponse[]>(`/api/asaas/webhook-logs/unprocessed?companyId=${companyId}&limit=${limit}`);
+export const getUnprocessedAsaasWebhookLogs = async (companyId: number, limit = 50): Promise<AsaasWebhookLogResponse[]> =>
+  (await api<AsaasWebhookLogDto[]>(`/api/asaas/webhook-logs/unprocessed?companyId=${companyId}&limit=${limit}`)).map(normalizeWebhookLog);
 
 export const hasAlreadyProcessedAsaasEvent = (asaasEventId: string): Promise<boolean> =>
   api<boolean>(`/api/asaas/webhook-logs/events/${encodeURIComponent(asaasEventId)}/processed`);
@@ -379,6 +387,8 @@ export const deleteAsaasWebhookLog = (id: number, companyId: number): Promise<vo
 // a configuração padrão da empresa (BranchId null). Espelha BranchPaymentMethodSettingController.
 
 export interface BranchPaymentMethodSettingResponse {
+  createdAt?: string;
+  updatedAt?: string | null;
   id: number;
   companyId: number;
   branchId: number | null;

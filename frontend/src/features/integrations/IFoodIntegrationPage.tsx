@@ -730,7 +730,8 @@ function MerchantOperationsSection({ branchId, companyId }: { branchId: number; 
   const deleteInterruptionMutation = useMutation({
     mutationFn: (interruptionId: string) => deleteIFoodInterruption(branchId, interruptionId),
     onSuccess: () => {
-      toast.success("Loja reaberta.");
+      toast.success("Pausa removida. Verificando o status da loja.");
+      void queryClient.invalidateQueries({ queryKey: ["integrations", "ifood", "merchant", "status", branchId] });
       void queryClient.invalidateQueries({ queryKey: ["integrations", "ifood", "merchant", "interruptions", branchId] });
     },
     onError: () => toast.error("Não foi possível reabrir a loja."),

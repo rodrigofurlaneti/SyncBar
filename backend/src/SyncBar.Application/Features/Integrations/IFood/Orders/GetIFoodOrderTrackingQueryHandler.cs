@@ -9,7 +9,7 @@ internal sealed class GetIfoodOrderTrackingQueryHandler(
     IIfoodOrderRepository IfoodOrderRepository,
     IBranchRepository branchRepository,
     IIfoodTokenProvider tokenProvider,
-    IIfoodOrderClient orderClient,
+    IIfoodShippingTrackingStore trackingStore,
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork)
     : BaseQueryHandler<GetIfoodOrderTrackingQuery, IfoodOrderTrackingResponse>(logRepository, unitOfWork)
@@ -36,7 +36,7 @@ internal sealed class GetIfoodOrderTrackingQueryHandler(
                     return Result.Failure<IfoodOrderTrackingResponse>(new Error("Ifood.NotConnected",
                         "Não foi possível autenticar com o Ifood — confira as credenciais em Integrações."));
 
-                var tracking = await orderClient.GetOrderTrackingAsync(token, IfoodOrder.IfoodOrderId, cancellationToken);
+                var tracking = await trackingStore.ReadAsync(branch.CompanyId, IfoodOrder.IfoodOrderId, cancellationToken);
                 if (tracking is null)
                     return Result.Success(new IfoodOrderTrackingResponse(null, null, null, null, null));
 

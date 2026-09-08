@@ -178,6 +178,10 @@ public static class DependencyInjection
 
         services.AddSingleton<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodOperationalAlertStore, InMemoryIfoodOperationalAlertStore>();
         services.AddHostedService<IfoodMerchantStatusWatcherBackgroundService>();
+        services.Configure<IfoodAnalyticsExtractionOptions>(configuration.GetSection("IfoodAnalytics"));
+        services.AddHostedService<IfoodAnalyticsExtractionBackgroundService>();
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodShippingTrackingStore, IfoodShippingTrackingStore>();
+        services.AddHostedService<IfoodShippingTrackingBackgroundService>();
 
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodLogisticsClient, IfoodLogisticsClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
@@ -210,7 +214,11 @@ public static class DependencyInjection
         services.AddScoped<SyncBar.Application.Abstractions.Integrations.Keeta.IKeetaOrderClient>(sp => sp.GetRequiredService<KeetaOrderClient>());
         services.AddHostedService<KeetaEventPollingBackgroundService>();
 
+        services.AddSingleton<SyncBar.Application.Abstractions.Security.IReadingProofService, SyncBar.Infrastructure.Authentication.ReadingProofService>();
         services.Configure<WhatsAppSettings>(configuration.GetSection("WhatsApp"));
+        services.AddSingleton<WhatsAppOutbox>();
+        services.AddSingleton<SyncBar.Application.Abstractions.Notifications.IWhatsAppQueue>(sp => sp.GetRequiredService<WhatsAppOutbox>());
+        services.AddHostedService(sp => sp.GetRequiredService<WhatsAppOutbox>());
         services.AddHttpClient<SyncBar.Application.Abstractions.Notifications.IWhatsAppService, WhatsAppService>((sp, client) =>
         {
             var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<WhatsAppSettings>>().Value;

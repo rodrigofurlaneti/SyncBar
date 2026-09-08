@@ -82,10 +82,9 @@ namespace SyncBar.Application.Features.Integrations.Keeta.Order.Polling
                         createdAt,
                         request.RawPayload);
 
-                    await _eventProcessor.ProcessAsync(mapping.CompanyId, mapping.BranchId, polledEvent, cancellationToken);
+                    var processed = await _eventProcessor.ProcessAsync(mapping.CompanyId, mapping.BranchId, polledEvent, cancellationToken);
                     await _unitOfWork.CommitAsync(cancellationToken);
-
-                    return Result.Success();
+                    return processed ? Result.Success() : Result.Failure(new Error("Keeta.EventProcessingFailed", "O evento foi registrado, mas ainda não foi processado."));
                 });
         }
 

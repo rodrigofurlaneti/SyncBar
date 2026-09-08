@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2"; // Adicionado SweetAlert2
 import {
@@ -12,7 +12,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { getPrintSettings, printCashClosing } from "../printing/api";
 import { getSalesBySession, refundSale } from "../billing/api";
 import { useMyFeatures } from "../access/hooks";
-import { ApiError } from "../../lib/apiClient";
+import { api, ApiError } from "../../lib/apiClient";
 import {
     CashMovementType,
     DEFAULT_CASH_REGISTER_ID,
@@ -22,15 +22,16 @@ import {
 } from "../../lib/types";
 import type { CloseCashSessionResponse, PaymentMethodReconciliationResponse } from "../../lib/types";
 import { Overlay } from "../orders/Overlay";
+import { useCashRegister } from "./useCashRegister";
 
 interface Props {
     onClose: () => void;
 }
 
 const parseAmount = (raw: string): number => {
-    const value = Number(raw.replace(",", "."));
-    return Number.isFinite(value) ? value : 0;
+    return Number(raw.replace(",", "."));
 };
+const validAmount = (raw: string) => /^\d+(?:[,.]\d{1,2})?$/.test(raw.trim()) && Number.isFinite(parseAmount(raw));
 
 const RECONCILE_METHODS = [PaymentMethod.CartaoCredito, PaymentMethod.CartaoDebito, PaymentMethod.Pix];
 
@@ -46,6 +47,8 @@ const getDifferenceState = (differenceAmount: number): DifferenceState => {
 };
 
 export function CashDrawer({ onClose }: Props) {
+    const cashRegister = useCashRegister();
+    const registerId = cashRegister.registerId;
     const queryClient = useQueryClient();
     const { employeeId } = useAuthStore();
     const [openingAmount, setOpeningAmount] = useState("");
@@ -69,8 +72,9 @@ export function CashDrawer({ onClose }: Props) {
     });
 
     const sessionQuery = useQuery({
-        queryKey: ["cash", "open", DEFAULT_CASH_REGISTER_ID],
-        queryFn: () => getOpenSession(DEFAULT_CASH_REGISTER_ID),
+        queryKey: ["cash", "open", registerId],
+        queryFn: () => getOpenSession(registerId!),
+        enabled: !!registerId,
         retry: false,
     });
 
@@ -111,11 +115,13 @@ export function CashDrawer({ onClose }: Props) {
     const invalidateCash = () => void queryClient.invalidateQueries({ queryKey: ["cash"] });
 
     const onApiError = (e: unknown, fallback: string) =>
-        setError(e instanceof ApiError ? e.message : fallback);
+        setError(e instanceof Error ? e.message : fallback);
 
     const openMutation = useMutation({
-        mutationFn: () =>
-            openCashSession(DEFAULT_CASH_REGISTER_ID, employeeId ?? 1, parseAmount(openingAmount)),
+        mutationFn: () => {
+            if (!registerId || !validAmount(openingAmount)) throw new Error("Informe um valor de abertura válido.");
+            return openCashSession(registerId, employeeId ?? 1, parseAmount(openingAmount));
+        },
         onSuccess: () => {
             setError(null);
             invalidateCash();
@@ -143,6 +149,7 @@ export function CashDrawer({ onClose }: Props) {
 
     const closeMutation = useMutation({
         mutationFn: () => {
+            if (!canClose) throw new Error("Confira os valores de todas as modalidades antes de fechar.");
             // Só envia a modalidade se o operador de fato digitou algo — um campo em branco não
             // vira "conferido = 0" (que soaria como "recebemos zero", quando é só "não conferimos ainda").
             const paymentMethodCounts = RECONCILE_METHODS
@@ -160,10 +167,38 @@ export function CashDrawer({ onClose }: Props) {
     });
 
     const summary = summaryQuery.data;
+    const canClose = !!summary && !summaryQuery.isError && !salesQuery.isError && validAmount(countedAmount)
+        && RECONCILE_METHODS.every(id => {
+            const raw = cardCounts[id] ?? "";
+            const expected = summary.paymentTotals.find(p => p.paymentMethodId === id)?.totalAmount ?? 0;
+            return raw.trim() === "" ? expected === 0 : validAmount(raw);
+        });
+    const expectedTotal = (summary?.expectedCashAmount ?? 0) + RECONCILE_METHODS.reduce((sum, id) => sum + (summary?.paymentTotals.find(p => p.paymentMethodId === id)?.totalAmount ?? 0), 0);
+    const countedTotal = parseAmount(countedAmount || "0") + RECONCILE_METHODS.reduce((sum, id) => sum + parseAmount(cardCounts[id] || "0"), 0);
     const differenceState = getDifferenceState(closeResult?.differenceAmount ?? 0);
 
     return (
-        <Overlay title="Caixa 01" onClose={onClose} wide data-testid="cash-drawer-overlay">
+        <Overlay title={cashRegister.registerName ?? "Caixa"} onClose={onClose} wide data-testid="cash-drawer-overlay">
+            <label>Terminal
+                <select value={registerId ?? ""} onChange={e => { cashRegister.selectRegister(Number(e.target.value)); setCloseResult(null); setCardCounts({}); setCountedAmount(""); }} disabled={openMutation.isPending || closeMutation.isPending || movementMutation.isPending}>
+                    {cashRegister.registers.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+            </label>
+            {featuresQuery.data?.canManageAccess && <button type="button" className="btn-ghost" onClick={async () => {
+                const answer = await Swal.fire({ title: "Novo terminal", input: "text", inputLabel: "Nome do caixa", showCancelButton: true, confirmButtonText: "Cadastrar", cancelButtonText: "Cancelar", inputValidator: value => !value.trim() ? "Informe o nome do terminal." : undefined });
+                if (!answer.isConfirmed) return;
+                try {
+                    const id = await api<number>("/api/cash/registers", { method: "POST", body: JSON.stringify({ branchId: useAuthStore.getState().branchId, name: answer.value }) });
+                    cashRegister.selectRegister(id);
+                    await cashRegister.refetch();
+                } catch (e) { onApiError(e, "Não foi possível cadastrar o terminal."); }
+            }}>Cadastrar terminal</button>}
+            {(cashRegister.isError || (sessionQuery.isError && !noSession) || summaryQuery.isError || salesQuery.isError) && <p role="alert" className="error-text">Não foi possível carregar os dados do caixa. <button type="button" onClick={() => { void cashRegister.refetch(); invalidateCash(); }}>Tentar novamente</button></p>}
+            {cashRegister.isSuccess && !registerId && <p>Nenhum terminal cadastrado nesta filial.</p>}
+            {summary?.movements && <section aria-label="Extrato da sessão" className="ticket">
+                <h3>Movimentações da sessão</h3>
+                {summary.movements.length === 0 ? <p>Nenhuma movimentação registrada.</p> : <div style={{ overflowX: "auto" }}><table><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>{summary.movements.map(m => <tr key={m.id}><td>{new Date(m.createdAt).toLocaleString("pt-BR")}</td><td>{({1:"Suprimento",2:"Sangria",3:"Venda",4:"Estorno",5:"Despesa"} as Record<number,string>)[m.cashMovementTypeId] ?? "Movimento"}</td><td>{m.description ?? "—"}</td><td>{formatBRL(m.amount)}</td></tr>)}</tbody></table></div>}
+            </section>}
             {sessionQuery.isLoading && <p style={{ color: "var(--ink-dim)" }} data-testid="loading-text">Carregando…</p>}
 
             {closeResult && (
@@ -239,7 +274,7 @@ export function CashDrawer({ onClose }: Props) {
                     <button
                         type="button"
                         className="btn-primary"
-                        disabled={openMutation.isPending}
+                        disabled={openMutation.isPending || !registerId || !validAmount(openingAmount)}
                         onClick={() => openMutation.mutate()}
                         data-testid="open-cash-btn"
                     >
@@ -385,7 +420,7 @@ export function CashDrawer({ onClose }: Props) {
                         <button
                             type="button"
                             className="btn-ghost"
-                            disabled={parseAmount(movementAmount) <= 0 || movementMutation.isPending}
+                            disabled={!validAmount(movementAmount) || parseAmount(movementAmount) <= 0 || movementDescription.trim() === "" || movementMutation.isPending}
                             onClick={() => movementMutation.mutate()}
                             data-testid="register-movement-btn"
                         >
@@ -394,7 +429,7 @@ export function CashDrawer({ onClose }: Props) {
                     </div>
 
                     <div style={{ display: "grid", gap: 8 }} data-testid="close-session-view">
-                        <div className="display" style={{ fontSize: "1.1rem" }}>Fechar caixa</div>
+                        <div className="display" style={{ fontSize: "1.1rem" }}>Fechar caixa</div><p>Confira dinheiro e todas as modalidades com recebimentos.</p><p data-testid="conference-total">Total esperado: {formatBRL(expectedTotal)} · Conferido: {Number.isFinite(countedTotal) ? formatBRL(countedTotal) : "Valor inválido"} · Diferença: {Number.isFinite(countedTotal) ? formatBRL(Math.round((countedTotal - expectedTotal) * 100) / 100) : "—"}</p>
 
                         {summary && (
                             <div className="ticket">
@@ -427,7 +462,7 @@ export function CashDrawer({ onClose }: Props) {
                                                     inputMode="decimal"
                                                     value={countedRaw}
                                                     onChange={(e) => setCardCounts((c) => ({ ...c, [methodId]: e.target.value }))}
-                                                    style={{ flex: 1 }}
+                                                    style={{ flex: 1, minWidth: 0 }}
                                                     data-testid={`conference-input-${methodId}`}
                                                 />
                                                 {hasCounted && (
@@ -462,7 +497,7 @@ export function CashDrawer({ onClose }: Props) {
                         <button
                             type="button"
                             className="btn-danger"
-                            disabled={countedAmount.trim() === "" || closeMutation.isPending}
+                            disabled={!canClose || closeMutation.isPending}
                             data-testid="close-cash-btn"
                             onClick={async () => {
                                 const { isConfirmed } = await Swal.fire({
@@ -488,3 +523,4 @@ export function CashDrawer({ onClose }: Props) {
         </Overlay>
     );
 }
+

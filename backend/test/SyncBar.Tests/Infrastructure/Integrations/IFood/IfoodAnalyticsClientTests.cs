@@ -35,14 +35,12 @@ public sealed class IfoodAnalyticsClientTests
     }
 
     [Fact]
-    public async Task GetOrderKpisAsync_HttpFailure_ShouldReturnEmptyResultWithRequestedPage()
+    public async Task GetOrderKpisAsync_HttpFailure_ShouldNotOverwriteSnapshotsWithEmptyData()
     {
         _handler.EnqueueJson(HttpStatusCode.InternalServerError, "erro");
 
-        var result = await _client.GetOrderKpisAsync("tok", "MERCH-1", DateTime.Today, DateTime.Today, 3, 10, CancellationToken.None);
-
-        result.CurrentPage.Should().Be(3);
-        result.RawBuckets.Should().BeEmpty();
+        var action = () => _client.GetOrderKpisAsync("tok", "MERCH-1", DateTime.Today, DateTime.Today, 3, 10, CancellationToken.None);
+        await action.Should().ThrowAsync<HttpRequestException>();
     }
 
     [Fact]

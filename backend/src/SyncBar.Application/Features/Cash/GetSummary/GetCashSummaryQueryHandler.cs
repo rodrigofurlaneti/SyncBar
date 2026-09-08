@@ -29,13 +29,9 @@ internal sealed class GetCashSummaryQueryHandler(
                 var movements = await cashMovementRepository.GetBySessionAsync(session.Id, cancellationToken);
                 var partials = await partialPaymentRepository.GetByCashSessionAsync(session.Id, cancellationToken);
 
-                var paymentTotals = sales
-                    .Where(s => s.IsActive)
-                    .SelectMany(s => s.Payments)
-                    .Where(p => p.IsActive)
-                    .GroupBy(p => p.PaymentMethodId)
+                var paymentTotals = CashMath.PaymentTotals(sales, partials)
                     .OrderBy(g => g.Key)
-                    .Select(g => new PaymentMethodTotalResponse(g.Key, g.Sum(p => p.Amount - (p.ChangeAmount ?? 0))))
+                    .Select(g => new PaymentMethodTotalResponse(g.Key, g.Value))
                     .ToList();
 
                 var response = new CashSummaryResponse(
@@ -48,7 +44,9 @@ internal sealed class GetCashSummaryQueryHandler(
                     movements.Where(m => m.CashMovementTypeId == CashMovementTypeIds.Sangria).Sum(m => m.Amount),
                     movements.Where(m => m.CashMovementTypeId == CashMovementTypeIds.Despesa).Sum(m => m.Amount),
                     partials.Sum(p => p.Amount),
-                    CashMath.ExpectedCash(session.OpeningAmount, sales, movements, partials));
+                    CashMath.ExpectedCash(session.OpeningAmount, sales, movements, partials),
+                    movements.Where(m => m.IsActive).OrderBy(m => m.CreatedAt)
+                        .Select(m => new CashMovementResponse(m.Id, m.CashMovementTypeId, m.Amount, m.Description, m.CreatedAt)).ToList());
 
                 return Result.Success(response);
             });

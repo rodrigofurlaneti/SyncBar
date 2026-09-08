@@ -250,6 +250,7 @@ public sealed class IfoodMerchantClientTests
         result.Success.Should().BeTrue();
         _handler.Requests.Should().ContainSingle();
         _handler.Requests[0].Method.Should().Be(HttpMethod.Put);
+        _handler.RequestBodies[0].Should().Be("15");
         _handler.Requests[0].Headers.GetValues("X-Ifood-Customer-ID").Should().ContainSingle().Which.Should().Be("cust-1");
     }
 

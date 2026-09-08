@@ -25,6 +25,7 @@ public sealed class ProcessKeetaNewEventWebhookCommandHandlerTests
     {
         _handler = new ProcessKeetaNewEventWebhookCommandHandler(
             _mappingRepository, _credentialsResolver, _eventProcessor, _logRepository, _unitOfWork);
+        _eventProcessor.ProcessAsync(Arg.Any<long>(), Arg.Any<long>(), Arg.Any<KeetaPolledEvent>(), Arg.Any<CancellationToken>()).Returns(true);
 
         _credentialsResolver.ResolveAsync(Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(new KeetaCredentials("https://open.mykeeta.com", "client-id", string.Empty, "app-id"));

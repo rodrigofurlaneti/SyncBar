@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Printing;
@@ -106,11 +106,13 @@ public sealed class RegisterSaleCommandSteps
             .Setup(r => r.GetNextSaleNumberAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
+        var availability = new Moq.Mock<SyncBar.Application.Features.Cash.IPaymentMethodAvailability>();
+        availability.Setup(x => x.ValidateAsync(It.IsAny<long>(), It.IsAny<IReadOnlyCollection<long>>(), It.IsAny<CancellationToken>())).ReturnsAsync(SyncBar.Domain.Primitives.Result.Success());
         var handler = new RegisterSaleCommandHandler(
             _orderRepository.Object, _saleRepository.Object, _cashSessionRepository.Object,
             _diningTableRepository.Object, _comandaRepository.Object, _productRepository.Object,
             _stockItemRepository.Object, _stockMovementRepository.Object, _partialPaymentRepository.Object,
-            _printingService.Object, _logRepository.Object, _unitOfWork.Object, TimeProvider.System);
+            _printingService.Object, _logRepository.Object, _unitOfWork.Object, TimeProvider.System, availability.Object);
 
         _result = await handler.Handle(
             new RegisterSaleCommand(orderId, cashSessionId, employeeId, payments), CancellationToken.None);
@@ -127,3 +129,4 @@ public sealed class RegisterSaleCommandSteps
     public void ThenAOperacaoDeveTerSucesso()
         => _result!.IsSuccess.Should().BeTrue();
 }
+

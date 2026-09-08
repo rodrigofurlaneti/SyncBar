@@ -60,6 +60,8 @@ internal sealed class ValidateComandaReadingCommandHandler : BaseCommandHandler<
                 }
                 else if (method is "barcode" or "qrcode")
                 {
+                    if (!string.Equals(request.ScannedValue?.Trim(), comanda.Code, StringComparison.Ordinal))
+                        return Result.Failure(new Error("ComandaReadingValidation.CodeMismatch", "O código lido não corresponde à comanda selecionada."));
                     proofDescription = $"código lido: {request.ScannedValue}";
                 }
                 else

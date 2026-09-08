@@ -31,6 +31,27 @@ const InputField = ({ label, id, isLoading, showFetchingLabel, ...props }: Input
     </div>
 );
 
+function PasswordField({ label, id, isLoading, ...props }: InputFieldProps) {
+    const [visible, setVisible] = useState(false);
+    return (
+        <div className="input-group">
+            <label htmlFor={id} className="input-label">{label}</label>
+            <div className="auth-password-field">
+                <input {...props} id={id} className="input-field" type={visible ? "text" : "password"} disabled={isLoading} />
+                <button type="button" className="auth-password-toggle" disabled={isLoading}
+                    aria-label={`${visible ? "Ocultar" : "Mostrar"} ${label.toLowerCase()}`}
+                    aria-pressed={visible} aria-controls={id} onClick={() => setVisible(value => !value)}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                        <circle cx="12" cy="12" r="3" />
+                        {visible && <path d="m3 3 18 18" />}
+                    </svg>
+                </button>
+            </div>
+        </div>
+    );
+}
+
 const styles = `
   .auth-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 1rem; background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(0.25rem); animation: fadeIn 0.2s ease-out; font-family: system-ui, -apple-system, sans-serif; }
   .auth-modal { position: relative; width: 100%; max-width: 27.5rem; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; border-radius: 1rem; border: 0.0625rem solid #27272a; background-color: #18181b; padding: 1.5rem; box-shadow: 0 1.5625rem 3.125rem -0.75rem rgba(0, 0, 0, 0.7); animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -52,6 +73,11 @@ const styles = `
   .input-field { width: 100%; border-radius: 0.5rem; border: 0.0625rem solid #3f3f46; background-color: #09090b; padding: 0.625rem 1rem; color: #f4f4f5; box-sizing: border-box; outline: none; font-size: 0.95rem; transition: border-color 0.2s ease; }
   .input-field:focus:not(:disabled) { border-color: #f59e0b; }
   .input-field:disabled { opacity: 0.5; cursor: not-allowed; }
+  .auth-password-field { position: relative; }
+  .auth-password-field .input-field { padding-right: 3rem; }
+  .auth-password-toggle { position: absolute; right: 0.25rem; top: 0; bottom: 0; width: 2.5rem; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; color: #a1a1aa; cursor: pointer; }
+  .auth-password-toggle:focus-visible { outline: 2px solid #f59e0b; border-radius: 0.375rem; }
+  .auth-password-error { color: #f87171; font-size: 0.875rem; margin: 0; }
   
   /* ESTILOS PARA CAMPOS BLOQUEADOS (READONLY) */
   .input-field:read-only { background-color: #27272a; color: #a1a1aa; border-color: #27272a; cursor: not-allowed; opacity: 0.8; }
@@ -91,6 +117,12 @@ export function StorefrontAuthModal({
     const [regPhone, setRegPhone] = useState("");
     const [regEmail, setRegEmail] = useState("");
     const [regPassword, setRegPassword] = useState("");
+    const [regConfirmPassword, setRegConfirmPassword] = useState("");
+    const [passwordValidationAttempted, setPasswordValidationAttempted] = useState(false);
+    const passwordError = regPassword.length < 6 || regConfirmPassword.length < 6
+        ? "As senhas devem ter no mínimo 6 caracteres."
+        : regPassword !== regConfirmPassword ? "As senhas não coincidem." : "";
+    const showPasswordError = (passwordValidationAttempted || regConfirmPassword.length > 0) && !!passwordError;
     const [regCpf, setRegCpf] = useState("");
     const [regZipCode, setRegZipCode] = useState("");
     const [regStreet, setRegStreet] = useState("");
@@ -179,6 +211,8 @@ export function StorefrontAuthModal({
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+        setPasswordValidationAttempted(true);
+        if (passwordError) return;
         if (!regName || !regEmail || !regPassword || !regStreet || !regNumber || !regZipCode || !regCpf || !regNeighborhood) {
             Swal.fire({ title: "Atenção", text: "Preencha os campos obrigatórios e digite um CEP válido.", icon: "warning", background: '#18181b', color: '#fff' });
             return;
@@ -335,7 +369,15 @@ export function StorefrontAuthModal({
                                 isLoading={isLoading}
                             />
                             <InputField label="E-mail" id={`${formId}-reg-email`} type="email" placeholder="seu@email.com" value={regEmail} onChange={(e: any) => setRegEmail(e.target.value)} isLoading={isLoading} required />
-                            <InputField label="Senha" id={`${formId}-reg-pass`} type="password" placeholder="Mínimo 6 caracteres" value={regPassword} onChange={(e: any) => setRegPassword(e.target.value)} isLoading={isLoading} required />
+                            <PasswordField label="Senha" id={`${formId}-reg-pass`} placeholder="Mínimo 6 caracteres"
+                                value={regPassword} onChange={e => setRegPassword(e.target.value)} isLoading={isLoading}
+                                minLength={6} autoComplete="new-password" required
+                                aria-invalid={showPasswordError} aria-describedby={showPasswordError ? `${formId}-password-error` : undefined} />
+                            <PasswordField label="Confirmar Senha" id={`${formId}-reg-confirm-pass`} placeholder="Repita a senha"
+                                value={regConfirmPassword} onChange={e => setRegConfirmPassword(e.target.value)} isLoading={isLoading}
+                                minLength={6} autoComplete="new-password" required
+                                aria-invalid={showPasswordError} aria-describedby={showPasswordError ? `${formId}-password-error` : undefined} />
+                            {showPasswordError && <p id={`${formId}-password-error`} className="auth-password-error" role="alert">{passwordError}</p>}
 
                             <div className="address-divider" aria-hidden="true">
                                 <span>Endereço de Entrega</span>

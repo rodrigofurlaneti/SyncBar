@@ -9,7 +9,7 @@ import { StorefrontCartDrawer, CartItem, CustomerSessionData, PaymentMethod, New
 import { submitStorefrontOrder, StorefrontOrderPayload } from "./storefrontApi";
 import { StorefrontAuthModal } from "./StorefrontAuthModal";
 import { StorefrontPaymentModal, StorefrontPaymentResult } from "./StorefrontPaymentModal";
-import { payWithPix, payWithCreditCard, payWithBoleto } from "./checkoutApi";
+import { payWithPix, payWithCreditCard, payWithBoleto, payWithDebitCard } from "./checkoutApi";
 
 import logoImg from "../../image/logo.png";
 import bgImg from "../../image/screenbackground_auth.jpeg";
@@ -244,6 +244,12 @@ export function StorefrontOrderPage() {
         setIsChargingPayment(true);
         try {
             switch (pending.method) {
+                case "DEBITO": {
+                    const data = await payWithDebitCard(orderId);
+                    setPaymentOrderId(orderId);
+                    setPaymentResult({ method: "DEBITO", data });
+                    break;
+                }
                 case "PIX": {
                     const data = await payWithPix(orderId);
                     setPaymentOrderId(orderId);
@@ -580,6 +586,8 @@ export function StorefrontOrderPage() {
             </button>
 
             <StorefrontCartDrawer
+                branchId={branchId}
+                companyId={menuQuery.data?.companyId}
                 isOpen={isCartOpen}
                 onClose={() => setIsCartOpen(false)}
                 items={cartItems}
