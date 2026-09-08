@@ -3,6 +3,14 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Dumps de banco de dados nunca devem ir pro controle de versão — contêm dado real de
+# cliente/pagamento e, historicamente, credenciais em texto puro (ex.: ApiKeyEncrypted do Asaas
+# sem criptografia de fato aplicada). Scripts de schema versionados (DDL, migrations avulsas)
+# ficam em sql/ normalmente; só dumps de dados reais (mysqldump) são bloqueados aqui.
+sql/Dump*.sql
+sql/*dump*.sql
+*.sql.bak
+
 # User-specific files
 *.rsuser
 *.suo
