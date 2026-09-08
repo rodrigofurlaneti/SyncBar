@@ -13,36 +13,8 @@ import { OpenDeliveryOrderDialog } from "./OpenDeliveryOrderDialog";
 import { QueryError } from "../../components/QueryError";
 import { Overlay } from "./Overlay";
 import { StorefrontHubModal } from "../storeFront/StorefrontHubModal";
-
-const statusColor: Record<number, string> = {
-    [TableStatus.Livre]: "var(--free)",
-    [TableStatus.Ocupada]: "var(--busy)",
-    [TableStatus.Reservada]: "var(--reserved)",
-    [TableStatus.EmFechamento]: "var(--closing)",
-    [TableStatus.Interditada]: "var(--blocked)",
-};
-
-const comandaColor: Record<number, string> = {
-    [ComandaStatus.Disponivel]: "var(--free)",
-    [ComandaStatus.EmUso]: "var(--busy)",
-    [ComandaStatus.Extraviada]: "var(--closing)",
-    [ComandaStatus.Bloqueada]: "var(--blocked)",
-};
-
-const comandaStatusLabel: Record<number, string> = {
-    [ComandaStatus.Disponivel]: "Livre",
-    [ComandaStatus.EmUso]: "Em uso",
-    [ComandaStatus.Extraviada]: "Extraviada",
-    [ComandaStatus.Bloqueada]: "Bloqueada",
-};
-
-const statusLabel: Record<number, string> = {
-    [TableStatus.Livre]: "Livre",
-    [TableStatus.Ocupada]: "Ocupada",
-    [TableStatus.Reservada]: "Reservada",
-    [TableStatus.EmFechamento]: "Fechando",
-    [TableStatus.Interditada]: "Interditada",
-};
+import { TableCard, TableCardSkeleton } from "./TableCard";
+import { ComandaCard, ComandaCardSkeleton } from "./ComandaCard";
 
 export function OrdersPage() {
     const queryClient = useQueryClient();
@@ -155,44 +127,33 @@ export function OrdersPage() {
                         </button>
                     </div>
 
-                    {tablesQuery.isLoading && <p style={{ color: "var(--ink-dim)" }}>Carregando mesas…</p>}
                     {tablesQuery.isError && <QueryError error={tablesQuery.error} what="as mesas" />}
                     {ordersQuery.isError && <QueryError error={ordersQuery.error} what="os pedidos abertos" />}
 
-                    <div className="table-grid" data-testid="tables-grid">
-                        {(tablesQuery.data ?? []).map((table) => {
-                            const order = orderByTable.get(table.id);
-                            const color = statusColor[table.tableStatusId] ?? "var(--ink-faint)";
-                            return (
-                                <button
-                                    key={table.id}
-                                    className="table-tile"
-                                    type="button"
-                                    data-testid={`table-tile-${table.id}`}
-                                    style={{ "--status": color } as CSSProperties}
-                                    onClick={() => {
-                                        if (order) setSelectedOrderId(order.id);
-                                        else if (table.tableStatusId === TableStatus.Livre) setOpeningTable(table);
-                                    }}
-                                >
-                                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                        <span className="num mono-num">{table.number}</span>
-                                        <span className="chip" style={{ "--dot": color } as CSSProperties}>
-                                            {statusLabel[table.tableStatusId] ?? "—"}
-                                        </span>
-                                    </div>
-                                    <div style={{ color: "var(--ink-dim)", fontSize: "0.88rem" }}>
-                                        {order ? (
-                                            <span className="mono-num">
-                                                {order.items.length} itens · {formatBRL(order.totalAmount)}
-                                            </span>
-                                        ) : (
-                                            <span>{table.capacity ?? "—"} lugares</span>
-                                        )}
-                                    </div>
-                                </button>
-                            );
-                        })}
+                    <div className="table-grid" data-testid="tables-grid" aria-busy={tablesQuery.isLoading}>
+                        {tablesQuery.isLoading
+                            ? Array.from({ length: 8 }, (_, i) => <TableCardSkeleton key={i} />)
+                            : (tablesQuery.data ?? []).map((table) => {
+                                  const order = orderByTable.get(table.id);
+                                  const isFree = table.tableStatusId === TableStatus.Livre;
+                                  return (
+                                      <TableCard
+                                          key={table.id}
+                                          id={table.id}
+                                          number={table.number}
+                                          statusId={table.tableStatusId}
+                                          capacity={table.capacity}
+                                          itemsCount={order?.items.length}
+                                          totalValue={order?.totalAmount}
+                                          openedAt={order?.openedAt}
+                                          disabled={!order && !isFree}
+                                          onOpen={() => {
+                                              if (order) setSelectedOrderId(order.id);
+                                              else if (isFree) setOpeningTable(table);
+                                          }}
+                                      />
+                                  );
+                              })}
                     </div>
                 </section>
 
@@ -222,55 +183,27 @@ export function OrdersPage() {
                         <QueryError error={comandasQuery.error} what="as comandas" />
                     )}
 
-                    <div
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns: "repeat(auto-fill, minmax(76px, 1fr))",
-                            gap: 8,
-                        }}
-                        data-testid="comandas-grid"
-                    >
-                        {filteredComandas.map((comanda) => {
-                            const order = orderByComanda.get(comanda.id);
-                            const color = comandaColor[comanda.comandaStatusId] ?? "var(--ink-faint)";
-                            const busy = comanda.comandaStatusId === ComandaStatus.EmUso;
-                            return (
-                                <button
-                                    key={comanda.id}
-                                    type="button"
-                                    data-testid={`comanda-tile-${comanda.id}`}
-                                    onClick={() => {
-                                        if (order) setSelectedOrderId(order.id);
-                                        else if (comanda.comandaStatusId === ComandaStatus.Disponivel)
-                                            setOpeningComanda(comanda);
-                                    }}
-                                    title={order ? `${order.items.length} itens · ${formatBRL(order.totalAmount)}` : undefined}
-                                    style={{
-                                        background: busy ? "var(--bg-press)" : "var(--bg-raise)",
-                                        border: `1px solid ${busy ? color : "var(--line)"}`,
-                                        borderRadius: 10,
-                                        minHeight: 64,
-                                        display: "grid",
-                                        gap: 2,
-                                        placeItems: "center",
-                                        padding: "8px 4px",
-                                    }}
-                                >
-                                    <span className="display mono-num" style={{ fontSize: "1.5rem", color: busy ? color : "var(--ink)" }}>
-                                        {comanda.code}
-                                    </span>
-                                    {order ? (
-                                        <span className="mono-num" style={{ fontSize: "0.68rem", color: "var(--ink-dim)" }}>
-                                            {formatBRL(order.totalAmount)}
-                                        </span>
-                                    ) : (
-                                        <span style={{ fontSize: "0.62rem", color, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                                            {comandaStatusLabel[comanda.comandaStatusId] ?? ""}
-                                        </span>
-                                    )}
-                                </button>
-                            );
-                        })}
+                    <div className="comanda-grid" data-testid="comandas-grid" aria-busy={comandasQuery.isLoading}>
+                        {comandasQuery.isLoading
+                            ? Array.from({ length: 10 }, (_, i) => <ComandaCardSkeleton key={i} />)
+                            : filteredComandas.map((comanda) => {
+                                  const order = orderByComanda.get(comanda.id);
+                                  const isAvailable = comanda.comandaStatusId === ComandaStatus.Disponivel;
+                                  return (
+                                      <ComandaCard
+                                          key={comanda.id}
+                                          id={comanda.id}
+                                          code={comanda.code}
+                                          statusId={comanda.comandaStatusId}
+                                          totalValue={order?.totalAmount}
+                                          disabled={!order && !isAvailable}
+                                          onOpen={() => {
+                                              if (order) setSelectedOrderId(order.id);
+                                              else if (isAvailable) setOpeningComanda(comanda);
+                                          }}
+                                      />
+                                  );
+                              })}
                     </div>
                 </section>
             </main>

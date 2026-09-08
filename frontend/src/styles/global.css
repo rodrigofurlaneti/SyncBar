@@ -274,11 +274,19 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
 }
 .brand em { font-style: normal; color: var(--amber); }
 
-/* grade de mesas */
+/* grade de mesas — mobile-first: 1 coluna até 640px, 2 colunas no tablet (641–1024px), grade
+   fluida por auto-fill a partir de 1025px (mais estável num PDV com contagem de mesas variável
+   entre filiais do que travar num número fixo de colunas). */
 .table-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 14px;
+  grid-template-columns: 1fr;
+  gap: 0.875rem;
+}
+@media (min-width: 40.0625rem) { /* 641px */
+  .table-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 64.0625rem) { /* 1025px */
+  .table-grid { grid-template-columns: repeat(auto-fill, minmax(9.375rem, 1fr)); }
 }
 
 .table-tile {
@@ -286,11 +294,12 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
   background: var(--bg-raise);
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 16px 16px 14px;
-  min-height: 128px;
+  padding: 1rem 1rem 0.875rem;
+  min-height: var(--touch); /* piso: nunca menor que um alvo de toque, mesmo com pouco conteúdo */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  gap: 0.5rem;
   text-align: left;
   overflow: hidden;
   transition: border-color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
@@ -303,12 +312,64 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
   background: var(--status, var(--ink-faint));
 }
 .table-tile:hover { border-color: var(--ink-faint); transform: translateY(-1px); }
+/* Feedback de pressionar — essencial em telas touch (smart POS/tablet de salão), onde não existe
+   estado de hover pra avisar "isto é clicável" antes do toque. */
+.table-tile:active { transform: translateY(0) scale(0.98); background: var(--bg-press); }
+.table-tile:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+.table-tile:disabled:hover { border-color: var(--line); }
 .table-tile .num {
   font-family: var(--font-display);
   font-size: 3rem;
   line-height: 0.9;
   color: var(--ink);
 }
+.table-tile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  color: var(--ink-dim);
+  font-size: 0.88rem;
+}
+.table-tile-time { color: var(--ink-faint); font-size: 0.78rem; }
+/* Decorativo — o cartão inteiro já é o alvo clicável (aria-label no <button> comunica a ação);
+   isto só reforça visualmente a chamada pra ação numa mesa livre. */
+.table-tile-cta { margin-top: 0.25rem; pointer-events: none; }
+
+/* grade de comandas — mesma lógica de breakpoints da grade de mesas, só que mais densa (cartões
+   bem menores, cabem mais por linha em cada faixa). */
+.comanda-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+@media (min-width: 40.0625rem) {
+  .comanda-grid { grid-template-columns: repeat(auto-fill, minmax(4.75rem, 1fr)); }
+}
+
+.comanda-tile {
+  position: relative;
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-height: var(--touch);
+  display: grid;
+  gap: 0.125rem;
+  place-items: center;
+  padding: 0.5rem 0.25rem;
+  transition: border-color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+}
+.comanda-tile.is-busy { background: var(--bg-press); border-color: var(--status, var(--line)); }
+.comanda-tile:hover { border-color: var(--ink-faint); transform: translateY(-1px); }
+.comanda-tile:active { transform: translateY(0) scale(0.96); }
+.comanda-tile:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+.comanda-tile-code { font-family: var(--font-display); font-size: 1.5rem; color: var(--ink); }
+.comanda-tile.is-busy .comanda-tile-code { color: var(--status, var(--ink)); }
+.comanda-tile-total { font-size: 0.68rem; color: var(--ink-dim); }
+.comanda-tile-status { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; }
 
 /* ticket de pedido */
 .ticket {
