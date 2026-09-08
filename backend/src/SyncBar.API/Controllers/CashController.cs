@@ -69,7 +69,7 @@ public sealed class CashController(
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CashController), nameof(CloseSession), async () =>
         {
             var result = await Mediator.Send(
-                new CloseCashSessionCommand(id, request.ClosedByEmployeeId, request.ClosingAmount), ct);
+                new CloseCashSessionCommand(id, request.ClosedByEmployeeId, request.ClosingAmount, request.PaymentMethodCounts), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
 
@@ -86,7 +86,8 @@ public sealed class CashController(
 
 public sealed record CloseCashSessionRequest(
     [property: JsonRequired] long ClosedByEmployeeId,
-    [property: JsonRequired] decimal ClosingAmount);
+    [property: JsonRequired] decimal ClosingAmount,
+    IReadOnlyCollection<PaymentMethodCountRequest>? PaymentMethodCounts = null);
 public sealed record RegisterCashMovementRequest(
     [property: JsonRequired] long CashMovementTypeId,
     [property: JsonRequired] long EmployeeId,

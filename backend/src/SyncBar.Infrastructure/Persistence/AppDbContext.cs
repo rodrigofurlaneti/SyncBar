@@ -20,6 +20,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<AsaasIntegrationPayment> AsaasIntegrationPayments => Set<AsaasIntegrationPayment>();
     public DbSet<AsaasIntegrationSavedCard> AsaasIntegrationSavedCards => Set<AsaasIntegrationSavedCard>();
     public DbSet<AsaasIntegrationSetting> AsaasIntegrationSettings => Set<AsaasIntegrationSetting>();
+    public DbSet<BranchPaymentMethodSetting> BranchPaymentMethodSettings => Set<BranchPaymentMethodSetting>();
     public DbSet<AsaasIntegrationWebhookLog> AsaasIntegrationWebhookLogs => Set<AsaasIntegrationWebhookLog>();
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<Branch> Branchs => Set<Branch>();
@@ -61,6 +62,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SalePayment> SalePayments => Set<SalePayment>();
     public DbSet<CashMovement> CashMovements => Set<CashMovement>();
+    public DbSet<CashSessionPaymentReconciliation> CashSessionPaymentReconciliations => Set<CashSessionPaymentReconciliation>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<AppFeature> AppFeatures => Set<AppFeature>();
     public DbSet<CostType> CostTypes => Set<CostType>();

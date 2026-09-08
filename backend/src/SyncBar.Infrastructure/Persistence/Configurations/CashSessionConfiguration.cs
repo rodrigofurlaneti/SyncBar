@@ -17,6 +17,7 @@ internal sealed class CashSessionConfiguration : IEntityTypeConfiguration<CashSe
         builder.Property(x => x.ClosingAmount).HasColumnType("decimal(18,2)");
         builder.Property(x => x.ExpectedAmount).HasColumnType("decimal(18,2)");
         builder.Property(x => x.DifferenceAmount).HasColumnType("decimal(18,2)");
+        builder.Property(x => x.TotalDifferenceAmount).HasColumnType("decimal(18,2)");
         builder.Property(x => x.OpenedAt).HasColumnType("datetime(6)").IsRequired();
         builder.Property(x => x.ClosedAt).HasColumnType("datetime(6)");
         builder.Property(x => x.CreatedAt).HasColumnType("datetime(6)").IsRequired();

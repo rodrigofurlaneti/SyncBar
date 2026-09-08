@@ -28,6 +28,7 @@ namespace SyncBar.Tests.Infrastructure.Persistence.Configurations
             var closing = EntityType.FindProperty(nameof(CashSession.ClosingAmount))!;
             var expected = EntityType.FindProperty(nameof(CashSession.ExpectedAmount))!;
             var difference = EntityType.FindProperty(nameof(CashSession.DifferenceAmount))!;
+            var totalDifference = EntityType.FindProperty(nameof(CashSession.TotalDifferenceAmount))!;
 
             opening.IsNullable.Should().BeFalse();
             opening.GetColumnType().Should().Be("decimal(18,2)");
@@ -40,6 +41,9 @@ namespace SyncBar.Tests.Infrastructure.Persistence.Configurations
 
             difference.IsNullable.Should().BeTrue();
             difference.GetColumnType().Should().Be("decimal(18,2)");
+
+            totalDifference.IsNullable.Should().BeTrue();
+            totalDifference.GetColumnType().Should().Be("decimal(18,2)");
         }
 
         [Fact]

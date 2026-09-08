@@ -146,8 +146,23 @@ public sealed class CashControllerTests
     public async Task CloseSession_Success_ShouldSendCommandWithIdAndReturnOkWithValue()
     {
         var request = new CloseCashSessionRequest(2, 500m);
-        var response = new CloseCashSessionResponse(1, 500m, 500m, 0m);
+        var response = new CloseCashSessionResponse(1, 500m, 500m, 0m, 0m, []);
         _mediator.Send(Arg.Is<CloseCashSessionCommand>(c => c.CashSessionId == 1 && c.ClosedByEmployeeId == 2 && c.ClosingAmount == 500m),
+            Arg.Any<CancellationToken>()).Returns(Result.Success(response));
+
+        var result = await _controller.CloseSession(1, request, CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>().Which.Value.Should().Be(response);
+    }
+
+    [Fact]
+    public async Task CloseSession_WithPaymentMethodCounts_ShouldForwardThemToTheCommand()
+    {
+        var counts = new[] { new PaymentMethodCountRequest(PaymentMethodId: 2, CountedAmount: 190m) };
+        var request = new CloseCashSessionRequest(2, 500m, counts);
+        var response = new CloseCashSessionResponse(1, 500m, 500m, 0m, -10m,
+            [new PaymentMethodReconciliationResponse(2, 200m, 190m, -10m)]);
+        _mediator.Send(Arg.Is<CloseCashSessionCommand>(c => c.PaymentMethodCounts == counts),
             Arg.Any<CancellationToken>()).Returns(Result.Success(response));
 
         var result = await _controller.CloseSession(1, request, CancellationToken.None);
