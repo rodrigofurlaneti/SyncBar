@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2"; // Adicionado SweetAlert2
-import { getOpenOrdersByBranch, getOrder, updateItemStatus } from "./api";
+import { getOpenOrdersByBranch, getOrder, updateItemStatus, startOrderPreparation } from "./api";
 import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import { OrderDrawer } from "./OrderDrawer";
@@ -311,6 +311,12 @@ export function DeliveryBoardPage() {
         mutationFn: async (order: OrderResponse) => {
             const pending = order.items.filter((i) => i.orderItemStatusId === OrderItemStatus.Lancado);
             await Promise.all(pending.map((i) => updateItemStatus(order.id, i.id, OrderItemStatus.EnviadoCozinha, employeeId)));
+            // Sempre confirma a transição de status do pedido em si (Aberto -> EmAndamento), não só
+            // dos itens: pedidos vindos de integração (ex.: iFood) podem chegar sem nenhum item
+            // lançado (item do parceiro sem EAN mapeado no catálogo) — sem isto o pedido ficava
+            // preso em "Aberto" pra sempre, já que só AddItem promovia esse status e não havia item
+            // nenhum pra lançar. No-op no backend se o pedido já estiver EmAndamento.
+            await startOrderPreparation(order.id);
         },
         onSuccess: (_data, order) => { Toast.fire({ icon: "success", title: `Pedido #${order.id} p/ cozinha.` }); setPendingOrderId(null); refresh(); },
         onError: (e) => { onErr("Falha ao enviar.")(e); setPendingOrderId(null); },

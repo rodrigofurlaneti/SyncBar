@@ -49,6 +49,9 @@ export const updateItemStatus = (
     body: JSON.stringify({ orderItemStatusId, actorEmployeeId }),
   });
 
+export const startOrderPreparation = (orderId: number): Promise<void> =>
+  api<void>(`/api/orders/${orderId}/start-preparation`, { method: "PUT" });
+
 export const applyDiscount = (orderId: number, discountAmount: number): Promise<void> =>
   api<void>(`/api/orders/${orderId}/discount`, {
     method: "PUT",
