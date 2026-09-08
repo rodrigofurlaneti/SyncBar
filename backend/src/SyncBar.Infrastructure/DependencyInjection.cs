@@ -180,6 +180,8 @@ public static class DependencyInjection
         services.AddHostedService<IfoodMerchantStatusWatcherBackgroundService>();
         services.Configure<IfoodAnalyticsExtractionOptions>(configuration.GetSection("IfoodAnalytics"));
         services.AddHostedService<IfoodAnalyticsExtractionBackgroundService>();
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodShippingTrackingStore, IfoodShippingTrackingStore>();
+        services.AddHostedService<IfoodShippingTrackingBackgroundService>();
 
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodLogisticsClient, IfoodLogisticsClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));
