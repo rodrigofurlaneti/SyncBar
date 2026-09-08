@@ -13,6 +13,7 @@ public sealed class CashSession : AggregateRoot
     public decimal? ClosingAmount { get; private set; }
     public decimal? ExpectedAmount { get; private set; }
     public decimal? DifferenceAmount { get; private set; }
+    public decimal? TotalDifferenceAmount { get; private set; }
     public DateTime OpenedAt { get; private set; }
     public DateTime? ClosedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -40,7 +41,14 @@ public sealed class CashSession : AggregateRoot
         return Result.Success(new CashSession(cashRegisterId, openedByEmployeeId, openingAmount));
     }
 
-    public Result Close(long closedByEmployeeId, decimal closingAmount, decimal expectedAmount)
+    // paymentReconciliations: conferencia por forma de pagamento (Cartao de Credito/Debito/Pix)
+    // ja validada e criada pelo handler (CashSessionPaymentReconciliation.Create por item). O
+    // total geral de quebra soma a diferenca do dinheiro com a de todas as modalidades conferidas.
+    public Result Close(
+        long closedByEmployeeId,
+        decimal closingAmount,
+        decimal expectedAmount,
+        IReadOnlyCollection<CashSessionPaymentReconciliation>? paymentReconciliations = null)
     {
         if (CashSessionStatusId != CashSessionStatusIds.Aberto)
             return Result.Failure(new Error("CashSession.NotOpen", "Only an open session can be closed."));
@@ -51,6 +59,7 @@ public sealed class CashSession : AggregateRoot
         ClosingAmount = closingAmount;
         ExpectedAmount = expectedAmount;
         DifferenceAmount = closingAmount - expectedAmount;
+        TotalDifferenceAmount = DifferenceAmount.Value + (paymentReconciliations?.Sum(r => r.DifferenceAmount) ?? 0m);
         CashSessionStatusId = CashSessionStatusIds.Fechado;
         ClosedAt = DateTime.Now;
         UpdatedAt = DateTime.Now;

@@ -213,11 +213,20 @@ export interface CashSummaryResponse {
   expectedCashAmount: number;
 }
 
+export interface PaymentMethodReconciliationResponse {
+  paymentMethodId: number;
+  expectedAmount: number;
+  countedAmount: number;
+  differenceAmount: number;
+}
+
 export interface CloseCashSessionResponse {
   cashSessionId: number;
   expectedAmount: number;
   closingAmount: number;
   differenceAmount: number;
+  totalDifferenceAmount: number;
+  paymentReconciliations: PaymentMethodReconciliationResponse[];
 }
 
 export const PaymentMethod = {

@@ -9,6 +9,7 @@ import {
   createAsaasPayment,
   createAsaasSavedCard,
   createAsaasSetting,
+  createPaymentMethodSetting,
   deleteAsaasCustomer,
   deleteAsaasPayment,
   deleteAsaasSavedCard,
@@ -21,11 +22,13 @@ import {
   getAsaasWebhookLogsByPaymentId,
   getPendingAsaasPaymentsByBranch,
   getUnprocessedAsaasWebhookLogs,
+  resolvePaymentMethodSetting,
   setDefaultAsaasSavedCard,
   updateAsaasCustomer,
   updateAsaasPayment,
   updateAsaasSetting,
   updateAsaasWebhookLogStatus,
+  updatePaymentMethodSetting,
   webhookLogStatusLabel,
   WebhookLogStatus,
   type AsaasCustomerBindingResponse,
@@ -34,6 +37,7 @@ import {
   type AsaasSettingResponse,
   type AsaasWebhookLogResponse,
   type CreateAsaasPaymentPayload,
+  type PaymentMethodFlags,
 } from "./api";
 import { getCustomersByCompany } from "../customers/api";
 import { useAuthStore } from "../../stores/authStore";
@@ -55,7 +59,7 @@ import { SkeletonList } from "../../ui/Skeleton";
 // AsaasWebhookLogController) reunidos numa única tela em abas, no mesmo padrão visual das
 // demais telas do app (ticket/chip/display + Button/Field/Modal + toasts/confirm do SweetAlert2).
 
-type TabId = "settings" | "customers" | "payments" | "savedCards" | "webhooks";
+type TabId = "settings" | "customers" | "payments" | "savedCards" | "webhooks" | "paymentMethods";
 
 const TABS: Array<{ id: TabId; label: string; icon: string }> = [
   { id: "settings", label: "Configurações", icon: "🔑" },
@@ -63,6 +67,7 @@ const TABS: Array<{ id: TabId; label: string; icon: string }> = [
   { id: "payments", label: "Pagamentos", icon: "💳" },
   { id: "savedCards", label: "Cartões salvos", icon: "🗂️" },
   { id: "webhooks", label: "Webhooks", icon: "📬" },
+  { id: "paymentMethods", label: "Métodos de pagamentos", icon: "🏷️" },
 ];
 
 function apiErrorMessage(e: unknown, fallback: string): string {
@@ -127,6 +132,7 @@ export function AsaasPage() {
         {tab === "payments" && <PaymentsSection companyId={companyId} branchId={branchId} />}
         {tab === "savedCards" && <SavedCardsSection companyId={companyId} />}
         {tab === "webhooks" && <WebhooksSection companyId={companyId} />}
+        {tab === "paymentMethods" && <PaymentMethodsSection companyId={companyId} branchId={branchId} />}
       </div>
     </main>
   );
@@ -1495,5 +1501,179 @@ function WebhookPayloadModal({ log, onClose }: { log: AsaasWebhookLogResponse; o
         </pre>
       </div>
     </Modal>
+  );
+}
+
+// ============================================================================================
+// Métodos de pagamento por empresa/filial
+// ============================================================================================
+
+const DEFAULT_PAYMENT_METHOD_FLAGS: PaymentMethodFlags = {
+  enablePix: true,
+  enableBoleto: true,
+  enableCreditCard: true,
+  enableDebitCard: true,
+  enableCashMachine: true,
+};
+
+const PAYMENT_METHOD_ITEMS: Array<{
+  key: keyof PaymentMethodFlags;
+  icon: string;
+  title: string;
+  description: string;
+}> = [
+  {
+    key: "enablePix",
+    icon: "🟢",
+    title: "Pix (Online)",
+    description: "Permite gerar QR Codes e chaves Pix instantâneas integradas ao painel.",
+  },
+  {
+    key: "enableBoleto",
+    icon: "📄",
+    title: "Boleto Bancário",
+    description: "Habilita a emissão e envio de boletos registrados para os clientes.",
+  },
+  {
+    key: "enableCreditCard",
+    icon: "💳",
+    title: "Cartão de Crédito",
+    description: "Libera o pagamento digital na plataforma utilizando limite de crédito.",
+  },
+  {
+    key: "enableDebitCard",
+    icon: "💳",
+    title: "Cartão de Débito",
+    description: "Libera o pagamento digital na plataforma utilizando saldo de débito.",
+  },
+  {
+    key: "enableCashMachine",
+    icon: "🖨️",
+    title: "Maquininha Física (Caixa/Balcão)",
+    description: "Exibe a opção de pagamento manual presencial via Smart POS ou maquininha tradicional.",
+  },
+];
+
+function PaymentMethodsSection({ companyId, branchId }: { companyId: number; branchId: number }) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [overrides, setOverrides] = useState<Partial<PaymentMethodFlags>>({});
+  const [error, setError] = useState<string | null>(null);
+
+  const settingQuery = useQuery({
+    queryKey: ["branchPaymentMethodSettings", "resolve", companyId, branchId],
+    queryFn: () => resolvePaymentMethodSetting(companyId, branchId),
+  });
+
+  const setting = settingQuery.data ?? null;
+  const baseFlags: PaymentMethodFlags = setting
+    ? {
+        enablePix: setting.enablePix,
+        enableBoleto: setting.enableBoleto,
+        enableCreditCard: setting.enableCreditCard,
+        enableDebitCard: setting.enableDebitCard,
+        enableCashMachine: setting.enableCashMachine,
+      }
+    : DEFAULT_PAYMENT_METHOD_FLAGS;
+  const flags: PaymentMethodFlags = { ...baseFlags, ...overrides };
+  const isDirty = Object.keys(overrides).length > 0;
+  // A configuração encontrada é da própria filial só quando o BranchId bate — caso contrário
+  // (BranchId null ou de outra filial) o resolve caiu no fallback da matriz.
+  const isOwnBranchSetting = setting?.branchId === branchId;
+
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: ["branchPaymentMethodSettings"] });
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (isOwnBranchSetting && setting) {
+        await updatePaymentMethodSetting(setting.id, { companyId, ...flags });
+      } else {
+        await createPaymentMethodSetting({ companyId, branchId, ...flags });
+      }
+    },
+    onSuccess: () => {
+      setError(null);
+      setOverrides({});
+      toast.success("Métodos de pagamento salvos.");
+      refresh();
+    },
+    onError: (e) => setError(apiErrorMessage(e, "Não foi possível salvar os métodos de pagamento.")),
+  });
+
+  const toggle = (key: keyof PaymentMethodFlags, value: boolean) =>
+    setOverrides((prev) => ({ ...prev, [key]: value }));
+
+  return (
+    <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 16 }}>
+      <div style={{ display: "grid", gap: 4, maxWidth: 640 }}>
+        <span className="display" style={{ fontSize: "1.2rem" }}>
+          Métodos de pagamento por empresa/filial
+        </span>
+        <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>
+          Cada filial pode habilitar ou desabilitar suas próprias formas de recebimento. Se uma
+          filial não tiver configuração específica, ela herdará a configuração padrão da matriz.
+          Opções desativadas não aparecerão na tela de fechamento de caixa ou delivery.
+        </span>
+      </div>
+
+      {settingQuery.isError && <QueryError error={settingQuery.error} what="os métodos de pagamento" />}
+      {settingQuery.isLoading && <SkeletonList rows={5} rowHeight={72} />}
+
+      {!settingQuery.isLoading && (
+        <>
+          <div className="ui-row ui-row-wrap" style={{ gap: 8, alignItems: "center" }}>
+            <span className="chip" style={{ "--dot": "var(--busy)" } as CSSProperties}>
+              Filial {branchId}
+            </span>
+            {isOwnBranchSetting ? (
+              <span className="chip" style={{ "--dot": "var(--ok)" } as CSSProperties}>
+                Configuração própria da filial
+              </span>
+            ) : setting ? (
+              <span className="chip" style={{ "--dot": "var(--ink-faint)" } as CSSProperties}>
+                Herdando a configuração padrão da empresa
+              </span>
+            ) : (
+              <span className="chip" style={{ "--dot": "var(--ink-faint)" } as CSSProperties}>
+                Nenhuma configuração cadastrada — usando o padrão (tudo ligado)
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: "grid", gap: 2 }}>
+            {PAYMENT_METHOD_ITEMS.map((item) => (
+              <div key={item.key} className="ticket-row" style={{ alignItems: "center" }}>
+                <div style={{ display: "grid", gap: 2, maxWidth: 520 }}>
+                  <span style={{ fontWeight: 600 }}>
+                    <span aria-hidden="true">{item.icon}</span> {item.title}
+                  </span>
+                  <span style={{ fontSize: "0.85rem", color: "var(--ink-dim)" }}>{item.description}</span>
+                </div>
+                <div className="ui-row" style={{ gap: 10, alignItems: "center" }}>
+                  <span
+                    className="chip"
+                    style={{ "--dot": flags[item.key] ? "var(--ok)" : "var(--danger)" } as CSSProperties}
+                  >
+                    {flags[item.key] ? "Ligada" : "Desligada"}
+                  </span>
+                  <Switch checked={flags[item.key]} onChange={(v) => toggle(item.key, v)} label={item.title} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {error && <p className="error-text">{error}</p>}
+
+          <div className="ui-row" style={{ justifyContent: "flex-end", gap: 10 }}>
+            <Button variant="ghost" disabled={!isDirty || saveMutation.isPending} onClick={() => setOverrides({})}>
+              Cancelar
+            </Button>
+            <Button variant="primary" disabled={!isDirty} loading={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
+              Salvar alterações
+            </Button>
+          </div>
+        </>
+      )}
+    </section>
   );
 }

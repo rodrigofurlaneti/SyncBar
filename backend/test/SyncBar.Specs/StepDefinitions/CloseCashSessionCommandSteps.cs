@@ -17,6 +17,7 @@ public sealed class CloseCashSessionCommandSteps
     private readonly Mock<ISaleRepository> _saleRepository = new();
     private readonly Mock<ICashMovementRepository> _cashMovementRepository = new();
     private readonly Mock<IOrderPartialPaymentRepository> _partialPaymentRepository = new();
+    private readonly Mock<ICashSessionPaymentReconciliationRepository> _paymentReconciliationRepository = new();
     private readonly Mock<ILogTrackerRepository> _logRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
@@ -66,7 +67,7 @@ public sealed class CloseCashSessionCommandSteps
     {
         var handler = new CloseCashSessionCommandHandler(
             _cashSessionRepository.Object, _saleRepository.Object, _cashMovementRepository.Object,
-            _partialPaymentRepository.Object, _logRepository.Object, _unitOfWork.Object);
+            _partialPaymentRepository.Object, _paymentReconciliationRepository.Object, _logRepository.Object, _unitOfWork.Object);
 
         _result = await handler.Handle(
             new CloseCashSessionCommand(cashSessionId, employeeId, closingAmount), CancellationToken.None);

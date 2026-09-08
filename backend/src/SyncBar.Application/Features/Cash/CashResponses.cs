@@ -22,8 +22,16 @@ public sealed record CashSummaryResponse(
     decimal PartialPaymentsTotal,
     decimal ExpectedCashAmount);
 
+public sealed record PaymentMethodReconciliationResponse(
+    long PaymentMethodId,
+    decimal ExpectedAmount,
+    decimal CountedAmount,
+    decimal DifferenceAmount);
+
 public sealed record CloseCashSessionResponse(
     long CashSessionId,
     decimal ExpectedAmount,
     decimal ClosingAmount,
-    decimal DifferenceAmount);
+    decimal DifferenceAmount,
+    decimal TotalDifferenceAmount,
+    IReadOnlyCollection<PaymentMethodReconciliationResponse> PaymentReconciliations);

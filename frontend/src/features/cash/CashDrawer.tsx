@@ -20,7 +20,7 @@ import {
     formatBRL,
     paymentMethodLabel,
 } from "../../lib/types";
-import type { CloseCashSessionResponse } from "../../lib/types";
+import type { CloseCashSessionResponse, PaymentMethodReconciliationResponse } from "../../lib/types";
 import { Overlay } from "../orders/Overlay";
 
 interface Props {
@@ -142,7 +142,15 @@ export function CashDrawer({ onClose }: Props) {
     });
 
     const closeMutation = useMutation({
-        mutationFn: () => closeCashSession(sessionId!, employeeId ?? 1, parseAmount(countedAmount)),
+        mutationFn: () => {
+            // Só envia a modalidade se o operador de fato digitou algo — um campo em branco não
+            // vira "conferido = 0" (que soaria como "recebemos zero", quando é só "não conferimos ainda").
+            const paymentMethodCounts = RECONCILE_METHODS
+                .filter((methodId) => (cardCounts[methodId] ?? "").trim() !== "")
+                .map((methodId) => ({ paymentMethodId: methodId, countedAmount: parseAmount(cardCounts[methodId]) }));
+
+            return closeCashSession(sessionId!, employeeId ?? 1, parseAmount(countedAmount), paymentMethodCounts);
+        },
         onSuccess: (result) => {
             setError(null);
             setCloseResult(result);
@@ -162,17 +170,47 @@ export function CashDrawer({ onClose }: Props) {
                 <div className="ticket" style={{ padding: 18, display: "grid", gap: 8 }} data-testid="close-result-view">
                     <div className="display" style={{ fontSize: "1.3rem" }}>Caixa fechado</div>
                     <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-dim)" }}>
-                        <span>Esperado em dinheiro</span>
+                        <span>Dinheiro — esperado</span>
                         <span className="mono-num">{formatBRL(closeResult.expectedAmount)}</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-dim)" }}>
-                        <span>Contado</span>
+                        <span>Dinheiro — contado</span>
                         <span className="mono-num">{formatBRL(closeResult.closingAmount)}</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: differenceState.color }}>
-                        <span>{differenceState.label}</span>
+                        <span>{differenceState.label} (dinheiro)</span>
                         <span className="mono-num">{formatBRL(Math.abs(closeResult.differenceAmount))}</span>
                     </div>
+
+                    {closeResult.paymentReconciliations.length > 0 && (
+                        <>
+                            <div style={{ borderTop: "1px solid var(--line-soft)", margin: "6px 0" }} />
+                            {closeResult.paymentReconciliations.map((reconciliation: PaymentMethodReconciliationResponse) => {
+                                const state = getDifferenceState(reconciliation.differenceAmount);
+                                return (
+                                    <div
+                                        key={reconciliation.paymentMethodId}
+                                        style={{ display: "flex", justifyContent: "space-between", color: state.color }}
+                                        data-testid={`close-reconciliation-${reconciliation.paymentMethodId}`}
+                                    >
+                                        <span>
+                                            {paymentMethodLabel[reconciliation.paymentMethodId] ?? "Outros"} — {state.label} (esperado{" "}
+                                            {formatBRL(reconciliation.expectedAmount)}, conferido {formatBRL(reconciliation.countedAmount)})
+                                        </span>
+                                        <span className="mono-num">{formatBRL(Math.abs(reconciliation.differenceAmount))}</span>
+                                    </div>
+                                );
+                            })}
+                        </>
+                    )}
+
+                    <div className="ticket-total" data-testid="close-total-difference">
+                        <span>Quebra de caixa — total geral</span>
+                        <span className="mono-num" style={{ color: getDifferenceState(closeResult.totalDifferenceAmount).color }}>
+                            {formatBRL(Math.abs(closeResult.totalDifferenceAmount))}
+                        </span>
+                    </div>
+
                     {printSettingsQuery.data?.printBillsEnabled && (
                         <button
                             type="button"

@@ -30,6 +30,7 @@ namespace SyncBar.Tests.Domain.Entities
             session.ClosingAmount.Should().BeNull();
             session.ExpectedAmount.Should().BeNull();
             session.DifferenceAmount.Should().BeNull();
+            session.TotalDifferenceAmount.Should().BeNull();
             session.ClosedAt.Should().BeNull();
             session.OpenedAt.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(1));
             session.CreatedAt.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(1));
@@ -66,6 +67,7 @@ namespace SyncBar.Tests.Domain.Entities
             session.ClosingAmount.Should().Be(520m);
             session.ExpectedAmount.Should().Be(500m);
             session.DifferenceAmount.Should().Be(20m);
+            session.TotalDifferenceAmount.Should().Be(20m);
             session.CashSessionStatusId.Should().Be(CashSessionStatusIds.Fechado);
             session.ClosedAt.Should().NotBeNull();
             session.ClosedAt.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(1));
@@ -118,6 +120,39 @@ namespace SyncBar.Tests.Domain.Entities
             result.IsSuccess.Should().BeFalse();
             result.Error.Code.Should().Be("CashSession.NotOpen");
             result.Error.Message.Should().Be("Only an open session can be closed.");
+        }
+
+        [Fact]
+        public void Close_WithPaymentReconciliations_ShouldSumTheirDifferencesIntoTotalDifferenceAmount()
+        {
+            // Arrange
+            var session = CashSession.Open(1, 7, 200m).Value;
+            // Dinheiro: fechamento 520, esperado 500 => +20.
+            // Cartao de credito: esperado 300, conferido 290 => -10. Pix: esperado 100, conferido 100 => 0.
+            var credit = CashSessionPaymentReconciliation.Create(cashSessionId: 1, PaymentMethodIds.CartaoCredito, 300m, 290m).Value;
+            var pix = CashSessionPaymentReconciliation.Create(cashSessionId: 1, PaymentMethodIds.Pix, 100m, 100m).Value;
+
+            // Act
+            var result = session.Close(closedByEmployeeId: 9, closingAmount: 520m, expectedAmount: 500m, paymentReconciliations: [credit, pix]);
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            session.DifferenceAmount.Should().Be(20m);
+            session.TotalDifferenceAmount.Should().Be(10m); // 20 (dinheiro) - 10 (credito) + 0 (pix)
+        }
+
+        [Fact]
+        public void Close_WithNullPaymentReconciliations_ShouldTreatTotalDifferenceAsCashDifferenceOnly()
+        {
+            // Arrange
+            var session = CashSession.Open(1, 7, 200m).Value;
+
+            // Act
+            var result = session.Close(closedByEmployeeId: 9, closingAmount: 480m, expectedAmount: 500m, paymentReconciliations: null);
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            session.TotalDifferenceAmount.Should().Be(session.DifferenceAmount);
         }
 
         [Fact]

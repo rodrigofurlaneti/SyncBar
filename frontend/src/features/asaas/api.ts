@@ -370,3 +370,61 @@ export const updateAsaasWebhookLogStatus = (
 
 export const deleteAsaasWebhookLog = (id: number, companyId: number): Promise<void> =>
   api<void>(`/api/asaas/webhook-logs/${id}?companyId=${companyId}`, { method: "DELETE" });
+
+// --- Métodos de pagamento por empresa/filial (BranchPaymentMethodSetting) --------------------
+//
+// Não é parte do gateway Asaas em si (não tem credencial, não fala com a API do Asaas) — mora
+// nesta mesma tela porque é aqui que o gerente já configura como a filial recebe pagamento. Cada
+// filial pode ligar/desligar suas próprias formas de recebimento; sem configuração própria, herda
+// a configuração padrão da empresa (BranchId null). Espelha BranchPaymentMethodSettingController.
+
+export interface BranchPaymentMethodSettingResponse {
+  id: number;
+  companyId: number;
+  branchId: number | null;
+  enablePix: boolean;
+  enableBoleto: boolean;
+  enableCreditCard: boolean;
+  enableDebitCard: boolean;
+  enableCashMachine: boolean;
+  isActive: boolean;
+}
+
+// GET /resolve retorna 200 com corpo `null` (não 404) quando a filial nao tem configuracao
+// propria nem a empresa tem uma configuracao padrao cadastrada — nesse caso a tela assume todos
+// os metodos ligados por padrao.
+export const resolvePaymentMethodSetting = (
+  companyId: number,
+  branchId?: number | null,
+): Promise<BranchPaymentMethodSettingResponse | null> =>
+  api<BranchPaymentMethodSettingResponse | null>(
+    `/api/branch-payment-method-settings/resolve?companyId=${companyId}${branchId ? `&branchId=${branchId}` : ""}`,
+  );
+
+export interface PaymentMethodFlags {
+  enablePix: boolean;
+  enableBoleto: boolean;
+  enableCreditCard: boolean;
+  enableDebitCard: boolean;
+  enableCashMachine: boolean;
+}
+
+export interface CreatePaymentMethodSettingPayload extends PaymentMethodFlags {
+  companyId: number;
+  branchId: number | null;
+}
+
+export const createPaymentMethodSetting = (
+  payload: CreatePaymentMethodSettingPayload,
+): Promise<BranchPaymentMethodSettingResponse> =>
+  api<BranchPaymentMethodSettingResponse>("/api/branch-payment-method-settings", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export interface UpdatePaymentMethodSettingPayload extends PaymentMethodFlags {
+  companyId: number;
+}
+
+export const updatePaymentMethodSetting = (id: number, payload: UpdatePaymentMethodSettingPayload): Promise<void> =>
+  api<void>(`/api/branch-payment-method-settings/${id}`, { method: "PUT", body: JSON.stringify(payload) });

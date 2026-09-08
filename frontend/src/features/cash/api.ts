@@ -22,14 +22,20 @@ export const openCashSession = (
     body: JSON.stringify({ cashRegisterId, openedByEmployeeId, openingAmount }),
   });
 
+export interface PaymentMethodCountRequest {
+  paymentMethodId: number;
+  countedAmount: number;
+}
+
 export const closeCashSession = (
   sessionId: number,
   closedByEmployeeId: number,
   closingAmount: number,
+  paymentMethodCounts?: PaymentMethodCountRequest[],
 ): Promise<CloseCashSessionResponse> =>
   api<CloseCashSessionResponse>(`/api/cash/sessions/${sessionId}/close`, {
     method: "PUT",
-    body: JSON.stringify({ closedByEmployeeId, closingAmount }),
+    body: JSON.stringify({ closedByEmployeeId, closingAmount, paymentMethodCounts }),
   });
 
 export const registerCashMovement = (

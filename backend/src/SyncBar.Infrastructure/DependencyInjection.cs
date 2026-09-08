@@ -56,6 +56,8 @@ public static class DependencyInjection
         services.AddScoped<ISaleRepository, SaleRepository>();
         services.AddScoped<ICashSessionRepository, CashSessionRepository>();
         services.AddScoped<ICashMovementRepository, CashMovementRepository>();
+        services.AddScoped<ICashSessionPaymentReconciliationRepository, CashSessionPaymentReconciliationRepository>();
+        services.AddScoped<IBranchPaymentMethodSettingRepository, BranchPaymentMethodSettingRepository>();
         services.AddScoped<ICashRegisterRepository, CashRegisterRepository>();
         services.AddScoped<IShiftClosingRepository, ShiftClosingRepository>();
         services.AddScoped<IShiftClosingSessionRepository, ShiftClosingSessionRepository>();
