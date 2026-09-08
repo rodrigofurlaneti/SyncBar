@@ -120,5 +120,5 @@ namespace SyncBar.API.Controllers
         long? CompanyId,
         long? BranchId,
         string Name,
-        bool IsActive);
+        [property: System.Text.Json.Serialization.JsonRequired] bool IsActive);
 }

@@ -40,8 +40,9 @@ COPY --from=build /app/publish .
 # toda vez que a API consome a API externa do Ifood). Sem isso pre-criado, o
 # Directory.CreateDirectory em runtime rodando como appuser (nao-root) falharia por falta de
 # permissao de escrita em /app (que fica root:root, so wwwroot era chowned antes).
-RUN mkdir -p /app/wwwroot/uploads /app/app_data/protecting-keys \
-    && chown -R appuser:appuser /app/wwwroot /app/app_data
+# A fila criptografada do WhatsApp também precisa de escrita e volume persistente.
+RUN mkdir -p /app/wwwroot/uploads /app/app_data/protecting-keys /app/data/whatsapp-outbox \
+    && chown -R appuser:appuser /app/wwwroot /app/app_data /app/data
 USER appuser
 
 # Injeta o hash do commit no ambiente da API (passado via build-args no Actions)
