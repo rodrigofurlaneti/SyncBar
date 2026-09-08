@@ -20,6 +20,7 @@ using SyncBar.Application.Features.Orders.ServiceFeeSetting;
 using SyncBar.Application.Features.Orders.SetQrViewEnabled;
 using SyncBar.Application.Features.Orders.SetTableReadingValidation;
 using SyncBar.Application.Features.Orders.SplitBill;
+using SyncBar.Application.Features.Orders.StartPreparation;
 using SyncBar.Application.Features.Orders.TransferComandaAllItem;
 using SyncBar.Application.Features.Orders.TransferComandaItem;
 using SyncBar.Application.Features.Orders.TransferItem;
@@ -105,6 +106,14 @@ public sealed class OrdersController(
             var isManager = User.IsInRole("Administrador") || User.IsInRole("Gerente");
             var result = await Mediator.Send(new UpdateOrderItemStatusCommand(
                 id, itemId, request.OrderItemStatusId, request.ActorEmployeeId, isManager), ct);
+            return result.IsFailure ? HandleFailure(result) : NoContent();
+        });
+
+    [HttpPut("{id:long}/start-preparation")]
+    public Task<IActionResult> StartPreparation(long id, CancellationToken ct) =>
+        ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(StartPreparation), async () =>
+        {
+            var result = await Mediator.Send(new StartOrderPreparationCommand(id), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 

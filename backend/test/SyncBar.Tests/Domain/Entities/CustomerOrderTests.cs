@@ -1015,6 +1015,55 @@ namespace SyncBar.Tests.Domain.Entities
             result.Error.Code.Should().Be("CustomerOrder.NotAwaitingPayment");
         }
 
+        // ---------- StartPreparation ----------
+
+        [Fact]
+        public void StartPreparation_WhenAberto_ShouldPromoteToEmAndamento()
+        {
+            // Arrange — pedido recém-criado, sem nenhum item lançado (ex.: pedido do iFood cujos
+            // itens não conciliaram com o catálogo por EAN, então AddItem nunca rodou).
+            var order = CreateOpenMesaOrder();
+
+            // Act
+            var result = order.StartPreparation(Now);
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            order.OrderStatusId.Should().Be(OrderStatusIds.EmAndamento);
+            order.UpdatedAt.Should().Be(Now);
+        }
+
+        [Fact]
+        public void StartPreparation_WhenAlreadyEmAndamento_ShouldBeNoOp()
+        {
+            // Arrange
+            var order = CreateOpenMesaOrder();
+            order.AddItem(100, 10.0m, 1m, null, 10, Now); // já promove pra EmAndamento
+
+            // Act
+            var result = order.StartPreparation(Now.AddMinutes(5));
+
+            // Assert
+            result.IsSuccess.Should().BeTrue();
+            order.OrderStatusId.Should().Be(OrderStatusIds.EmAndamento);
+            order.UpdatedAt.Should().Be(Now); // AddItem já setou; não deveria reatualizar de novo
+        }
+
+        [Fact]
+        public void StartPreparation_WhenNotOpen_ShouldReturnFailureResult()
+        {
+            // Arrange
+            var order = CreateOpenMesaOrder();
+            order.Cancel(Now);
+
+            // Act
+            var result = order.StartPreparation(Now);
+
+            // Assert
+            result.IsSuccess.Should().BeFalse();
+            result.Error.Code.Should().Be("CustomerOrder.NotOpen");
+        }
+
         // ---------- Cancel ----------
 
         [Fact]
