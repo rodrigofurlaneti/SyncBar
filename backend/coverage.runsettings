@@ -17,7 +17,14 @@
           <!-- Infra pura (EF Core configs/migrations, clients HTTP) fica fora da meta de 80%
                nesta fase — o alvo é regra de negócio (Domain + Application). Ajuste conforme os
                módulos forem sendo cobertos. -->
-          <Exclude>[SyncBar.Infrastructure]SyncBar.Infrastructure.Persistence.Migrations.*</Exclude>
+          <!-- Achado de revisão: com ExcludeByAttribute ativo, o coletor "XPlat Code Coverage"
+               falhava silenciosamente ao instrumentar WindowsRawPrinterTransport.cs — o único tipo
+               do projeto com código gerado por LibraryImportAttribute (P/Invoke) — e isso derrubava
+               a instrumentação do assembly SyncBar.Infrastructure INTEIRO (sumia do relatório, 0%
+               em todo arquivo do projeto, não só nesta classe). Excluir esta classe por nome
+               ANTES do filtro por atributo evita o problema; sem esta linha, nenhuma cobertura de
+               SyncBar.Infrastructure aparece no cobertura.xml, mesmo com os testes existindo. -->
+          <Exclude>[SyncBar.Infrastructure]SyncBar.Infrastructure.Persistence.Migrations.*,[SyncBar.Infrastructure]SyncBar.Infrastructure.Printing.WindowsRawPrinterTransport</Exclude>
           <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
         </Configuration>
       </DataCollector>

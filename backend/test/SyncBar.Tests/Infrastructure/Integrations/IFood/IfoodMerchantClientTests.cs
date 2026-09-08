@@ -82,6 +82,24 @@ public sealed class IfoodMerchantClientTests
         result.Interruptions.Should().ContainSingle(i => i.Id == "int-1" && i.Description == "Manutencao");
     }
 
+    // O teste de sucesso acima sempre tem "start"/"end" no JSON — GetDate() nunca cai no caminho
+    // "nenhuma propriedade bateu" (retorna null, e o chamador usa o fallback DateTime.Now/start).
+    [Fact]
+    public async Task GetInterruptionsAsync_ItemWithoutDates_ShouldFallBackToNowAndMatchingEnd()
+    {
+        _handler.EnqueueJson(HttpStatusCode.OK, """
+            {"interruptions":[
+                {"interruptionId":"int-2","description":"sem datas"}
+            ]}
+            """);
+
+        var result = await _client.GetInterruptionsAsync("tok", "MERCH-1", CancellationToken.None);
+
+        var interruption = result.Interruptions.Should().ContainSingle(i => i.Id == "int-2").Subject;
+        interruption.Start.Should().BeCloseTo(DateTime.Now, TimeSpan.FromMinutes(1));
+        interruption.End.Should().Be(interruption.Start);
+    }
+
     [Fact]
     public async Task GetInterruptionsAsync_Failure_ShouldReturnEmptyFailureResult()
     {
@@ -156,6 +174,27 @@ public sealed class IfoodMerchantClientTests
         result.Shifts.Should().ContainSingle(s => s.DayOfWeek == 1 && s.DurationMinutes == 600);
     }
 
+    // O teste de sucesso acima só exercita "MONDAY"/"TUESDAY" — cobre as demais variantes de
+    // dayOfWeek aceitas por ParseDayOfWeek (o restante do switch nunca era exercitado).
+    [Theory]
+    [InlineData("SUNDAY", 0)]
+    [InlineData("MONDAY", 1)]
+    [InlineData("TUESDAY", 2)]
+    [InlineData("WEDNESDAY", 3)]
+    [InlineData("THURSDAY", 4)]
+    [InlineData("FRIDAY", 5)]
+    [InlineData("SATURDAY", 6)]
+    public async Task GetOpeningHoursAsync_EachDayOfWeekName_ShouldMapToExpectedIndex(string dayName, int expectedIndex)
+    {
+        _handler.EnqueueJson(HttpStatusCode.OK, $$"""
+            {"shifts":[{"dayOfWeek":"{{dayName}}","start":"08:00","duration":600}]}
+            """);
+
+        var result = await _client.GetOpeningHoursAsync("tok", "MERCH-1", CancellationToken.None);
+
+        result.Shifts.Should().ContainSingle(s => s.DayOfWeek == expectedIndex);
+    }
+
     [Fact]
     public async Task GetOpeningHoursAsync_Failure_ShouldReturnEmptyFailureResult()
     {
@@ -179,6 +218,26 @@ public sealed class IfoodMerchantClientTests
         _handler.Requests[^1].Method.Should().Be(HttpMethod.Put);
         var body = _handler.RequestBodies[^1]!;
         body.Should().Contain("WEDNESDAY").And.Contain("09:30").And.Contain("480");
+    }
+
+    // O teste acima só exercita dayOfWeek=3 (WEDNESDAY) — cobre as demais posições do switch de
+    // FormatDayOfWeek, incluindo o fallback "_ => MONDAY" pra um índice fora do intervalo 0-6.
+    [Theory]
+    [InlineData(0, "SUNDAY")]
+    [InlineData(1, "MONDAY")]
+    [InlineData(2, "TUESDAY")]
+    [InlineData(4, "THURSDAY")]
+    [InlineData(5, "FRIDAY")]
+    [InlineData(6, "SATURDAY")]
+    [InlineData(99, "MONDAY")]
+    public async Task SetOpeningHoursAsync_EachDayOfWeekIndex_ShouldFormatToExpectedIfoodName(int dayOfWeek, string expectedName)
+    {
+        _handler.EnqueueJson(HttpStatusCode.OK, "");
+        var shifts = new[] { new IfoodOpeningHourShift(dayOfWeek, new TimeSpan(9, 0, 0), 60) };
+
+        await _client.SetOpeningHoursAsync("tok", "MERCH-1", shifts, CancellationToken.None);
+
+        _handler.RequestBodies[^1]!.Should().Contain(expectedName);
     }
 
     [Fact]
@@ -330,6 +389,45 @@ public sealed class IfoodMerchantClientTests
         var result = await _client.GetStatusByOperationAsync("tok", "MERCH-1", "TAKEOUT", CancellationToken.None);
 
         result.Validations.Should().ContainSingle(v => v.Message == "tudo certo");
+    }
+
+    // Cobre os ramos de ExtractValidationMessage ainda não exercitados: "message" ausente
+    // (retorna null direto) e "message" presente mas nem objeto nem string (cai no default => null).
+    [Fact]
+    public async Task GetStatusByOperationAsync_ValidationWithoutMessageProperty_ShouldHaveNullMessage()
+    {
+        _handler.EnqueueJson(HttpStatusCode.OK, """
+            {"operation":"DELIVERY","validations":[{"id":"v-1","state":"OK"}]}
+            """);
+
+        var result = await _client.GetStatusByOperationAsync("tok", "MERCH-1", "DELIVERY", CancellationToken.None);
+
+        result.Validations.Should().ContainSingle(v => v.Message == null);
+    }
+
+    [Fact]
+    public async Task GetStatusByOperationAsync_ValidationMessageAsUnsupportedType_ShouldHaveNullMessage()
+    {
+        _handler.EnqueueJson(HttpStatusCode.OK, """
+            {"operation":"DELIVERY","validations":[{"id":"v-1","state":"OK","message":123}]}
+            """);
+
+        var result = await _client.GetStatusByOperationAsync("tok", "MERCH-1", "DELIVERY", CancellationToken.None);
+
+        result.Validations.Should().ContainSingle(v => v.Message == null);
+    }
+
+    // ParseValidations tem um early-return quando a resposta não tem "validations" como array —
+    // nenhum teste existente cobria uma resposta de status sem essa propriedade.
+    [Fact]
+    public async Task GetStatusByOperationAsync_ResponseWithoutValidationsArray_ShouldReturnEmptyValidations()
+    {
+        _handler.EnqueueJson(HttpStatusCode.OK, """{"operation":"DELIVERY","available":true}""");
+
+        var result = await _client.GetStatusByOperationAsync("tok", "MERCH-1", "DELIVERY", CancellationToken.None);
+
+        result.Success.Should().BeTrue();
+        result.Validations.Should().BeEmpty();
     }
 
     [Fact]

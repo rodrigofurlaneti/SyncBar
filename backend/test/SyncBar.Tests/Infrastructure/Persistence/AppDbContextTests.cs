@@ -1,13 +1,38 @@
+using System.Reflection;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Exceptions;
+using SyncBar.Infrastructure.Persistence;
 using Xunit;
 
 namespace SyncBar.Tests.Infrastructure.Persistence
 {
     public sealed class AppDbContextTests : Repositories.RepositoryTestBase
     {
+        // AppDbContext expõe ~90 DbSet<T> como `public DbSet<X> Xs => Set<X>();` — nenhum outro
+        // teste desta classe (nem os de repositório, que recebem o Context já pronto) precisa
+        // tocar em cada uma dessas propriedades individualmente, então a maioria ficava com 0 hits
+        // de cobertura mesmo sendo puro código de passagem sem lógica própria. Em vez de escrever
+        // dezenas de testes quase idênticos, este único teste invoca todo getter DbSet<T> via
+        // reflection e confirma que nenhum devolve null — cobre a linha e ainda pega, de graça, um
+        // DbSet mal digitado que aponte pro tipo errado ou lance em tempo de execução.
+        [Fact]
+        public void AllDbSetProperties_ShouldBeAccessibleAndReturnNonNullSet()
+        {
+            var dbSetProperties = typeof(AppDbContext).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.PropertyType.IsGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>))
+                .ToList();
+
+            dbSetProperties.Should().NotBeEmpty();
+
+            foreach (var property in dbSetProperties)
+            {
+                var value = property.GetValue(Context);
+                value.Should().NotBeNull($"a propriedade {property.Name} deveria expor um DbSet válido");
+            }
+        }
+
         [Fact]
         public async Task CommitAsync_PendingAddedEntity_PersistsAndReturnsAffectedRowCount()
         {

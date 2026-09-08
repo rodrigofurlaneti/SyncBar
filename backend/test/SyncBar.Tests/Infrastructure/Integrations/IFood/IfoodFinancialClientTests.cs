@@ -105,6 +105,42 @@ public sealed class IfoodFinancialClientTests
         url.Should().Contain("/settlements").And.Contain("beginCalculationDate=").And.Contain("endCalculationDate=");
     }
 
+    // O teste acima só manda "amount" como número JSON — GetDecimal também aceita o valor vindo
+    // como string (fallback decimal.TryParse), ramo nunca exercitado até agora. Valor inteiro (sem
+    // separador decimal) de propósito: decimal.TryParse aqui usa a cultura corrente do processo,
+    // então um separador fracionário fixo ("." ou ",") tornaria o teste dependente da cultura do
+    // ambiente onde a suíte roda.
+    [Fact]
+    public async Task GetSettlementsAsync_AmountAsString_ShouldParseSuccessfully()
+    {
+        _handler.EnqueueJson(HttpStatusCode.OK, """
+            {"settlements":[{"startDateCalculation":"2026-01-01","closingItems":[
+                {"id":"s-2","type":"REPASSE","amount":"75","status":"PAID"}
+             ]}]}
+            """);
+
+        var settlements = await _client.GetSettlementsAsync("tok", "MERCH-1", DateTime.Today, DateTime.Today, CancellationToken.None);
+
+        settlements.Should().ContainSingle(s => s.Id == "s-2" && s.Amount == 75m);
+    }
+
+    // GetDecimal(item, "amount", "value") só segue pro segundo nome candidato se o primeiro
+    // existir mas não bater nem como número nem como string parseável — nenhum teste até agora
+    // tinha um item com "amount" de tipo inesperado E um "value" numérico como alternativa válida.
+    [Fact]
+    public async Task GetSettlementsAsync_AmountWrongTypeWithValueFallback_ShouldUseValue()
+    {
+        _handler.EnqueueJson(HttpStatusCode.OK, """
+            {"settlements":[{"startDateCalculation":"2026-01-01","closingItems":[
+                {"id":"s-3","type":"REPASSE","amount":true,"value":30,"status":"PAID"}
+             ]}]}
+            """);
+
+        var settlements = await _client.GetSettlementsAsync("tok", "MERCH-1", DateTime.Today, DateTime.Today, CancellationToken.None);
+
+        settlements.Should().ContainSingle(s => s.Id == "s-3" && s.Amount == 30m);
+    }
+
     [Fact]
     public async Task GetSettlementsAsync_PeriodWithoutClosingItems_ShouldBeSkipped()
     {
