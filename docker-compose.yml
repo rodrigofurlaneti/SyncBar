@@ -21,6 +21,7 @@
       # qualquer segredo criptografado com a chave anterior ficava ilegível ("erro de
       # criptografia (Data Protection)" ao tentar pegar o token do Ifood).
       - syncbar-dataprotection-keys:/app/app_data/protecting-keys
+      - syncbar-whatsapp-outbox:/app/data/whatsapp-outbox
 
   frontend:
     image: ghcr.io/rodrigofurlaneti/syncbar-frontend:latest
@@ -36,3 +37,4 @@
 volumes:
   syncbar-uploads:
   syncbar-dataprotection-keys:
+  syncbar-whatsapp-outbox:

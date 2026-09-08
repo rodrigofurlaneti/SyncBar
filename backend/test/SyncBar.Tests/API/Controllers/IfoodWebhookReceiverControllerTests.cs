@@ -29,7 +29,7 @@ public sealed class IfoodWebhookReceiverControllerTests
         const string body = "{\n \"description\": \"ação\" }";
         _receiver.ReceiveAsync(1, Arg.Is<byte[]>(value => value.SequenceEqual(Encoding.UTF8.GetBytes(body))), "signature", Arg.Any<CancellationToken>())
             .Returns(new IfoodWebhookReceipt(202));
-        var result = await Create(body).Receive(1, default);
+        var result = await Create(body).Receive(1, default, "signature");
         result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(202);
     }
 
@@ -38,7 +38,7 @@ public sealed class IfoodWebhookReceiverControllerTests
     {
         _receiver.ReceiveAsync(1, Arg.Any<byte[]>(), "signature", Arg.Any<CancellationToken>())
             .Returns(Task.FromException<IfoodWebhookReceipt>(new InvalidOperationException("Database unavailable")));
-        var result = await Create("{}").Receive(1, default);
+        var result = await Create("{}").Receive(1, default, "signature");
         result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(503);
     }
 

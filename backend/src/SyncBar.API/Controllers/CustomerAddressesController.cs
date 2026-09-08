@@ -145,7 +145,7 @@ namespace SyncBar.API.Controllers
         string? ZipCode);
 
     public sealed record UpdateCustomerAddressRequest(
-        long Id,
+        [property: System.Text.Json.Serialization.JsonRequired] long Id,
         long? CompanyId,
         long? BranchId,
         long? CustomerId,

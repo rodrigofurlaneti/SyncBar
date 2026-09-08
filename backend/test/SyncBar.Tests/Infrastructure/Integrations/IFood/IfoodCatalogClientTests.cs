@@ -107,7 +107,7 @@ public sealed class IfoodCatalogClientTests
 
         result.Success.Should().BeTrue();
         LastRequestBody.Should().Contain("Adicionais").And.Contain("Queijo extra");
-        using var payload = System.Text.Json.JsonDocument.Parse(LastRequestBody);
+        using var payload = System.Text.Json.JsonDocument.Parse(LastRequestBody ?? throw new InvalidOperationException("Expected an outgoing request body."));
         var root = payload.RootElement;
         root.GetProperty("products")[0].GetProperty("optionGroups")[0].GetProperty("id").GetString()
             .Should().Be(optionGroups[0].GroupId.ToString());

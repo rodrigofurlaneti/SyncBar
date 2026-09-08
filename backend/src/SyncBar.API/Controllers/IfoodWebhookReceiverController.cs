@@ -14,7 +14,8 @@ public sealed class IfoodWebhookReceiverController(
 
     [HttpPost]
     [RequestSizeLimit(MaximumBodyBytes)]
-    public async Task<IActionResult> Receive(long companyId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Receive(long companyId, CancellationToken cancellationToken,
+        [FromHeader(Name = "X-IFood-Signature")] string? signature = null)
     {
         if (companyId <= 0) return BadRequest();
         if (Request.ContentLength > MaximumBodyBytes) return StatusCode(413);
@@ -28,7 +29,7 @@ public sealed class IfoodWebhookReceiverController(
         }
         try
         {
-            var receipt = await receiver.ReceiveAsync(companyId, body.ToArray(), Request.Headers["X-IFood-Signature"].ToString(), cancellationToken);
+            var receipt = await receiver.ReceiveAsync(companyId, body.ToArray(), signature, cancellationToken);
             return receipt.MerchantIds is null ? StatusCode(receipt.StatusCode)
                 : StatusCode(receipt.StatusCode, new { merchantIds = receipt.MerchantIds });
         }
