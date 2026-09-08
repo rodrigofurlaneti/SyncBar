@@ -112,7 +112,7 @@ namespace SyncBar.Tests.Infrastructure.Persistence.Repositories
         }
 
         [Fact]
-        public async Task GetByBranchAndPeriodAsync_OutsidePeriod_ReturnsEmptyList()
+        public async Task GetByBranchAndPeriodAsync_OpenBeforePeriod_RemainsPending()
         {
             var register = CashRegister.Create(5, "Caixa 1").Value;
             await Context.AddAsync(register);
@@ -122,7 +122,7 @@ namespace SyncBar.Tests.Infrastructure.Persistence.Repositories
             var result = await _repository.GetByBranchAndPeriodAsync(
                 5, DateTime.Now.AddDays(10), DateTime.Now.AddDays(20));
 
-            result.Should().BeEmpty();
+            result.Should().ContainSingle();
         }
 
         [Fact]
@@ -142,3 +142,4 @@ namespace SyncBar.Tests.Infrastructure.Persistence.Repositories
         }
     }
 }
+

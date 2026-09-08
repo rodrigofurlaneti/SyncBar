@@ -75,7 +75,7 @@ public sealed class ReceiveAsaasWebhookCommandHandlerTests
     {
         _paymentRepository.GetByAsaasPaymentIdForUpdateAsync("pay_1", Arg.Any<CancellationToken>())
             .Returns((AsaasIntegrationPayment?)null);
-        var command = new ReceiveAsaasWebhookCommand(ValidPayload, null, null);
+        var command = new ReceiveAsaasWebhookCommand(ValidPayload, "the-secret", null);
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -102,7 +102,7 @@ public sealed class ReceiveAsaasWebhookCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NoWebhookSecretConfigured_ShouldSkipTokenValidation()
+    public async Task Handle_NoWebhookSecretConfigured_ShouldRejectEvent()
     {
         var payment = CreatePayment();
         _paymentRepository.GetByAsaasPaymentIdForUpdateAsync("pay_1", Arg.Any<CancellationToken>()).Returns(payment);
@@ -110,12 +110,12 @@ public sealed class ReceiveAsaasWebhookCommandHandlerTests
         var setting = AsaasIntegrationSetting.Create(1, null, "api-key").Value; // sem WebhookSecretEncrypted
         _settingRepository.GetByBranchOrCompanyFallbackAsync(1, 1, Arg.Any<CancellationToken>()).Returns(setting);
 
-        var command = new ReceiveAsaasWebhookCommand(ValidPayload, null, null);
+        var command = new ReceiveAsaasWebhookCommand(ValidPayload, "the-secret", null);
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        result.IsSuccess.Should().BeTrue();
-        payment.Status.Should().Be("RECEIVED");
+        result.IsFailure.Should().BeTrue();
+        payment.Status.Should().Be("PENDING");
     }
 
     [Fact]
@@ -152,10 +152,10 @@ public sealed class ReceiveAsaasWebhookCommandHandlerTests
         _paymentRepository.GetByAsaasPaymentIdForUpdateAsync("pay_1", Arg.Any<CancellationToken>()).Returns(payment);
         _branchRepository.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(CreateBranch());
         _settingRepository.GetByBranchOrCompanyFallbackAsync(1, 1, Arg.Any<CancellationToken>())
-            .Returns((AsaasIntegrationSetting?)null);
+            .Returns(AsaasIntegrationSetting.Create(1, null, "api-key", "the-secret").Value);
         _orderRepository.GetByIdForUpdateAsync(10, Arg.Any<CancellationToken>()).Returns(order);
 
-        var command = new ReceiveAsaasWebhookCommand(ValidPayload, null, null);
+        var command = new ReceiveAsaasWebhookCommand(ValidPayload, "the-secret", null);
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -170,10 +170,10 @@ public sealed class ReceiveAsaasWebhookCommandHandlerTests
         _paymentRepository.GetByAsaasPaymentIdForUpdateAsync("pay_1", Arg.Any<CancellationToken>()).Returns(payment);
         _branchRepository.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(CreateBranch());
         _settingRepository.GetByBranchOrCompanyFallbackAsync(1, 1, Arg.Any<CancellationToken>())
-            .Returns((AsaasIntegrationSetting?)null);
+            .Returns(AsaasIntegrationSetting.Create(1, null, "api-key", "the-secret").Value);
         _webhookLogRepository.ExistsByEventIdAsync("evt_1", Arg.Any<CancellationToken>()).Returns(false);
 
-        var command = new ReceiveAsaasWebhookCommand(ValidPayload, null, "127.0.0.1");
+        var command = new ReceiveAsaasWebhookCommand(ValidPayload, "the-secret", "127.0.0.1");
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -190,16 +190,19 @@ public sealed class ReceiveAsaasWebhookCommandHandlerTests
         _paymentRepository.GetByAsaasPaymentIdForUpdateAsync("pay_1", Arg.Any<CancellationToken>()).Returns(payment);
         _branchRepository.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(CreateBranch());
         _settingRepository.GetByBranchOrCompanyFallbackAsync(1, 1, Arg.Any<CancellationToken>())
-            .Returns((AsaasIntegrationSetting?)null);
+            .Returns(AsaasIntegrationSetting.Create(1, null, "api-key", "the-secret").Value);
         _webhookLogRepository.ExistsByEventIdAsync("evt_1", Arg.Any<CancellationToken>()).Returns(true);
 
-        var command = new ReceiveAsaasWebhookCommand(ValidPayload, null, null);
+        var command = new ReceiveAsaasWebhookCommand(ValidPayload, "the-secret", null);
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         await _webhookLogRepository.DidNotReceive().AddAsync(Arg.Any<AsaasIntegrationWebhookLog>(), Arg.Any<CancellationToken>());
         // A sincronização do pagamento roda de novo mesmo assim — reaplicar o mesmo status é inofensivo.
-        payment.Status.Should().Be("RECEIVED");
+        payment.Status.Should().Be("PENDING");
+        _paymentRepository.DidNotReceive().Update(Arg.Any<AsaasIntegrationPayment>());
     }
 }
+
+

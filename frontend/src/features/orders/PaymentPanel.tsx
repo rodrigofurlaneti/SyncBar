@@ -1,4 +1,7 @@
-﻿import { useState } from "react";
+import { useCashRegister } from "../cash/useCashRegister";
+import { usePaymentMethods } from "../cash/usePaymentMethods";
+import { CashRegisterField } from "../cash/CashRegisterField";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2"; // Adicionado SweetAlert2
 import { getOpenSession, openCashSession } from "../cash/api";
@@ -6,10 +9,8 @@ import { registerSale, type SalePaymentInput } from "../billing/api";
 import { useAuthStore } from "../../stores/authStore";
 import { ApiError } from "../../lib/apiClient";
 import {
-    DEFAULT_CASH_REGISTER_ID,
     PaymentMethod,
     formatBRL,
-    paymentMethodLabel,
 } from "../../lib/types";
 import type { OrderResponse } from "../../lib/types";
 
@@ -46,6 +47,9 @@ const Toast = Swal.mixin({
 export function PaymentPanel({ order, onPaid }: Props) {
     const queryClient = useQueryClient();
     const { employeeId } = useAuthStore();
+    const cashRegister = useCashRegister(order.branchId);
+    const registerId = cashRegister.registerId;
+    const paymentMethods = usePaymentMethods(order.branchId);
     const [rows, setRows] = useState<PaymentRow[]>([
         { paymentMethodId: PaymentMethod.Dinheiro, amount: "", authorizationCode: "" },
     ]);
@@ -54,9 +58,10 @@ export function PaymentPanel({ order, onPaid }: Props) {
     const [splitCount, setSplitCount] = useState("2");
 
     const sessionQuery = useQuery({
-        queryKey: ["cash", "open", DEFAULT_CASH_REGISTER_ID],
-        queryFn: () => getOpenSession(DEFAULT_CASH_REGISTER_ID),
+        queryKey: ["cash", "open", registerId!],
+        queryFn: () => getOpenSession(registerId!),
         retry: false,
+        enabled: !!registerId,
     });
 
     const noSession =
@@ -71,7 +76,7 @@ export function PaymentPanel({ order, onPaid }: Props) {
 
     const openSessionMutation = useMutation({
         mutationFn: () =>
-            openCashSession(DEFAULT_CASH_REGISTER_ID, employeeId ?? 1, parseAmount(openingAmount)),
+            openCashSession(registerId!, employeeId ?? 1, parseAmount(openingAmount)),
         onSuccess: () => {
             Toast.fire({ icon: "success", title: "Caixa aberto com sucesso." });
             void queryClient.invalidateQueries({ queryKey: ["cash"] });
@@ -90,7 +95,7 @@ export function PaymentPanel({ order, onPaid }: Props) {
         .reduce((sum, row) => sum + Math.round(parseAmount(row.amount) * 100), 0) / 100;
     const change = Math.max(0, Number((totalPaid - amountDue).toFixed(2)));
     const changeValid = change === 0 || cashPaid >= change;
-    const canConfirm = sessionQuery.isSuccess && !!sessionQuery.data?.id && totalPaid >= amountDue && changeValid && rows.every((r) => Math.round(parseAmount(r.amount) * 100) > 0);
+    const canConfirm = rows.every(r => paymentMethods.allowed(r.paymentMethodId)) && sessionQuery.isSuccess && !!sessionQuery.data?.id && totalPaid >= amountDue && changeValid && rows.every((r) => Math.round(parseAmount(r.amount) * 100) > 0);
 
     const payMutation = useMutation({
         mutationFn: () => {
@@ -157,8 +162,11 @@ export function PaymentPanel({ order, onPaid }: Props) {
         );
     };
 
-    if (sessionQuery.isLoading)
+    if (cashRegister.isLoading || sessionQuery.isLoading)
         return <p style={{ color: "var(--ink-dim)" }}>Verificando caixa…</p>;
+
+    if (cashRegister.isError || !registerId)
+        return <CashRegisterField branchId={order.branchId} />;
 
     if (noCashAccess)
         return (
@@ -206,6 +214,8 @@ export function PaymentPanel({ order, onPaid }: Props) {
 
     return (
         <div style={{ display: "grid", gap: 12 }} data-testid="payment-panel">
+            <CashRegisterField branchId={order.branchId} />
+            {paymentMethods.isError && <p role="alert" className="error-text">Não foi possível consultar as formas de pagamento. <button type="button" onClick={() => void paymentMethods.refetch()}>Tentar novamente</button></p>}
             <div className="display" style={{ fontSize: "1.2rem" }}>
                 Pagamento — {formatBRL(amountDue)}
             </div>
@@ -237,7 +247,7 @@ export function PaymentPanel({ order, onPaid }: Props) {
                         onChange={(e) => setRow(index, { paymentMethodId: Number(e.target.value) })}
                         data-testid={`select-payment-method-${index}`}
                     >
-                        {Object.entries(paymentMethodLabel).map(([id, label]) => (
+                        {paymentMethods.methods.map(([id, label]) => (
                             <option key={id} value={id}>
                                 {label}
                             </option>
@@ -324,3 +334,5 @@ export function PaymentPanel({ order, onPaid }: Props) {
         </div>
     );
 }
+
+

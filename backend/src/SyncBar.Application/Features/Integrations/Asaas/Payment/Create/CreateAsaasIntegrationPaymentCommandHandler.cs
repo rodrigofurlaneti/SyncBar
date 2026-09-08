@@ -84,6 +84,10 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Create
                             request.InstallmentCount,
                             cancellationToken);
                     }
+                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        return Result.Failure<CreateAsaasIntegrationPaymentResponse>(Error.Failure("AsaasApi.Timeout", "O Asaas não respondeu no prazo. Consulte o pedido antes de tentar novamente."));
+                    }
                     catch (HttpRequestException ex)
                     {
                         return Result.Failure<CreateAsaasIntegrationPaymentResponse>(

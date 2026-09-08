@@ -16,6 +16,14 @@ namespace SyncBar.API.Controllers
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork) : ApiController(mediator)
     {
+        [HttpPost("debito")]
+        public async Task<IActionResult> PayWithDebit([FromBody] CheckoutPixRequest request, CancellationToken ct)
+        {
+            if (request.CustomerOrderId is null or <= 0) return BadRequest(new { message = "Pedido obrigatório." });
+            var result = await Mediator.Send(new SyncBar.Application.Features.Checkout.PayOrderWithDebitCard.PayOrderWithDebitCardCommand(request.CustomerOrderId.Value), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+        }
+
         [HttpPost("pix")]
         public Task<IActionResult> PayWithPix([FromBody] CheckoutPixRequest request, CancellationToken ct) =>
             ExecuteWithLogAsync(logRepository, unitOfWork, nameof(CheckoutController), nameof(PayWithPix), async () =>

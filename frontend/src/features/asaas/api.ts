@@ -387,6 +387,8 @@ export const deleteAsaasWebhookLog = (id: number, companyId: number): Promise<vo
 // a configuração padrão da empresa (BranchId null). Espelha BranchPaymentMethodSettingController.
 
 export interface BranchPaymentMethodSettingResponse {
+  createdAt?: string;
+  updatedAt?: string | null;
   id: number;
   companyId: number;
   branchId: number | null;

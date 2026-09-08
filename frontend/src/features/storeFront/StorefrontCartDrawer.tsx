@@ -1,4 +1,4 @@
-﻿import { useState, useId, useEffect, useMemo, useCallback } from "react";
+import { useState, useId, useEffect, useMemo, useCallback } from "react";
 import Swal from "sweetalert2";
 import { useQuery } from "@tanstack/react-query";
 import { getStorefrontPaymentMethods } from "./checkoutApi";
@@ -21,7 +21,7 @@ export type CustomerSessionData = {
     customerId?: number;
 };
 
-export type PaymentMethod = "PIX" | "MAQUININHA" | "CREDITO" | "BOLETO";
+export type PaymentMethod = "PIX" | "MAQUININHA" | "CREDITO" | "DEBITO" | "BOLETO";
 
 export type NewCardData = {
     holderName: string;
@@ -161,6 +161,7 @@ export function StorefrontCartDrawer({
         return [
             ...(!settings || settings.enablePix ? ["PIX" as const] : []),
             ...(!settings || settings.enableCreditCard ? ["CREDITO" as const] : []),
+            ...(!settings || settings.enableDebitCard ? ["DEBITO" as const] : []),
             ...(!settings || settings.enableBoleto ? ["BOLETO" as const] : []),
             ...(!settings || settings.enableCashMachine ? ["MAQUININHA" as const] : []),
         ];
@@ -680,6 +681,8 @@ export function StorefrontCartDrawer({
                                     >
                                         Cartão de Crédito
                                     </button>}
+                                    {availableMethods.includes("DEBITO") && <button type="button" className="selection-btn" aria-pressed={selectedPaymentMethod === "DEBITO"} style={selectedPaymentMethod === "DEBITO" ? { borderColor: "#3b82f6", color: "#3b82f6" } : {}} onClick={() => setPaymentMethod("DEBITO")}>Cartão de Débito (Asaas)</button>}
+                                    {selectedPaymentMethod === "DEBITO" && <p>Você concluirá o pagamento na página segura do Asaas.</p>}
                                     {availableMethods.includes("BOLETO") && <button
                                         type="button"
                                         onClick={() => setPaymentMethod("BOLETO")}
@@ -834,3 +837,4 @@ export function StorefrontCartDrawer({
         </div>
     );
 }
+

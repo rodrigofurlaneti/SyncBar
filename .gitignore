@@ -424,4 +424,8 @@ capacitor.config.ts.local
 *.p12
 *.pem
 3-BackEnd/src/PointsTableAndExams.Api/appsettings.json
-3-BackEnd/src/PointsTableAndExams.Api/appsettings.Development.json
+3-BackEnd/src/PointsTableAndExams.Api/appsettings.Development.json# Local validation artifacts
+/frontend/storybook-static/
+/frontend/npm-audit.json
+/frontend/*-validation.txt
+/audit-test-output.txt

@@ -24,7 +24,7 @@ public sealed class CloseShiftClosingCommandHandlerTests
     {
         _handler = new CloseShiftClosingCommandHandler(
             _shiftClosingRepository, _cashSessionRepository, _shiftClosingSessionRepository,
-            _logRepository, _unitOfWork);
+            _logRepository, _unitOfWork, Substitute.For<ICashSessionPaymentReconciliationRepository>());
     }
 
     private static ShiftClosing CreateOpenShift(long branchId = 1)
@@ -176,3 +176,4 @@ public sealed class CloseShiftClosingCommandHandlerTests
         await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
     }
 }
+

@@ -29,7 +29,7 @@ public sealed class PayOrderWithBoletoCommandHandlerTests
     public PayOrderWithBoletoCommandHandlerTests()
     {
         _handler = new PayOrderWithBoletoCommandHandler(
-            _checkoutPreparer, _paymentRepository, _asaasService, _mediator, _logRepository, _unitOfWork);
+            _checkoutPreparer, _paymentRepository, _asaasService, _mediator, _logRepository, _unitOfWork, SyncBar.Tests.PaymentAvailabilityFixture.Allowed());
     }
 
     private static void SetId(Entity entity, long id)
@@ -155,3 +155,4 @@ public sealed class PayOrderWithBoletoCommandHandlerTests
         result.Error.Code.Should().Be("Asaas.PaymentAlreadyExists");
     }
 }
+

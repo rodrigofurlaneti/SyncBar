@@ -1,4 +1,5 @@
-﻿using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Application.Features.Cash;
+using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
@@ -14,6 +15,7 @@ internal sealed class RegisterPartialPaymentCommandHandler : BaseCommandHandler<
     private readonly IOrderPartialPaymentRepository _partialPaymentRepository;
     private readonly IPrintingService _printingService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPaymentMethodAvailability _availability;
 
     public RegisterPartialPaymentCommandHandler(
         ICustomerOrderRepository orderRepository,
@@ -21,14 +23,14 @@ internal sealed class RegisterPartialPaymentCommandHandler : BaseCommandHandler<
         IOrderPartialPaymentRepository partialPaymentRepository,
         IPrintingService printingService,
         ILogTrackerRepository logRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork, IPaymentMethodAvailability availability)
         : base(logRepository, unitOfWork)
     {
         _orderRepository = orderRepository;
         _cashSessionRepository = cashSessionRepository;
         _partialPaymentRepository = partialPaymentRepository;
         _printingService = printingService;
-        _unitOfWork = unitOfWork;
+        _unitOfWork = unitOfWork; _availability = availability;
     }
 
     public override Task<Result<long>> Handle(RegisterPartialPaymentCommand request, CancellationToken cancellationToken) =>
@@ -41,6 +43,8 @@ internal sealed class RegisterPartialPaymentCommandHandler : BaseCommandHandler<
             if (orderValidation.IsFailure)
                 return Result.Failure<long>(orderValidation.Error);
 
+            var available = await _availability.ValidateAsync(order!.BranchId, [request.PaymentMethodId], cancellationToken);
+            if (available.IsFailure) return Result.Failure<long>(available.Error);
             var session = await _cashSessionRepository.GetByIdAsync(request.CashSessionId, cancellationToken);
             var sessionValidation = ValidateCashSession(session);
             if (sessionValidation.IsFailure)

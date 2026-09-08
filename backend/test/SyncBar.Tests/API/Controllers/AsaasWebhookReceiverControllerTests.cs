@@ -52,7 +52,7 @@ public sealed class AsaasWebhookReceiverControllerTests
     }
 
     [Fact]
-    public async Task Receive_OtherFailure_ShouldStillReturnOk()
+    public async Task Receive_OtherFailure_ShouldReturnBadRequest()
     {
         SetupRequest();
         _mediator.Send(Arg.Any<ReceiveAsaasWebhookCommand>(), Arg.Any<CancellationToken>())
@@ -60,6 +60,7 @@ public sealed class AsaasWebhookReceiverControllerTests
 
         var result = await _controller.Receive(JsonDocument.Parse("{}").RootElement, null, CancellationToken.None);
 
-        result.Should().BeOfType<OkResult>();
+        result.Should().BeOfType<BadRequestObjectResult>();
     }
 }
+

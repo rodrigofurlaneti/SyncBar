@@ -54,6 +54,7 @@ test.describe('Caixa - CashDrawer', () => {
     test.use({ viewport: { width: 1280, height: 1600 } });
 
     test.beforeEach(async ({ page }) => {
+        await page.route('**/api/cash/registers/branch/*', route => route.fulfill({json:[{id:1,name:'Caixa 1'}]}));
         await page.route('*/**/api/auth/login', async (route) => {
             if (await opts(route)) return;
             await route.fulfill({ status: 200, json: { accessToken: 'token', user: { id: 1, name: 'Admin', companyId: 1, branchId: 1 } } });
@@ -85,7 +86,7 @@ test.describe('Caixa - CashDrawer', () => {
         await expect(page.getByTestId('open-session-view')).toBeVisible();
         await expect(page.getByTestId('open-session-view')).toContainText('Nenhuma sessão aberta neste caixa.');
         await expect(page.getByTestId('opening-amount-input')).toHaveValue('');
-        await expect(page.getByTestId('open-cash-btn')).toBeEnabled();
+        await expect(page.getByTestId('open-cash-btn')).toBeDisabled();
     });
 
     test('Deve abrir o caixa com o fundo de troco informado', async ({ page }) => {
@@ -355,6 +356,7 @@ test.describe('Caixa - CashDrawer', () => {
         // Só preenche a conferência do Cartão de Crédito — Débito e Pix ficam em branco e não
         // devem entrar no payload enviado ao backend.
         await page.getByTestId('conference-input-2').fill('190');
+        await page.getByTestId('conference-input-4').fill('50');
         await page.getByTestId('counted-amount-input').fill('95');
         await page.getByTestId('close-cash-btn').click();
 
@@ -367,7 +369,7 @@ test.describe('Caixa - CashDrawer', () => {
         expect(closeRequestBody).toEqual({
             closedByEmployeeId: 1,
             closingAmount: 95,
-            paymentMethodCounts: [{ paymentMethodId: 2, countedAmount: 190 }],
+            paymentMethodCounts: [{ paymentMethodId: 2, countedAmount: 190 }, {paymentMethodId:4,countedAmount:50}],
         });
 
         await expect(page.getByTestId('close-result-view')).toContainText('Falta (dinheiro)');
@@ -398,6 +400,8 @@ test.describe('Caixa - CashDrawer', () => {
 
         await openCashDrawer(page);
 
+        await page.getByTestId('conference-input-2').fill('200');
+        await page.getByTestId('conference-input-4').fill('50');
         await page.getByTestId('counted-amount-input').fill('100');
         await page.getByTestId('close-cash-btn').click();
 
@@ -433,6 +437,8 @@ test.describe('Caixa - CashDrawer', () => {
 
         await openCashDrawer(page);
 
+        await page.getByTestId('conference-input-2').fill('200');
+        await page.getByTestId('conference-input-4').fill('50');
         await page.getByTestId('counted-amount-input').fill('100');
         await page.getByTestId('close-cash-btn').click();
 
@@ -443,4 +449,24 @@ test.describe('Caixa - CashDrawer', () => {
         await expect(page.getByTestId('error-message')).toContainText('Apenas uma sessão aberta pode ser fechada.');
         await expect(page.getByTestId('close-result-view')).toHaveCount(0);
     });
+
+    test('Bloqueia texto inválido e modalidades não conferidas antes de encerrar', async ({ page }) => {
+        let calls = 0;
+        await page.route('**/api/cash/registers/1/open-session', route => route.fulfill({json:openSession}));
+        await page.route('**/api/cash/sessions/500/summary', route => route.fulfill({json:baseSummary}));
+        await page.route('**/api/sales/session/500', route => route.fulfill({json:[]}));
+        await page.route('**/api/cash/sessions/500/close', route => { calls++; return route.fulfill({status:204}); });
+        await openCashDrawer(page);
+        await page.getByTestId('counted-amount-input').fill('abc');
+        await expect(page.getByTestId('close-cash-btn')).toBeDisabled();
+        await page.getByTestId('counted-amount-input').fill('100');
+        await expect(page.getByTestId('close-cash-btn')).toBeDisabled();
+        await page.getByTestId('conference-input-2').fill('200');
+        await expect(page.getByTestId('close-cash-btn')).toBeDisabled();
+        await page.getByTestId('conference-input-4').fill('50');
+        await expect(page.getByTestId('close-cash-btn')).toBeEnabled();
+        await expect(page.getByTestId('conference-total')).toContainText('350,00');
+        expect(calls).toBe(0);
+    });
 });
+

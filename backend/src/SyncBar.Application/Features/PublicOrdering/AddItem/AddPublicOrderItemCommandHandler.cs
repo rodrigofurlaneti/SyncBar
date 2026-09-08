@@ -75,7 +75,8 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
                 if (request.ExpectedOrderId.HasValue)
                 {
                     var previous = await _orderRepository.GetByIdForUpdateAsync(request.ExpectedOrderId.Value, cancellationToken);
-                    if (previous is null || !previous.IsActive || previous.OrderStatusId != OrderStatusIds.Aberto)
+                    if (previous is null || !previous.IsActive || previous.BranchId != table.BranchId
+                        || previous.OrderStatusId is not (OrderStatusIds.Aberto or OrderStatusIds.EmAndamento))
                         return Result.Failure<long>(new Error("CustomerOrder.Closed", "Este pedido foi encerrado. Inicie um novo atendimento para continuar."));
                 }
 

@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Moq;
 using Reqnroll;
 using SyncBar.Application.Abstractions.Printing;
@@ -94,9 +94,11 @@ public sealed class RegisterPartialPaymentCommandSteps
             .Setup(r => r.GetByOrderAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyCollection<OrderPartialPayment>)_existingPartials.AsReadOnly());
 
+        var availability = new Moq.Mock<SyncBar.Application.Features.Cash.IPaymentMethodAvailability>();
+        availability.Setup(x => x.ValidateAsync(It.IsAny<long>(), It.IsAny<IReadOnlyCollection<long>>(), It.IsAny<CancellationToken>())).ReturnsAsync(SyncBar.Domain.Primitives.Result.Success());
         var handler = new RegisterPartialPaymentCommandHandler(
             _orderRepository.Object, _cashSessionRepository.Object, _partialPaymentRepository.Object,
-            _printingService.Object, _logRepository.Object, _unitOfWork.Object);
+            _printingService.Object, _logRepository.Object, _unitOfWork.Object, availability.Object);
 
         _result = await handler.Handle(
             new RegisterPartialPaymentCommand(orderId, cashSessionId, employeeId, paymentMethodId, amount, null, null),
@@ -114,3 +116,4 @@ public sealed class RegisterPartialPaymentCommandSteps
     public void ThenAOperacaoDeveTerSucesso()
         => _result!.IsSuccess.Should().BeTrue();
 }
+

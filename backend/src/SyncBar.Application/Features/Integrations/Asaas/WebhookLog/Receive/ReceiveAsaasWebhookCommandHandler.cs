@@ -75,22 +75,31 @@ namespace SyncBar.Application.Features.Integrations.Asaas.WebhookLog.Receive
                     }
 
                     var branch = await _branchRepository.GetByIdAsync(payment.BranchId, cancellationToken);
+                    if (branch is null || !branch.IsActive)
+                        return Result.Failure(new Error("Asaas.InvalidWebhookToken", "Configuração do webhook indisponível."));
                     if (branch is not null)
                     {
                         var setting = await _settingRepository.GetByBranchOrCompanyFallbackAsync(
                             branch.CompanyId, payment.BranchId, cancellationToken);
 
-                        if (setting is not null && !string.IsNullOrWhiteSpace(setting.WebhookSecretEncrypted)
-                            && !string.Equals(setting.WebhookSecretEncrypted, request.AccessToken, StringComparison.Ordinal))
+                        if (setting is null || !setting.IsActive || string.IsNullOrWhiteSpace(setting.WebhookSecretEncrypted)
+                            || !string.Equals(setting.WebhookSecretEncrypted, request.AccessToken, StringComparison.Ordinal))
                         {
                             return Result.Failure(new Error(
                                 "Asaas.InvalidWebhookToken", "Token de autenticação do webhook inválido para esta unidade."));
                         }
 
+                        if (string.IsNullOrWhiteSpace(payload.Id))
+                            return Result.Failure(new Error("Asaas.InvalidPayload", "Identificador do evento ausente."));
+                        if (await _webhookLogRepository.ExistsByEventIdAsync(payload.Id, cancellationToken))
+                            return Result.Success();
                         await RegisterAuditLogAsync(branch.CompanyId, payment.BranchId, payload, request, cancellationToken);
                     }
 
-                    if (!string.IsNullOrWhiteSpace(payload.Payment.Status))
+                    // Uma notificação de criação/atraso não pode desfazer uma liquidação já confirmada.
+                    var stalePending = PaidStatuses.Contains(payment.Status.ToUpperInvariant())
+                        && payload.Payment.Status is not null && new[] { "PENDING", "OVERDUE" }.Contains(payload.Payment.Status.ToUpperInvariant());
+                    if (!string.IsNullOrWhiteSpace(payload.Payment.Status) && !stalePending)
                     {
                         payment.UpdateStatus(
                             payload.Payment.Status,

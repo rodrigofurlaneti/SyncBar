@@ -1,0 +1,3 @@
+Execução de teste para C:\Users\AMD\source\repos\SyncBar\backend\test\SyncBar.Specs\bin\Debug\net9.0\SyncBar.Specs.dll (.NETCoreApp,Version=v9.0)
+1 arquivos de teste no total corresponderam ao padrão especificado.
+

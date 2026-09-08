@@ -1,3 +1,4 @@
+using SyncBar.Application.Features.Cash;
 using MediatR;
 using SyncBar.Application.Abstractions.Integrations.Asaas;
 using SyncBar.Application.Abstractions.Messaging;
@@ -17,6 +18,7 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithCreditCard
         private readonly IAsaasIntegrationPaymentRepository _asaasPaymentRepository;
         private readonly IAsaasService _asaasService;
         private readonly ISender _mediator;
+        private readonly IPaymentMethodAvailability _availability;
 
         public PayOrderWithCreditCardCommandHandler(
             ICheckoutOrderPreparer checkoutPreparer,
@@ -25,7 +27,7 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithCreditCard
             IAsaasService asaasService,
             ISender mediator,
             ILogTrackerRepository logRepository,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork, IPaymentMethodAvailability availability)
             : base(logRepository, unitOfWork)
         {
             _checkoutPreparer = checkoutPreparer;
@@ -33,6 +35,7 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithCreditCard
             _asaasPaymentRepository = asaasPaymentRepository;
             _asaasService = asaasService;
             _mediator = mediator;
+            _availability = availability;
         }
 
         public override async Task<Result<PayOrderWithCreditCardResponse>> Handle(
@@ -46,6 +49,8 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithCreditCard
                 async (userIdBox) =>
                 {
                     // 1. Fecha o pedido (se ainda aberto) e garante cliente + vínculo Asaas
+                    var enabled = await _availability.ValidateOrderAsync(request.CustomerOrderId, [2], cancellationToken);
+                    if (enabled.IsFailure) return Result.Failure<PayOrderWithCreditCardResponse>(enabled.Error);
                     var preparationResult = await _checkoutPreparer.PrepareAsync(request.CustomerOrderId, cancellationToken);
                     if (preparationResult.IsFailure)
                         return Result.Failure<PayOrderWithCreditCardResponse>(preparationResult.Error);
@@ -164,3 +169,5 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithCreditCard
         }
     }
 }
+
+

@@ -1,3 +1,4 @@
+using SyncBar.Application.Features.Cash;
 using MediatR;
 using SyncBar.Application.Abstractions.Integrations.Asaas;
 using SyncBar.Application.Abstractions.Messaging;
@@ -16,6 +17,7 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithPix
         private readonly IAsaasService _asaasService;
         private readonly ISender _mediator;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IPaymentMethodAvailability _availability;
 
         public PayOrderWithPixCommandHandler(
             ICheckoutOrderPreparer checkoutPreparer,
@@ -23,14 +25,14 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithPix
             IAsaasService asaasService,
             ISender mediator,
             ILogTrackerRepository logRepository,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork, IPaymentMethodAvailability availability)
             : base(logRepository, unitOfWork)
         {
             _checkoutPreparer = checkoutPreparer;
             _asaasPaymentRepository = asaasPaymentRepository;
             _asaasService = asaasService;
             _mediator = mediator;
-            _unitOfWork = unitOfWork;
+            _unitOfWork = unitOfWork; _availability = availability;
         }
 
         public override async Task<Result<PayOrderWithPixResponse>> Handle(
@@ -44,11 +46,15 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithPix
                 async (userIdBox) =>
                 {
                     // 1. Fecha o pedido (se ainda aberto) e garante cliente + vínculo Asaas
+                    var enabled = await _availability.ValidateOrderAsync(request.CustomerOrderId, [4], cancellationToken);
+                    if (enabled.IsFailure) return Result.Failure<PayOrderWithPixResponse>(enabled.Error);
                     var preparationResult = await _checkoutPreparer.PrepareAsync(request.CustomerOrderId, cancellationToken);
                     if (preparationResult.IsFailure)
                         return Result.Failure<PayOrderWithPixResponse>(preparationResult.Error);
 
                     var order = preparationResult.Value.Order;
+                    var available = await _availability.ValidateAsync(order.BranchId, [4], cancellationToken);
+                    if (available.IsFailure) return Result.Failure<PayOrderWithPixResponse>(available.Error);
 
                     // 2. Idempotência — reaproveita cobrança pendente em vez de gerar outra no Asaas
                     var existingPayment = await _asaasPaymentRepository.GetByCustomerOrderIdAsync(order.Id, cancellationToken);
@@ -128,3 +134,5 @@ namespace SyncBar.Application.Features.Checkout.PayOrderWithPix
         }
     }
 }
+
+

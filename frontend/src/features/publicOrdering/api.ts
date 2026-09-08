@@ -90,7 +90,7 @@ export const validateComandaReading = (
     publicApi<{ proof: string }>(`/api/publicordering/${token}/comandas/${comandaCode}/reading-validation`, {
         method: "POST",
         body: JSON.stringify(payload),
-    }).then(result => { readingProofs.set(`${token}:${"comandaCode" in payload ? "" : ""}`, result.proof); });
+    }).then(result => { readingProofs.set(`${token}:${comandaCode}`, result.proof); });
 
 // Irmã da validação de comanda acima, mas pra MESA — usada quando a "Visualização do
 // Cliente (QR Code)" está desligada (sem fluxo de comanda pro cliente) e mesmo assim
@@ -104,5 +104,5 @@ export const validateTableReading = (
     publicApi<{ proof: string }>(`/api/publicordering/${token}/reading-validation`, {
         method: "POST",
         body: JSON.stringify(payload),
-    }).then(result => { readingProofs.set(`${token}:${"comandaCode" in payload ? "" : ""}`, result.proof); });
+    }).then(result => { readingProofs.set(`${token}:`, result.proof); });
 

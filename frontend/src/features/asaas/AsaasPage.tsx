@@ -1625,7 +1625,7 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
     <section className="ticket rise rise-1" style={{ padding: 20, display: "grid", gap: 16 }}>
       <div style={{ display: "grid", gap: 4, maxWidth: 640 }}>
         <span className="display" style={{ fontSize: "1.2rem" }}>
-          Formas de pagamento por filial
+          Métodos de pagamento por empresa/filial
         </span>
         <span style={{ color: "var(--ink-dim)", fontSize: "0.9rem" }}>
           Cada filial pode habilitar ou desabilitar suas próprias formas de recebimento. Se uma
@@ -1645,7 +1645,7 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
       </SelectField>
       {settingQuery.isLoading && <SkeletonList rows={5} rowHeight={72} />}
 
-      {!settingQuery.isLoading && (
+      {!settingQuery.isLoading && !settingQuery.isError && (
         <>
           <div className="ui-row ui-row-wrap" style={{ gap: 8, alignItems: "center" }}>
             <span className="chip" style={{ "--dot": "var(--busy)" } as CSSProperties}>
@@ -1664,6 +1664,7 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
                 Nenhuma configuração cadastrada — usando o padrão (tudo ligado)
               </span>
             )}
+            {setting?.createdAt && <span>Criada em {new Date(setting.createdAt).toLocaleDateString("pt-BR")}{setting.updatedAt ? ` · atualizada em ${new Date(setting.updatedAt).toLocaleDateString("pt-BR")}` : ""}</span>}
           </div>
 
           <div style={{ display: "grid", gap: 2 }} data-testid="payment-methods-list">
@@ -1679,7 +1680,7 @@ function PaymentMethodsSection({ companyId, branchId }: { companyId: number; bra
                   <span
                     className="chip"
                     data-testid={`payment-method-status-${item.key}`}
-                    style={{ "--dot": flags[item.key] ? "var(--ok)" : "var(--danger)" } as CSSProperties}
+                    style={{ background: "#fff", color: flags[item.key] ? "#1d4ed8" : "#6b7280", "--dot": flags[item.key] ? "var(--ok)" : "var(--danger)" } as CSSProperties}
                   >
                     {flags[item.key] ? "Ligada" : "Desligada"}
                   </span>

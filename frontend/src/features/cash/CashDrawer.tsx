@@ -12,7 +12,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { getPrintSettings, printCashClosing } from "../printing/api";
 import { getSalesBySession, refundSale } from "../billing/api";
 import { useMyFeatures } from "../access/hooks";
-import { ApiError } from "../../lib/apiClient";
+import { api, ApiError } from "../../lib/apiClient";
 import {
     CashMovementType,
     DEFAULT_CASH_REGISTER_ID,
@@ -115,7 +115,7 @@ export function CashDrawer({ onClose }: Props) {
     const invalidateCash = () => void queryClient.invalidateQueries({ queryKey: ["cash"] });
 
     const onApiError = (e: unknown, fallback: string) =>
-        setError(e instanceof ApiError ? e.message : fallback);
+        setError(e instanceof Error ? e.message : fallback);
 
     const openMutation = useMutation({
         mutationFn: () => {
@@ -184,6 +184,15 @@ export function CashDrawer({ onClose }: Props) {
                     {cashRegister.registers.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
             </label>
+            {featuresQuery.data?.canManageAccess && <button type="button" className="btn-ghost" onClick={async () => {
+                const answer = await Swal.fire({ title: "Novo terminal", input: "text", inputLabel: "Nome do caixa", showCancelButton: true, confirmButtonText: "Cadastrar", cancelButtonText: "Cancelar", inputValidator: value => !value.trim() ? "Informe o nome do terminal." : undefined });
+                if (!answer.isConfirmed) return;
+                try {
+                    const id = await api<number>("/api/cash/registers", { method: "POST", body: JSON.stringify({ branchId: useAuthStore.getState().branchId, name: answer.value }) });
+                    cashRegister.selectRegister(id);
+                    await cashRegister.refetch();
+                } catch (e) { onApiError(e, "Não foi possível cadastrar o terminal."); }
+            }}>Cadastrar terminal</button>}
             {(cashRegister.isError || (sessionQuery.isError && !noSession) || summaryQuery.isError || salesQuery.isError) && <p role="alert" className="error-text">Não foi possível carregar os dados do caixa. <button type="button" onClick={() => { void cashRegister.refetch(); invalidateCash(); }}>Tentar novamente</button></p>}
             {cashRegister.isSuccess && !registerId && <p>Nenhum terminal cadastrado nesta filial.</p>}
             {summary?.movements && <section aria-label="Extrato da sessão" className="ticket">

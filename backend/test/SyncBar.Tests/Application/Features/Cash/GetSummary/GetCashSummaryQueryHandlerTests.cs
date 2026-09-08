@@ -168,7 +168,8 @@ public sealed class GetCashSummaryQueryHandlerTests
 
         // Agrupado e ordenado por PaymentMethodId: Dinheiro(1) antes de CartaoCredito(2); Pix(4)
         // foi excluído por estar com o pagamento desativado.
-        response.PaymentTotals.Should().HaveCount(2);
+        response.PaymentTotals.Should().HaveCount(3);
+        response.PaymentTotals.Single(p => p.PaymentMethodId == PaymentMethodIds.Pix).TotalAmount.Should().Be(25m);
         response.PaymentTotals.ElementAt(0).PaymentMethodId.Should().Be(PaymentMethodIds.Dinheiro);
         response.PaymentTotals.ElementAt(0).TotalAmount.Should().Be(45m); // 50 - 5 de troco
         response.PaymentTotals.ElementAt(1).PaymentMethodId.Should().Be(PaymentMethodIds.CartaoCredito);
@@ -185,3 +186,4 @@ public sealed class GetCashSummaryQueryHandlerTests
         await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
     }
 }
+

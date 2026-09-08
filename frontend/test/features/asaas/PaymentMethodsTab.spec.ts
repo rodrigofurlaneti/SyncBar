@@ -148,6 +148,7 @@ test.describe('Integração Asaas - Métodos de pagamentos', () => {
         const toast = page.locator('.swal2-popup');
         await expect(toast).toBeVisible();
         await expect(toast).toContainText('Métodos de pagamento salvos.');
+        await expect(page.getByTestId('payment-method-switch-enableCashMachine')).toHaveAttribute('aria-checked', 'true');
 
         expect(putBody).toEqual({
             companyId: 1,

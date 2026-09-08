@@ -26,9 +26,10 @@ for (const scenario of ['disabled', 'error'] as const) {
     await mockMenu(page);
     await page.route('**/api/branch-payment-method-settings/branch/7', route => scenario === 'error'
       ? route.fulfill({ status: 500, json: {} })
-      : route.fulfill({ json: { isActive: true, enablePix: false, enableBoleto: false, enableCreditCard: false, enableDebitCard: true, enableCashMachine: false } }));
+      : route.fulfill({ json: { isActive: true, enablePix: false, enableBoleto: false, enableCreditCard: false, enableDebitCard: false, enableCashMachine: false } }));
     await enterCheckout(page);
     await expect(page.getByTestId('btn-submit-order')).toBeDisabled();
     await expect(page.getByText(scenario === 'error' ? 'Não foi possível carregar as formas de pagamento.' : 'Nenhuma forma de pagamento disponível. Entre em contato com a loja.', { exact: false })).toBeVisible();
   });
 }
+

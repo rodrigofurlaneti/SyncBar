@@ -212,6 +212,9 @@ public static class DependencyInjection
 
         services.AddSingleton<SyncBar.Application.Abstractions.Security.IReadingProofService, SyncBar.Infrastructure.Authentication.ReadingProofService>();
         services.Configure<WhatsAppSettings>(configuration.GetSection("WhatsApp"));
+        services.AddSingleton<WhatsAppOutbox>();
+        services.AddSingleton<SyncBar.Application.Abstractions.Notifications.IWhatsAppQueue>(sp => sp.GetRequiredService<WhatsAppOutbox>());
+        services.AddHostedService(sp => sp.GetRequiredService<WhatsAppOutbox>());
         services.AddHttpClient<SyncBar.Application.Abstractions.Notifications.IWhatsAppService, WhatsAppService>((sp, client) =>
         {
             var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<WhatsAppSettings>>().Value;

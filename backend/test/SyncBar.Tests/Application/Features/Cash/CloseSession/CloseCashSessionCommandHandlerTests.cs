@@ -272,7 +272,7 @@ public sealed class CloseCashSessionCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("CashSessionPaymentReconciliation.InvalidPaymentMethod");
+        result.Error.Code.Should().Be("CashSession.InvalidReconciliation");
         session.IsOpen().Should().BeTrue();
         await _paymentReconciliationRepository.DidNotReceive().AddRangeAsync(Arg.Any<IEnumerable<CashSessionPaymentReconciliation>>(), Arg.Any<CancellationToken>());
     }
@@ -317,3 +317,4 @@ public sealed class CloseCashSessionCommandHandlerTests
             Arg.Is<IEnumerable<CashSessionPaymentReconciliation>>(list => !list.Any()), Arg.Any<CancellationToken>());
     }
 }
+

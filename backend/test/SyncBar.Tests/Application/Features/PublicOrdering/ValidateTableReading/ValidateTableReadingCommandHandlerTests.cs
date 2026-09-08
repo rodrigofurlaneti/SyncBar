@@ -41,7 +41,7 @@ public sealed class ValidateTableReadingCommandHandlerTests
     [Fact]
     public async Task Handle_QrCodeMethodWithScannedValue_ShouldSucceedAndSkipImageStorage()
     {
-        var command = new ValidateTableReadingCommand(Guid.NewGuid(), "qrcode", "SCANNED-CODE", null);
+        var command = new ValidateTableReadingCommand(Guid.NewGuid(), "qrcode", "5", null);
         var table = MakeTable();
         _diningTableRepository.GetByQrTokenAsync(command.TableToken, Arg.Any<CancellationToken>()).Returns(table);
 
@@ -85,3 +85,4 @@ public sealed class ValidateTableReadingCommandHandlerTests
         result.Error.Code.Should().Be("TableReadingValidation.InvalidPhoto");
     }
 }
+

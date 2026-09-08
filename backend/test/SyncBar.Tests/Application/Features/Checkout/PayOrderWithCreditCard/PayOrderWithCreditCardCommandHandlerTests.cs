@@ -31,7 +31,7 @@ public sealed class PayOrderWithCreditCardCommandHandlerTests
     public PayOrderWithCreditCardCommandHandlerTests()
     {
         _handler = new PayOrderWithCreditCardCommandHandler(
-            _checkoutPreparer, _savedCardRepository, _paymentRepository, _asaasService, _mediator, _logRepository, _unitOfWork);
+            _checkoutPreparer, _savedCardRepository, _paymentRepository, _asaasService, _mediator, _logRepository, _unitOfWork, SyncBar.Tests.PaymentAvailabilityFixture.Allowed());
     }
 
     private static void SetId(Entity entity, long id)
@@ -226,3 +226,4 @@ public sealed class PayOrderWithCreditCardCommandHandlerTests
         await _mediator.DidNotReceive().Send(Arg.Any<CreateAsaasIntegrationPaymentCommand>(), Arg.Any<CancellationToken>());
     }
 }
+

@@ -10,7 +10,7 @@ public sealed class CreateUserCommandValidatorTests
 
     private static CreateUserCommand Valid() => new(
         1,
-        null,
+        1,
         "johndoe",
         "john@example.com",
         "password123",
@@ -68,3 +68,4 @@ public sealed class CreateUserCommandValidatorTests
     public void Validate_EmptyRoleIds_ShouldBeInvalid()
         => _validator.Validate(Valid() with { RoleIds = [] }).IsValid.Should().BeFalse();
 }
+

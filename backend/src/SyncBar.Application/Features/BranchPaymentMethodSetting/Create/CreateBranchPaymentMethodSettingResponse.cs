@@ -1,4 +1,4 @@
-﻿namespace SyncBar.Application.Features.BranchPaymentMethodSetting.Create
+namespace SyncBar.Application.Features.BranchPaymentMethodSetting.Create
 {
     public sealed record CreateBranchPaymentMethodSettingResponse(
         long Id,
@@ -9,5 +9,5 @@
         bool EnableCreditCard,
         bool EnableDebitCard,
         bool EnableCashMachine,
-        bool IsActive);
+        bool IsActive, DateTime? CreatedAt = null, DateTime? UpdatedAt = null);
 }

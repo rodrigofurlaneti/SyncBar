@@ -16,6 +16,7 @@ namespace SyncBar.Application
             services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly, includeInternalTypes: true);
 
             services.AddScoped<ICheckoutOrderPreparer, CheckoutOrderPreparer>();
+            services.AddScoped<SyncBar.Application.Features.Cash.IPaymentMethodAvailability, SyncBar.Application.Features.Cash.PaymentMethodAvailability>();
             services.AddScoped<IKeetaAccessTokenProvider, KeetaAccessTokenProvider>();
             services.AddScoped<IKeetaOrderEventProcessor, KeetaOrderEventProcessor>();
 

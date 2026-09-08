@@ -11,7 +11,7 @@ internal static class CashMath
         IReadOnlyCollection<OrderPartialPayment> partialPayments) => sales
         .Where(s => s.IsActive).SelectMany(s => s.Payments).Where(p => p.IsActive)
         .Select(p => (p.PaymentMethodId, Amount: p.Amount - (p.ChangeAmount ?? 0)))
-        .Concat(partialPayments.Select(p => (p.PaymentMethodId, p.Amount)))
+        .Concat(partialPayments.Where(p => p.IsActive).Select(p => (p.PaymentMethodId, p.Amount)))
         .GroupBy(p => p.PaymentMethodId).ToDictionary(g => g.Key, g => g.Sum(p => p.Amount));
 
     internal static decimal ExpectedCash(

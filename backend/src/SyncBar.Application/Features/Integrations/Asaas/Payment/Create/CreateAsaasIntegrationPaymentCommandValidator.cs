@@ -32,7 +32,7 @@ namespace SyncBar.Application.Features.Integrations.Asaas.Payment.Create
                 .GreaterThanOrEqualTo(1)
                 .WithMessage("O número de parcelas deve ser no mínimo 1.");
 
-            When(x => x.BillingType.Equals("CREDIT_CARD", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(x.CreditCardToken), () =>
+            When(x => !x.UseHostedCheckout && x.BillingType.Equals("CREDIT_CARD", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(x.CreditCardToken), () =>
             {
                 RuleFor(x => x.CreditCard)
                     .NotNull()

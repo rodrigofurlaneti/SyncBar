@@ -1,4 +1,4 @@
-﻿using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Features.BranchPaymentMethodSetting.GetAllActive;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -42,8 +42,7 @@ namespace SyncBar.Application.Features.BranchPaymentMethodSetting.GetAllActiveBy
                         s.EnableCreditCard,
                         s.EnableDebitCard,
                         s.EnableCashMachine,
-                        s.IsActive
-                    )).ToList();
+                        s.IsActive, s.CreatedAt, s.UpdatedAt)).ToList();
 
                     return Result.Success<IReadOnlyList<BranchPaymentMethodSettingResponse>>(response);
                 });

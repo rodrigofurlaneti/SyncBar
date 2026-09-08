@@ -16,6 +16,11 @@ export type NewCardPayload = {
     ccv: string;
 };
 
+export type HostedCardPaymentResult = { paymentId: number; asaasPaymentId: string; status: string; invoiceUrl: string; value: number };
+export const payWithDebitCard = (customerOrderId: number) => api<HostedCardPaymentResult>("/api/checkout/debito", {
+    method: "POST", body: JSON.stringify({ customerOrderId }),
+});
+
 export type PixPaymentResult = {
     paymentId: number;
     asaasPaymentId: string;

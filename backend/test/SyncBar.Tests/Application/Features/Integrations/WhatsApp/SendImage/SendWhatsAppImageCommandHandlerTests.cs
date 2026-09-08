@@ -10,7 +10,7 @@ namespace SyncBar.Tests.Application.Features.Integrations.WhatsApp.SendImage;
 
 public sealed class SendWhatsAppImageCommandHandlerTests
 {
-    private readonly IWhatsAppService _whatsAppService = Substitute.For<IWhatsAppService>();
+    private readonly IWhatsAppQueue _whatsAppService = Substitute.For<IWhatsAppQueue>();
     private readonly ILogTrackerRepository _logRepository = Substitute.For<ILogTrackerRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
@@ -26,14 +26,14 @@ public sealed class SendWhatsAppImageCommandHandlerTests
     {
         var command = new SendWhatsAppImageCommand("5511999999999", "Ola", "https://cdn.example.com/img.jpg");
         _whatsAppService
-            .SendImageAsync(command.PhoneNumber, command.Message, command.FileUrl, Arg.Any<CancellationToken>())
+            .EnqueueAsync(command.PhoneNumber, command.Message, command.FileUrl, Arg.Any<CancellationToken>())
             .Returns(Result.Success());
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         await _whatsAppService.Received(1)
-            .SendImageAsync(command.PhoneNumber, command.Message, command.FileUrl, Arg.Any<CancellationToken>());
+            .EnqueueAsync(command.PhoneNumber, command.Message, command.FileUrl, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public sealed class SendWhatsAppImageCommandHandlerTests
         var command = new SendWhatsAppImageCommand("5511999999999", "Ola", "https://cdn.example.com/img.jpg");
         var error = Error.Failure("WhatsApp.SendFailed", "A API do WhatsApp retornou status 500.");
         _whatsAppService
-            .SendImageAsync(command.PhoneNumber, command.Message, command.FileUrl, Arg.Any<CancellationToken>())
+            .EnqueueAsync(command.PhoneNumber, command.Message, command.FileUrl, Arg.Any<CancellationToken>())
             .Returns(Result.Failure(error));
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -51,3 +51,4 @@ public sealed class SendWhatsAppImageCommandHandlerTests
         result.Error.Code.Should().Be("WhatsApp.SendFailed");
     }
 }
+

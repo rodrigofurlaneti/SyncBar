@@ -60,7 +60,7 @@ public sealed class RegisterSaleCommandHandlerTests
             _printingService,
             _logRepository,
             _unitOfWork,
-            _timeProvider);
+            _timeProvider, SyncBar.Tests.PaymentAvailabilityFixture.Allowed());
     }
 
     // ---------- Helpers ----------
@@ -546,3 +546,4 @@ public sealed class RegisterSaleCommandHandlerTests
         await _unitOfWork.Received(2).CommitAsync(Arg.Any<CancellationToken>());
     }
 }
+
