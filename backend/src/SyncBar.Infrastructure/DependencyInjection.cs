@@ -178,6 +178,8 @@ public static class DependencyInjection
 
         services.AddSingleton<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodOperationalAlertStore, InMemoryIfoodOperationalAlertStore>();
         services.AddHostedService<IfoodMerchantStatusWatcherBackgroundService>();
+        services.Configure<IfoodAnalyticsExtractionOptions>(configuration.GetSection("IfoodAnalytics"));
+        services.AddHostedService<IfoodAnalyticsExtractionBackgroundService>();
 
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodLogisticsClient, IfoodLogisticsClient>(
             client => client.Timeout = TimeSpan.FromSeconds(15));

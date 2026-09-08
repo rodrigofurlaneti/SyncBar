@@ -1,0 +1,10 @@
+  SyncBar.Domain -> C:\Users\AMD\source\repos\SyncBar\backend\src\SyncBar.Domain\bin\Debug\net9.0\SyncBar.Domain.dll
+  SyncBar.Application -> C:\Users\AMD\source\repos\SyncBar\backend\src\SyncBar.Application\bin\Debug\net9.0\SyncBar.Application.dll
+  SyncBar.Infrastructure -> C:\Users\AMD\source\repos\SyncBar\backend\src\SyncBar.Infrastructure\bin\Debug\net9.0\SyncBar.Infrastructure.dll
+  SyncBar.API -> C:\Users\AMD\source\repos\SyncBar\backend\src\SyncBar.API\bin\Debug\net9.0\SyncBar.API.dll
+C:\Users\AMD\source\repos\SyncBar\backend\test\SyncBar.Tests\Infrastructure\Integrations\IFood\IfoodCatalogClientTests.cs(110,65): warning CS8604: Possível argumento de referência nula para o parâmetro 'json' em 'JsonDocument JsonDocument.Parse(string json, JsonDocumentOptions options = default(JsonDocumentOptions))'. [C:\Users\AMD\source\repos\SyncBar\backend\test\SyncBar.Tests\SyncBar.Tests.csproj]
+  SyncBar.Tests -> C:\Users\AMD\source\repos\SyncBar\backend\test\SyncBar.Tests\bin\Debug\net9.0\SyncBar.Tests.dll
+Execução de teste para C:\Users\AMD\source\repos\SyncBar\backend\test\SyncBar.Tests\bin\Debug\net9.0\SyncBar.Tests.dll (.NETCoreApp,Version=v9.0)
+1 arquivos de teste no total corresponderam ao padrão especificado.
+
+Aprovado!  – Com falha:     0, Aprovado:  6464, Ignorado:     0, Total:  6464, Duração: 35 s - SyncBar.Tests.dll (net9.0)

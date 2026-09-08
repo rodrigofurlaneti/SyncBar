@@ -63,7 +63,9 @@ internal sealed class IfoodAnalyticsClient(HttpClient httpClient) : IIfoodAnalyt
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
-            return new IfoodOrderKpisResultDto(page, []);
+            throw new HttpRequestException(response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden
+                ? "Sem permissão para Analytics. Verifique analytics + merchant_scope e não misture chain_scope no mesmo app."
+                : "Falha ao extrair métricas Analytics do iFood.", null, response.StatusCode);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);

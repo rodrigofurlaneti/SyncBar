@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Headers;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using SyncBar.Application.Abstractions.Integrations.Ifood;
@@ -11,7 +11,7 @@ namespace SyncBar.Infrastructure.Integrations.Ifood;
 /// </summary>
 internal sealed class IfoodReviewClient(HttpClient httpClient) : IIfoodReviewClient
 {
-    private const string BaseUrl = "https://merchant-api.Ifood.com.br/review/v1.0/merchants";
+    private const string BaseUrl = "https://merchant-api.ifood.com.br/review/v2.0/merchants";
 
     public async Task<IfoodReviewListResultDto> GetReviewsAsync(
         string accessToken, string merchantId, int page, int pageSize, bool addCount,
@@ -37,7 +37,7 @@ internal sealed class IfoodReviewClient(HttpClient httpClient) : IIfoodReviewCli
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
-            return new IfoodReviewListResultDto(page, pageSize, 0, 0, []);
+            throw ResponseError(response);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
@@ -71,8 +71,10 @@ internal sealed class IfoodReviewClient(HttpClient httpClient) : IIfoodReviewCli
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             return null;
+        if (!response.IsSuccessStatusCode)
+            throw ResponseError(response);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
@@ -104,11 +106,11 @@ internal sealed class IfoodReviewClient(HttpClient httpClient) : IIfoodReviewCli
             GetString(root, "customerName"),
             GetBool(root, "moderated") ?? false,
             GetString(root, "moderationStatus"),
-            GetString(root, "reply"),
+            GetMerchantReply(root),
             GetDouble(root, "score"),
             GetString(root, "surveyId"),
             TryParseOrder(root),
-            questions);
+            questions, GetString(root, "status"), GetString(root, "visibility"), GetFirstReplyAt(root));
     }
 
     public async Task<IfoodReviewReplyResultDto> ReplyReviewAsync(
@@ -148,7 +150,7 @@ internal sealed class IfoodReviewClient(HttpClient httpClient) : IIfoodReviewCli
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
-            return null;
+            throw ResponseError(response);
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
@@ -156,6 +158,11 @@ internal sealed class IfoodReviewClient(HttpClient httpClient) : IIfoodReviewCli
 
         return new IfoodReviewSummaryDto(GetDouble(root, "score"), GetLong(root, "totalReviewsCount") ?? 0, GetLong(root, "validReviewsCount") ?? 0);
     }
+
+    private static HttpRequestException ResponseError(HttpResponseMessage response) => new(
+        response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden
+            ? "O token iFood não tem acesso às avaliações. Confira a autorização de administrador/gerente da loja."
+            : "Não foi possível consultar as avaliações no iFood. Tente novamente.", null, response.StatusCode);
 
     private static IfoodReviewListItemDto? TryParseListItem(JsonElement item)
     {
@@ -169,16 +176,28 @@ internal sealed class IfoodReviewClient(HttpClient httpClient) : IIfoodReviewCli
                 GetString(item, "comment"),
                 GetBool(item, "moderated") ?? false,
                 GetString(item, "moderationStatus"),
-                GetString(item, "reply"),
+                GetMerchantReply(item),
                 GetDouble(item, "score"),
                 GetString(item, "surveyId"),
-                TryParseOrder(item));
+                TryParseOrder(item), GetString(item, "status"), GetString(item, "visibility"), GetFirstReplyAt(item));
         }
         catch
         {
             return null;
         }
     }
+
+    private static IEnumerable<JsonElement> MerchantReplies(JsonElement parent)
+        => parent.TryGetProperty("replies", out var replies) && replies.ValueKind == JsonValueKind.Array
+            ? replies.EnumerateArray().Where(reply => GetString(reply, "from") == "MERCHANT")
+            : [];
+
+    private static string? GetMerchantReply(JsonElement parent)
+        => MerchantReplies(parent).OrderByDescending(reply => GetDate(reply, "createdAt"))
+            .Select(reply => GetString(reply, "text")).FirstOrDefault() ?? GetString(parent, "reply");
+
+    private static DateTime? GetFirstReplyAt(JsonElement parent)
+        => MerchantReplies(parent).Select(reply => GetDate(reply, "createdAt")).Where(date => date.HasValue).Min();
 
     private static IfoodReviewOrderDto? TryParseOrder(JsonElement parent)
     {

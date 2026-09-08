@@ -38,7 +38,8 @@ internal sealed class GetIfoodReviewsQueryHandler(
                 var items = result.Reviews
                     .Select(r => new IfoodReviewListItemResponse(
                         r.Id, r.CreatedAt, r.Discarded, r.Published, r.Comment, r.Moderated, r.ModerationStatus, r.Reply, r.Score,
-                        r.Order is null ? null : new IfoodReviewOrderResponse(r.Order.CreatedAt, r.Order.Id, r.Order.ShortId)))
+                        r.Order is null ? null : new IfoodReviewOrderResponse(r.Order.CreatedAt, r.Order.Id, r.Order.ShortId),
+                        r.Status, r.Visibility, r.FirstReplyAt))
                     .ToList();
 
                 return Result.Success(new IfoodReviewListResponse(result.Page, result.Size, result.Total, result.PageCount, items));

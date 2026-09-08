@@ -54,16 +54,12 @@ public sealed class IfoodReviewClientTests
     }
 
     [Fact]
-    public async Task GetReviewsAsync_HttpFailure_ShouldReturnEmptyResultWithRequestedPageAndSize()
+    public async Task GetReviewsAsync_HttpFailure_ShouldNotMasqueradeAsEmptyReviews()
     {
         _handler.EnqueueJson(HttpStatusCode.InternalServerError, "erro");
 
-        var result = await _client.GetReviewsAsync("tok", "MERCH-1", 2, 25, false, null, null, "asc", "score", CancellationToken.None);
-
-        result.Page.Should().Be(2);
-        result.Size.Should().Be(25);
-        result.Total.Should().Be(0);
-        result.Reviews.Should().BeEmpty();
+        var action = () => _client.GetReviewsAsync("tok", "MERCH-1", 2, 25, false, null, null, "asc", "score", CancellationToken.None);
+        await action.Should().ThrowAsync<HttpRequestException>();
     }
 
     [Fact]
@@ -166,12 +162,11 @@ public sealed class IfoodReviewClientTests
     }
 
     [Fact]
-    public async Task GetSummaryAsync_Failure_ShouldReturnNull()
+    public async Task GetSummaryAsync_Failure_ShouldReportUnavailable()
     {
         _handler.EnqueueJson(HttpStatusCode.InternalServerError, "erro");
 
-        var result = await _client.GetSummaryAsync("tok", "MERCH-1", CancellationToken.None);
-
-        result.Should().BeNull();
+        var action = () => _client.GetSummaryAsync("tok", "MERCH-1", CancellationToken.None);
+        await action.Should().ThrowAsync<HttpRequestException>();
     }
 }

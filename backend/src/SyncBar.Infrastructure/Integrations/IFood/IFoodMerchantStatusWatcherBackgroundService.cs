@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,51 +9,14 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Infrastructure.Integrations.Ifood;
 
 /// <summary>
-/// Watcher de saúde operacional da loja no Ifood (Fase 13 — automação encontrada na revisão de
-/// documentação pedida em 2026-08-22). Antes desta fase, "operação da loja" (módulo Merchant —
-/// disponibilidade, interrupções, horários) só era consultada SOB DEMANDA: alguém precisava abrir
-/// a tela de Integrações e clicar em "Atualizar status" pra descobrir que a loja tinha caído do
-/// Ifood (por exemplo, por um "afastamento automático" do próprio Ifood — atrasos/cancelamentos
-/// em excesso derrubam a loja e o Ifood não avisa por e-mail nem webhook). Esse gap já estava
-/// anotado no histórico do projeto desde a Fase 5/9b/9c ("sem polling automático") e é o mesmo
-/// tipo de risco que motivou o usuário a tentar criar um worker próprio (ver Fase 12): pedidos
-/// perdidos silenciosamente, só que aqui por INDISPONIBILIDADE da loja em vez de evento de pedido
-/// não processado.
-///
-/// Não existe endpoint de evento/webhook pra isso no módulo Events do Ifood (auditado nesta
-/// mesma revisão — só HANDSHAKE_DISPUTE/HANDSHAKE_SETTLEMENT existem fora do fluxo de pedidos), a
-/// única forma de saber é consultar `GET /merchants/{id}/status` periodicamente. Segue o mesmo
-/// padrão de BackgroundService dos outros workers do módulo (singleton, cria um scope de DI por
-/// ciclo pra resolver dependências scoped) — intervalo de 5 minutos: rápido o suficiente pra
-/// avisar em tempo útil, sem bater no rate limit da API (o polling de pedidos já usa 30s pra algo
-/// muito mais crítico; status de loja não muda a cada segundo).
-///
-/// Só gera alerta numa TRANSIÇÃO de estado (disponível → indisponível ou o inverso), nunca a cada
-/// ciclo — e o primeiro ciclo depois do boot da API só grava o estado inicial sem alertar, pra não
-/// notificar sobre uma condição que já existia antes do SyncBar subir (mesmo cuidado que o
-/// dedup de eventos do polling de pedidos já toma). Estado guardado em memória
-/// (ConcurrentDictionary, por branchId) — some se a API reiniciar, mas o próximo ciclo reconstrói
-/// sozinho em até 5 minutos.
-///
-/// Correção pós-revisão (CodeRabbit, PR #4): a transição usava só `status.Available`, então uma
-/// loja fechada normalmente fora do horário de funcionamento (fim de expediente) virava um
-/// "Loja indisponível" Crítico, e a reabertura seguinte virava um "voltou a ficar disponível" —
-/// ruído todo santo dia. Não dá pra distinguir isso usando `OperationState`/`Validations` do
-/// próprio Ifood (o vocabulário exato desses campos NUNCA foi confirmado contra uma resposta real
-/// de sandbox — ver ressalva em IIfoodMerchantClient — então filtrar por um texto tipo "CLOSED"
-/// seria adivinhação, não uma correção). Em vez disso, usa `IfoodOpeningHours` — a cópia local dos
-/// turnos de funcionamento que o próprio SyncBar mantém sincronizada com o Ifood (`PUT
-/// /opening-hours`, Fase 5) — como fonte confiável: se a filial tem turnos configurados e o
-/// momento da checagem está FORA de todos eles, o fechamento é esperado e não gera alerta (nem a
-/// reabertura seguinte). Se a filial não tem nenhum turno configurado, não há como classificar —
-/// mantém o comportamento anterior (alerta sempre), mesmo default conservador já usado no resto do
-/// arquivo quando falta dado confiável.
+/// Consulta a disponibilidade das lojas e alerta sobre transições operacionais.
+/// O heartbeat de Merchant usa intervalo de 30 segundos.
 /// </summary>
 internal sealed class IfoodMerchantStatusWatcherBackgroundService(
     IServiceProvider serviceProvider,
     ILogger<IfoodMerchantStatusWatcherBackgroundService> logger) : BackgroundService
 {
-    private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(30);
 
     // Estado só em memória, igual ao alert store — ver comentário na classe sobre o motivo.
     private readonly ConcurrentDictionary<long, bool> _lastKnownAvailable = new();
@@ -67,7 +30,7 @@ internal sealed class IfoodMerchantStatusWatcherBackgroundService(
     {
         // Atraso inicial maior que o do polling de pedidos — não é um fluxo crítico de latência,
         // e dá tempo de todo o resto da API (incluindo o cache de token) terminar de subir.
-        try { await Task.Delay(TimeSpan.FromSeconds(45), stoppingToken); }
+        try { await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken); }
         catch (OperationCanceledException) { return; }
 
         while (!stoppingToken.IsCancellationRequested)
@@ -114,7 +77,7 @@ internal sealed class IfoodMerchantStatusWatcherBackgroundService(
             string? accessToken = null;
             foreach (var (branchId, mapping) in mappings)
             {
-                if (string.IsNullOrWhiteSpace(mapping.MerchantId))
+                if (!mapping.IsActive || string.IsNullOrWhiteSpace(mapping.MerchantId))
                     continue; // filial ainda sem MerchantId configurado — nada a checar
 
                 try

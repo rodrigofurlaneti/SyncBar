@@ -94,7 +94,7 @@ public sealed class IfoodCatalogClientTests
     }
 
     [Fact]
-    public async Task UpsertItemAsync_WithOptionGroups_ShouldIncludeNestedOptionsInPayload()
+    public async Task UpsertItemAsync_WithOptionGroups_ShouldLinkProductsGroupsAndOptions()
     {
         _handler.EnqueueJson(HttpStatusCode.OK, "");
         var optionGroups = new[]
@@ -107,6 +107,11 @@ public sealed class IfoodCatalogClientTests
 
         result.Success.Should().BeTrue();
         LastRequestBody.Should().Contain("Adicionais").And.Contain("Queijo extra");
+        using var payload = System.Text.Json.JsonDocument.Parse(LastRequestBody);
+        var root = payload.RootElement;
+        root.GetProperty("products")[0].GetProperty("optionGroups")[0].GetProperty("id").GetString()
+            .Should().Be(optionGroups[0].GroupId.ToString());
+        root.GetProperty("optionGroups")[0].GetProperty("optionGroupType").GetString().Should().Be("OFFER_UNIT");
     }
 
     [Fact]

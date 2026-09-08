@@ -39,6 +39,9 @@ public sealed class KeetaOrderEventWebhookController(IMediator mediator) : Contr
         if (result.IsFailure && result.Error.Code is "Keeta.InvalidPayload" or "Keeta.UnknownMerchant")
             return BadRequest();
 
+        if (result.IsFailure)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+
         // Status 200 disponível por compatibilidade — a doc recomenda 204.
         return NoContent();
     }

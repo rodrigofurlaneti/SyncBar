@@ -44,7 +44,7 @@ internal sealed class GetIfoodReviewByIdQueryHandler(
                     review.Id, review.CreatedAt, review.Discarded, review.Published, review.Comment, review.CustomerName,
                     review.Moderated, review.ModerationStatus, review.Reply, review.Score,
                     review.Order is null ? null : new IfoodReviewOrderResponse(review.Order.CreatedAt, review.Order.Id, review.Order.ShortId),
-                    questions);
+                    questions, review.Status, review.Visibility, review.FirstReplyAt);
 
                 return Result.Success(response);
             });

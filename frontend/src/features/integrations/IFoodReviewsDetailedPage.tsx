@@ -21,8 +21,15 @@ import { DashboardCard } from "../../components/DashboardCard";
 import { formatReviewState, formatDateTimeShort } from "../../utils/ifoodFormattersEnhanced";
 
 const PAGE_SIZE = 20;
-// Limite do texto de resposta aceito pelo iFood (módulo Review v1.0).
-const MAX_REPLY_LENGTH = 500;
+const MAX_REPLY_LENGTH = 300;
+
+function canReply(review: IFoodReviewListItem) {
+  if (review.discarded || review.published || review.status === "PUBLISHED" || review.status === "CREATED") return false;
+  if (review.reply || review.status === "REPLIED") {
+    return !!review.firstReplyAt && Date.now() < Date.parse(review.firstReplyAt) + 10 * 60_000;
+  }
+  return review.status === "NOT_REPLIED" && !!review.createdAt && Date.now() < Date.parse(review.createdAt) + 5 * 86_400_000;
+}
 
 export function IFoodReviewsDetailedPage() {
   const { branchId } = useAuthStore();
@@ -66,8 +73,8 @@ export function IFoodReviewsDetailedPage() {
   const reviews = reviewsQuery.data?.reviews ?? [];
   // A lista do iFood não tem um estado de resposta: "respondida" é a avaliação que já tem
   // `reply` preenchido.
-  const openReviews = reviews.filter((r) => !r.reply);
-  const repliedReviews = reviews.filter((r) => !!r.reply);
+  const openReviews = reviews.filter((r) => r.status === "NOT_REPLIED");
+  const repliedReviews = reviews.filter((r) => r.status !== "NOT_REPLIED");
   const displayReviews = activeTab === "aberta" ? openReviews : repliedReviews;
 
   const summary = summaryQuery.data;
@@ -130,7 +137,7 @@ export function IFoodReviewsDetailedPage() {
         <DashboardCard
           title="Nota Média"
           value={`${avgScore} ⭐`}
-          subtitle={`de ${totalReviews} avaliações`}
+          subtitle={`${summary?.validReviewsCount ?? 0} avaliações válidas nos últimos 3 meses (${totalReviews} no total)`}
           status="info"
           icon="📊"
         />
@@ -258,12 +265,11 @@ export function IFoodReviewsDetailedPage() {
                     <Button variant="ghost" onClick={() => setViewingId(review.id)}>
                       🔍 Ver detalhes
                     </Button>
-                    {!review.reply && (
-                      <Button variant="primary" onClick={() => setReplyingReview(review)} style={{ flex: 1 }}>
-                        ✉️ Responder
-                      </Button>
-                    )}
+                    <Button variant="primary" disabled={!canReply(review)} onClick={() => { setReplyText(review.reply ?? ""); setReplyingReview(review); }} style={{ flex: 1 }}>
+                      {review.reply ? "Editar resposta" : "Responder"}
+                    </Button>
                   </div>
+                  <small>{review.visibility === "PRIVATE" ? "Privada — feedback interno, não afeta a nota" : review.visibility === "PUBLIC" ? "Pública" : "Visibilidade não informada"} · {review.status}</small>
                 </div>
               );
             })}
@@ -317,7 +323,7 @@ export function IFoodReviewsDetailedPage() {
 
             <Field
               label="Sua Resposta"
-              hint={`${replyText.length}/${MAX_REPLY_LENGTH} caracteres. Seja educado e profissional.`}
+              hint={`${replyText.length}/${MAX_REPLY_LENGTH} caracteres (mínimo 10). Evite ofensas, dados pessoais, links e promoções. Edição disponível por 10 minutos após o primeiro envio.`}
               error={replyTooLong ? `A resposta passa de ${MAX_REPLY_LENGTH} caracteres.` : undefined}
             >
               {(a11y) => (
@@ -345,7 +351,7 @@ export function IFoodReviewsDetailedPage() {
               <Button
                 variant="primary"
                 onClick={() => replyMutation.mutate({ reviewId: replyingReview.id, text: replyText.trim() })}
-                disabled={!replyText.trim() || replyTooLong || replyMutation.isPending}
+                disabled={replyText.trim().length < 10 || replyTooLong || !canReply(replyingReview) || replyMutation.isPending}
               >
                 {replyMutation.isPending ? "Enviando..." : "Enviar Resposta"}
               </Button>

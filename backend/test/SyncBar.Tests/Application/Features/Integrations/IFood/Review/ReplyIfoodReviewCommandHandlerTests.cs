@@ -43,6 +43,8 @@ public sealed class ReplyIfoodReviewCommandHandlerTests
         _settingRepository.GetByCompanyAsync(branch.CompanyId, Arg.Any<CancellationToken>()).Returns(setting);
         _mappingRepository.GetByBranchAsync(Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(mapping);
         _tokenProvider.GetAccessTokenAsync(branch.CompanyId, Arg.Any<CancellationToken>()).Returns(token);
+        _reviewClient.GetReviewByIdAsync(token, merchantId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new IfoodReviewDetailDto("rev-1", DateTime.UtcNow, false, false, null, null, false, null, null, 5, null, null, [], "NOT_REPLIED", "PUBLIC"));
     }
 
     [Fact]

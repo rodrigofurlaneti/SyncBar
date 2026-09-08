@@ -160,14 +160,14 @@ public sealed class IfoodShippingClientTests
     }
 
     [Fact]
-    public async Task GetTrackingAsync_Failure_ShouldReturnFailure()
+    public async Task GetTrackingAsync_NotFound_ShouldReturnPendingPosition()
     {
         _handler.EnqueueJson(HttpStatusCode.NotFound, "entrega nao encontrada");
 
         var result = await _client.GetTrackingAsync("tok", "delivery-missing", CancellationToken.None);
 
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("404");
+        result.Success.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
     }
 
     [Fact]

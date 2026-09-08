@@ -687,6 +687,9 @@ export interface IFoodReviewOrderItem {
 }
 
 export interface IFoodReviewListItem {
+  status?: string | null;
+  visibility?: string | null;
+  firstReplyAt?: string | null;
   id: string;
   createdAt: string | null;
   discarded: boolean;
@@ -734,6 +737,9 @@ export interface IFoodReviewQuestion {
 }
 
 export interface IFoodReviewDetailResponse {
+  status?: string | null;
+  visibility?: string | null;
+  firstReplyAt?: string | null;
   id: string;
   createdAt: string | null;
   discarded: boolean;

@@ -277,7 +277,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
         DateTime now, 
         CancellationToken cancellationToken)
     {
-        switch (evt.FullCode)
+        switch (evt.FullCode ?? evt.Code)
         {
             case "PLACED":
                 return await ProcessNewOrderAsync(evt, companyId, token, mappingsByBranch, now, cancellationToken);
@@ -310,8 +310,10 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
             case "HANDSHAKE_SETTLEMENT":
             case "DELIVERY_ADDRESS_CHANGE":
             case "DELIVERY_PHONE_CHANGE":
+                // Não confirmar eventos cuja alteração de negócio ainda não foi aplicada.
+                return false;
             default:
-                return true;
+                return false;
         }
     }
 

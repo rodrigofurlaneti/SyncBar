@@ -59,7 +59,7 @@ public sealed class KeetaAuthClientTests
         result.ExpiresIn.Should().Be(3600);
         LastRequest.Method.Should().Be(HttpMethod.Post);
         LastRequest.RequestUri!.ToString().Should().EndWith("oauth/token");
-        var body = await LastRequest.Content!.ReadAsStringAsync();
+        var body = _handler.RequestBodies.Last()!;
         body.Should().Contain("\"client_id\":\"client-1\"");
         body.Should().Contain("\"grant_type\":\"app_level_token\"");
         body.Should().Contain("\"client_secret\":\"secret-1\"");

@@ -395,7 +395,10 @@ function TrackingModal({ delivery, onClose }: { delivery: IFoodShippingDeliveryR
   const trackingQuery = useQuery({
     queryKey: ["integrations", "ifood", "shipping-tracking", delivery.id],
     queryFn: () => getIFoodShippingTracking(delivery.id),
-    refetchInterval: 15_000,
+    refetchInterval: 30_000,
+    staleTime: 30_000,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
   const scoreQuery = useQuery({

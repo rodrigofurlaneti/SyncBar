@@ -26,7 +26,9 @@ public sealed class KeetaOrderEventProcessorTests
     [Fact]
     public async Task ProcessAsync_EventAlreadyLogged_ShouldSkipAndReturnTrue()
     {
-        _eventLogRepository.ExistsByEventIdAsync("evt-1", Arg.Any<CancellationToken>()).Returns(true);
+        var previous = KeetaIntegrationOrderEventLog.Create(1, 2, "evt-1", "order-1", "CONFIRMED", "{}", DateTime.UtcNow).Value;
+        previous.MarkAsProcessed();
+        _eventLogRepository.GetByEventIdAsync("evt-1", Arg.Any<CancellationToken>()).Returns(previous);
         var polledEvent = new KeetaPolledEvent("evt-1", "CONFIRMED", "order-1", "https://x", DateTime.UtcNow, "{}");
 
         var result = await _processor.ProcessAsync(1, 2, polledEvent, CancellationToken.None);

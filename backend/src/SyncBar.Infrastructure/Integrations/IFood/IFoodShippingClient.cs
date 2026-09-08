@@ -133,6 +133,8 @@ internal sealed class IfoodShippingClient(HttpClient httpClient) : IIfoodShippin
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             using var response = await httpClient.SendAsync(request, cancellationToken);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return new IfoodShippingTrackingResult(true, null, null, null, null, null, null);
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync(cancellationToken);

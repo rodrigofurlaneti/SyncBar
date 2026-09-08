@@ -83,7 +83,7 @@ public sealed class KeetaOrderEventWebhookControllerTests
     }
 
     [Fact]
-    public async Task Receive_OtherFailure_ShouldStillReturnNoContent()
+    public async Task Receive_OtherFailure_ShouldReturnServiceUnavailableForRetry()
     {
         SetupRequest("{}");
         _mediator.Send(Arg.Any<ProcessKeetaNewEventWebhookCommand>(), Arg.Any<CancellationToken>())
@@ -91,6 +91,6 @@ public sealed class KeetaOrderEventWebhookControllerTests
 
         var result = await _controller.Receive("app-1", "123", "sig-1", CancellationToken.None);
 
-        result.Should().BeOfType<NoContentResult>();
+        result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(503);
     }
 }

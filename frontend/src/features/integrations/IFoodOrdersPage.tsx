@@ -738,7 +738,10 @@ function TrackOrderModal({ order, onClose }: { order: IFoodOrderResponse; onClos
   const trackingQuery = useQuery({
     queryKey: ["integrations", "ifood", "order-tracking", order.id],
     queryFn: () => getIFoodOrderTracking(order.id),
-    refetchInterval: 15_000,
+    refetchInterval: 30_000,
+    staleTime: 30_000,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
   const tracking = trackingQuery.data;

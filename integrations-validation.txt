@@ -1,0 +1,23 @@
+  SyncBar.Domain -> C:\Users\AMD\source\repos\SyncBar\backend\src\SyncBar.Domain\bin\Debug\net9.0\SyncBar.Domain.dll
+  SyncBar.Application -> C:\Users\AMD\source\repos\SyncBar\backend\src\SyncBar.Application\bin\Debug\net9.0\SyncBar.Application.dll
+  SyncBar.Infrastructure -> C:\Users\AMD\source\repos\SyncBar\backend\src\SyncBar.Infrastructure\bin\Debug\net9.0\SyncBar.Infrastructure.dll
+  SyncBar.API -> C:\Users\AMD\source\repos\SyncBar\backend\src\SyncBar.API\bin\Debug\net9.0\SyncBar.API.dll
+  SyncBar.Tests -> C:\Users\AMD\source\repos\SyncBar\backend\test\SyncBar.Tests\bin\Debug\net9.0\SyncBar.Tests.dll
+Execução de teste para C:\Users\AMD\source\repos\SyncBar\backend\test\SyncBar.Tests\bin\Debug\net9.0\SyncBar.Tests.dll (.NETCoreApp,Version=v9.0)
+1 arquivos de teste no total corresponderam ao padrão especificado.
+[xUnit.net 00:00:01.09]     SyncBar.Tests.Infrastructure.Integrations.IFood.IfoodShippingClientTests.GetTrackingAsync_Failure_ShouldReturnFailure [FAIL]
+  Com falha SyncBar.Tests.Infrastructure.Integrations.IFood.IfoodShippingClientTests.GetTrackingAsync_Failure_ShouldReturnFailure [41 ms]
+  Mensagem de erro:
+   Expected result.Success to be False, but found True.
+  Rastreamento de pilha:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+   at FluentAssertions.Primitives.BooleanAssertions`1.BeFalse(String because, Object[] becauseArgs)
+   at SyncBar.Tests.Infrastructure.Integrations.IFood.IfoodShippingClientTests.GetTrackingAsync_Failure_ShouldReturnFailure() in C:\Users\AMD\source\repos\SyncBar\backend\test\SyncBar.Tests\Infrastructure\Integrations\IFood\IfoodShippingClientTests.cs:line 169
+--- End of stack trace from previous location ---
+
+Com falha! – Com falha:     1, Aprovado:  1024, Ignorado:     0, Total:  1025, Duração: 7 s - SyncBar.Tests.dll (net9.0)

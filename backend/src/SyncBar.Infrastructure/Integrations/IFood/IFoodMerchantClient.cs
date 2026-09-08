@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -57,7 +57,7 @@ internal sealed class IfoodMerchantClient(HttpClient httpClient) : IIfoodMerchan
                 {
                     var id = GetString(v, "id", "code") ?? "UNKNOWN";
                     var state = GetString(v, "state", "status") ?? "UNKNOWN";
-                    var message = GetString(v, "message", "description");
+                    var message = ExtractValidationMessage(v) ?? GetString(v, "description");
                     validations.Add(new IfoodMerchantValidation(id, state, message));
                 }
             }
@@ -231,13 +231,8 @@ internal sealed class IfoodMerchantClient(HttpClient httpClient) : IIfoodMerchan
     public async Task<IfoodMerchantActionResult> UpsertPreparationTimeAsync(
         string accessToken, string merchantId, string IfoodCustomerId, int minutes, CancellationToken cancellationToken = default)
     {
-        // ⚠️ RISCO CONHECIDO (auditoria de 2026-08-20/21, ver IIfoodMerchantClient): este path
-        // (/merchants/{id}/myPreparationTime) NÃO consta na coleção Postman oficial do módulo
-        // Merchant — os 9 endpoints reais dessa coleção foram enumerados campo-a-campo e nenhum
-        // menciona "Preparation". Mantido como estava por falta de alternativa oficial confirmada
-        // (adivinhar um path novo seria pior do que deixar o risco documentado); tratar como não
-        // confiável até validação manual em sandbox real.
-        var payload = new { preparationTime = minutes };
+        // MyPreparationTime receives a raw JSON integer, not an object.
+        var payload = minutes;
 
         // Tenta PUT primeiro (atualizar configuração já existente); se o Ifood responder 404
         // ("não configurado ainda"), cai pra POST (criar). Evita ter que rastrear localmente se

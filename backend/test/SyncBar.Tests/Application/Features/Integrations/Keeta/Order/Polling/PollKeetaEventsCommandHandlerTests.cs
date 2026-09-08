@@ -36,7 +36,7 @@ public sealed class PollKeetaEventsCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_EventsPolled_ShouldProcessEachAndAcknowledgeAll()
+    public async Task Handle_EventsPolled_ShouldAcknowledgeOnlySuccessfulEventsAfterCommit()
     {
         var command = new PollKeetaEventsCommand(1, 2, ["im-1"]);
         var events = new List<KeetaPolledEvent>
@@ -54,7 +54,8 @@ public sealed class PollKeetaEventsCommandHandlerTests
         result.Value.TotalEvents.Should().Be(2);
         result.Value.ProcessedEvents.Should().Be(1);
         result.Value.UnprocessedEvents.Should().Be(1);
-        await _orderClient.Received(1).AcknowledgeEventsAsync(1, 2, events, Arg.Any<CancellationToken>());
+        await _orderClient.Received(1).AcknowledgeEventsAsync(1, 2,
+            Arg.Is<IReadOnlyList<KeetaPolledEvent>>(batch => batch.Count == 1 && batch[0].EventId == "evt-1"), Arg.Any<CancellationToken>());
         await _unitOfWork.Received(2).CommitAsync(Arg.Any<CancellationToken>());
     }
 }
