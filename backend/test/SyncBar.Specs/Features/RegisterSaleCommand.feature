@@ -33,16 +33,3 @@ Scenario: Registrar venda com troco em pagamento que nao e dinheiro deve falhar
     When eu registro a venda do pedido 1 na sessao de caixa 10 do funcionario 5 com um pagamento de 100.00 no metodo 2 e troco de 5.00
     Then a operacao deve falhar com o erro "Sale.ChangeNotAllowed"
 
-@ignore
-Scenario: Registrar venda com pagamento insuficiente deve falhar
-    Given um pedido de mesa 1 aguardando pagamento com total de 100.00
-    And a sessao de caixa 10 esta aberta para vendas
-    When eu registro a venda do pedido 1 na sessao de caixa 10 do funcionario 5 com um pagamento de 40.00 no metodo 1
-    Then a operacao deve falhar com o erro "Sale.InsufficientPayment"
-
-@ignore
-Scenario: Registrar venda com pagamento completo deve ter sucesso
-    Given um pedido de mesa 1 aguardando pagamento com total de 100.00
-    And a sessao de caixa 10 esta aberta para vendas
-    When eu registro a venda do pedido 1 na sessao de caixa 10 do funcionario 5 com um pagamento de 100.00 no metodo 1
-    Then a operacao deve ter sucesso

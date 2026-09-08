@@ -201,45 +201,6 @@ this.ScenarioInitialize(scenarioInfo);
             await this.ScenarioCleanupAsync();
         }
         
-        [Xunit.SkippableFactAttribute(DisplayName="Consultar categorias para gerenciamento conta os produtos de cada categoria", Skip="Ignored")]
-        [Xunit.TraitAttribute("FeatureTitle", "Consultar categorias para gerenciamento")]
-        [Xunit.TraitAttribute("Description", "Consultar categorias para gerenciamento conta os produtos de cada categoria")]
-        public async global::System.Threading.Tasks.Task ConsultarCategoriasParaGerenciamentoContaOsProdutosDeCadaCategoria()
-        {
-            string[] tagsOfScenario = new string[] {
-                    "ignore"};
-            global::System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new global::System.Collections.Specialized.OrderedDictionary();
-            global::Reqnroll.ScenarioInfo scenarioInfo = new global::Reqnroll.ScenarioInfo("Consultar categorias para gerenciamento conta os produtos de cada categoria", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 20
-this.ScenarioInitialize(scenarioInfo);
-#line hidden
-            if ((global::Reqnroll.TagHelper.ContainsIgnoreTag(scenarioInfo.CombinedTags) || global::Reqnroll.TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                testRunner.SkipScenario();
-            }
-            else
-            {
-                await this.ScenarioStartAsync();
-#line 21
-    await testRunner.GivenAsync("a categoria ativa \"Bebidas\" com id 1 e ordem 0 esta cadastrada na empresa 1 para " +
-                        "gerenciamento", ((string)(null)), ((global::Reqnroll.Table)(null)), "Given ");
-#line hidden
-#line 22
-    await testRunner.AndAsync("existem 3 produtos cadastrados na categoria 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-#line 23
-    await testRunner.WhenAsync("eu busco as categorias para gerenciamento da empresa 1", ((string)(null)), ((global::Reqnroll.Table)(null)), "When ");
-#line hidden
-#line 24
-    await testRunner.ThenAsync("a operacao deve ter sucesso", ((string)(null)), ((global::Reqnroll.Table)(null)), "Then ");
-#line hidden
-#line 25
-    await testRunner.AndAsync("a categoria \"Bebidas\" na lista de gerenciamento deve ter 3 produtos", ((string)(null)), ((global::Reqnroll.Table)(null)), "And ");
-#line hidden
-            }
-            await this.ScenarioCleanupAsync();
-        }
-        
         [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Reqnroll", "2.0.0.0")]
         [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
         public class FixtureData : object, Xunit.IAsyncLifetime

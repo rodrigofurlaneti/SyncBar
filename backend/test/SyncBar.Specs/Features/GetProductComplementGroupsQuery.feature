@@ -10,15 +10,6 @@ Scenario: Produto sem grupos de complemento vinculados retorna lista vazia
     Then a operacao deve ter sucesso
     And a lista de vinculos retornada deve ter 0 grupos
 
-@ignore
-Scenario: Produto com grupos de complemento vinculados retorna a lista ordenada
-    Given um grupo de complemento cadastrado com id 1 nome "Bebidas" da empresa 100
-    And o produto 5 esta vinculado ao grupo de complemento cadastrado 1 com ordem de exibicao 2 no vinculo 900
-    When eu busco os grupos de complemento vinculados ao produto 5
-    Then a operacao deve ter sucesso
-    And a lista de vinculos retornada deve ter 1 grupos
-    And o primeiro vinculo da lista deve se referir ao grupo "Bebidas"
-
 Scenario: Vinculo para um grupo de complemento que nao existe mais e ignorado
     Given o produto 5 esta vinculado a um grupo de complemento inexistente com ordem de exibicao 1 no vinculo 901
     When eu busco os grupos de complemento vinculados ao produto 5
