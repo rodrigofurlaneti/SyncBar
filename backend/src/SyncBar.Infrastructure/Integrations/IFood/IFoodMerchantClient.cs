@@ -16,6 +16,18 @@ internal sealed class IfoodMerchantClient(HttpClient httpClient) : IIfoodMerchan
 {
     private const string BaseUrl = "https://merchant-api.Ifood.com.br/merchant/v1.0";
 
+    public async Task<IfoodPreparationTimeResult> GetPreparationTimeAsync(string accessToken, string merchantId, string customerId, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/merchants/{merchantId}/myPreparationTime");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        request.Headers.Add("X-iFood-Customer-ID", customerId);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return new(true, null, null);
+        if (!response.IsSuccessStatusCode) return new(false, null, $"Falha ao consultar o tempo de preparo no iFood ({(int)response.StatusCode}).");
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+        return new(true, GetInt(document.RootElement, "preparationTime"), null);
+    }
+
     public async Task<IfoodMerchantStatusResult> GetStatusAsync(string accessToken, string merchantId, CancellationToken cancellationToken = default)
     {
         try
@@ -120,8 +132,8 @@ internal sealed class IfoodMerchantClient(HttpClient httpClient) : IIfoodMerchan
             var payload = new
             {
                 description,
-                start = start.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture),
-                end = end.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture),
+                start = start.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture),
+                end = end.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture),
             };
 
             using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/merchants/{merchantId}/interruptions")
@@ -220,7 +232,7 @@ internal sealed class IfoodMerchantClient(HttpClient httpClient) : IIfoodMerchan
             shifts = shifts.Select(s => new
             {
                 dayOfWeek = FormatDayOfWeek(s.DayOfWeek),
-                start = s.Start.ToString(@"hh\:mm"),
+                start = s.Start.ToString(@"hh\:mm\:ss"),
                 duration = s.DurationMinutes,
             }).ToArray(),
         };

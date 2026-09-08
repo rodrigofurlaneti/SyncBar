@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NSubstitute;
+using SyncBar.Application.Abstractions.Integrations.Ifood;
 using SyncBar.Application.Features.Integrations.Ifood.Merchant;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
@@ -21,7 +22,8 @@ public sealed class GetIfoodOpeningHoursQueryHandlerTests
     public GetIfoodOpeningHoursQueryHandlerTests()
     {
         _handler = new GetIfoodOpeningHoursQueryHandler(
-            _openingHoursRepository, _mappingRepository, _settingRepository, _branchRepository, _logRepository, _unitOfWork);
+            _openingHoursRepository, _mappingRepository, _settingRepository, _branchRepository, _logRepository, _unitOfWork,
+            Substitute.For<IIfoodTokenProvider>(), Substitute.For<IIfoodMerchantClient>());
     }
 
     private static Branch CreateBranch()
