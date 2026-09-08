@@ -4,6 +4,7 @@
 // dá acesso a vários merchants). ClientId volta em texto puro (não é segredo); ClientSecret
 // nunca volta da API.
 export interface IFoodSettingsResponse {
+  eventDeliveryMode?: "Polling" | "Webhook";
   hasCredentials: boolean;
   clientId: string | null;
   enabled: boolean;
@@ -17,6 +18,7 @@ export const getIFoodSettings = (companyId: number): Promise<IFoodSettingsRespon
   api<IFoodSettingsResponse>(`/api/integrations/ifood/company/${companyId}`);
 
 export interface SaveIFoodSettingsPayload {
+  eventDeliveryMode?: "Polling" | "Webhook";
   companyId: number;
   clientId: string;
   clientSecret: string; // vazio = manter o segredo já salvo

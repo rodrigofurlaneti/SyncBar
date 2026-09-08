@@ -31,7 +31,8 @@ internal sealed class GetIfoodSettingsQueryHandler(
                     Enabled: setting.Enabled,
                     LastConnectionTestAt: setting.LastConnectionTestAt,
                     LastConnectionTestSucceeded: setting.LastConnectionTestSucceeded,
-                    IfoodCustomerId: setting.IfoodCustomerId));
+                    IfoodCustomerId: setting.IfoodCustomerId,
+                    EventDeliveryMode: setting.EventDeliveryMode));
             });
     }
 }

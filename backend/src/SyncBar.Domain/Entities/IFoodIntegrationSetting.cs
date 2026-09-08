@@ -8,6 +8,16 @@ public sealed class IfoodIntegrationSetting : AggregateRoot
     public string? ClientId { get; private set; }
     public string? ClientSecretEncrypted { get; private set; }
     public bool Enabled { get; private set; }
+    public string EventDeliveryMode { get; private set; } = "Polling";
+
+    public Result SetEventDeliveryMode(string mode)
+    {
+        if (mode is not ("Polling" or "Webhook"))
+            return Result.Failure(new Error("Ifood.InvalidEventDeliveryMode", "Escolha Polling ou Webhook."));
+        EventDeliveryMode = mode;
+        UpdatedAt = DateTime.Now;
+        return Result.Success();
+    }
     public string? IfoodCustomerId { get; private set; }
     public DateTime? LastConnectionTestAt { get; private set; }
     public bool? LastConnectionTestSucceeded { get; private set; }

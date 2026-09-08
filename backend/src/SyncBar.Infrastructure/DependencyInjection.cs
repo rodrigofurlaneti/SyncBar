@@ -163,6 +163,9 @@ public static class DependencyInjection
             client => client.Timeout = TimeSpan.FromSeconds(15));
 
         services.AddHostedService<IfoodOrderPollingBackgroundService>();
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodEventInbox, IfoodEventInboxStore>();
+        services.AddScoped<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodWebhookReceiver, IfoodWebhookReceiver>();
+        services.AddHostedService<IfoodEventInboxBackgroundService>();
         services.AddScoped<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodCatalogSyncTrigger, IfoodCatalogSyncTrigger>();
 
         services.AddHttpClient<SyncBar.Application.Abstractions.Integrations.Ifood.IIfoodCatalogClient, IfoodCatalogClient>(

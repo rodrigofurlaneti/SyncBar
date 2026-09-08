@@ -31,6 +31,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
     private readonly ILogTrackerRepository _logRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IIfoodShippingTrackingStore? _shippingTracking;
+    private readonly IIfoodEventInbox? _eventInbox;
 
     // Barcode reservado (nunca digitável por um humano cadastrando produto de verdade) usado pra
     // identificar/reaproveitar o produto placeholder "Não mapeado (iFood)" por empresa — ver
@@ -54,7 +55,8 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
         IMemoryCache cache,
         ILogTrackerRepository logRepository,
         IUnitOfWork unitOfWork,
-        IIfoodShippingTrackingStore? shippingTracking = null
+        IIfoodShippingTrackingStore? shippingTracking = null,
+        IIfoodEventInbox? eventInbox = null
         )
         : base(logRepository, unitOfWork)
     {
@@ -75,6 +77,7 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
         _logRepository = logRepository;
         _unitOfWork = unitOfWork;
         _shippingTracking = shippingTracking;
+        _eventInbox = eventInbox;
     }
 
     public override async Task<Result> Handle(SyncIfoodOrdersCommand request, CancellationToken cancellationToken)
@@ -88,6 +91,10 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
                var stopwatch = Stopwatch.StartNew();
 
                var setting = await _settingRepository.GetByCompanyAsync(request.CompanyId, cancellationToken);
+               if (request.ReceivedEvents is not null && (setting is null || !setting.Enabled || !setting.IsActive || setting.ClientId is null))
+                   return Result.Failure(new Error("Ifood.InboxUnavailable", "Integração indisponível para processar os eventos recebidos."));
+               if (request.ReceivedEvents is null && setting?.EventDeliveryMode == "Webhook")
+                   return Result.Success();
 
                 // As quatro condições abaixo (integração desabilitada/não configurada, token
                 // indisponível, nenhuma loja mapeada) são estados normais e esperados de um ciclo
@@ -109,6 +116,8 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
                var token = await _tokenProvider.GetAccessTokenAsync(request.CompanyId, cancellationToken);
                if (string.IsNullOrEmpty(token))
                {
+                   if (request.ReceivedEvents is not null)
+                       return Result.Failure(new Error("Ifood.InboxAuthenticationFailed", "Não foi possível autenticar para processar o evento."));
                    return Result.Success();
                }
 
@@ -121,16 +130,31 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
 
                if (merchantIds.Count == 0)
                {
+                   if (request.ReceivedEvents is not null)
+                       return Result.Failure(new Error("Ifood.InboxMappingMissing", "Nenhuma loja vinculada para processar o evento."));
                    return Result.Success();
                }
 
-               var events = await _orderClient.PollEventsAsync(token, merchantIds, cancellationToken);
+               var events = request.ReceivedEvents ?? await _orderClient.PollEventsAsync(token, merchantIds, cancellationToken);
                if (events.Count == 0)
                    return Result.Success();
+
+               if (request.ReceivedEvents is null && _eventInbox is not null)
+               {
+                   foreach (var evt in events.OrderBy(value => value.CreatedAt))
+                       await _eventInbox.EnqueueAsync(request.CompanyId, evt.Id,
+                           System.Text.Json.JsonSerializer.Serialize(evt), cancellationToken);
+                   await _orderClient.AcknowledgeEventsAsync(token, events.Select(value => value.Id).ToArray(), cancellationToken);
+                   return Result.Success();
+               }
 
                var now = _timeProviderCustom.GetLocalNow().DateTime;
                var acknowledgeIds = await ProcessEventsAsync(events, request.CompanyId, token, stopwatch,
                    mappings, now, cancellationToken);
+
+               if (request.ReceivedEvents is not null)
+                   return acknowledgeIds.Count == events.Count ? Result.Success()
+                       : Result.Failure(new Error("Ifood.EventNotProcessed", "Evento não processado; mantido na fila para nova tentativa."));
 
                if (acknowledgeIds.Count > 0)
                    await _orderClient.AcknowledgeEventsAsync(token, acknowledgeIds, cancellationToken);
@@ -248,14 +272,14 @@ internal sealed class SyncIfoodOrdersCommandHandler : BaseCommandHandler<SyncIfo
         DateTime now, 
         CancellationToken cancellationToken)
     {
-        if (IsDuplicateEvent(evt.Id))
+        if (IsDuplicateEvent($"{companyId}:{evt.Id}"))
             return true;
 
         try
         {
             var shouldAcknowledge = await ProcessEventAsync(evt, companyId, token, stopwatch, mappingsByBranch, now, cancellationToken);
             if (shouldAcknowledge)
-                MarkEventProcessed(evt.Id);
+                MarkEventProcessed($"{companyId}:{evt.Id}");
 
             return shouldAcknowledge;
         }

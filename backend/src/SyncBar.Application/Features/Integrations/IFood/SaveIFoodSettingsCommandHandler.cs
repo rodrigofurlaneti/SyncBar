@@ -58,12 +58,18 @@ internal sealed class SaveIfoodSettingsCommandHandler : BaseCommandHandler<SaveI
         var setting = await _settingRepository.GetByCompanyForUpdateAsync(request.CompanyId, cancellationToken);
 
         if (setting is not null)
+        {
+            var mode = setting.SetEventDeliveryMode(request.EventDeliveryMode ?? setting.EventDeliveryMode);
+            if (mode.IsFailure) return mode;
             return setting.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled, IfoodCustomerId);
+        }
 
         var created = DomainIfoodSetting.Create(request.CompanyId);
         if (created.IsFailure)
             return Result.Failure(created.Error);
 
+        var deliveryMode = created.Value.SetEventDeliveryMode(request.EventDeliveryMode ?? "Polling");
+        if (deliveryMode.IsFailure) return deliveryMode;
         var saved = created.Value.SaveCredentials(request.ClientId, encryptedSecret, request.Enabled, IfoodCustomerId);
         if (saved.IsFailure)
             return saved;

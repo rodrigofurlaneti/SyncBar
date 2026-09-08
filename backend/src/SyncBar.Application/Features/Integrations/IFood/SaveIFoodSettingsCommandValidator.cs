@@ -7,6 +7,8 @@ public sealed class SaveIfoodSettingsCommandValidator : AbstractValidator<SaveIf
     public SaveIfoodSettingsCommandValidator()
     {
         RuleFor(x => x.CompanyId).GreaterThan(0);
+        RuleFor(x => x.EventDeliveryMode).Must(mode => mode is null or "Polling" or "Webhook")
+            .WithMessage("Escolha Polling ou Webhook.");
         RuleFor(x => x.ClientId).MaximumLength(200);
 
         // Não dá pra ligar a integração sem credenciais — evita salvar Enabled=true "no vazio".

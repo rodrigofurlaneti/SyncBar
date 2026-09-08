@@ -8,4 +8,5 @@ namespace SyncBar.Application.Features.Integrations.Ifood;
 // IfoodCustomerId: exigido só pelos endpoints de tempo de preparo do módulo Merchant (Fase 5,
 // header X-Ifood-Customer-ID) — opcional, não é segredo, texto puro.
 public sealed record SaveIfoodSettingsCommand(
-    long CompanyId, string? ClientId, string? ClientSecret, bool Enabled, string? IfoodCustomerId = null) : ICommand;
+    long CompanyId, string? ClientId, string? ClientSecret, bool Enabled, string? IfoodCustomerId = null,
+    string? EventDeliveryMode = null) : ICommand;
