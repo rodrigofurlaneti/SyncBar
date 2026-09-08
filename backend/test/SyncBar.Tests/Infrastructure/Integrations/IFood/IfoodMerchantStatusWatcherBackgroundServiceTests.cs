@@ -308,4 +308,61 @@ public sealed class IfoodMerchantStatusWatcherBackgroundServiceTests
         await act.Should().NotThrowAsync();
         await _settingRepository.DidNotReceive().GetEnabledCompanyIdsAsync(Arg.Any<CancellationToken>());
     }
+
+    // ---- IsWithinConfiguredShift / turno que cruza a meia-noite ----
+    //
+    // Os cenários de RunCycleAsync acima só exercitam turnos que cabem no mesmo dia
+    // (CoversSameDayShift) — nenhum cobre CoversOvernightShift (ex.: 22h-2h), o próprio caso que a
+    // doc do método cita como motivação. Chamado via reflection com "now" explícito (em vez de
+    // depender de DateTime.Now real como os testes de RunCycleAsync) para o resultado ser
+    // determinístico independente do horário em que a suíte rodar.
+    private static bool IsWithinConfiguredShift(IReadOnlyCollection<IfoodOpeningHours> shifts, DateTime now)
+    {
+        var method = typeof(IfoodMerchantStatusWatcherBackgroundService).GetMethod(
+            "IsWithinConfiguredShift", BindingFlags.NonPublic | BindingFlags.Static)!;
+        return (bool)method.Invoke(null, [shifts, now])!;
+    }
+
+    // Segunda-feira 2024-01-01: turno das 22h com 240min de duração cobre até as 02h de terça.
+    private static readonly DateTime Monday = new(2024, 1, 1);
+
+    [Fact]
+    public void IsWithinConfiguredShift_OvernightShift_MomentSameDayAfterStart_ShouldBeWithin()
+    {
+        var shift = IfoodOpeningHours.Create(10, (int)Monday.DayOfWeek, new TimeSpan(22, 0, 0), 240).Value;
+
+        var result = IsWithinConfiguredShift([shift], Monday.AddHours(23).AddMinutes(30)); // segunda 23:30
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsWithinConfiguredShift_OvernightShift_MomentNextDayBeforeEnd_ShouldBeWithin()
+    {
+        var shift = IfoodOpeningHours.Create(10, (int)Monday.DayOfWeek, new TimeSpan(22, 0, 0), 240).Value;
+
+        var result = IsWithinConfiguredShift([shift], Monday.AddDays(1).AddHours(1).AddMinutes(30)); // terça 01:30
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsWithinConfiguredShift_OvernightShift_MomentOutsideWindow_ShouldNotBeWithin()
+    {
+        var shift = IfoodOpeningHours.Create(10, (int)Monday.DayOfWeek, new TimeSpan(22, 0, 0), 240).Value;
+
+        var result = IsWithinConfiguredShift([shift], Monday.AddHours(12)); // segunda 12:00 — bem fora da janela
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsWithinConfiguredShift_OvernightShift_DifferentDayEntirely_ShouldNotBeWithin()
+    {
+        var shift = IfoodOpeningHours.Create(10, (int)Monday.DayOfWeek, new TimeSpan(22, 0, 0), 240).Value;
+
+        var result = IsWithinConfiguredShift([shift], Monday.AddDays(2).AddHours(23).AddMinutes(30)); // quarta 23:30
+
+        result.Should().BeFalse();
+    }
 }

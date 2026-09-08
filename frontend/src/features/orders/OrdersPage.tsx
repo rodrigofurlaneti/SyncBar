@@ -16,6 +16,27 @@ import { StorefrontHubModal } from "../storeFront/StorefrontHubModal";
 import { TableCard, TableCardSkeleton } from "./TableCard";
 import { ComandaCard, ComandaCardSkeleton } from "./ComandaCard";
 
+const iconStyle = { width: 22, height: 22, color: "var(--amber)", flexShrink: 0 };
+
+function TablesIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={iconStyle} aria-hidden="true">
+            <path d="M3 10h18M3 10a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2M3 10v9a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-2h10v2a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-9" />
+        </svg>
+    );
+}
+
+function ComandasIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={iconStyle} aria-hidden="true">
+            <path d="M9 2h6a1 1 0 0 1 1 1v1H8V3a1 1 0 0 1 1-1z" />
+            <rect x="5" y="4" width="14" height="18" rx="2" />
+            <line x1="8" y1="11" x2="16" y2="11" />
+            <line x1="8" y1="15" x2="16" y2="15" />
+        </svg>
+    );
+}
+
 export function OrdersPage() {
     const queryClient = useQueryClient();
     const { branchId } = useAuthStore();
@@ -90,7 +111,8 @@ export function OrdersPage() {
         <>
             <main style={{ padding: "22px", maxWidth: 1240, margin: "0 auto" }} data-testid="orders-page-main">
                 <section className="rise">
-                    <div className="ui-row ui-row-wrap" style={{ alignItems: "baseline", gap: 14, marginBottom: 14 }}>
+                    <div className="ui-row ui-row-wrap" style={{ alignItems: "center", gap: 14, marginBottom: 14 }}>
+                        <TablesIcon />
                         <h2 className="display" style={{ fontSize: "1.7rem" }}>
                             Mesas
                         </h2>
@@ -107,7 +129,7 @@ export function OrdersPage() {
                             + Retirada / Delivery
                         </button>
                         <button
-                            className="btn-ghost"
+                            className="btn-primary"
                             type="button"
                             disabled={(tablesQuery.data ?? []).length === 0}
                             data-testid="btn-generate-qr-modal"
@@ -158,7 +180,8 @@ export function OrdersPage() {
                 </section>
 
                 <section className="rise rise-2" style={{ marginTop: 34 }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
+                        <ComandasIcon />
                         <h2 className="display" style={{ fontSize: "1.7rem" }}>Comandas</h2>
                         <span style={{ color: "var(--ink-faint)", fontSize: "0.9rem" }}>
                             toque numa comanda livre para abrir uma conta individual

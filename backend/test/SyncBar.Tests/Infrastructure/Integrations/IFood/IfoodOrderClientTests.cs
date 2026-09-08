@@ -116,7 +116,8 @@ public sealed class IfoodOrderClientTests
              "delivery":{"deliveredBy":"IFOOD","deliveryAddress":{"formattedAddress":"Av Paulista, 100"}},
              "total":{"subTotal":10,"deliveryFee":2,"additionalFees":0,"orderAmount":12},
              "items":[{"externalCode":"ext-1","name":"Pizza","quantity":1,"unitPrice":10,
-                       "options":[{"id":"opt-1","name":"Borda recheada","quantity":1,"unitPrice":2}]}]}
+                       "options":[{"id":"opt-1","name":"Borda recheada","quantity":1,"unitPrice":2,
+                                   "customizations":[{"id":"cust-1","name":"Sem cebola","quantity":1,"unitPrice":0}]}]}]}
             """);
 
         var result = await _client.GetOrderDetailsAsync("tok", "order-1", CancellationToken.None);
@@ -435,6 +436,23 @@ public sealed class IfoodOrderClientTests
         result.Success.Should().BeTrue();
         result.Items.Should().BeEmpty();
         result.GrossValueAmount.Should().BeNull();
+    }
+
+    // Diferente do teste acima (sem "bag" nenhum), este tem "bag" mas sem "prices"/"grossValue"
+    // aninhado — ramo de ParseVirtualBagGrossValue ainda não exercitado (retorna (null,null) só
+    // quando o objeto bag existe mas não tem a estrutura de preço esperada).
+    [Fact]
+    public async Task GetVirtualBagAsync_BagWithoutPrices_ShouldReturnNullGrossValue()
+    {
+        _handler.EnqueueJson(HttpStatusCode.OK, """
+            {"id":"bag-1","status":"OPEN","bag":{"items":[{"uniqueId":"i-1","name":"Produto","quantity":1,"ean":null}]}}
+            """);
+
+        var result = await _client.GetVirtualBagAsync("tok", "order-1", CancellationToken.None);
+
+        result.Items.Should().ContainSingle(i => i.Ean == null);
+        result.GrossValueAmount.Should().BeNull();
+        result.GrossValueCurrency.Should().BeNull();
     }
 
     [Fact]
