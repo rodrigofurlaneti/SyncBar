@@ -620,9 +620,13 @@ input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--da
   display: grid;
   gap: 16px;
   align-content: start;
-  overflow-y: auto;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  overflow: auto;
 }
-.modal-panel.is-center { width: min(420px, 92vw); max-height: 92vh; }
+.modal-panel > * { min-width: 0; }
+.modal-panel.is-center { width: min(420px, 92vw); max-height: 90vh; max-height: 90dvh; }
 .modal-panel.is-center.is-wide { width: min(560px, 94vw); }
 .modal-panel.is-drawer {
   width: min(480px, 96vw);

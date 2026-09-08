@@ -1337,11 +1337,20 @@ function WebhooksSection({ companyId }: { companyId: number }) {
   const markMutation = useMutation({
     mutationFn: (vars: { log: AsaasWebhookLogResponse; status: number; errorMessage?: string | null }) =>
       updateAsaasWebhookLogStatus(vars.log.id, companyId, vars.status, vars.errorMessage),
-    onSuccess: () => {
+    onSuccess: (_, { log, status, errorMessage }) => {
+      queryClient.setQueriesData<AsaasWebhookLogResponse[]>(
+        { queryKey: ["asaas", "webhooks"] },
+        (logs) => logs?.map((item) => item.id === log.id && item.companyId === log.companyId
+          ? { ...item, status, errorMessage: status === WebhookLogStatus.Failed ? errorMessage ?? null : null }
+          : item),
+      );
       toast.success("Status do webhook atualizado.");
       refresh();
     },
-    onError: (e) => toast.error(apiErrorMessage(e, "Não foi possível atualizar o status.")),
+    onError: (e) => {
+      toast.error(apiErrorMessage(e, "Não foi possível atualizar o status."));
+      refresh();
+    },
   });
 
   const deleteMutation = useMutation({
@@ -1448,7 +1457,7 @@ function WebhooksSection({ companyId }: { companyId: number }) {
                   </Button>
                 )}
                 {log.status !== WebhookLogStatus.Failed && (
-                  <Button variant="ghost" size="sm" onClick={() => void markFailed(log)}>
+                  <Button variant="ghost" size="sm" disabled={markMutation.isPending} onClick={() => void markFailed(log)}>
                     Marcar falha
                   </Button>
                 )}

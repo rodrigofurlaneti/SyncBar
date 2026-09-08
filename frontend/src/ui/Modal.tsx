@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "./Button";
 
 interface Props {
@@ -108,7 +109,7 @@ export function Modal({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intencional: só no mount/unmount, ver comentário acima
   }, []);
 
-  return (
+  return createPortal(
     <div
       className={`modal-backdrop ${isDrawer ? "is-drawer" : "is-center"}`}
       onMouseDown={(e) => {
@@ -137,6 +138,7 @@ export function Modal({
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
