@@ -23,6 +23,7 @@ import { formatBRL, unitOfMeasureLabel } from "../../lib/types";
 import type { CategoryManagementResponse, ProductManagementResponse, StockItemResponse } from "../../lib/types";
 import { QueryError } from "../../components/QueryError";
 import { ProductComplementLinkPanel } from "./ProductComplementLinkPanel";
+import { ProductExtrasPanel } from "./ProductExtrasPanel";
 import { Modal } from "../../ui/Modal";
 import { Button } from "../../ui/Button";
 import { Field, TextField, SelectField } from "../../ui/Field";
@@ -36,6 +37,8 @@ const ALL_CATEGORIES = "all" as const;
 type StatusFilter = "all" | "active" | "inactive";
 
 const emptyForm = {
+    hasOptionalExtras: false,
+    hasBoosts: false,
     categoryId: "",
     unitOfMeasureId: "1",
     name: "",
@@ -164,6 +167,8 @@ export function ProductsPage() {
         if (product === "new") setForm({ ...emptyForm, categoryId: String(categoriesQuery.data?.[0]?.id ?? "") });
         else
             setForm({
+                hasOptionalExtras: false,
+                hasBoosts: false,
                 categoryId: String(product.categoryId),
                 unitOfMeasureId: String(product.unitOfMeasureId),
                 name: product.name,
@@ -177,6 +182,8 @@ export function ProductsPage() {
     };
 
     const buildPayload = (): ProductPayload => ({
+        hasOptionalExtras: form.hasOptionalExtras,
+        hasBoosts: form.hasBoosts,
         categoryId: Number(form.categoryId),
         unitOfMeasureId: Number(form.unitOfMeasureId),
         name: form.name.trim(),
@@ -202,10 +209,14 @@ export function ProductsPage() {
                     : (editing as ProductManagementResponse).id;
             if (editing !== "new") await updateProduct(productId, buildPayload());
             if (imageFile !== null) await uploadProductImage(productId, imageFile);
+            return productId;
         },
-        onSuccess: () => {
+        onSuccess: (productId) => {
             Toast.fire({ icon: "success", title: editing === "new" ? "Produto criado." : "Produto atualizado." });
-            setEditing(null);
+            if (editing === "new" && (form.hasOptionalExtras || form.hasBoosts)) {
+                setEditing({ ...buildPayload(), id: productId, categoryName: "", isActive: true, imageUrl: null } as ProductManagementResponse);
+                setImageFile(null);
+            } else setEditing(null);
             refresh();
         },
         onError: onApiError,
@@ -803,7 +814,19 @@ export function ProductsPage() {
                     </div>
 
                     {editing !== "new" && editing !== null && (
-                        <ProductComplementLinkPanel productId={editing.id} />
+                        <>
+                            <ProductExtrasPanel key={editing.id} productId={editing.id} />
+                            <ProductComplementLinkPanel productId={editing.id} />
+                        </>
+                    )}
+                    {editing === "new" && (
+                        <div className="ui-stack">
+                            <Switch checked={form.hasOptionalExtras} onChange={next => setForm({ ...form, hasOptionalExtras: next })} label="Possui Opcionais Gratuitos?" />
+                            <span>Possui Opcionais Gratuitos?</span>
+                            <Switch checked={form.hasBoosts} onChange={next => setForm({ ...form, hasBoosts: next })} label="Possui Adicionais Pagos?" />
+                            <span>Possui Adicionais Pagos?</span>
+                            {(form.hasOptionalExtras || form.hasBoosts) && <p>Salve o produto para cadastrar os itens. O cadastro continuará aberto.</p>}
+                        </div>
                     )}
 
                     {error && (

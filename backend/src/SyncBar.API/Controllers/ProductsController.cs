@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.IO;
+using SyncBar.Application.Features.Catalog.ProductExtras;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using MediatR;
@@ -22,6 +23,73 @@ public sealed class ProductsController(
     ILogTrackerRepository logRepository,
     IUnitOfWork unitOfWork) : ApiController(mediator)
 {
+    [Authorize(Roles = ManagerRoles)]
+    [HttpGet("{id:long}/optional-extras")]
+    public async Task<IActionResult> ListOptionalExtra(long id, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new GetOptionalExtrasByProductIdQuery(id), ct);
+        return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+    }
+    [Authorize(Roles = ManagerRoles)]
+    [HttpPost("{id:long}/optional-extras")]
+    public async Task<IActionResult> AddOptionalExtra(long id, [FromBody] OptionalExtraRequest request, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new AddOptionalExtraCommand(id, request.OptionalExtraName, request.DisplayOrder), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+    [Authorize(Roles = ManagerRoles)]
+    [HttpPut("{id:long}/optional-extras/{itemId:long}")]
+    public async Task<IActionResult> UpdateOptionalExtra(long id, long itemId, [FromBody] OptionalExtraRequest request, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new UpdateOptionalExtraCommand(id, itemId, request.OptionalExtraName, request.DisplayOrder), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+    [Authorize(Roles = ManagerRoles)]
+    [HttpDelete("{id:long}/optional-extras/{itemId:long}")]
+    public async Task<IActionResult> DeleteOptionalExtra(long id, long itemId, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new DeleteOptionalExtraCommand(id, itemId), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+    [Authorize(Roles = ManagerRoles)]
+    [HttpGet("{id:long}/boosts")]
+    public async Task<IActionResult> ListProductBoost(long id, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new GetProductBoostsByProductIdQuery(id), ct);
+        return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+    }
+    [Authorize(Roles = ManagerRoles)]
+    [HttpPost("{id:long}/boosts")]
+    public async Task<IActionResult> AddProductBoost(long id, [FromBody] ProductBoostRequest request, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new AddProductBoostCommand(id, request.BoostName, request.IncrementalValue, request.DisplayOrder), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+    [Authorize(Roles = ManagerRoles)]
+    [HttpPut("{id:long}/boosts/{itemId:long}")]
+    public async Task<IActionResult> UpdateProductBoost(long id, long itemId, [FromBody] ProductBoostRequest request, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new UpdateProductBoostCommand(id, itemId, request.BoostName, request.IncrementalValue, request.DisplayOrder), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+    [Authorize(Roles = ManagerRoles)]
+    [HttpDelete("{id:long}/boosts/{itemId:long}")]
+    public async Task<IActionResult> DeleteProductBoost(long id, long itemId, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new DeleteProductBoostCommand(id, itemId), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+    [Authorize(Roles = ManagerRoles)]
+    [HttpPut("{id:long}/extras-and-boosts")]
+    public async Task<IActionResult> ToggleExtras(long id, [FromBody] ProductExtrasRequest request, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new ToggleProductExtrasAndBoostsCommand(id, request.HasOptionalExtras, request.HasBoosts), ct);
+        return result.IsFailure ? HandleFailure(result) : NoContent();
+    }
+
+    public sealed record OptionalExtraRequest(string OptionalExtraName, [property: JsonRequired] int DisplayOrder);
+    public sealed record ProductBoostRequest(string BoostName, [property: JsonRequired] decimal IncrementalValue, [property: JsonRequired] int DisplayOrder);
+    public sealed record ProductExtrasRequest([property: JsonRequired] bool HasOptionalExtras, [property: JsonRequired] bool HasBoosts);
     [Authorize(Roles = ManagerRoles)]
     [HttpPost]
     public Task<IActionResult> Create([FromBody] CreateProductCommand command, CancellationToken ct) =>

@@ -12,4 +12,6 @@ public sealed record CreateProductCommand(
     decimal SalePrice,
     decimal? CostPrice,
     bool IsStockControlled,
-    int? PreparationTimeMinutes) : ICommand<long>;
+    int? PreparationTimeMinutes,
+    bool HasOptionalExtras = false,
+    bool HasBoosts = false) : ICommand<long>;

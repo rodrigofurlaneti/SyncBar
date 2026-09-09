@@ -46,6 +46,7 @@ internal sealed class CreateProductCommandHandler : BaseCommandHandler<CreatePro
                 if (product.IsFailure)
                     return Result.Failure<long>(product.Error);
 
+                product.Value.ToggleExtrasAndBoosts(request.HasOptionalExtras, request.HasBoosts);
                 await _productRepository.AddAsync(product.Value, cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
 

@@ -7,10 +7,10 @@ namespace SyncBar.Infrastructure.Persistence.Repositories;
 internal sealed class ProductRepository(AppDbContext context) : IProductRepository
 {
     public async Task<Product?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
-        => await context.Products.AsNoTracking()
+        => await context.Products.AsNoTracking().Include(x => x.OptionalExtras).Include(x => x.Boosts).AsSplitQuery()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     public async Task<Product?> GetByIdForUpdateAsync(long id, CancellationToken cancellationToken = default)
-        => await context.Products.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        => await context.Products.Include(x => x.OptionalExtras).Include(x => x.Boosts).AsSplitQuery().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     public async Task<IReadOnlyCollection<Product>> GetByCompanyAsync(long companyId, CancellationToken cancellationToken = default)
         => await context.Products.AsNoTracking()
             .Where(x => x.CompanyId == companyId && x.IsActive)
