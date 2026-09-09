@@ -40,9 +40,21 @@ e-mail e ID, sem senha ou CPF; traces de rede ficam desativados.
 A execução real retornou **401 em POST /api/customerappusers**, antes de criar
 cliente/endereço/pedido. O controller `CustomerAppUsersController` tem `[Authorize]`
 e o POST não possui acesso público. O cardápio tenta chamar essa rota sem sessão
-ao registrar um visitante. É necessário implementar o cadastro público com validação
-de filial/empresa e proteção apropriada; não remover a autorização das operações
-administrativas de consulta, alteração e exclusão.
+ao registrar um visitante. O fluxo foi corrigido para usar
+`POST /api/storefront/branches/{branchId}/customers`, derivando a empresa da filial.
+Depois do cadastro, o cliente faz login automaticamente e usa uma sessão própria
+para seus endereços em `/api/storefront/customer/addresses`. A API verifica o cliente
+no token e impede leitura de endereços de outra pessoa ou gravação em outra empresa.
+O login retorna o ID do cliente vinculado, e não o ID do usuário de acesso.
 
-Até corrigir e publicar esse contrato, o teste real deve continuar falhando:
-não aceitar 401 como sucesso nem simular a resposta na suíte real.
+Publicar API e frontend juntos antes de repetir a suíte real. Não aceitar 401 como
+sucesso nem simular a resposta na suíte real.
+
+## Celulares
+
+`npm run test:e2e:storefront:devices` executa os 15 cenários de cadastro e checkout
+em desktop Chromium, Pixel 7/Chromium e iPhone 13/WebKit: 45 combinações.
+O teste administrativo de copiar link fica na suíte padrão. A emulação não substitui
+a conferência no aparelho físico. O formulário usa fonte de 16px nos campos móveis,
+altura dinâmica e botão sem deslocamento ao passar/tocar, evitando instabilidade
+de posicionamento no WebKit.

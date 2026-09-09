@@ -1,4 +1,4 @@
-﻿import { api } from "../../lib/apiClient";
+import { api } from "../../lib/apiClient";
 import type { MenuItemResponse, OrderItemComplementSelection } from "../../lib/types";
 
 export type StorefrontItemRequest = {
@@ -14,9 +14,7 @@ export type StorefrontMenuResponse = {
 };
 
 export type CustomerAppUserPayload = {
-    companyId: number;
-    branchId?: number | null;
-    customerId?: number | null;
+    branchId: number;
     userName: string;
     email: string;
     password: string;
@@ -82,14 +80,20 @@ export type CustomerLoginResponse = {
     companyId: number;
 };
 
-// Nova rota conectada ao backend (AuthController)
-export const loginCustomerAppUser = (
-    payload: CustomerLoginPayload
-): Promise<CustomerLoginResponse> =>
-    api<CustomerLoginResponse>(`/api/auth/customer-login`, {
-        method: "POST",
-        body: JSON.stringify(payload),
+let customerAccessToken: string | null = null;
+const customerApi = <T>(path: string, init?: RequestInit) => api<T>(path, {
+    ...init, headers: { ...init?.headers, Authorization: customerAccessToken ? `Bearer ${customerAccessToken}` : "" },
+}, false);
+
+// Customer authentication must not use or overwrite the administrative session.
+export const loginCustomerAppUser = async (payload: CustomerLoginPayload): Promise<CustomerLoginResponse> => {
+    customerAccessToken = null;
+    const result = await customerApi<CustomerLoginResponse>('/api/auth/customer-login', {
+        method: 'POST', body: JSON.stringify(payload),
     });
+    customerAccessToken = result.accessToken;
+    return result;
+};
 
 // Buscar o cardápio público da filial (sem token de mesa)
 export const getStorefrontMenu = (branchId: number): Promise<StorefrontMenuResponse> =>
@@ -116,23 +120,24 @@ export const getCustomerAppUsersByCompany = (companyId: number): Promise<any[]> 
 // Cadastrar um novo cliente e seu acesso web unificado
 export const registerCustomerAppUser = (
     payload: CustomerAppUserPayload
-): Promise<{ id: number }> =>
-    api<{ id: number }>(`/api/customerappusers`, {
+): Promise<{ id: number; companyId: number }> =>
+    customerApi<{ id: number; companyId: number }>(`/api/storefront/branches/${payload.branchId}/customers`, {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ userName: payload.userName, email: payload.email,
+            password: payload.password, cpf: payload.cpf, phone: payload.phone }),
     });
 
 // Cadastrar o endereço de entrega do novo cliente
 export const registerCustomerAddress = (
     payload: CustomerAddressPayload
 ): Promise<{ id: number }> =>
-    api<{ id: number }>(`/api/customeraddresses`, {
+    customerApi<{ id: number }>(`/api/storefront/customer/addresses`, {
         method: "POST",
         body: JSON.stringify(payload),
     });
 
 // Buscar endereços cadastrados de um cliente específico
 export const getCustomerAddressesByCustomer = (customerId: number): Promise<CustomerAddressResponse[]> =>
-    api<CustomerAddressResponse[]>(`/api/customeraddresses/customer/${customerId}`, {
+    customerApi<CustomerAddressResponse[]>(`/api/storefront/customer/addresses/customer/${customerId}`, {
         method: "GET",
     });

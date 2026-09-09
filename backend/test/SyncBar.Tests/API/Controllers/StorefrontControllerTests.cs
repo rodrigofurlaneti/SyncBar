@@ -1,5 +1,7 @@
 using FluentAssertions;
 using MediatR;
+using SyncBar.Application.Features.CustomerAppUser.Create;
+using SyncBar.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute;
 using SyncBar.API.Controllers;
@@ -25,6 +27,38 @@ public sealed class StorefrontControllerTests
     {
         _controller = new StorefrontController(_mediator, _logRepository, _unitOfWork);
         ControllerTestHelpers.AttachHttpContext(_controller);
+    }
+
+    [Fact]
+    public async Task RegisterCustomer_DerivesCompanyFromBranchAndCreatesNewCustomer()
+    {
+        var branches = Substitute.For<IBranchRepository>();
+        branches.GetByIdAsync(7, Arg.Any<CancellationToken>())
+            .Returns(Branch.Create(42, "Filial", null, null, null, null, null, null, null, null).Value);
+        _mediator.Send(Arg.Is<CreateCustomerAppUserCommand>(c => c.CompanyId == 42 && c.BranchId == 7
+            && c.CustomerId == null && c.UserName == "Cliente Teste"), Arg.Any<CancellationToken>())
+            .Returns(Result.Success(901L));
+        var result = await _controller.RegisterCustomer(7,
+            new RegisterStorefrontCustomerRequest("12345678909", "Cliente Teste", "test@example.com", "Test123!"), branches, default);
+        result.Should().BeOfType<OkObjectResult>().Which.Value.Should().BeEquivalentTo(new { id = 901L, companyId = 42L });
+    }
+
+    [Fact]
+    public async Task RegisterCustomer_UnknownBranchDoesNotCreateAccount()
+    {
+        var branches = Substitute.For<IBranchRepository>();
+        var result = await _controller.RegisterCustomer(999,
+            new RegisterStorefrontCustomerRequest("12345678909", "Cliente Teste", "test@example.com", "Test123!"), branches, default);
+        result.Should().BeOfType<NotFoundObjectResult>();
+        await _mediator.DidNotReceive().Send(Arg.Any<CreateCustomerAppUserCommand>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void PublicRegistrationDoesNotRemoveAdministrativeAuthorization()
+    {
+        typeof(StorefrontController).GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute), true).Should().NotBeEmpty();
+        typeof(CustomerAppUsersController).GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), true).Should().NotBeEmpty();
+        typeof(CustomerAppUsersController).GetMethod("Create")!.GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute), true).Should().BeEmpty();
     }
 
     [Fact]

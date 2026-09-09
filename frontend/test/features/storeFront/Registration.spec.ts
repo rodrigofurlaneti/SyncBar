@@ -7,12 +7,12 @@ test('registration has independent password toggles and only sends matching pass
   await page.route('**/api/branch-payment-method-settings/resolve*', route => route.fulfill({ json: null }));
   let requests = 0;
   let submittedPassword = '';
-  await page.route('**/api/customerappusers', route => {
+  await page.route('**/api/storefront/branches/*/customers', route => {
     requests++;
     submittedPassword = route.request().postDataJSON().password;
-    return route.fulfill({ json: { id: 1 } });
+    return route.fulfill({ json: { id: 1, companyId: 1 } });
   });
-  await page.route('**/api/customeraddresses', route => route.fulfill({ json: { id: 1 } }));
+  await page.route('**/api/storefront/customer/addresses', route => route.fulfill({ json: { id: 1, companyId: 1 } }));
   await page.route('https://viacep.com.br/**', route => route.fulfill({ json: { logradouro: 'Rua Teste', bairro: 'Centro', localidade: 'São Paulo', uf: 'SP' } }));
   await openIdentification(page);
   const auth = page.getByTestId('storefront-auth-modal');

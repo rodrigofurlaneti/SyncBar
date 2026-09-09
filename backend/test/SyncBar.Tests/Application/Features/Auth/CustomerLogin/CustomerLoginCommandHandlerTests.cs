@@ -143,7 +143,7 @@ public sealed class CustomerLoginCommandHandlerTests
         result.Value.ExpiresAt.Should().Be(accessToken.ExpiresAt);
         result.Value.RefreshToken.Should().Be("new-refresh-token-value");
         result.Value.UserName.Should().Be(customer.UserName);
-        result.Value.CustomerId.Should().Be(customer.Id);
+        result.Value.CustomerId.Should().Be(customer.CustomerId!.Value);
         result.Value.CompanyId.Should().Be(customer.CompanyId);
         result.Value.RefreshTokenExpiresAt.Should().BeCloseTo(DateTime.Now.AddDays(7), TimeSpan.FromMinutes(1));
 

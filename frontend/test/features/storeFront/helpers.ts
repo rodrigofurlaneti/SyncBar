@@ -1,11 +1,12 @@
 import type { Page } from '@playwright/test';
 
 export async function mockMenu(page: Page) {
+  await page.route('**/api/auth/customer-login', route => route.fulfill({ json: { accessToken: 'customer-test-token', customerId: 901, companyId: 1, userName: 'Cliente Teste' } }));
   await page.route('**/api/storefront/branches/*/menu', route => route.fulfill({ json: {
     companyId: 1,
     items: [{ id: 1, name: 'Lanche', salePrice: 20, categoryName: 'Lanches', complementGroups: [] }],
   } }));
-  await page.route('**/api/customeraddresses/customer/*', route => route.fulfill({ json: [] }));
+  await page.route('**/api/storefront/customer/addresses/customer/*', route => route.fulfill({ json: [] }));
 }
 
 export async function openIdentification(page: Page, branchId = 7) {
