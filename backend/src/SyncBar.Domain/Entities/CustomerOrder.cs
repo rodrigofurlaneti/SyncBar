@@ -114,7 +114,8 @@ public sealed class CustomerOrder : AggregateRoot
         return Result.Success();
     }
 
-    public Result AddItemWithPromotion(Product product, decimal quantity, string? notes, Promotion? activePromotion, long employeeId, DateTime Now)
+    public Result AddItemWithPromotion(Product product, decimal quantity, string? notes, Promotion? activePromotion, long employeeId, DateTime Now,
+        IReadOnlyCollection<ProductOptionalExtra>? optionalExtras = null, IReadOnlyCollection<ProductBoost>? boosts = null)
     {
         var unitPrice = product.SalePrice;
         var finalNotes = notes;
@@ -124,7 +125,9 @@ public sealed class CustomerOrder : AggregateRoot
             var tag = $"🏷 {activePromotion.Name} (−{activePromotion.DiscountRate.Value:P0})";
             finalNotes = string.IsNullOrWhiteSpace(finalNotes) ? tag : $"{finalNotes} · {tag}";
         }
-        var result = AddItem(product.Id, unitPrice, quantity, finalNotes, employeeId == 0 ? null : employeeId, Now);
+        // Promotions discount the base product only. Boosts are charged per requested unit.
+        unitPrice += boosts?.Sum(x => x.IncrementalValue) ?? 0m;
+        var result = AddItem(product.Id, unitPrice, quantity, finalNotes, employeeId == 0 ? null : employeeId, Now, optionalExtras, boosts);
         if (result.IsFailure)
             return result;
         if (activePromotion?.PromotionTypeId == PromotionTypeIds.EmDobro)
@@ -136,7 +139,8 @@ public sealed class CustomerOrder : AggregateRoot
         return Result.Success();
     }
 
-    public Result AddItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now)
+    public Result AddItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, DateTime Now,
+        IReadOnlyCollection<ProductOptionalExtra>? optionalExtras = null, IReadOnlyCollection<ProductBoost>? boosts = null)
     {
         if (!IsOpen())
             return Result.Failure(new Error(NotOpenErrorCode, "Items can only be added to an open order."));
@@ -153,6 +157,7 @@ public sealed class CustomerOrder : AggregateRoot
         var item = OrderItem.Create(Id, productId, unitPrice, quantity, notes, safeEmployeeId, Now);
         if (item.IsFailure)
             return Result.Failure(item.Error);
+        item.Value.SetCustomizations(optionalExtras ?? [], boosts ?? [], Now);
         _items.Add(item.Value);
         OrderStatusId = OrderStatusIds.EmAndamento;
         RecalculateTotals();
@@ -160,7 +165,7 @@ public sealed class CustomerOrder : AggregateRoot
         return Result.Success();
     }
 
-    public Result AddTransferredItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, long originalStatusId, DateTime Now)
+    public Result AddTransferredItem(long productId, decimal unitPrice, decimal quantity, string? notes, long? employeeId, long originalStatusId, DateTime Now, OrderItem? customizationSource = null)
     {
         if (!IsOpen())
             return Result.Failure(new Error(NotOpenErrorCode, "Items can only be added to an open order."));
@@ -177,6 +182,7 @@ public sealed class CustomerOrder : AggregateRoot
         var item = OrderItem.Create(Id, productId, unitPrice, quantity, notes, safeEmployeeId, Now, originalStatusId);
         if (item.IsFailure)
             return Result.Failure(item.Error);
+        if (customizationSource is not null) item.Value.CopyCustomizationsFrom(customizationSource, Now);
         _items.Add(item.Value);
         OrderStatusId = OrderStatusIds.EmAndamento;
         RecalculateTotals();

@@ -8,4 +8,6 @@ public sealed record AddOrderItemCommand(
     decimal Quantity,
     string? Notes,
     long? EmployeeId,
-    IReadOnlyCollection<OrderItemComplementSelection>? Complements = null) : ICommand;
+    IReadOnlyCollection<OrderItemComplementSelection>? Complements = null,
+    IReadOnlyCollection<long>? OptionalExtraIds = null,
+    IReadOnlyCollection<long>? BoostIds = null) : ICommand;

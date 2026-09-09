@@ -32,10 +32,12 @@ export const addOrderItem = (
   // Fase 6a: seleção de complementos feita no ComplementSelectorModal, junto do lançamento —
   // omitido/vazio quando o produto não tem grupos de complementos vinculados.
   complements?: OrderItemComplementSelection[],
+  optionalExtraIds?: number[],
+  boostIds?: number[],
 ): Promise<void> =>
   api<void>(`/api/orders/${orderId}/items`, {
     method: "POST",
-    body: JSON.stringify({ productId, quantity, notes, employeeId, complements: complements ?? null }),
+    body: JSON.stringify({ productId, quantity, notes, employeeId, complements: complements ?? null, optionalExtraIds, boostIds }),
   });
 
 export const updateItemStatus = (

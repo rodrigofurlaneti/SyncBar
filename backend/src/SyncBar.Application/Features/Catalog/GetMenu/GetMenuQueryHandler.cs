@@ -48,7 +48,11 @@ internal sealed class GetMenuQueryHandler(
                         p.IsStockControlled,
                         p.PreparationTimeMinutes,
                         p.ImageUrl,
-                        complementsByProduct.TryGetValue(p.Id, out var groups) ? groups : []))
+                        complementsByProduct.TryGetValue(p.Id, out var groups) ? groups : [])
+                    {
+                        HasOptionalExtras = p.HasOptionalExtras,
+                        HasBoosts = p.HasBoosts
+                    })
                     .ToList();
 
                 return Result.Success(response);

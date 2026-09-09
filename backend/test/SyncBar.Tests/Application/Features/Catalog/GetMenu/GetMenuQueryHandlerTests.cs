@@ -34,6 +34,18 @@ public sealed class GetMenuQueryHandlerTests
     private static void SetId(Entity entity, long id)
         => typeof(Entity).GetProperty(nameof(Entity.Id))!.SetValue(entity, id);
 
+    [Fact]
+    public async Task Handle_ExposesFlagsUsedToInterceptOrderEntry()
+    {
+        var product = CreateProduct(1, 1, "Coca");
+        product.ToggleExtrasAndBoosts(true, true);
+        _productRepository.GetByCompanyAsync(1, Arg.Any<CancellationToken>()).Returns([product]);
+        _categoryRepository.GetByCompanyAsync(1, Arg.Any<CancellationToken>()).Returns(Array.Empty<Category>());
+        var result = await _handler.Handle(new(1), default);
+        result.Value.Single().HasOptionalExtras.Should().BeTrue();
+        result.Value.Single().HasBoosts.Should().BeTrue();
+    }
+
     private static Product CreateProduct(long id, long categoryId, string name)
     {
         var product = Product.Create(1, categoryId, 1, name, null, null, 10m, null, false, null).Value;

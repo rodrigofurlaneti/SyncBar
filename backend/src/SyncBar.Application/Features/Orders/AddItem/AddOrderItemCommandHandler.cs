@@ -72,6 +72,19 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
             return Result.Failure(productResult.Error);
         var product = productResult.Value;
 
+        var optionalIds = request.OptionalExtraIds ?? [];
+        var boostIds = request.BoostIds ?? [];
+        if (optionalIds.Distinct().Count() != optionalIds.Count || boostIds.Distinct().Count() != boostIds.Count)
+            return Result.Failure(new Error("OrderItem.DuplicateSelection", "Selecione cada opcional ou adicional apenas uma vez."));
+        var optionalExtras = product.OptionalExtras.Where(x => optionalIds.Contains(x.Id) && x.ProductId == product.Id && x.IsActive)
+            .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Id).ToArray();
+        var boosts = product.Boosts.Where(x => boostIds.Contains(x.Id) && x.ProductId == product.Id && x.IsActive)
+            .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Id).ToArray();
+        if ((optionalIds.Count > 0 && !product.HasOptionalExtras) || optionalExtras.Length != optionalIds.Count)
+            return Result.Failure(new Error("OrderItem.OptionalExtraUnavailable", "Um opcional selecionado não está disponível para este produto. Reabra a seleção."));
+        if ((boostIds.Count > 0 && !product.HasBoosts) || boosts.Length != boostIds.Count)
+            return Result.Failure(new Error("OrderItem.BoostUnavailable", "Um adicional selecionado não está disponível para este produto. Reabra a seleção."));
+
         var promotions = await _promotionRepository.GetByBranchAsync(order.BranchId, cancellationToken);
 
         var stockSnapshot = await _stockRepository.GetByProductIdAsync(product.Id, cancellationToken);
@@ -85,7 +98,8 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
         var currentTime = _TimeProviderCustom.GetLocalNow().DateTime;
         var activePromotion = FindActivePromotion(promotions, product.Id, currentTime);
 
-        var addItemResult = AddPrimaryItem(order, product, request, activePromotion, currentTime);
+        var addItemResult = order.AddItemWithPromotion(product, request.Quantity, request.Notes, activePromotion,
+            request.EmployeeId ?? 0, currentTime, optionalExtras, boosts);
         if (addItemResult.IsFailure)
             return addItemResult;
 
@@ -164,10 +178,6 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
 
     private static Promotion? FindActivePromotion(IEnumerable<Promotion> promotions, long productId, DateTime currentTime)
         => promotions.FirstOrDefault(promo => promo.ProductId == productId && promo.IsActiveAt(currentTime));
-
-    private static Result AddPrimaryItem(
-        CustomerOrder order, Product product, AddOrderItemCommand request, Promotion? activePromotion, DateTime currentTime)
-        => order.AddItemWithPromotion(product, request.Quantity, request.Notes, activePromotion, request.EmployeeId ?? 0, currentTime);
 
     private static Result ApplyComplementsToOrder(
         CustomerOrder order,

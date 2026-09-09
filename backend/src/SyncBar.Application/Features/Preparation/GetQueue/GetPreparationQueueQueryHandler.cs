@@ -69,7 +69,7 @@ internal sealed class GetPreparationQueueQueryHandler(
                                 product?.Name ?? $"Produto {i.ProductId}",
                                 i.Quantity,
                                 i.OrderItemStatusId,
-                                i.Notes,
+                                i.GetPreparationNotes(),
                                 i.SentToKitchenAt ?? i.CreatedAt,
                                 product?.PreparationTimeMinutes ?? BarToleranceMinutes,
                                 isBarItem,

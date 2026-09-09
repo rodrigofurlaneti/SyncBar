@@ -15,6 +15,8 @@ export interface OrderItemComplementResponse {
 }
 
 export interface OrderItemResponse {
+  optionalExtras?: { productOptionalExtraId: number; name: string }[];
+  boosts?: { productBoostId: number; name: string; unitPriceCharged: number }[];
   id: number;
   productId: number;
   orderItemStatusId: number;
@@ -107,6 +109,8 @@ export const complementGroupTypeLabel: Record<number, string> = {
 };
 
 export interface MenuItemResponse {
+  hasOptionalExtras?: boolean;
+  hasBoosts?: boolean;
   id: number;
   categoryId: number;
   unitOfMeasureId: number;

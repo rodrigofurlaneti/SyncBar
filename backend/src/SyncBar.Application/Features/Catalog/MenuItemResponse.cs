@@ -15,4 +15,8 @@ public sealed record MenuItemResponse(
     bool IsStockControlled,
     int? PreparationTimeMinutes,
     string? ImageUrl,
-    IReadOnlyCollection<ComplementGroupResponse> ComplementGroups);
+    IReadOnlyCollection<ComplementGroupResponse> ComplementGroups)
+{
+    public bool HasOptionalExtras { get; init; }
+    public bool HasBoosts { get; init; }
+}

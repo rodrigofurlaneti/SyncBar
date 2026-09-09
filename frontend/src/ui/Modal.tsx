@@ -75,6 +75,9 @@ export function Modal({
     document.body.style.overflow = "hidden";
 
     const onKeyDown = (e: KeyboardEvent) => {
+      // Nested dialogs are portals outside the parent panel. Only the focused
+      // dialog should handle Escape/Tab; otherwise both it and the drawer close.
+      if (!panel?.contains(e.target as Node)) return;
       if (e.key === "Escape") {
         if (!dismissableRef.current) return;
         e.stopPropagation();

@@ -46,6 +46,107 @@ public sealed class AddOrderItemCommandHandlerTests
     private static CustomerOrder CreateTableOrder()
         => CustomerOrder.Create(1, 10, null, 1, null, null, DateTime.Now).Value;
 
+    private Product ConfigurableProduct()
+    {
+        var product = CreateProduct();
+        typeof(Entity).GetProperty(nameof(Entity.Id))!.SetValue(product, 10L);
+        product.ToggleExtrasAndBoosts(true, true);
+        var extra = ProductOptionalExtra.Create(10, "Gelo", 0).Value;
+        var boost = ProductBoost.Create(10, "Laranja", 2m, 0).Value;
+        typeof(Entity).GetProperty(nameof(Entity.Id))!.SetValue(extra, 11L);
+        typeof(Entity).GetProperty(nameof(Entity.Id))!.SetValue(boost, 12L);
+        product.OptionalExtras.Add(extra);
+        product.Boosts.Add(boost);
+        SetupProduct(product);
+        return product;
+    }
+
+    [Fact]
+    public async Task Handle_Customizations_FreezeNamesAndPricesAndChargePerUnit()
+    {
+        var order = CreateTableOrder();
+        SetupOrder(order);
+        var product = ConfigurableProduct();
+        var result = await _handler.Handle(new(1, 10, 3, "Sem canudo", null, OptionalExtraIds: [11], BoostIds: [12]), default);
+        result.IsSuccess.Should().BeTrue();
+        var item = order.Items.Single();
+        item.UnitPrice.Should().Be(22m);
+        item.TotalAmount.Should().Be(66m);
+        order.TotalAmount.Should().Be(66m);
+        product.Boosts.Single().Update("Novo nome", 9m, 0);
+        product.OptionalExtras.Single().Update("Novo opcional", 0);
+        item.OptionalExtras.Single().Name.Should().Be("Gelo");
+        item.Boosts.Single().Name.Should().Be("Laranja");
+        item.Boosts.Single().UnitPriceCharged.Should().Be(2m);
+        item.GetPreparationNotes().Should().Contain("Gelo").And.Contain("Laranja").And.Contain("Sem canudo");
+        order.AddComplement(item.Id, 99, 1m, DateTime.Now).IsSuccess.Should().BeTrue();
+        order.TotalAmount.Should().Be(67m); // Existing complements retain their per-line rule.
+    }
+
+    [Theory]
+    [InlineData("disabled")]
+    [InlineData("inactive")]
+    [InlineData("foreign")]
+    [InlineData("missing")]
+    [InlineData("duplicate")]
+    public async Task Handle_InvalidBoost_DoesNotAddAnItem(string scenario)
+    {
+        var order = CreateTableOrder();
+        SetupOrder(order);
+        var product = ConfigurableProduct();
+        if (scenario == "disabled") product.ToggleExtrasAndBoosts(true, false);
+        if (scenario == "inactive") product.Boosts.Single().Deactivate();
+        if (scenario == "foreign") typeof(ProductBoost).GetProperty(nameof(ProductBoost.ProductId))!.SetValue(product.Boosts.Single(), 99L);
+        var ids = scenario == "duplicate" ? new long[] { 12, 12 } : new long[] { scenario == "missing" ? 999 : 12 };
+        var result = await _handler.Handle(new(1, 10, 1, null, null, BoostIds: ids), default);
+        result.IsFailure.Should().BeTrue();
+        order.Items.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("disabled")]
+    [InlineData("inactive")]
+    [InlineData("foreign")]
+    [InlineData("missing")]
+    [InlineData("duplicate")]
+    public async Task Handle_InvalidOptionalExtra_DoesNotAddAnItem(string scenario)
+    {
+        var order = CreateTableOrder();
+        SetupOrder(order);
+        var product = ConfigurableProduct();
+        if (scenario == "disabled") product.ToggleExtrasAndBoosts(false, true);
+        if (scenario == "inactive") product.OptionalExtras.Single().Deactivate();
+        if (scenario == "foreign") typeof(ProductOptionalExtra).GetProperty(nameof(ProductOptionalExtra.ProductId))!.SetValue(product.OptionalExtras.Single(), 99L);
+        var ids = scenario == "duplicate" ? new long[] { 11, 11 } : new long[] { scenario == "missing" ? 999 : 11 };
+        var result = await _handler.Handle(new(1, 10, 1, null, null, OptionalExtraIds: ids), default);
+        result.IsFailure.Should().BeTrue();
+        order.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_BoostIsIncludedInCreditLimitCheck()
+    {
+        var order = CreateComandaOrder(21m);
+        SetupOrder(order);
+        ConfigurableProduct();
+        var result = await _handler.Handle(new(1, 10, 1, null, null, BoostIds: [12]), default);
+        result.Error.Code.Should().Be("Comanda.LimitExceeded");
+        order.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_DiscountAppliesToBasePriceOnly()
+    {
+        var order = CreateTableOrder();
+        SetupOrder(order);
+        var product = ConfigurableProduct();
+        var promotion = Promotion.Create(1, 10, "Happy hour", (int)DateTime.Now.DayOfWeek, 0, 1440, PromotionTypeIds.Desconto, 0.25m).Value;
+        _promotionRepository.GetByBranchAsync(1, Arg.Any<CancellationToken>()).Returns(new List<Promotion> { promotion });
+        var result = await _handler.Handle(new(1, 10, 2, null, null, BoostIds: [12]), default);
+        result.IsSuccess.Should().BeTrue();
+        order.TotalAmount.Should().Be(34m);
+    }
+
     private static CustomerOrder CreateComandaOrder(decimal? creditLimitAmount)
         => CustomerOrder.Create(1, null, 20, 1, null, null, DateTime.Now, creditLimitAmount: creditLimitAmount).Value;
 

@@ -90,7 +90,7 @@ internal sealed class TransferTableItemCommandHandler : BaseCommandHandler<Trans
             itemToTransfer.Notes,
             request.ActorEmployeeId,
             originalStatusId,
-            currentTime);
+            currentTime, itemToTransfer);
 
         if (addResult.IsFailure)
             return Result.Failure<long>(addResult.Error);
