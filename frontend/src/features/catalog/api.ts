@@ -35,6 +35,8 @@ export const activateCategory = (id: number): Promise<void> =>
   api<void>(`/api/categories/${id}/activate`, { method: "PUT" });
 
 export interface ProductPayload {
+  hasOptionalExtras?: boolean;
+  hasBoosts?: boolean;
   categoryId: number;
   unitOfMeasureId: number;
   name: string;

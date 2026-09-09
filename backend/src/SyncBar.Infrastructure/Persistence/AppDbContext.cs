@@ -44,6 +44,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<AccessLog> AccessLogs => Set<AccessLog>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductOptionalExtra> ProductOptionalExtras => Set<ProductOptionalExtra>();
+    public DbSet<ProductBoost> ProductBoosts => Set<ProductBoost>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<StockItem> StockItems => Set<StockItem>();
     public DbSet<Purchase> Purchases => Set<Purchase>();

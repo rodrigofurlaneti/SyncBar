@@ -32,7 +32,13 @@ namespace SyncBar.Application.Features.Catalog.GetProductById
                         product.IsStockControlled,
                         product.PreparationTimeMinutes,
                         product.ImageUrl
-                    );
+                    )
+                    {
+                        HasOptionalExtras = product.HasOptionalExtras,
+                        HasBoosts = product.HasBoosts,
+                        OptionalExtras = product.OptionalExtras.Where(x => product.HasOptionalExtras && x.IsActive).OrderBy(x => x.DisplayOrder).ThenBy(x => x.Id).Select(ProductExtras.ProductOptionalExtraResponse.From).ToArray(),
+                        Boosts = product.Boosts.Where(x => product.HasBoosts && x.IsActive).OrderBy(x => x.DisplayOrder).ThenBy(x => x.Id).Select(ProductExtras.ProductBoostResponse.From).ToArray()
+                    };
                     return Result.Success(response);
                 });
         }

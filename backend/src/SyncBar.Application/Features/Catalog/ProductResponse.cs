@@ -12,5 +12,11 @@
         bool IsStockControlled,
         int? PreparationTimeMinutes,
         string? ImageUrl
-    );
+    )
+    {
+        public bool HasOptionalExtras { get; init; }
+        public bool HasBoosts { get; init; }
+        public IReadOnlyCollection<ProductExtras.ProductOptionalExtraResponse> OptionalExtras { get; init; } = [];
+        public IReadOnlyCollection<ProductExtras.ProductBoostResponse> Boosts { get; init; } = [];
+    }
 }

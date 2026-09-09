@@ -4,6 +4,17 @@ namespace SyncBar.Domain.Entities;
 
 public sealed class Product : AggregateRoot
 {
+    public bool HasOptionalExtras { get; private set; }
+    public bool HasBoosts { get; private set; }
+    public ICollection<ProductOptionalExtra> OptionalExtras { get; private set; } = new List<ProductOptionalExtra>();
+    public ICollection<ProductBoost> Boosts { get; private set; } = new List<ProductBoost>();
+
+    public void ToggleExtrasAndBoosts(bool hasOptionalExtras, bool hasBoosts)
+    {
+        HasOptionalExtras = hasOptionalExtras;
+        HasBoosts = hasBoosts;
+        Touch();
+    }
     public long CompanyId { get; private set; }
     public long CategoryId { get; private set; }
     public long UnitOfMeasureId { get; private set; }
