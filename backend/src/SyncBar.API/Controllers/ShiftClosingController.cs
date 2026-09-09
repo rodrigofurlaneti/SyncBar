@@ -11,6 +11,8 @@ using SyncBar.Domain.Repositories;
 
 namespace SyncBar.API.Controllers;
 
+[Route("api/shift-closing")]
+[Route("api/[controller]")]
 public sealed class ShiftClosingController(
     IMediator mediator,
     ILogTrackerRepository logRepository,
