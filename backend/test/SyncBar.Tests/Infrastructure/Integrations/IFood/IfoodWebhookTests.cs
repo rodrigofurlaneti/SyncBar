@@ -124,6 +124,7 @@ public sealed class IfoodWebhookTests : RepositoryTestBase
     public async Task PollingMode_RejectsWebhookAndPresence()
     {
         _setting.SetEventDeliveryMode("Polling");
+        (await _receiver.ReceiveAsync(Encoding.UTF8.GetBytes(Payload), Sign(Payload), default)).StatusCode.Should().Be(503);
         (await Receive(Payload)).StatusCode.Should().Be(503);
         (await Receive("""{"code":"KEEPALIVE","id":"ping"}""")).StatusCode.Should().Be(503);
     }

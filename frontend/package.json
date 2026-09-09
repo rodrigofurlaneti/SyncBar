@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "test:e2e:storefront": "playwright test test/features/storeFront",
+    "test:e2e:storefront:live": "playwright test --config playwright.storefront-live.config.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "storybook": "storybook dev -p 6006",
