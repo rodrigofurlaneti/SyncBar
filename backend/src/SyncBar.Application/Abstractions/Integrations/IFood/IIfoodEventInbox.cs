@@ -9,5 +9,6 @@ public sealed record IfoodWebhookReceipt(int StatusCode, string[]? MerchantIds =
 
 public interface IIfoodWebhookReceiver
 {
+    Task<IfoodWebhookReceipt> ReceiveAsync(byte[] body, string? signature, CancellationToken ct);
     Task<IfoodWebhookReceipt> ReceiveAsync(long companyId, byte[] body, string? signature, CancellationToken ct);
 }

@@ -429,3 +429,4 @@ capacitor.config.ts.local
 /frontend/npm-audit.json
 /frontend/*-validation.txt
 /audit-test-output.txt
+/letsencrypt/

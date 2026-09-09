@@ -24,6 +24,15 @@ public sealed class IfoodWebhookReceiverControllerTests
     }
 
     [Fact]
+    public async Task Receive_WithoutCompanyUsesSharedEndpoint()
+    {
+        _receiver.ReceiveAsync(Arg.Any<byte[]>(), "signature", Arg.Any<CancellationToken>())
+            .Returns(new IfoodWebhookReceipt(202));
+        var result = await Create("{}").Receive(null, default, "signature");
+        result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(202);
+    }
+
+    [Fact]
     public async Task Receive_ForwardsExactBytesAndReturnsAccepted()
     {
         const string body = "{\n \"description\": \"ação\" }";

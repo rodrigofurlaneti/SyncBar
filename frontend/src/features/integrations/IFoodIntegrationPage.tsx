@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
+import { ApiError } from "../../lib/apiClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createIFoodInterruption,
@@ -104,7 +105,9 @@ export function IFoodIntegrationPage() {
       setClientSecret(""); // nunca reexibe o segredo — limpa o campo após salvar
       void queryClient.invalidateQueries({ queryKey: ["integrations", "ifood", "settings"] });
     },
-    onError: () => toast.error("Não foi possível salvar as credenciais."),
+    onError: (error) => toast.error(error instanceof ApiError && error.status < 500
+      ? error.message
+      : "Não foi possível salvar as credenciais. Verifique os logs da API e a atualização do banco de dados."),
   });
 
   const testMutation = useMutation({
@@ -257,7 +260,7 @@ export function IFoodIntegrationPage() {
               </SelectField>
               {eventDeliveryMode === "Webhook" && <>
                 <TextField label="URL do webhook iFood" readOnly
-                  value={`${window.location.origin}/api/webhook/ifood/${companyId}`}
+                  value={`${window.location.origin}/api/webhook/ifood`}
                   hint="Cadastre esta URL no aplicativo iFood, com HTTPS público. Ela é exclusiva do iFood." />
                 <p role="note" style={{ color: "var(--ink-dim)", margin: 0 }}>
                   Ao salvar Webhook, as consultas de eventos por polling serão interrompidas.

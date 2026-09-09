@@ -8,9 +8,8 @@ using SyncBar.Domain.Repositories;
 namespace SyncBar.Infrastructure.Integrations.Ifood;
 
 /// <summary>
-/// Loop de polling do módulo Order/Events do Ifood — a cada 30s (recomendação oficial da doc:
-/// "comece com polling, migre pra webhook só acima de 1000 pedidos/dia" — não é o caso do
-/// SyncBar ainda), para cada empresa com integração habilitada, dispara um ciclo de sincronização
+/// Loop de polling do módulo Order/Events do Ifood — a cada 30s,
+/// para cada empresa com integração habilitada, dispara um ciclo de sincronização
 /// (SyncIfoodOrdersCommand). Um BackgroundService é singleton — cria um scope de DI por ciclo
 /// pra resolver serviços scoped (DbContext, repositórios, MediatR).
 /// </summary>
@@ -26,6 +25,7 @@ internal sealed class IfoodOrderPollingBackgroundService(
         try { await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken); }
         catch (OperationCanceledException) { return; }
 
+        using var timer = new PeriodicTimer(PollInterval);
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -37,7 +37,7 @@ internal sealed class IfoodOrderPollingBackgroundService(
                 logger.LogError(ex, "Ciclo de polling do Ifood falhou inesperadamente.");
             }
 
-            try { await Task.Delay(PollInterval, stoppingToken); }
+            try { if (!await timer.WaitForNextTickAsync(stoppingToken)) break; }
             catch (OperationCanceledException) { break; }
         }
     }
