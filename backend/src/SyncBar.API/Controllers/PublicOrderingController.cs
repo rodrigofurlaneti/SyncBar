@@ -54,7 +54,7 @@ public sealed class PublicOrderingController(
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(PublicOrderingController), nameof(AddItem), async () =>
         {
             var result = await Mediator.Send(new AddPublicOrderItemCommand(
-                token, request.ProductId, request.Quantity, request.Notes, request.Complements, request.ComandaCode, request.ReadingProof, request.ExpectedOrderId), ct);
+                token, request.ProductId, request.Quantity, request.Notes, request.Complements, request.ComandaCode, request.ReadingProof, request.ExpectedOrderId, request.OptionalExtraIds, request.BoostIds), ct);
             return result.IsFailure ? HandleFailure(result) : Ok(new { orderId = result.Value });
         });
 
@@ -85,7 +85,9 @@ public sealed record AddPublicOrderItemRequest(
     IReadOnlyCollection<OrderItemComplementSelection>? Complements = null,
     string? ComandaCode = null,
     string? ReadingProof = null,
-    long? ExpectedOrderId = null);
+    long? ExpectedOrderId = null,
+    IReadOnlyCollection<long>? OptionalExtraIds = null,
+    IReadOnlyCollection<long>? BoostIds = null);
 
 public sealed record ValidateComandaReadingRequest(
     [property: JsonRequired] string Method,

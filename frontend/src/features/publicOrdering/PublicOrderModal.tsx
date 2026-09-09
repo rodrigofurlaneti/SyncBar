@@ -112,7 +112,7 @@ export function PublicOrderModal({
     };
 
     return (
-        <div data-testid="public-order-modal-container" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", zIndex: 9999, display: "flex", alignItems: step === "view" ? "flex-end" : "center", justifyContent: "center", padding: step === "view" ? 0 : 16 }}>
+        <div data-testid="public-order-modal-container" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: step === "view" ? "flex-end" : "center", justifyContent: "center", padding: step === "view" ? 0 : 16 }}>
             {step === "validate" ? (
                 <div data-testid="modal-step-validate" style={{ backgroundColor: "#1e1e24", padding: isTvOrLarge ? 36 : 24, borderRadius: 16, width: "100%", maxWidth: isTvOrLarge ? 550 : 420, border: "1px solid #323238", boxShadow: "0 10px 30px rgba(0,0,0,0.6)" }}>
                     <ComandaReadingValidation
@@ -206,6 +206,8 @@ export function PublicOrderModal({
                                                 <span style={{ color: "#fff", fontWeight: "bold", fontSize: isTvOrLarge ? "1.2rem" : "1rem" }}>{order.quantity}x {order.productName}</span>
                                                 <span style={{ color: "#f59e0b", fontWeight: "bold", fontSize: isTvOrLarge ? "1.2rem" : "1rem" }}>{formatBRL(order.totalPrice)}</span>
                                             </div>
+                                            {order.optionalExtras?.map((extra: { name: string }, index: number) => <div key={`optional-${index}`} style={{ fontSize: "0.85rem", color: "#a8a8b3" }}>{extra.name} (grátis)</div>)}
+                                            {order.boosts?.map((boost: { name: string; unitPrice: number }, index: number) => <div key={`boost-${index}`} style={{ fontSize: "0.85rem", color: "#a8a8b3" }}>{boost.name} (+ {formatBRL(boost.unitPrice)})</div>)}
                                             <div style={{ display: "flex", justifyContent: "flex-end" }}>
                                                 <span style={{ fontSize: isTvOrLarge ? "0.95rem" : "0.8rem", padding: "4px 8px", borderRadius: 4, fontWeight: "bold", backgroundColor: "rgba(245, 158, 11, 0.2)", color: "#f59e0b" }}>
                                                     {statusText}

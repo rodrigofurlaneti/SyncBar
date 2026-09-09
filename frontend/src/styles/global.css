@@ -388,6 +388,8 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
 .order-card-summary { display: flex; flex-direction: column; gap: .5rem; margin-top: .5rem; color: var(--ink-dim); font-size: .8rem; text-align: left; }
 .order-card-summary > span { display: flex; align-items: center; gap: .5rem; }
 .order-card-summary svg { width: 1rem; height: 1rem; flex-shrink: 0; color: var(--ink-faint); }
+.storefront-item-extras { margin: .5rem 0; padding-left: 1rem; color: #d4d4d8; font-size: .8125rem; line-height: 1.5; }
+.storefront-item-extras span { color: #a1a1aa; }
 .comanda-tile-status { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; }
 
 /* ticket de pedido */

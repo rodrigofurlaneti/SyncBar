@@ -15,5 +15,9 @@ namespace SyncBar.Application.Features.PublicOrdering.GetPublicComandaBill
         long StatusId,
         DateTime RequestedAt,
         string? Notes
-    );
+    )
+    {
+        public IReadOnlyCollection<PublicItemCustomizationResponse> OptionalExtras { get; init; } = [];
+        public IReadOnlyCollection<PublicItemCustomizationResponse> Boosts { get; init; } = [];
+    }
 }

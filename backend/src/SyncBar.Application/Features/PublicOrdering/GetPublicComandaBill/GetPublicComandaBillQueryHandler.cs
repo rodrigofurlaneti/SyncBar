@@ -22,7 +22,7 @@ internal sealed class GetPublicComandaBillQueryHandler(
             async (userIdBox) =>
             {
                 var table = await tableRepository.GetByQrTokenAsync(request.TableToken, cancellationToken);
-                if (table is null)
+                if (table is null || !table.IsActive)
                     return Result.Failure<PublicComandaBillResponse>(new Error("DiningTable.InvalidToken", "Invalid or expired QR code."));
 
                 var comanda = await comandaRepository.GetByCodeAsync(table.BranchId, request.ComandaCode, cancellationToken);
@@ -53,7 +53,9 @@ internal sealed class GetPublicComandaBillQueryHandler(
                         i.OrderItemStatusId,
                         i.CreatedAt,
                         i.Notes
-                    )).ToList();
+                    ) { OptionalExtras = i.OptionalExtras.Where(x => x.IsActive).Select(x => new PublicItemCustomizationResponse(x.Name, 0)).ToArray(),
+                        Boosts = i.Boosts.Where(x => x.IsActive).Select(x => new PublicItemCustomizationResponse(x.Name, x.UnitPriceCharged)).ToArray()
+                    }).ToList();
 
                 var response = new PublicComandaBillResponse(
                     openOrder.Id,

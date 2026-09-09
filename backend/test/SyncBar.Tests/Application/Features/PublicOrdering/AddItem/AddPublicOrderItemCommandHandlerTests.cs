@@ -79,6 +79,75 @@ public sealed class AddPublicOrderItemCommandHandlerTests
         _productRepository.GetByIdAsync(ProductId, Arg.Any<CancellationToken>()).Returns(product);
     }
 
+    [Theory]
+    [InlineData(false, "valid")]
+    [InlineData(true, "valid")]
+    [InlineData(false, "duplicate")]
+    [InlineData(false, "foreign")]
+    [InlineData(false, "inactive")]
+    [InlineData(false, "disabled")]
+    public async Task Handle_Customizations_PreservesDestinationAndValidatesSelections(bool useComanda, string scenario)
+    {
+        var token = Guid.NewGuid();
+        var product = MakeProduct();
+        typeof(Entity).GetProperty(nameof(Entity.Id))!.SetValue(product, ProductId);
+        product.ToggleExtrasAndBoosts(scenario != "disabled", scenario != "disabled");
+        var extra = ProductOptionalExtra.Create(ProductId, "Sem gelo", 1).Value;
+        var boost = ProductBoost.Create(scenario == "foreign" ? 999 : ProductId, "Limão extra", 2.5m, 1).Value;
+        typeof(Entity).GetProperty(nameof(Entity.Id))!.SetValue(extra, 71);
+        typeof(Entity).GetProperty(nameof(Entity.Id))!.SetValue(boost, 72);
+        if (scenario == "inactive") boost.Deactivate();
+        product.OptionalExtras.Add(extra);
+        product.Boosts.Add(boost);
+        SetupValidTableBranchAndProduct(token, MakeTable(), MakeBranch(), product);
+        if (useComanda) _comandaRepository.GetByCodeAsync(BranchId, ComandaCode, Arg.Any<CancellationToken>()).Returns(MakeComanda());
+        CustomerOrder? saved = null;
+        _orderRepository.When(x => x.AddAsync(Arg.Any<CustomerOrder>(), Arg.Any<CancellationToken>()))
+            .Do(call => saved = call.Arg<CustomerOrder>());
+        var result = await _handler.Handle(new AddPublicOrderItemCommand(token, ProductId, 3, null,
+            ComandaCode: useComanda ? ComandaCode : null, OptionalExtraIds: [71],
+            BoostIds: scenario == "duplicate" ? [72, 72] : [72]), CancellationToken.None);
+        result.IsSuccess.Should().Be(scenario == "valid");
+        if (scenario != "valid") { saved.Should().BeNull(); return; }
+        saved.Should().NotBeNull();
+        saved!.TotalAmount.Should().Be(67.5m);
+        saved.Items.Single().OptionalExtras.Single().Name.Should().Be("Sem gelo");
+        saved.Items.Single().Boosts.Single().UnitPriceCharged.Should().Be(2.5m);
+        saved.ComandaId.HasValue.Should().Be(useComanda);
+        saved.DiningTableId.HasValue.Should().Be(!useComanda);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Handle_ExpectedOrder_MustExistAndMatchTable(bool exists)
+    {
+        var token = Guid.NewGuid();
+        SetupValidTableBranchAndProduct(token, MakeTable(), MakeBranch(), MakeProduct());
+        if (exists)
+            _orderRepository.GetByIdForUpdateAsync(123, Arg.Any<CancellationToken>()).Returns(
+                CustomerOrder.Create(BranchId, 999, null, SelfServiceEmployeeId, null, null, DateTime.Now).Value);
+        var result = await _handler.Handle(new AddPublicOrderItemCommand(token, ProductId, 1, null, ExpectedOrderId: 123), CancellationToken.None);
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be(exists ? "CustomerOrder.DestinationMismatch" : "CustomerOrder.Closed");
+        await _orderRepository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [Theory]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, true)]
+    public async Task Handle_ReadingRequirement_CannotBeBypassed(bool camera, bool barcode, bool qr)
+    {
+        var table = MakeTable();
+        table.SetReadingValidationSettings(camera, barcode, qr);
+        var token = Guid.NewGuid();
+        SetupValidTableBranchAndProduct(token, table, MakeBranch(), MakeProduct());
+        var result = await _handler.Handle(new AddPublicOrderItemCommand(token, ProductId, 1, null), CancellationToken.None);
+        result.Error.Code.Should().Be("Reading.Required");
+        await _orderRepository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
     // ---------- Falhas ----------
 
     [Fact]

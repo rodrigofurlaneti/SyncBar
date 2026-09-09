@@ -36,6 +36,25 @@ public sealed class GetPublicBillQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_Bill_PreservesCustomizationSnapshots()
+    {
+        var table = MakeTable();
+        var order = CustomerOrder.Create(BranchId, table.Id, null, 10, null, null, DateTime.Now).Value;
+        var extra = ProductOptionalExtra.Create(100, "Sem gelo", 1).Value;
+        var boost = ProductBoost.Create(100, "Limão", 2m, 1).Value;
+        order.AddItem(100, 22m, 2, null, null, DateTime.Now, [extra], [boost]);
+        extra.Deactivate(); boost.Deactivate();
+        var token = Guid.NewGuid();
+        _tableRepository.GetByQrTokenAsync(token, Arg.Any<CancellationToken>()).Returns(table);
+        _orderRepository.GetOpenByTableAsync(table.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _productRepository.GetByIdsAsync(Arg.Any<IReadOnlyCollection<long>>(), Arg.Any<CancellationToken>()).Returns(Array.Empty<Product>());
+        var result = await _handler.Handle(new GetPublicBillQuery(token), CancellationToken.None);
+        result.Value.TotalAmount.Should().Be(44m);
+        result.Value.Items.Single().OptionalExtras.Single().Name.Should().Be("Sem gelo");
+        result.Value.Items.Single().Boosts.Single().UnitPrice.Should().Be(2m);
+    }
+
+    [Fact]
     public async Task Handle_InvalidToken_ShouldReturnFailure()
     {
         var query = new GetPublicBillQuery(Guid.NewGuid());
@@ -48,11 +67,9 @@ public sealed class GetPublicBillQueryHandlerTests
         await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
     }
 
-    // O handler NÃO valida table.IsActive (só a ausência/invalidade do token) — diferente de
-    // AddPublicOrderItemCommandHandler. Comportamento real confirmado na leitura do código-fonte;
-    // fixado aqui como proteção de regressão, não como suposição.
+    // Uma mesa inativada não deve continuar expondo a conta pelo QR Code antigo.
     [Fact]
-    public async Task Handle_InactiveTableButValidToken_ShouldStillSucceed()
+    public async Task Handle_InactiveTable_ShouldRejectToken()
     {
         var table = MakeTable();
         table.Deactivate();
@@ -65,7 +82,8 @@ public sealed class GetPublicBillQueryHandlerTests
 
         var result = await _handler.Handle(query, CancellationToken.None);
 
-        result.IsSuccess.Should().BeTrue();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("DiningTable.InvalidToken");
     }
 
     [Fact]

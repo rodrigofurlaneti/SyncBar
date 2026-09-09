@@ -26,7 +26,7 @@ internal sealed class GetPublicMenuQueryHandler(
             async (userIdBox) =>
             {
                 var table = await diningTableRepository.GetByQrTokenAsync(request.Token, cancellationToken);
-                if (table is null)
+                if (table is null || !table.IsActive)
                     return Result.Failure<PublicMenuResponse>(new Error("DiningTable.InvalidToken", "Invalid or expired QR code."));
                 var branch = await branchRepository.GetByIdAsync(table.BranchId, cancellationToken);
                 if (branch is null || !branch.IsActive)
@@ -53,7 +53,17 @@ internal sealed class GetPublicMenuQueryHandler(
                         p.IsStockControlled,
                         p.PreparationTimeMinutes,
                         p.ImageUrl,
-                        complementsByProduct.TryGetValue(p.Id, out var groups) ? groups : []))
+                        complementsByProduct.TryGetValue(p.Id, out var groups) ? groups : [])
+                    {
+                        HasOptionalExtras = p.HasOptionalExtras,
+                        HasBoosts = p.HasBoosts,
+                        OptionalExtras = p.HasOptionalExtras ? p.OptionalExtras.Where(x => x.IsActive)
+                            .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Id)
+                            .Select(x => new MenuOptionalExtraResponse(x.Id, x.OptionalExtraName, x.DisplayOrder)).ToArray() : [],
+                        Boosts = p.HasBoosts ? p.Boosts.Where(x => x.IsActive)
+                            .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Id)
+                            .Select(x => new MenuBoostResponse(x.Id, x.BoostName, x.IncrementalValue, x.DisplayOrder)).ToArray() : [],
+                    })
                     .ToList();
                 return Result.Success(new PublicMenuResponse(
                     branch.Name, table.Number, items, table.IsQrViewEnabled,

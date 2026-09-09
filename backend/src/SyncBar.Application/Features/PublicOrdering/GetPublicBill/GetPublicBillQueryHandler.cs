@@ -21,7 +21,7 @@ internal sealed class GetPublicBillQueryHandler(
             async (userIdBox) =>
             {
                 var table = await tableRepository.GetByQrTokenAsync(request.Token, cancellationToken);
-                if (table is null)
+                if (table is null || !table.IsActive)
                     return Result.Failure<PublicBillResponse>(new Error("DiningTable.InvalidToken", "Invalid or expired QR code."));
 
                 var openOrder = await orderRepository.GetOpenByTableAsync(table.Id, cancellationToken);
@@ -48,7 +48,9 @@ internal sealed class GetPublicBillQueryHandler(
                         i.OrderItemStatusId,
                         i.CreatedAt,
                         i.Notes
-                    )).ToList();
+                    ) { OptionalExtras = i.OptionalExtras.Where(x => x.IsActive).Select(x => new PublicItemCustomizationResponse(x.Name, 0)).ToArray(),
+                        Boosts = i.Boosts.Where(x => x.IsActive).Select(x => new PublicItemCustomizationResponse(x.Name, x.UnitPriceCharged)).ToArray()
+                    }).ToList();
 
                 var response = new PublicBillResponse(
                     openOrder.Id,

@@ -63,6 +63,32 @@ public sealed class GetPublicMenuQueryHandlerTests
         _branchRepository.GetByIdAsync(BranchId, Arg.Any<CancellationToken>()).Returns(branch);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Handle_Extras_AreActiveOrderedAndRespectFlags(bool enabled)
+    {
+        var token = Guid.NewGuid();
+        SetupTableAndBranch(token, MakeTable(), MakeBranch());
+        var product = MakeProduct(55, 1, "Temaki");
+        product.ToggleExtrasAndBoosts(enabled, enabled);
+        foreach (var order in new[] { 2, 1, 3 })
+        {
+            var extra = ProductOptionalExtra.Create(55, "Extra " + order, order).Value;
+            var boost = ProductBoost.Create(55, "Boost " + order, order, order).Value;
+            if (order == 3) { extra.Deactivate(); boost.Deactivate(); }
+            product.OptionalExtras.Add(extra); product.Boosts.Add(boost);
+        }
+        _productRepository.GetByCompanyAsync(CompanyId, Arg.Any<CancellationToken>()).Returns(new[] { product });
+        var result = await _handler.Handle(new GetPublicMenuQuery(token), CancellationToken.None);
+        result.IsSuccess.Should().BeTrue();
+        var item = result.Value.Items.Single();
+        item.HasOptionalExtras.Should().Be(enabled);
+        item.HasBoosts.Should().Be(enabled);
+        item.OptionalExtras.Select(x => x.DisplayOrder).Should().Equal(enabled ? new[] { 1, 2 } : Array.Empty<int>());
+        item.Boosts.Select(x => x.DisplayOrder).Should().Equal(enabled ? new[] { 1, 2 } : Array.Empty<int>());
+    }
+
     [Fact]
     public async Task Handle_InvalidToken_ShouldReturnFailure()
     {

@@ -64,6 +64,33 @@ public sealed class GetBranchMenuQueryHandlerTests
         await _productRepository.DidNotReceive().GetByCompanyAsync(Arg.Any<long>(), Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Handle_ReturnsOnlyActiveOrderedCustomizationsWhenEnabled(bool enabled)
+    {
+        var branch = CreateBranch();
+        _branchRepository.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(branch);
+        var product = CreateProduct(11, 1, "Bebida");
+        product.ToggleExtrasAndBoosts(enabled, enabled);
+        product.OptionalExtras.Add(ProductOptionalExtra.Create(11, "Limão", 2).Value);
+        product.OptionalExtras.Add(ProductOptionalExtra.Create(11, "Gelo", 1).Value);
+        var inactive = ProductOptionalExtra.Create(11, "Inativo", 0).Value;
+        inactive.Deactivate();
+        product.OptionalExtras.Add(inactive);
+        product.Boosts.Add(ProductBoost.Create(11, "Dose extra", 5m, 2).Value);
+        product.Boosts.Add(ProductBoost.Create(11, "Fruta extra", 2m, 1).Value);
+        _productRepository.GetByCompanyAsync(1, Arg.Any<CancellationToken>()).Returns(new[] { product });
+        _categoryRepository.GetByCompanyAsync(1, Arg.Any<CancellationToken>()).Returns(Array.Empty<Category>());
+        var result = await _handler.Handle(new GetBranchMenuQuery(1), default);
+        result.IsSuccess.Should().BeTrue();
+        var item = result.Value.Items.Single();
+        item.HasOptionalExtras.Should().Be(enabled);
+        item.HasBoosts.Should().Be(enabled);
+        item.OptionalExtras.Select(option => option.OptionalExtraName).Should().Equal(enabled ? new[] { "Gelo", "Limão" } : []);
+        item.Boosts.Select(option => option.IncrementalValue).Should().Equal(enabled ? new[] { 2m, 5m } : []);
+    }
+
     [Fact]
     public async Task Handle_BranchInactive_ShouldReturnFailure()
     {

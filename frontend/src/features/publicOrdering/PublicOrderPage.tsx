@@ -4,10 +4,10 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import Swal from "sweetalert2";
 import { addPublicOrderItem, getPublicMenu, getPublicBill, getPublicComandaBill } from "./api";
 import type { MenuItemResponse, OrderItemComplementSelection } from "../../lib/types";
-import { ComplementSelectorModal } from "../orders/ComplementSelectorModal";
+import { ProductCustomizationModal } from "../orders/ProductCustomizationModal";
 import { PublicOrderModal } from "./PublicOrderModal";
 import { PublicOrderCard } from "./PublicOrderCard";
-import { ComandaReadingValidation, LinkComandaValidation, needsReadingValidation } from "./ComandaReadingValidation";
+import { ComandaReadingValidation, TableReadingValidation, LinkComandaValidation, needsReadingValidation } from "./ComandaReadingValidation";
 // Importando as imagens
 import logoImg from "../../image/logo.png";
 import bgImg from "../../image/screenbackground_auth.jpeg";
@@ -16,6 +16,8 @@ type PendingOrder = {
     productId: number;
     quantity: number;
     complements?: OrderItemComplementSelection[];
+    optionalExtraIds?: number[];
+    boostIds?: number[];
 };
 
 export function PublicOrderPage() {
@@ -32,7 +34,7 @@ export function PublicOrderPage() {
 
     const [validatedComandaCodes, setValidatedComandaCodes] = useState<Set<string>>(new Set());
     const [linkedComandaCode, setLinkedComandaCode] = useState<string | null>(null);
-    const [orderValidationStep, setOrderValidationStep] = useState<"select" | "validateComanda" | "linkComanda" | "submitting">("select");
+    const [orderValidationStep, setOrderValidationStep] = useState<"select" | "validateComanda" | "validateTable" | "linkComanda" | "submitting">("select");
 
     const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
     useEffect(() => {
@@ -52,8 +54,8 @@ export function PublicOrderPage() {
     });
 
     const addMutation = useMutation({
-        mutationFn: ({ productId, complements, quantity = 1, comandaCode }: { productId: number; complements?: OrderItemComplementSelection[]; quantity?: number; comandaCode?: string }) => {
-            return addPublicOrderItem(token!, productId, quantity, null, complements, comandaCode);
+        mutationFn: ({ productId, complements, quantity, comandaCode, optionalExtraIds, boostIds }: PendingOrder & { comandaCode?: string }) => {
+            return addPublicOrderItem(token!, productId, quantity, null, complements, comandaCode, optionalExtraIds, boostIds);
         },
         onSuccess: (_result, { productId }) => {
             setSentIds((current) => [...current, productId]);
@@ -73,6 +75,8 @@ export function PublicOrderPage() {
             });
         },
         onError: (e) => {
+            setValidatedComandaCodes(new Set());
+            setLinkedComandaCode(null);
             const msg = e instanceof Error ? e.message : "Falha ao enviar o pedido.";
             Swal.fire({
                 title: "Ops!",
@@ -94,7 +98,8 @@ export function PublicOrderPage() {
 
     const handlePickItem = (item: MenuItemResponse) => {
         const currentQty = getQty(item.id);
-        if (item.complementGroups && item.complementGroups.length > 0) {
+        if (addMutation.isPending) return;
+        if (item.hasOptionalExtras || item.hasBoosts || item.complementGroups?.length) {
             setSelectingItem(item);
             return;
         }
@@ -142,16 +147,19 @@ export function PublicOrderPage() {
             : "repeat(auto-fill, minmax(300px, 1fr))";
 
     const submitPendingOrder = () => {
-        if (!pendingOrder) return;
+        if (!pendingOrder || addMutation.isPending) return;
         addMutation.mutate({
-            productId: pendingOrder.productId,
-            quantity: pendingOrder.quantity,
-            complements: pendingOrder.complements,
+            ...pendingOrder,
             comandaCode: destination === "comanda" ? commandNumber : undefined,
         });
     };
 
     const handleConfirmPendingOrder = () => {
+        if (addMutation.isPending) return;
+        if (destination === "mesa" && needsReadingValidation(readingValidation)) {
+            setOrderValidationStep("validateTable");
+            return;
+        }
         if (destination === "comanda" && needsReadingValidation(readingValidation) && !validatedComandaCodes.has(commandNumber)) {
             setOrderValidationStep("validateComanda");
             return;
@@ -173,6 +181,12 @@ export function PublicOrderPage() {
             }
             setPendingOrder(order);
             setOrderValidationStep("linkComanda");
+            return;
+        }
+        if (needsReadingValidation(readingValidation)) {
+            setPendingOrder(order);
+            setDestination("mesa");
+            setOrderValidationStep("validateTable");
             return;
         }
         addMutation.mutate(order);
@@ -279,25 +293,28 @@ export function PublicOrderPage() {
             />
 
             {selectingItem && (
-                <ComplementSelectorModal
-                    productName={selectingItem.name}
-                    imageUrl={selectingItem.imageUrl} description={selectingItem.description} basePrice={selectingItem.salePrice}
-                    groups={selectingItem.complementGroups}
-                    onCancel={() => setSelectingItem(null)}
-                    submitting={addMutation.isPending}
-                    confirmLabel="ADICIONAR"
-                    onConfirm={(complements: OrderItemComplementSelection[]) => {
+                <ProductCustomizationModal
+                    product={selectingItem} quantity={getQty(selectingItem.id)}
+                    embeddedDetails={{ salePrice: selectingItem.salePrice,
+                        hasOptionalExtras: !!selectingItem.hasOptionalExtras, hasBoosts: !!selectingItem.hasBoosts,
+                        optionalExtras: selectingItem.optionalExtras ?? [], boosts: selectingItem.boosts ?? [] }}
+                    onCancel={() => setSelectingItem(null)} submitting={addMutation.isPending} error={null}
+                    onConfirm={(complements, optionalExtraIds, boostIds) => {
                         const productId = selectingItem.id;
                         setSelectingItem(null);
-                        submitOrGateDirectOrder({ productId, quantity: 1, complements });
+                        submitOrGateDirectOrder({ productId, quantity: getQty(productId), complements, optionalExtraIds, boostIds });
                     }}
                 />
             )}
 
             {pendingOrder && (
-                <div data-testid="modal-pending-order" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+                <div data-testid="modal-pending-order" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
                     <div style={{ backgroundColor: "#1e1e24", padding: 24, borderRadius: 12, width: "100%", maxWidth: 400, border: "1px solid #323238" }}>
-                        {orderValidationStep === "validateComanda" ? (
+                        {orderValidationStep === "validateTable" ? (
+                            <TableReadingValidation token={token} requirement={readingValidation}
+                                onValidated={() => { setOrderValidationStep("select"); submitPendingOrder(); }}
+                                onCancel={() => { setPendingOrder(null); setOrderValidationStep("select"); }} />
+                        ) : orderValidationStep === "validateComanda" ? (
                             <ComandaReadingValidation
                                 token={token}
                                 comandaCode={commandNumber}
@@ -343,8 +360,8 @@ export function PublicOrderPage() {
                                     </div>
                                 )}
                                 <div style={{ display: "flex", gap: 12 }}>
-                                    <button data-testid="btn-cancel-pending" onClick={() => { setPendingOrder(null); setCommandNumber(""); setOrderValidationStep("select"); }} style={{ flex: 1, padding: "14px", borderRadius: 8, border: "none", backgroundColor: "#323238", color: "#fff", fontWeight: "bold", cursor: "pointer" }}>Cancelar</button>
-                                    <button data-testid="btn-confirm-pending" disabled={(destination === "comanda" && !commandNumber) || addMutation.isPending} onClick={handleConfirmPendingOrder} style={{ flex: 1, padding: "14px", borderRadius: 8, border: "none", backgroundColor: "#f59e0b", color: "#121214", fontWeight: "bold", cursor: "pointer" }}>{addMutation.isPending ? "Enviando..." : "Confirmar"}</button>
+                                    <button data-testid="btn-cancel-pending" disabled={addMutation.isPending} onClick={() => { setPendingOrder(null); setCommandNumber(""); setOrderValidationStep("select"); }} style={{ flex: 1, padding: "14px", borderRadius: 8, border: "none", backgroundColor: "#323238", color: "#fff", fontWeight: "bold", cursor: "pointer" }}>Cancelar</button>
+                                    <button data-testid="btn-confirm-pending" disabled={(destination === "comanda" && !commandNumber.trim()) || addMutation.isPending} onClick={handleConfirmPendingOrder} style={{ flex: 1, padding: "14px", borderRadius: 8, border: "none", backgroundColor: "#f59e0b", color: "#121214", fontWeight: "bold", cursor: "pointer" }}>{addMutation.isPending ? "Enviando..." : "Confirmar"}</button>
                                 </div>
                             </>
                         )}
