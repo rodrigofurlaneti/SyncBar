@@ -339,23 +339,30 @@ export function StorefrontOrderPage() {
     }, []);
 
     const handleAddOrAddToCart = useCallback(({ productId, quantity, complements, item }: { productId: number; quantity: number; complements?: OrderItemComplementSelection[]; item?: MenuItemResponse }) => {
-        const targetItem = item || menuQuery.data?.items.find((i: MenuItemResponse) => i.id === productId);
+        const targetItem: MenuItemResponse | undefined = item || menuQuery.data?.items.find((i: MenuItemResponse) => i.id === productId);
         if (!targetItem) return;
 
+        const chosen = (complements ?? []).flatMap(selection => {
+            const group = targetItem.complementGroups.find(group => group.id === selection.complementGroupId);
+            const option = group?.complements.find(option => option.id === selection.complementId);
+            return option ? [{ ...selection, name: option.complementItemName, price: option.extraPrice }] : [];
+        });
+        const cartKey = JSON.stringify([productId, chosen.map(option =>
+            `${option.complementGroupId}:${option.complementId}`).sort()]);
+
         setCartItems(prev => {
-            const existingIndex = prev.findIndex(i => i.productId === productId);
+            const existingIndex = prev.findIndex(i => i.cartKey === cartKey);
             if (existingIndex > -1) {
-                const copy = [...prev];
-                copy[existingIndex].quantity += quantity;
-                return copy;
+                return prev.map((item, index) => index === existingIndex ? { ...item, quantity: item.quantity + quantity } : item);
             }
             return [...prev, {
+                cartKey,
                 productId: targetItem.id,
                 productName: targetItem.name,
                 salePrice: targetItem.salePrice,
                 quantity,
                 imageUrl: targetItem.imageUrl,
-                complements: complements?.map(c => ({ complementId: c.complementId, name: "", price: 0 }))
+                complements: chosen,
             }];
         });
 
@@ -392,7 +399,7 @@ export function StorefrontOrderPage() {
             quantity: cartItem.quantity,
             notes: cartItem.notes || null,
             complements: cartItem.complements?.map(c => ({
-                complementGroupId: 0,
+                complementGroupId: c.complementGroupId,
                 complementId: c.complementId
             })) || []
         }));
@@ -591,14 +598,14 @@ export function StorefrontOrderPage() {
                 isOpen={isCartOpen}
                 onClose={() => setIsCartOpen(false)}
                 items={cartItems}
-                onUpdateQuantity={(productId, newQty) => {
+                onUpdateQuantity={(cartKey, newQty) => {
                     if (newQty <= 0) {
-                        setCartItems(prev => prev.filter(i => i.productId !== productId));
+                        setCartItems(prev => prev.filter(i => i.cartKey !== cartKey));
                     } else {
-                        setCartItems(prev => prev.map(i => i.productId === productId ? { ...i, quantity: newQty } : i));
+                        setCartItems(prev => prev.map(i => i.cartKey === cartKey ? { ...i, quantity: newQty } : i));
                     }
                 }}
-                onRemoveItem={(productId) => setCartItems(prev => prev.filter(i => i.productId !== productId))}
+                onRemoveItem={(cartKey) => setCartItems(prev => prev.filter(i => i.cartKey !== cartKey))}
                 onCheckout={handleCheckoutCart}
                 isSubmitting={addBatchMutation.isPending}
                 customerData={customerData}

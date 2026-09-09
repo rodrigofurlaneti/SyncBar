@@ -12,6 +12,9 @@ Opcionais gratuitos e adicionais pagos são etapas separadas no atendimento. Os
 grupos de complementos existentes também viram etapas, tanto no atendimento quanto
 nos fluxos públicos que já usam o seletor. Os contratos e o estado de envio do
 carrinho foram preservados; esta mudança não cria novos endpoints públicos.
+Foi corrigida a adaptação do carrinho do cliente: os nomes, preços e IDs de grupo
+agora são mantidos. Personalizações diferentes do mesmo produto têm linhas próprias;
+alterar a quantidade ou remover uma linha não afeta as demais personalizações.
 
 Limites de grupos vêm de minSelection/maxSelection. Opcionais e boosts não possuem
 limite próprio no modelo atual: o máximo exibido corresponde às opções disponíveis.
@@ -31,7 +34,12 @@ Arquitetura: useProductWizard concentra seleção, limites e subtotal; ProductWi
 renderiza a interface; ProductIdentity e WizardSidebar são memoizados. Os wrappers
 adaptam os contratos atuais sem duplicar a lógica do wizard.
 
-Validação: executar `node node_modules/@playwright/test/cli.js test --config
-playwright.wizard.config.ts` no frontend. Os perfis cobrem Chromium desktop/tablet,
+Validação: executar `node node_modules/@playwright/test/cli.js test --config playwright.wizard.config.ts`
+no frontend. Os perfis cobrem Chromium desktop/tablet,
 Android pequeno e WebKit/iPhone, com API simulada. Isso não substitui teste em
 aparelho físico após publicação.
+
+Foram validados os 64 cenários de wizard/carrinho nos quatro perfis, incluindo
+limites, retorno de foco via teclado, listas longas, cancelamento, repetição após
+erro, subtotal, personalizações distintas e IDs enviados no checkout. TypeScript
+e build de produção Vite passaram. As capturas desktop e Android foram revisadas.

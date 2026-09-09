@@ -6,13 +6,14 @@ import { formatBRL } from "../../lib/types";
 import { getCustomerAddressesByCustomer, CustomerAddressResponse, registerCustomerAddress } from "./storefrontApi";
 
 export type CartItem = {
+    cartKey: string;
     productId: number;
     productName: string;
     salePrice: number;
     quantity: number;
     notes?: string | null;
     imageUrl?: string | null;
-    complements?: Array<{ complementId: number; name: string; price: number }>;
+    complements?: Array<{ complementGroupId: number; complementId: number; name: string; price: number }>;
 };
 
 export type CustomerSessionData = {
@@ -39,8 +40,8 @@ type StorefrontCartDrawerProps = {
     onClose: () => void;
     items: CartItem[];
     initialStep?: "review" | "delivery";
-    onUpdateQuantity: (productId: number, newQty: number) => void;
-    onRemoveItem: (productId: number) => void;
+    onUpdateQuantity: (cartKey: string, newQty: number) => void;
+    onRemoveItem: (cartKey: string) => void;
     onCheckout: (
         notes: string,
         customerData?: CustomerSessionData,
@@ -419,14 +420,14 @@ export function StorefrontCartDrawer({
                             items.map((item) => {
                                 const itemTotal = (item.salePrice + (item.complements?.reduce((acc, c) => acc + c.price, 0) || 0)) * item.quantity;
                                 return (
-                                    <article key={item.productId} className="cart-item-card" data-testid={`cart-item-${item.productId}`}>
+                                    <article key={item.cartKey} className="cart-item-card" data-testid={`cart-item-${item.productId}`}>
                                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
                                             <div style={{ flex: 1 }}>
                                                 <h4 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "#f4f4f5", lineHeight: 1.2 }}>{item.productName}</h4>
                                                 <span style={{ marginTop: "0.25rem", display: "block", fontSize: "0.875rem", fontWeight: "bold", color: "#f59e0b" }}>{formatBRL(item.salePrice)}</span>
                                             </div>
                                             <button
-                                                onClick={() => onRemoveItem(item.productId)}
+                                                onClick={() => onRemoveItem(item.cartKey)}
                                                 data-testid={`btn-remove-${item.productId}`}
                                                 aria-label={`Remover ${item.productName} da cesta`}
                                                 style={{ background: "none", border: "none", fontSize: "0.75rem", fontWeight: 600, color: "#f87171", cursor: "pointer", padding: "0.25rem", borderRadius: "0.25rem" }}
@@ -449,7 +450,7 @@ export function StorefrontCartDrawer({
                                         <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                                             <div className="qty-control" role="group" aria-label={`Quantidade de ${item.productName}`}>
                                                 <button
-                                                    onClick={() => onUpdateQuantity(item.productId, item.quantity - 1)}
+                                                    onClick={() => onUpdateQuantity(item.cartKey, item.quantity - 1)}
                                                     className="qty-btn"
                                                     aria-label="Diminuir quantidade"
                                                 >
@@ -459,7 +460,7 @@ export function StorefrontCartDrawer({
                                                     {item.quantity}
                                                 </span>
                                                 <button
-                                                    onClick={() => onUpdateQuantity(item.productId, item.quantity + 1)}
+                                                    onClick={() => onUpdateQuantity(item.cartKey, item.quantity + 1)}
                                                     className="qty-btn"
                                                     aria-label="Aumentar quantidade"
                                                 >

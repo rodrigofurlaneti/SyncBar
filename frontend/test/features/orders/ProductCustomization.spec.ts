@@ -186,13 +186,14 @@ test('wizard advances, preserves choices on back and keeps its footer inside the
     expect(overflow).toBe(false);
     const footer = await page.getByTestId('btn-confirm-complements').boundingBox();
     expect(footer!.y + footer!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
-    await page.screenshot({ path: testInfo.outputPath('wizard.png') });
+    await page.screenshot({ path: testInfo.outputPath('wizard.png'), animations: 'disabled' });
 });
 
 test('keyboard focus stays in dialog, Space selects and Escape restores the menu', async ({ page }) => {
     await setup(page);
     const trigger = page.getByTestId('btn-add-menu-item-2');
-    await trigger.click();
+    await trigger.focus();
+    await page.keyboard.press('Enter');
     const checkbox = page.getByRole('checkbox', { name: /Gelo e Limão/ });
     await checkbox.focus();
     await page.keyboard.press('Space');
@@ -240,5 +241,25 @@ test('slow detail request displays skeleton without permitting submission', asyn
     await expect(page.getByTestId('btn-confirm-complements')).toHaveCount(0);
     release();
     await expect(page.getByTestId('btn-confirm-complements')).toBeEnabled();
+});
+
+test('long option lists scroll without moving the subtotal or action off screen', async ({ page }) => {
+    await setup(page);
+    await page.route('**/api/products/2', route => route.fulfill({ json: {
+        salePrice: 10, hasOptionalExtras: true, hasBoosts: false, boosts: [],
+        optionalExtras: Array.from({ length: 30 }, (_, index) => ({ id: index + 100,
+            optionalExtraName: `Opção ${index + 1} com descrição longa para personalizar o preparo do produto`, displayOrder: index })),
+    } }));
+    await page.getByTestId('btn-add-menu-item-2').click();
+    await page.locator('.pw-option').last().scrollIntoViewIfNeeded();
+    await page.locator('.pw-option').last().click();
+    const action = page.getByTestId('btn-confirm-complements');
+    const rect = await action.boundingBox();
+    expect(rect!.y + rect!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    expect(await action.evaluate(el => {
+        const box = el.getBoundingClientRect();
+        return el.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+    })).toBe(true);
+    await expect(page.getByTestId('customization-subtotal')).toBeInViewport();
 });
 
