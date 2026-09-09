@@ -49,3 +49,57 @@ vendas, acionam integrações ou movimentam dinheiro devem usar homologação co
 O projeto está na solução, mas sem E2E_RUN=1 os testes são exibidos como ignorados,
 evitando acesso à produção durante o CI comum. Para rodar isoladamente use o comando acima.
 Resultados TRX ficam em TestResults (ignorado pelo Git). Não há execução agendada.
+
+## Cadastro do cliente do site — validação após publicar
+
+Execute na raiz do repositório, substituindo o domínio e o ID da filial:
+
+```powershell
+./backend/test/SyncBar.E2ETests/Run-CustomerSignup.ps1 `
+  -BaseUrl 'https://seu-site-publicado.com' -BranchId 7
+```
+
+São três cadastros reais, sem mocks:
+
+1. **API:** cadastro → login → criação do endereço → renovação de token → leitura do endereço persistido.
+2. **Desktop:** produto no carrinho → novo cliente → validação de campos obrigatórios → cadastro/login automático/endereço → verificação independente pela API.
+3. **Android:** o mesmo fluxo com Chrome em modo de emulação mobile, toque e user agent Android 16.
+
+O teste para antes de enviar pedidos ou pagamentos. Os registros ficam no servidor.
+O perfil Android usa o Chrome instalado na máquina; não equivale a executar num
+Android físico nem instala a versão 152. ViaCEP é consultado de verdade. Caso ele
+falhe, testa-se o preenchimento manual permitido pelo aplicativo e isso é registrado.
+
+**Dados:** `João Furlaneti Teste 1`, `João Furlaneti Teste 2`, etc.; CPF aleatório com
+os dois dígitos verificadores válidos; CEP sempre **07025020**; e-mail único no domínio
+example.com e senha aleatória. CPF sintético não representa identidade real verificada.
+Senhas, tokens e CPF completo não são escritos nos relatórios. Os logs mostram nome,
+perfil, filial, CustomerId, horário UTC e endpoint da falha, quando houver.
+
+**Sequência:** por padrão, o contador fica em `%LOCALAPPDATA%/SyncBar/E2E`, separado
+por origem e filial. Cada cenário reserva um número antes da tentativa, então falhas
+podem deixar lacunas. Uma nova execução usa o próximo número. Não se consulta nem
+se altera o nome de clientes já existentes no banco.
+Para compartilhar a sequência entre máquinas/CI, preserve e reutilize o mesmo arquivo:
+
+```powershell
+./backend/test/SyncBar.E2ETests/Run-CustomerSignup.ps1 `
+  -BaseUrl 'https://seu-site-publicado.com' -BranchId 7 `
+  -Profile Android -SequenceFile 'C:/SyncBar-E2E/customer-sequence.txt'
+```
+
+Sem esse arquivo compartilhado, outra máquina inicia sua própria sequência em 1.
+Não apague o contador se quiser manter a numeração. O arquivo contém somente o
+último número reservado. Para continuar após cadastros feitos fora da suíte, grave
+nele esse último número antes da execução, com nenhum teste rodando.
+
+Use `-Profile API`, `-Profile Desktop` ou `-Profile Android` para apenas um cadastro;
+`-ShowBrowser` exibe o Chrome. Opcionalmente, `E2E_PRODUCT_ID` seleciona um produto
+específico do cardápio; por padrão usa-se o primeiro. Grupos obrigatórios do wizard
+são preenchidos com as primeiras opções disponíveis. A filial precisa ter produto ativo.
+
+O script exige URL/filial explícitas, habilita somente os cenários de cliente e
+confere no TRX se todos os cenários esperados passaram. Qualquer falha retorna código
+não zero para o pipeline. **Teste ignorado não significa ambiente operacional.**
+Sem as flags, os testes de ambiente continuam ignorados. Apenas os testes locais
+de geração de CPF e contador executam no CI comum, sem acessar rede ou banco.

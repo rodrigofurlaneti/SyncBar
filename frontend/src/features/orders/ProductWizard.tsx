@@ -10,6 +10,7 @@ interface Props {
     description?: string | null;
     imageUrl?: string | null;
     basePrice: number;
+    quantity?: number;
     steps: WizardStep[];
     loading?: boolean;
     loadError?: boolean;
@@ -116,7 +117,7 @@ export function ProductWizard(props: Props) {
                     </div>}
             </section>
             <div className="pw-subtotal" data-testid="customization-subtotal" aria-live="polite" aria-atomic="true">
-                <span>Subtotal <small>1 unidade</small></span><strong>{formatBRL(wizard.subtotal)}</strong>
+                <span>Subtotal <small>{props.quantity ?? 1} {(props.quantity ?? 1) === 1 ? "unidade" : "unidades"}</small></span><strong>{formatBRL(wizard.subtotal * (props.quantity ?? 1))}</strong>
             </div>
             <footer className="pw-actions">
                 {error && <p className="pw-error" role="alert">{error}</p>}

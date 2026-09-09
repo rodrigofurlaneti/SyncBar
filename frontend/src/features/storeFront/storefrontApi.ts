@@ -6,6 +6,8 @@ export type StorefrontItemRequest = {
     quantity: number;
     notes?: string | null;
     complements?: OrderItemComplementSelection[];
+    optionalExtraIds?: number[];
+    boostIds?: number[];
 };
 
 export type StorefrontMenuResponse = {

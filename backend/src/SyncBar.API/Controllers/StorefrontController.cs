@@ -51,7 +51,7 @@ namespace SyncBar.API.Controllers
                     ExecuteWithLogAsync(logRepository, unitOfWork, nameof(StorefrontController), nameof(CreateOrder), async () =>
                     {
                         var commandItems = request.Items.Select(i => new WebStorefrontItemDto(
-                            i.ProductId, i.Quantity, i.Notes, i.Complements)).ToList();
+                            i.ProductId, i.Quantity, i.Notes, i.Complements, i.OptionalExtraIds, i.BoostIds)).ToList();
 
                         var result = await Mediator.Send(new AddWebStorefrontOrderCommand(
                             branchId,
@@ -79,5 +79,7 @@ namespace SyncBar.API.Controllers
         [property: JsonRequired] long ProductId,
         [property: JsonRequired] decimal Quantity,
         string? Notes,
-        IReadOnlyCollection<OrderItemComplementSelection>? Complements = null);
+        IReadOnlyCollection<OrderItemComplementSelection>? Complements = null,
+        IReadOnlyCollection<long>? OptionalExtraIds = null,
+        IReadOnlyCollection<long>? BoostIds = null);
 }

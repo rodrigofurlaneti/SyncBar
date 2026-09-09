@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { TableStatus, formatBRL } from "../../lib/types";
+import { OrderCardSummary, itemsLabel, formatOpenedAt } from "./OrderCardSummary";
 
 const statusColor: Record<number, string> = {
     [TableStatus.Livre]: "var(--free)",
@@ -16,16 +17,6 @@ const statusLabel: Record<number, string> = {
     [TableStatus.EmFechamento]: "Fechando",
     [TableStatus.Interditada]: "Interditada",
 };
-
-function formatOpenedAt(iso: string): string {
-    const date = new Date(iso);
-    return `Aberta às ${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
-}
-
-// Plural correto pra "1 item" vs "2 itens" — pequeno detalhe que soa errado se hard-coded.
-function itemsLabel(count: number): string {
-    return `${count} ${count === 1 ? "item" : "itens"}`;
-}
 
 export interface TableCardProps {
     id: number;
@@ -55,7 +46,7 @@ function TableCardComponent({ id, number, statusId, capacity, itemsCount, totalV
     // nem o que tem nela, precisando abrir o pedido só pra descobrir.
     const ariaLabel = `Mesa ${number}, ${label}.${
         isOccupied
-            ? ` ${itemsLabel(itemsCount!)}, total ${formatBRL(totalValue!)}.`
+            ? ` ${itemsLabel(itemsCount!)}, total ${formatBRL(totalValue!)}. ${formatOpenedAt(openedAt)}.`
             : capacity
               ? ` ${capacity} lugares disponíveis.`
               : ""
@@ -80,13 +71,10 @@ function TableCardComponent({ id, number, statusId, capacity, itemsCount, totalV
 
             <div className="table-tile-body" aria-hidden="true">
                 {isOccupied ? (
-                    <span className="mono-num">
-                        {itemsLabel(itemsCount!)} · {formatBRL(totalValue!)}
-                    </span>
+                    <OrderCardSummary itemsCount={itemsCount!} totalValue={totalValue!} openedAt={openedAt} />
                 ) : (
                     <span>{capacity ?? "—"} lugares</span>
                 )}
-                {openedAt && <span className="table-tile-time">{formatOpenedAt(openedAt)}</span>}
             </div>
 
             {isFree && (

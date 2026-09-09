@@ -15,6 +15,7 @@ import { Overlay } from "./Overlay";
 import { StorefrontHubModal } from "../storeFront/StorefrontHubModal";
 import { TableCard, TableCardSkeleton } from "./TableCard";
 import { ComandaCard, ComandaCardSkeleton } from "./ComandaCard";
+import { countOrderItems } from "./OrderCardSummary";
 import { EmptyState } from "../../ui/EmptyState";
 import { useCallback } from "react";
 
@@ -181,7 +182,7 @@ export function OrdersPage() {
                                           number={table.number}
                                           statusId={table.tableStatusId}
                                           capacity={table.capacity}
-                                          itemsCount={order?.items.length}
+                                          itemsCount={order ? countOrderItems(order) : undefined}
                                           totalValue={order?.totalAmount}
                                           openedAt={order?.openedAt}
                                           disabled={!order && !isFree}
@@ -233,6 +234,8 @@ export function OrdersPage() {
                                           key={comanda.id}
                                           id={comanda.id}
                                           code={comanda.code}
+                                          itemsCount={order ? countOrderItems(order) : undefined}
+                                          openedAt={order?.openedAt}
                                           statusId={comanda.comandaStatusId}
                                           totalValue={order?.totalAmount}
                                           disabled={!order && !isAvailable}

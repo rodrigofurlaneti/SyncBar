@@ -5,5 +5,7 @@ namespace SyncBar.Application.Features.Storefront.AddOrder
         long ProductId,
         decimal Quantity,
         string? Notes,
-        IReadOnlyCollection<OrderItemComplementSelection>? Complements);
+        IReadOnlyCollection<OrderItemComplementSelection>? Complements,
+        IReadOnlyCollection<long>? OptionalExtraIds = null,
+        IReadOnlyCollection<long>? BoostIds = null);
 }

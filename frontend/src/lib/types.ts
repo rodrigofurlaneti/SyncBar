@@ -109,6 +109,8 @@ export const complementGroupTypeLabel: Record<number, string> = {
 };
 
 export interface MenuItemResponse {
+  optionalExtras?: { id: number; optionalExtraName: string; displayOrder: number }[];
+  boosts?: { id: number; boostName: string; incrementalValue: number; displayOrder: number }[];
   hasOptionalExtras?: boolean;
   hasBoosts?: boolean;
   id: number;
