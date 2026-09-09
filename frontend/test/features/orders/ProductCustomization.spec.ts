@@ -57,8 +57,9 @@ for (const kind of ['table', 'comanda']) test(`configurable product waits for se
     await page.getByTestId('btn-add-menu-item-2').click();
     await expect(page.getByRole('group', { name: 'Opcionais gratuitos' })).toBeVisible();
     expect(sent).toHaveLength(0);
-    await page.getByLabel('Gelo e Limão (grátis)').check();
-    await page.getByRole('checkbox', { name: /Laranja/ }).check();
+    await page.locator('.pw-option').filter({ hasText: 'Gelo e Limão' }).click();
+    await page.getByRole('button', { name: /2 Adicionais pagos/ }).click();
+    await page.locator('.pw-option').filter({ hasText: 'Laranja' }).click();
     await expect(page.getByTestId('customization-subtotal')).toContainText('12,00');
     await page.getByTestId('btn-confirm-complements').click();
     await expect(page.getByTestId('order-item-row-1')).toContainText('Gelo e Limão');
@@ -74,10 +75,12 @@ for (const kind of ['table', 'comanda']) test(`configurable product waits for se
 test('cancel does not launch; reopening clears selections', async ({ page }) => {
     const { sent } = await setup(page);
     await page.getByTestId('btn-add-menu-item-2').click();
-    await page.getByRole('checkbox', { name: /Laranja/ }).check();
+    await page.getByRole('button', { name: /2 Adicionais pagos/ }).click();
+    await page.locator('.pw-option').filter({ hasText: 'Laranja' }).click();
     await page.keyboard.press('Escape');
     expect(sent).toHaveLength(0);
     await page.getByTestId('btn-add-menu-item-2').click();
+    await page.getByRole('button', { name: /2 Adicionais pagos/ }).click();
     await expect(page.getByRole('checkbox', { name: /Laranja/ })).not.toBeChecked();
     await page.getByTestId('btn-confirm-complements').click();
     await expect.poll(() => sent.length).toBe(1);
@@ -103,16 +106,19 @@ test('failed options lookup blocks launch and can be retried', async ({ page }) 
     await expect(page.getByTestId('btn-confirm-complements')).toHaveCount(0);
     state.recover();
     await page.getByRole('button', { name: 'Tentar novamente' }).click();
-    await expect(page.getByRole('checkbox', { name: /Laranja/ })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Opcionais gratuitos' })).toBeVisible();
 });
 
 test('existing mandatory complements remain selectable alongside boosts', async ({ page }) => {
     const { sent } = await setup(page, 'table', false, false, true);
     await page.getByTestId('btn-add-menu-item-2').click();
+    await page.getByRole('button', { name: /3 Copo/ }).click();
     await expect(page.getByTestId('btn-confirm-complements')).toBeDisabled();
-    await page.getByTestId('input-complement-51').check();
-    await page.getByRole('checkbox', { name: /Laranja/ }).check();
+    await page.getByTestId('complement-label-51').click();
+    await page.getByRole('button', { name: /2 Adicionais pagos/ }).click();
+    await page.locator('.pw-option').filter({ hasText: 'Laranja' }).click();
     await expect(page.getByTestId('customization-subtotal')).toContainText('13,00');
+    await page.getByRole('button', { name: /3 Copo/ }).click();
     await page.getByTestId('btn-confirm-complements').click();
     await expect.poll(() => sent.length).toBe(1);
     expect(sent[0]).toMatchObject({ complements: [{ complementGroupId: 50, complementId: 51 }], boostIds: [12] });
@@ -136,7 +142,8 @@ test('launch failure keeps choices for an explicit retry', async ({ page }) => {
         ? route.fulfill({ status: 400, json: { detail: 'Limite da comanda atingido.' } })
         : route.fallback());
     await page.getByTestId('btn-add-menu-item-2').click();
-    await page.getByRole('checkbox', { name: /Laranja/ }).check();
+    await page.getByRole('button', { name: /2 Adicionais pagos/ }).click();
+    await page.locator('.pw-option').filter({ hasText: 'Laranja' }).click();
     await page.getByTestId('btn-confirm-complements').click();
     await expect(page.getByTestId('complement-selector-view').getByRole('alert')).toContainText('Limite');
     expect(sent).toHaveLength(0);
@@ -156,6 +163,103 @@ test('preview discounts the base product without discounting boosts', async ({ p
     await page.getByTestId('table-tile-1').click();
     await page.getByTestId('btn-toggle-menu').click();
     await page.getByTestId('btn-add-menu-item-2').click();
-    await page.getByRole('checkbox', { name: /Laranja/ }).check();
+    await page.getByRole('button', { name: /2 Adicionais pagos/ }).click();
+    await page.locator('.pw-option').filter({ hasText: 'Laranja' }).click();
     await expect(page.getByTestId('customization-subtotal')).toContainText('9,50');
 });
+
+test('wizard advances, preserves choices on back and keeps its footer inside the viewport', async ({ page }, testInfo) => {
+    await setup(page);
+    await page.getByTestId('btn-add-menu-item-2').click();
+    const dialog = page.locator('dialog.product-wizard');
+    await expect(dialog).toBeVisible();
+    await expect(page.getByTestId('btn-confirm-complements')).toHaveText(/Pular/);
+    await page.locator('.pw-option').filter({ hasText: 'Gelo e Limão' }).click();
+    await expect(page.getByTestId('btn-confirm-complements')).toHaveText(/Avançar/);
+    await page.getByTestId('btn-confirm-complements').click();
+    await expect(page.getByTestId('btn-confirm-complements')).toHaveText(/Adicionar ao pedido/);
+    await page.locator('.pw-option').filter({ hasText: 'Laranja' }).click();
+    await page.getByRole('button', { name: 'Voltar à etapa anterior' }).click();
+    await expect(page.getByRole('checkbox', { name: /Gelo e Limão/ })).toBeChecked();
+    await expect(page.getByTestId('customization-subtotal')).toContainText('12,00');
+    const overflow = await dialog.evaluate(el => el.scrollWidth > el.clientWidth);
+    expect(overflow).toBe(false);
+    const footer = await page.getByTestId('btn-confirm-complements').boundingBox();
+    expect(footer!.y + footer!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    await page.screenshot({ path: testInfo.outputPath('wizard.png'), animations: 'disabled' });
+});
+
+test('keyboard focus stays in dialog, Space selects and Escape restores the menu', async ({ page }) => {
+    await setup(page);
+    const trigger = page.getByTestId('btn-add-menu-item-2');
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    const checkbox = page.getByRole('checkbox', { name: /Gelo e Limão/ });
+    await checkbox.focus();
+    await page.keyboard.press('Space');
+    await expect(checkbox).toBeChecked();
+    await page.getByTestId('btn-confirm-complements').focus();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Fechar personalização' })).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.getByTestId('btn-confirm-complements')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('dialog.product-wizard')).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+});
+
+test('mandatory limits disable unselected options and unblock after deselection', async ({ page }) => {
+    await setup(page);
+    await page.route('**/api/catalog/menu/company/1', route => route.fulfill({ json: [{
+        id: 2, name: 'Temaki', salePrice: 20, complementGroups: [{ id: 50, name: 'Escolhas', minSelection: 1, maxSelection: 2,
+            complements: [1, 2, 3].map(id => ({ id, complementItemName: `Opção ${id}`, extraPrice: id, isActive: true })) }],
+    }] }));
+    await page.reload();
+    await page.getByTestId('table-tile-1').click();
+    await page.getByTestId('btn-toggle-menu').click();
+    await page.getByTestId('btn-add-menu-item-2').click();
+    await expect(page.getByTestId('btn-confirm-complements')).toBeDisabled();
+    await page.getByTestId('complement-label-1').click();
+    await page.getByTestId('complement-label-2').click();
+    await expect(page.getByTestId('input-complement-3')).toBeDisabled();
+    await expect(page.getByTestId('customization-subtotal')).toContainText('23,00');
+    await page.getByTestId('complement-label-1').click();
+    await expect(page.getByTestId('input-complement-3')).toBeEnabled();
+    await expect(page.getByTestId('customization-subtotal')).toContainText('22,00');
+});
+
+test('slow detail request displays skeleton without permitting submission', async ({ page }) => {
+    await setup(page);
+    let release: () => void = () => {};
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    await page.route('**/api/products/2', async route => {
+        await pending;
+        await route.fulfill({ json: { salePrice: 10, hasOptionalExtras: false, hasBoosts: false, optionalExtras: [], boosts: [] } });
+    });
+    await page.getByTestId('btn-add-menu-item-2').click();
+    await expect(page.getByRole('status', { name: 'Carregando opções' })).toBeVisible();
+    await expect(page.getByTestId('btn-confirm-complements')).toHaveCount(0);
+    release();
+    await expect(page.getByTestId('btn-confirm-complements')).toBeEnabled();
+});
+
+test('long option lists scroll without moving the subtotal or action off screen', async ({ page }) => {
+    await setup(page);
+    await page.route('**/api/products/2', route => route.fulfill({ json: {
+        salePrice: 10, hasOptionalExtras: true, hasBoosts: false, boosts: [],
+        optionalExtras: Array.from({ length: 30 }, (_, index) => ({ id: index + 100,
+            optionalExtraName: `Opção ${index + 1} com descrição longa para personalizar o preparo do produto`, displayOrder: index })),
+    } }));
+    await page.getByTestId('btn-add-menu-item-2').click();
+    await page.locator('.pw-option').last().scrollIntoViewIfNeeded();
+    await page.locator('.pw-option').last().click();
+    const action = page.getByTestId('btn-confirm-complements');
+    const rect = await action.boundingBox();
+    expect(rect!.y + rect!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    expect(await action.evaluate(el => {
+        const box = el.getBoundingClientRect();
+        return el.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+    })).toBe(true);
+    await expect(page.getByTestId('customization-subtotal')).toBeInViewport();
+});
+

@@ -5,6 +5,7 @@ namespace SyncBar.Domain.Entities;
 public sealed class AccessLog : Entity
 {
     public long? AppUserId { get; private set; }
+    public long? CustomerAppUserId { get; private set; }
     public string UserName { get; private set; } = null!;
     public string EventType { get; private set; } = null!;
     public string? IpAddress { get; private set; }
@@ -33,6 +34,13 @@ public sealed class AccessLog : Entity
         if (string.IsNullOrWhiteSpace(eventType))
             return Result.Failure<AccessLog>(new Error("AccessLog.EmptyEventType", "EventType is required."));
         return Result.Success(new AccessLog(appUserId, userName, eventType, ipAddress, userAgent));
+    }
+
+    public static Result<AccessLog> CreateForCustomer(long? customerAppUserId, string email, string eventType, string? ipAddress, string? userAgent)
+    {
+        var result = Create(null, email, eventType, ipAddress, userAgent);
+        if (result.IsSuccess) result.Value.CustomerAppUserId = customerAppUserId;
+        return result;
     }
 
     public void Touch() => UpdatedAt = DateTime.Now;

@@ -1,4 +1,4 @@
-import { api } from "../../lib/apiClient";
+import { api, ApiError } from "../../lib/apiClient";
 import type { MenuItemResponse, OrderItemComplementSelection } from "../../lib/types";
 
 export type StorefrontItemRequest = {
@@ -81,17 +81,51 @@ export type CustomerLoginResponse = {
 };
 
 let customerAccessToken: string | null = null;
-const customerApi = <T>(path: string, init?: RequestInit) => api<T>(path, {
+let customerRefreshToken: string | null = null;
+let customerRefreshing: Promise<void> | null = null;
+const customerRequest = <T>(path: string, init?: RequestInit) => api<T>(path, {
     ...init, headers: { ...init?.headers, Authorization: customerAccessToken ? `Bearer ${customerAccessToken}` : "" },
 }, false);
+
+async function customerApi<T>(path: string, init?: RequestInit): Promise<T> {
+    try {
+        return await customerRequest<T>(path, init);
+    } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 401 || !customerRefreshToken) throw error;
+        customerRefreshing ??= (async () => {
+            const token = customerRefreshToken;
+            try {
+                const session = await customerRequest<CustomerLoginResponse>("/api/auth/customer-refresh", {
+                    method: "POST", body: JSON.stringify({ refreshToken: token }),
+                });
+                if (customerRefreshToken === token) {
+                    customerAccessToken = session.accessToken;
+                    customerRefreshToken = session.refreshToken;
+                }
+            } catch (refreshError) {
+                if (customerRefreshToken === token) {
+                    customerAccessToken = null;
+                    customerRefreshToken = null;
+                }
+                throw refreshError;
+            } finally {
+                customerRefreshing = null;
+            }
+        })();
+        await customerRefreshing;
+        return customerRequest<T>(path, init);
+    }
+}
 
 // Customer authentication must not use or overwrite the administrative session.
 export const loginCustomerAppUser = async (payload: CustomerLoginPayload): Promise<CustomerLoginResponse> => {
     customerAccessToken = null;
-    const result = await customerApi<CustomerLoginResponse>('/api/auth/customer-login', {
+    customerRefreshToken = null;
+    const result = await customerRequest<CustomerLoginResponse>('/api/auth/customer-login', {
         method: 'POST', body: JSON.stringify(payload),
     });
     customerAccessToken = result.accessToken;
+    customerRefreshToken = result.refreshToken;
     return result;
 };
 

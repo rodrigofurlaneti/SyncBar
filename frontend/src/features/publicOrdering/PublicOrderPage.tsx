@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Swal from "sweetalert2";
@@ -281,6 +281,7 @@ export function PublicOrderPage() {
             {selectingItem && (
                 <ComplementSelectorModal
                     productName={selectingItem.name}
+                    imageUrl={selectingItem.imageUrl} description={selectingItem.description} basePrice={selectingItem.salePrice}
                     groups={selectingItem.complementGroups}
                     onCancel={() => setSelectingItem(null)}
                     submitting={addMutation.isPending}
