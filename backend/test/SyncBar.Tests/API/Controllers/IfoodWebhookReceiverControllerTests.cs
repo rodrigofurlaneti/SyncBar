@@ -48,14 +48,29 @@ public sealed class IfoodWebhookReceiverControllerTests
         _receiver.ReceiveAsync(1, Arg.Any<byte[]>(), "signature", Arg.Any<CancellationToken>())
             .Returns(Task.FromException<IfoodWebhookReceipt>(new InvalidOperationException("Database unavailable")));
         var result = await Create("{}").Receive(1, default, "signature");
-        result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(503);
+        result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(503);
     }
 
     [Fact]
     public async Task Receive_RejectsOversizedChunkedBodyBeforeProcessing()
     {
         var result = await Create(new string('x', 1_048_577)).Receive(1, default);
-        result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(413);
+        result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(413);
         await _receiver.DidNotReceiveWithAnyArgs().ReceiveAsync(default, default!, default, default);
+    }
+
+    [Theory]
+    [InlineData(400)]
+    [InlineData(401)]
+    [InlineData(403)]
+    [InlineData(503)]
+    public async Task Receive_ErrorsHaveIfoodAuditErrorField(int status)
+    {
+        _receiver.ReceiveAsync(Arg.Any<byte[]>(), "signature", Arg.Any<CancellationToken>())
+            .Returns(new IfoodWebhookReceipt(status));
+        var result = (ObjectResult)await Create("{}").Receive(null, default, "signature");
+        result.StatusCode.Should().Be(status);
+        var json = System.Text.Json.JsonSerializer.SerializeToElement(result.Value);
+        json.GetProperty("error").GetString().Should().NotBeNullOrWhiteSpace();
     }
 }

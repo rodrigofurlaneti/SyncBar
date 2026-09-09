@@ -25,6 +25,7 @@ internal sealed class IfoodWebhookReceiver(
     {
         if (signature is null || signature.Length != 64) return new(401);
         var authenticatedCompanies = new List<long>();
+        var hasUsableConfiguration = false;
         foreach (var companyId in await settings.GetEnabledCompanyIdsAsync(ct))
         {
             var setting = await settings.GetByCompanyAsync(companyId, ct);
@@ -33,11 +34,12 @@ internal sealed class IfoodWebhookReceiver(
             try
             {
                 var secret = protector.Unprotect("SyncBar.Integrations.Ifood.ClientSecret.v1", setting.ClientSecretEncrypted);
+                hasUsableConfiguration = true;
                 if (Verify(body, secret, signature)) authenticatedCompanies.Add(companyId);
             }
             catch (CryptographicException) { }
         }
-        if (authenticatedCompanies.Count == 0) return new(401);
+        if (authenticatedCompanies.Count == 0) return new(hasUsableConfiguration ? 401 : 503);
         try
         {
             using var document = JsonDocument.Parse(body);

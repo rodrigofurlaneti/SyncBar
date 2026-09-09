@@ -430,3 +430,4 @@ capacitor.config.ts.local
 /frontend/*-validation.txt
 /audit-test-output.txt
 /letsencrypt/
+/frontend/test-results/
