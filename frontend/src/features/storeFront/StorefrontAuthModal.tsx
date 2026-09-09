@@ -1,5 +1,4 @@
-﻿import React, { useState, useId, useEffect } from "react";
-import Swal from "sweetalert2";
+import React, { useState, useId, useEffect, useRef } from "react";
 import { loginCustomerAppUser, registerCustomerAppUser, registerCustomerAddress } from "./storefrontApi";
 
 type StorefrontAuthModalProps = {
@@ -78,6 +77,9 @@ const styles = `
   .auth-password-toggle { position: absolute; right: 0.25rem; top: 0; bottom: 0; width: 2.5rem; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; color: #a1a1aa; cursor: pointer; }
   .auth-password-toggle:focus-visible { outline: 2px solid #f59e0b; border-radius: 0.375rem; }
   .auth-password-error { color: #f87171; font-size: 0.875rem; margin: 0; }
+  .auth-form-error { color: #fecaca; background: #450a0a; border: 1px solid #f87171; padding: 0.75rem; border-radius: 0.5rem; margin: 0; overflow-wrap: anywhere; }
+  .auth-cep-status { color: #d4d4d8; font-size: 0.875rem; margin: 0; }
+  .auth-manual-address { color: #fbbf24; background: transparent; border: 1px solid #52525b; border-radius: 0.5rem; padding: 0.75rem; cursor: pointer; }
   
   /* ESTILOS PARA CAMPOS BLOQUEADOS (READONLY) */
   .input-field:read-only { background-color: #27272a; color: #a1a1aa; border-color: #27272a; cursor: not-allowed; opacity: 0.8; }
@@ -111,6 +113,28 @@ export function StorefrontAuthModal({
     const [mode, setMode] = useState<"login" | "register">("login");
     const [isLoading, setIsLoading] = useState(false);
     const [isFetchingCep, setIsFetchingCep] = useState(false);
+    const [cepMessage, setCepMessage] = useState("");
+    const [formError, setFormError] = useState<{ message: string } | null>(null);
+    const errorRef = useRef<HTMLParagraphElement>(null);
+    const cepRequest = useRef<{ controller: AbortController; timeout: ReturnType<typeof setTimeout> } | null>(null);
+
+    useEffect(() => {
+        if (formError) {
+            errorRef.current?.focus({ preventScroll: true });
+            errorRef.current?.scrollIntoView({ block: "nearest" });
+        }
+    }, [formError]);
+
+    useEffect(() => {
+        if (!isOpen) setIsFetchingCep(false);
+        return () => {
+            if (cepRequest.current) {
+                clearTimeout(cepRequest.current.timeout);
+                cepRequest.current.controller.abort();
+                cepRequest.current = null;
+            }
+        };
+    }, [isOpen]);
 
     const formId = useId();
 
@@ -154,39 +178,66 @@ export function StorefrontAuthModal({
 
     if (!isOpen) return null;
 
-    // Busca de CEP Automática (ViaCEP)
+    const cancelCepLookup = () => {
+        const pending = cepRequest.current;
+        cepRequest.current = null;
+        if (pending) {
+            clearTimeout(pending.timeout);
+            pending.controller.abort();
+        }
+        setIsFetchingCep(false);
+    };
+
+    const enableManualAddress = () => {
+        cancelCepLookup();
+        setCepMessage("Preencha a rua e o bairro/cidade para continuar.");
+    };
+
+    // A slow or failed postal lookup must not block checkout.
     const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const cep = e.target.value.replace(/\D/g, '').slice(0, 8);
+        cancelCepLookup();
         setRegZipCode(cep);
+        setRegStreet("");
+        setRegNeighborhood("");
+        setCepMessage("");
 
         if (cep.length === 8) {
+            const controller = new AbortController();
+            const pending = { controller, timeout: setTimeout(() => controller.abort(), 8000) };
+            cepRequest.current = pending;
             setIsFetchingCep(true);
             try {
-                const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { signal: controller.signal });
+                if (!response.ok) throw new Error("CEP lookup failed");
                 const data = await response.json();
-
+                if (cepRequest.current !== pending) return;
                 if (!data.erro) {
                     setRegStreet(data.logradouro || "");
-                    setRegNeighborhood(data.bairro ? `${data.bairro}, ${data.localidade} - ${data.uf}` : "");
-                    // Foca no número para dar agilidade
-                    document.getElementById(`${formId}-reg-number`)?.focus();
+                    setRegNeighborhood([data.bairro, [data.localidade, data.uf].filter(Boolean).join(" - ")].filter(Boolean).join(", "));
+                    setCepMessage(data.logradouro ? "Confira o endereço. Você pode corrigir os campos." : "Complete a rua e confira o bairro/cidade.");
                 } else {
-                    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'CEP não encontrado', showConfirmButton: false, timer: 2000, background: '#18181b', color: '#fff' });
-                    setRegStreet("");
-                    setRegNeighborhood("");
+                    setCepMessage("CEP não encontrado. Confira os 8 dígitos e preencha o endereço manualmente.");
                 }
-            } catch (error) {
-                console.error("Erro na busca do CEP:", error);
+            } catch {
+                if (cepRequest.current === pending)
+                    setCepMessage("Não foi possível consultar o CEP. Preencha o endereço manualmente para continuar.");
             } finally {
-                setIsFetchingCep(false);
+                clearTimeout(pending.timeout);
+                if (cepRequest.current === pending) {
+                    cepRequest.current = null;
+                    setIsFetchingCep(false);
+                }
             }
         }
     };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isLoading) return;
+        setFormError(null);
         if (!loginEmail || !loginPassword) {
-            Swal.fire({ title: "Atenção", text: "Preencha o e-mail e a senha.", icon: "warning", background: '#18181b', color: '#fff' });
+            setFormError({ message: "Preencha o e-mail e a senha." });
             return;
         }
 
@@ -206,8 +257,8 @@ export function StorefrontAuthModal({
                 customerId: res.customerId
             });
             onClose();
-        } catch (err: any) {
-            Swal.fire({ title: "Erro", text: err.message || "E-mail ou senha incorretos.", icon: "error", background: '#18181b', color: '#fff' });
+        } catch (err: unknown) {
+            setFormError({ message: err instanceof Error ? err.message : "E-mail ou senha incorretos." });
         } finally {
             setIsLoading(false);
         }
@@ -215,10 +266,19 @@ export function StorefrontAuthModal({
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isLoading || isFetchingCep) return;
+        setFormError(null);
         setPasswordValidationAttempted(true);
-        if (passwordError) return;
-        if (!regName || !regEmail || !regPassword || !regStreet || !regNumber || !regZipCode || !regCpf || !regNeighborhood) {
-            Swal.fire({ title: "Atenção", text: "Preencha os campos obrigatórios e digite um CEP válido.", icon: "warning", background: '#18181b', color: '#fff' });
+        if (passwordError) {
+            setFormError({ message: passwordError });
+            return;
+        }
+        if (!regName.trim() || !regEmail.trim() || !regStreet.trim() || !regNumber.trim() || !regNeighborhood.trim() || regZipCode.length !== 8 || regCpf.length !== 11) {
+            setFormError({ message: "Preencha nome, e-mail, CPF com 11 dígitos, CEP com 8 dígitos, rua, número e bairro/cidade." });
+            return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail.trim())) {
+            setFormError({ message: "Informe um e-mail válido." });
             return;
         }
 
@@ -226,8 +286,8 @@ export function StorefrontAuthModal({
         try {
             const userPayload = {
                 branchId: branchId,
-                userName: regName,
-                email: regEmail,
+                userName: regName.trim(),
+                email: regEmail.trim(),
                 password: regPassword,
                 phone: regPhone || null,
                 cpf: regCpf,
@@ -236,7 +296,7 @@ export function StorefrontAuthModal({
             const userResult = await registerCustomerAppUser(userPayload);
 
             const newCustomerId = userResult.id;
-            await loginCustomerAppUser({ email: regEmail, password: regPassword,
+            await loginCustomerAppUser({ email: regEmail.trim(), password: regPassword,
                 companyId: userResult.companyId, branchId });
 
             // Concatenando Complemento + Bairro/Cidade para o backend não perder nenhum dado
@@ -256,25 +316,14 @@ export function StorefrontAuthModal({
 
             await registerCustomerAddress(addressPayload);
 
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'Cadastro realizado com sucesso!',
-                showConfirmButton: false,
-                timer: 2000,
-                background: '#18181b',
-                color: '#fff'
-            });
-
             onAuthenticated({
                 name: regName,
                 phone: regPhone,
                 customerId: newCustomerId
             });
             onClose();
-        } catch (err: any) {
-            Swal.fire({ title: "Erro", text: err.message || "Não foi possível realizar o cadastro.", icon: "error", background: '#18181b', color: '#fff' });
+        } catch (err: unknown) {
+            setFormError({ message: err instanceof Error ? err.message : "Não foi possível realizar o cadastro." });
         } finally {
             setIsLoading(false);
         }
@@ -317,7 +366,7 @@ export function StorefrontAuthModal({
                         role="tab"
                         aria-selected={mode === "login"}
                         aria-controls={`${formId}-panel-login`}
-                        onClick={() => setMode("login")}
+                        onClick={() => { setMode("login"); setFormError(null); }}
                         disabled={isLoading}
                         className="tab-btn"
                     >
@@ -328,7 +377,7 @@ export function StorefrontAuthModal({
                         role="tab"
                         aria-selected={mode === "register"}
                         aria-controls={`${formId}-panel-register`}
-                        onClick={() => setMode("register")}
+                        onClick={() => { setMode("register"); setFormError(null); }}
                         disabled={isLoading}
                         className="tab-btn"
                     >
@@ -342,6 +391,7 @@ export function StorefrontAuthModal({
                             <InputField label="E-mail" id={`${formId}-login-email`} type="email" placeholder="seu@email.com" value={loginEmail} onChange={(e: any) => setLoginEmail(e.target.value)} isLoading={isLoading} required />
                             <InputField label="Senha" id={`${formId}-login-password`} type="password" placeholder="••••••" value={loginPassword} onChange={(e: any) => setLoginPassword(e.target.value)} isLoading={isLoading} required />
 
+                            {formError && <p ref={errorRef} className="auth-form-error" role="alert" tabIndex={-1}>{formError.message}</p>}
                             <button type="submit" disabled={isLoading} className="btn-submit" aria-live="polite">
                                 {isLoading ? <><div className="spinner-small" /> Autenticando...</> : "Entrar e Finalizar Pedido"}
                             </button>
@@ -382,7 +432,7 @@ export function StorefrontAuthModal({
                                 value={regConfirmPassword} onChange={e => setRegConfirmPassword(e.target.value)} isLoading={isLoading}
                                 minLength={6} autoComplete="new-password" required
                                 aria-invalid={showPasswordError} aria-describedby={showPasswordError ? `${formId}-password-error` : undefined} />
-                            {showPasswordError && <p id={`${formId}-password-error`} className="auth-password-error" role="alert">{passwordError}</p>}
+                            {showPasswordError && <p id={`${formId}-password-error`} className="auth-password-error">{passwordError}</p>}
 
                             <div className="address-divider" aria-hidden="true">
                                 <span>Endereço de Entrega</span>
@@ -401,17 +451,16 @@ export function StorefrontAuthModal({
                                 required
                             />
 
-                            {/* RUA - APENAS LEITURA */}
+                            {isFetchingCep && <button type="button" className="auth-manual-address" onClick={enableManualAddress}>Preencher endereço manualmente</button>}
+                            {cepMessage && <p className="auth-cep-status" role="status">{cepMessage}</p>}
                             <InputField
                                 label="Rua / Avenida"
                                 id={`${formId}-reg-street`}
                                 type="text"
-                                placeholder="Preenchido pelo CEP"
+                                placeholder="Digite a rua ou avenida"
                                 value={regStreet}
-                                readOnly
-                                tabIndex={-1}
-                                isLoading={isLoading || isFetchingCep}
-                                showFetchingLabel={true}
+                                onChange={e => { cancelCepLookup(); setRegStreet(e.target.value); }}
+                                isLoading={isLoading}
                                 required
                             />
 
@@ -424,7 +473,7 @@ export function StorefrontAuthModal({
                                         placeholder="Ex: 123"
                                         value={regNumber}
                                         onChange={(e: any) => setRegNumber(e.target.value)}
-                                        isLoading={isLoading || isFetchingCep}
+                                        isLoading={isLoading}
                                         required
                                     />
                                 </div>
@@ -437,24 +486,23 @@ export function StorefrontAuthModal({
                                         placeholder="Apto, Bloco, etc."
                                         value={regSupplement}
                                         onChange={(e: any) => setRegSupplement(e.target.value)}
-                                        isLoading={isLoading || isFetchingCep}
+                                        isLoading={isLoading}
                                     />
                                 </div>
                             </div>
 
-                            {/* BAIRRO / CIDADE - APENAS LEITURA */}
                             <InputField
                                 label="Bairro / Cidade"
                                 id={`${formId}-reg-neighborhood`}
                                 type="text"
-                                placeholder="Preenchido pelo CEP"
+                                placeholder="Digite o bairro e a cidade"
                                 value={regNeighborhood}
-                                readOnly
-                                tabIndex={-1}
-                                isLoading={isLoading || isFetchingCep}
-                                showFetchingLabel={true}
+                                onChange={e => { cancelCepLookup(); setRegNeighborhood(e.target.value); }}
+                                isLoading={isLoading}
+                                required
                             />
 
+                            {formError && <p ref={errorRef} className="auth-form-error" role="alert" tabIndex={-1}>{formError.message}</p>}
                             <button type="submit" disabled={isLoading || isFetchingCep} className="btn-submit" aria-live="polite">
                                 {isLoading || isFetchingCep ? <><div className="spinner-small" /> Processando...</> : "Cadastrar e Enviar Pedido"}
                             </button>

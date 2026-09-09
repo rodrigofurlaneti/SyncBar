@@ -52,8 +52,11 @@ sucesso nem simular a resposta na suíte real.
 
 ## Celulares
 
-`npm run test:e2e:storefront:devices` executa os 15 cenários de cadastro e checkout
-em desktop Chromium, Pixel 7/Chromium e iPhone 13/WebKit: 45 combinações.
+`npm run test:e2e:storefront:devices` executa os 21 cenários de cadastro e checkout
+em desktop Chromium, Pixel 7/Chromium e iPhone 13/WebKit: 63 combinações.
+Inclui falha e timeout de CEP, endereço manual, troca de CEP e mensagens de erro
+com foco e hit-testing para detectar sobreposição. Diagnóstico e limites da
+validação em [mobile-registration-bug.md](mobile-registration-bug.md).
 O teste administrativo de copiar link fica na suíte padrão. A emulação não substitui
 a conferência no aparelho físico. O formulário usa fonte de 16px nos campos móveis,
 altura dinâmica e botão sem deslocamento ao passar/tocar, evitando instabilidade
