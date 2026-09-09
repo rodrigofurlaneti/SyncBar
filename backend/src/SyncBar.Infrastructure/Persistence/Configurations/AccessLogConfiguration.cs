@@ -12,7 +12,7 @@ internal sealed class AccessLogConfiguration : IEntityTypeConfiguration<AccessLo
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
         
-        builder.Property(x => x.UserName).HasColumnType("varchar(100)").IsRequired();
+        builder.Property(x => x.UserName).HasColumnType("varchar(150)").IsRequired();
         builder.Property(x => x.EventType).HasColumnType("varchar(30)").IsRequired();
         builder.Property(x => x.IpAddress).HasColumnType("varchar(45)");
         builder.Property(x => x.UserAgent).HasColumnType("nvarchar(300)");
@@ -22,5 +22,7 @@ internal sealed class AccessLogConfiguration : IEntityTypeConfiguration<AccessLo
         builder.HasIndex(x => x.AppUserId).HasDatabaseName("IX_AccessLog_AppUserId");
         
         builder.HasOne<AppUser>().WithMany().HasForeignKey(x => x.AppUserId).HasConstraintName("FK_AccessLog_AppUser").OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<CustomerAppUser>().WithMany().HasForeignKey(x => x.CustomerAppUserId)
+            .HasConstraintName("FK_AccessLog_CustomerAppUser").OnDelete(DeleteBehavior.Restrict);
     }
 }

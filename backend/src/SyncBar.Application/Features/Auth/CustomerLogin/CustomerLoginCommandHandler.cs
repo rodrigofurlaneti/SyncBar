@@ -9,7 +9,7 @@ namespace SyncBar.Application.Features.Auth.CustomerLogin;
 internal sealed class CustomerLoginCommandHandler : BaseCommandHandler<CustomerLoginCommand, CustomerLoginResponse>
 {
     private readonly ICustomerAppUserRepository _customerUserRepository;
-    private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly ICustomerRefreshTokenRepository _refreshTokenRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenProvider _jwtTokenProvider;
     private readonly IAccessLogRepository _accessLogRepository;
@@ -20,7 +20,7 @@ internal sealed class CustomerLoginCommandHandler : BaseCommandHandler<CustomerL
 
     public CustomerLoginCommandHandler(
         ICustomerAppUserRepository customerUserRepository,
-        IRefreshTokenRepository refreshTokenRepository,
+        ICustomerRefreshTokenRepository refreshTokenRepository,
         IPasswordHasher passwordHasher,
         IJwtTokenProvider jwtTokenProvider,
         IAccessLogRepository accessLogRepository,
@@ -48,7 +48,7 @@ internal sealed class CustomerLoginCommandHandler : BaseCommandHandler<CustomerL
                 return Result.Failure<CustomerLoginResponse>(InvalidCredentials);
             }
 
-            userIdBox.Value = customer.Id;
+            // Customer IDs must never be stored in administrative audit foreign keys.
 
             if (!_passwordHasher.Verify(request.Password, customer.PasswordHash))
             {
@@ -71,7 +71,7 @@ internal sealed class CustomerLoginCommandHandler : BaseCommandHandler<CustomerL
 
             var refreshTokenValue = _jwtTokenProvider.GenerateRefreshToken();
             var refreshTokenExpiresAt = DateTime.Now.AddDays(7);
-            var refreshToken = RefreshToken.Create(customer.Id, refreshTokenValue, refreshTokenExpiresAt);
+            var refreshToken = CustomerRefreshToken.Create(customer.Id, refreshTokenValue, refreshTokenExpiresAt);
 
             if (refreshToken.IsFailure)
                 return Result.Failure<CustomerLoginResponse>(refreshToken.Error);
@@ -91,7 +91,7 @@ internal sealed class CustomerLoginCommandHandler : BaseCommandHandler<CustomerL
 
     private async Task LogAsync(long? userId, CustomerLoginCommand request, string eventType, CancellationToken ct)
     {
-        var log = Domain.Entities.AccessLog.Create(
+        var log = Domain.Entities.AccessLog.CreateForCustomer(
             userId, request.Email, eventType, request.IpAddress, request.UserAgent);
 
         if (log.IsSuccess)

@@ -1,151 +1,36 @@
-﻿import { useState } from "react";
-import { Modal } from "../../ui/Modal";
-import type { ReactNode } from "react";
-import { Button } from "../../ui/Button";
-import { formatBRL } from "../../lib/types";
+import { useMemo } from "react";
 import type { ComplementGroupResponse, OrderItemComplementSelection } from "../../lib/types";
+import { ProductWizard } from "./ProductWizard";
+import type { WizardStep } from "./useProductWizard";
 
-interface Props {
+export function complementSteps(groups: ComplementGroupResponse[]): WizardStep[] {
+    return groups.map(group => ({
+        id: `group-${group.id}`, title: group.name, min: group.minSelection, max: group.maxSelection,
+        groupId: group.id,
+        options: group.complements.filter(option => option.isActive).map(option => ({
+            id: option.id, name: option.complementItemName, price: option.extraPrice,
+        })),
+    }));
+}
+
+export function ComplementSelectorModal({ productName, groups, onCancel, onConfirm, submitting = false,
+    basePrice = 0, error, imageUrl, description }: {
     productName: string;
     groups: ComplementGroupResponse[];
     onCancel: () => void;
     onConfirm: (selections: OrderItemComplementSelection[]) => void;
     confirmLabel?: string;
     submitting?: boolean;
-    children?: ReactNode;
     basePrice?: number;
-    additionalPrice?: number;
     error?: string | null;
+    imageUrl?: string | null;
+    description?: string | null;
+}) {
+    const steps = useMemo(() => complementSteps(groups), [groups]);
+    return <ProductWizard name={productName} description={description} imageUrl={imageUrl} steps={steps}
+        basePrice={basePrice} submitting={submitting} error={error} onCancel={onCancel}
+        onConfirm={selected => onConfirm(steps.flatMap(step => (selected[step.id] ?? []).map(id => ({
+            complementGroupId: step.groupId!, complementId: id,
+        }))))} />;
 }
 
-export function ComplementSelectorModal({
-    productName,
-    groups,
-    onCancel,
-    onConfirm,
-    confirmLabel = "Adicionar",
-    submitting = false,
-    children,
-    basePrice,
-    additionalPrice = 0,
-    error,
-}: Props) {
-    const [selected, setSelected] = useState<Record<number, number[]>>({});
-
-    const toggle = (group: ComplementGroupResponse, complementId: number) => {
-        setSelected((current) => {
-            const chosen = current[group.id] ?? [];
-            const isSingle = group.maxSelection <= 1;
-
-            if (chosen.includes(complementId)) {
-                return { ...current, [group.id]: chosen.filter((id) => id !== complementId) };
-            }
-            if (isSingle) return { ...current, [group.id]: [complementId] };
-            if (chosen.length >= group.maxSelection) return current; // já atingiu o máximo do grupo
-            return { ...current, [group.id]: [...chosen, complementId] };
-        });
-    };
-
-    const countFor = (group: ComplementGroupResponse) => (selected[group.id] ?? []).length;
-    const groupSatisfied = (group: ComplementGroupResponse) => {
-        const count = countFor(group);
-        return count >= group.minSelection && count <= group.maxSelection;
-    };
-    const allSatisfied = groups.every(groupSatisfied);
-
-    const handleConfirm = () => {
-        const selections: OrderItemComplementSelection[] = groups.flatMap((group) =>
-            (selected[group.id] ?? []).map((complementId) => ({ complementGroupId: group.id, complementId })),
-        );
-        onConfirm(selections);
-    };
-
-    return (
-        <Modal title={`Complementos — ${productName}`} onClose={() => { if (!submitting) onCancel(); }} dismissable={!submitting}>
-            <div style={{ display: "grid", gap: 18 }} data-testid="complement-selector-view">
-                {groups.map((group) => {
-                    const chosen = selected[group.id] ?? [];
-                    const isSingle = group.maxSelection <= 1;
-                    const satisfied = groupSatisfied(group);
-                    const activeComplements = group.complements.filter((c) => c.isActive);
-
-                    return (
-                        <div key={group.id} style={{ display: "grid", gap: 8 }} data-testid={`group-container-${group.id}`}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                                <span style={{ fontWeight: 600 }}>{group.name}</span>
-                                <span
-                                    style={{ fontSize: "0.8rem", color: satisfied ? "var(--ink-faint)" : "var(--danger)" }}
-                                    data-testid={`group-status-${group.id}`}
-                                >
-                                    {group.minSelection === 0
-                                        ? `opcional · até ${group.maxSelection}`
-                                        : group.minSelection === group.maxSelection
-                                            ? `escolha ${group.minSelection}`
-                                            : `escolha de ${group.minSelection} a ${group.maxSelection}`}
-                                </span>
-                            </div>
-
-                            {activeComplements.length === 0 && (
-                                <span style={{ color: "var(--ink-faint)", fontSize: "0.85rem" }}>
-                                    Nenhuma opção ativa neste grupo.
-                                </span>
-                            )}
-
-                            <div style={{ display: "grid", gap: 6 }}>
-                                {activeComplements.map((c) => {
-                                    const isChosen = chosen.includes(c.id);
-                                    return (
-                                        <label
-                                            key={c.id}
-                                            className="ui-row"
-                                            data-testid={`complement-label-${c.id}`}
-                                            style={{
-                                                justifyContent: "space-between",
-                                                padding: "8px 10px",
-                                                borderRadius: 8,
-                                                border: `1px solid ${isChosen ? "var(--amber)" : "var(--line)"}`,
-                                                cursor: "pointer",
-                                            }}
-                                        >
-                                            <span className="ui-row" style={{ gap: 8 }}>
-                                                <input
-                                                    type={isSingle ? "radio" : "checkbox"}
-                                                    name={`complement-group-${group.id}`}
-                                                    checked={isChosen}
-                                                    disabled={submitting}
-                                                    onChange={() => toggle(group, c.id)}
-                                                    data-testid={`input-complement-${c.id}`}
-                                                />
-                                                {c.complementItemName}
-                                            </span>
-                                            <span className="mono-num" style={{ color: "var(--ink-faint)" }}>
-                                                {c.extraPrice > 0 ? `+ ${formatBRL(c.extraPrice)}` : "sem custo"}
-                                            </span>
-                                        </label>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    );
-                })}
-
-                {children}
-                {basePrice !== undefined && <p className="mono-num" data-testid="customization-subtotal">
-                    Subtotal: {formatBRL(basePrice + additionalPrice + groups.reduce((sum, group) =>
-                        sum + group.complements.filter(c => (selected[group.id] ?? []).includes(c.id)).reduce((total, c) => total + c.extraPrice, 0), 0))}
-                </p>}
-                {error && <p className="error-text" role="alert">{error}</p>}
-                <Button
-                    variant="primary"
-                    block
-                    loading={submitting}
-                    disabled={!allSatisfied || submitting}
-                    onClick={handleConfirm}
-                    data-testid="btn-confirm-complements"
-                >
-                    {confirmLabel}
-                </Button>
-            </div>
-        </Modal>
-    );
-}

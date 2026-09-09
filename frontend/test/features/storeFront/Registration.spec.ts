@@ -2,6 +2,44 @@ import { test, expect } from '@playwright/test';
 import { mockMenu, openIdentification } from './helpers';
 import { fillNewCustomer, newCustomer } from './customerFactory';
 
+test('customer session refresh during registration never uses administrative refresh', async ({ page }) => {
+  await mockMenu(page);
+  let adminRefreshes = 0;
+  let customerRefreshes = 0;
+  let addressAttempts = 0;
+  await page.route('**/api/auth/refresh', route => {
+    adminRefreshes++;
+    return route.fulfill({ status: 500 });
+  });
+  await page.route('**/api/auth/customer-login', route => route.fulfill({ json: {
+    accessToken: 'expired-customer', refreshToken: 'customer-refresh', customerId: 901,
+    companyId: 1, userName: 'Cliente',
+  } }));
+  await page.route('**/api/auth/customer-refresh', route => {
+    customerRefreshes++;
+    expect(route.request().postDataJSON()).toEqual({ refreshToken: 'customer-refresh' });
+    return route.fulfill({ json: { accessToken: 'renewed-customer', refreshToken: 'rotated-customer' } });
+  });
+  await page.route('**/api/storefront/branches/7/customers', route => route.fulfill({ json: { id: 901, companyId: 1 } }));
+  await page.route('**/api/storefront/customer/addresses', route => {
+    addressAttempts++;
+    if (addressAttempts === 1) return route.fulfill({ status: 401 });
+    expect(route.request().headers().authorization).toBe('Bearer renewed-customer');
+    return route.fulfill({ json: { id: 902 } });
+  });
+  await page.route('https://viacep.com.br/**', route => route.fulfill({ json: {
+    logradouro: 'Praça da Sé', bairro: 'Sé', localidade: 'São Paulo', uf: 'SP',
+  } }));
+  await openIdentification(page);
+  await fillNewCustomer(page, newCustomer());
+  const auth = page.getByTestId('storefront-auth-modal');
+  await auth.getByRole('button', { name: 'Cadastrar e Enviar Pedido' }).click();
+  await expect(auth).toHaveCount(0);
+  expect(addressAttempts).toBe(2);
+  expect(customerRefreshes).toBe(1);
+  expect(adminRefreshes).toBe(0);
+});
+
 test('CEP network failure allows manual address entry and registration', async ({ page }) => {
   await mockMenu(page);
   await page.route('**/api/branch-payment-method-settings/branch/7', route => route.fulfill({ json: {

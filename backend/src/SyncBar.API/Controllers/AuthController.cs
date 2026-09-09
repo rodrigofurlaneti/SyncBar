@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using SyncBar.Application.Features.Auth.Login;
 using SyncBar.Application.Features.Auth.Refresh;
 using SyncBar.Application.Features.Auth.CustomerLogin;
+using SyncBar.Application.Features.Auth.CustomerRefresh;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Repositories;
 using System.Diagnostics;
@@ -95,4 +96,12 @@ public sealed class AuthController(
             var result = await Mediator.Send(command, ct);
             return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
         });
+
+    [AllowAnonymous]
+    [HttpPost("customer-refresh")]
+    public async Task<IActionResult> CustomerRefresh([FromBody] CustomerRefreshTokenCommand command, CancellationToken ct)
+    {
+        var result = await Mediator.Send(command, ct);
+        return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
+    }
 }

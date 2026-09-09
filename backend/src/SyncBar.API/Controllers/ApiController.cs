@@ -63,7 +63,7 @@ public abstract class ApiController(IMediator mediator) : ControllerBase
     private LogTracker CreateLogEntry(string className, string methodName)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        long? appUserId = long.TryParse(userIdClaim, out var id) ? id : null;
+        long? appUserId = !User.IsInRole("Customer") && long.TryParse(userIdClaim, out var id) ? id : null;
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
         return new LogTracker(0)

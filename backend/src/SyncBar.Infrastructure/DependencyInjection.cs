@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IDiningAreaAssignmentRepository, DiningAreaAssignmentRepository>();
         services.AddScoped<IAppUserRepository, AppUserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<ICustomerRefreshTokenRepository, CustomerRefreshTokenRepository>();
         services.AddScoped<ICustomerOrderRepository, CustomerOrderRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IDiningTableRepository, DiningTableRepository>();

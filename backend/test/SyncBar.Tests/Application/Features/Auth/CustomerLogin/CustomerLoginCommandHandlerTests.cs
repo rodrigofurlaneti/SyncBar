@@ -12,7 +12,7 @@ namespace SyncBar.Tests.Application.Features.Auth.CustomerLogin;
 public sealed class CustomerLoginCommandHandlerTests
 {
     private readonly ICustomerAppUserRepository _customerUserRepository = Substitute.For<ICustomerAppUserRepository>();
-    private readonly IRefreshTokenRepository _refreshTokenRepository = Substitute.For<IRefreshTokenRepository>();
+    private readonly ICustomerRefreshTokenRepository _refreshTokenRepository = Substitute.For<ICustomerRefreshTokenRepository>();
     private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
     private readonly IJwtTokenProvider _jwtTokenProvider = Substitute.For<IJwtTokenProvider>();
     private readonly IAccessLogRepository _accessLogRepository = Substitute.For<IAccessLogRepository>();
@@ -51,7 +51,7 @@ public sealed class CustomerLoginCommandHandlerTests
             Arg.Is<AccessLog>(l => l.EventType == "LoginFailed" && l.AppUserId == null && l.UserName == command.Email),
             Arg.Any<CancellationToken>());
         _passwordHasher.DidNotReceiveWithAnyArgs().Verify(default!, default!);
-        await _refreshTokenRepository.DidNotReceive().AddAsync(Arg.Any<RefreshToken>(), Arg.Any<CancellationToken>());
+        await _refreshTokenRepository.DidNotReceive().AddAsync(Arg.Any<CustomerRefreshToken>(), Arg.Any<CancellationToken>());
         // Sem commit explícito nesse ramo; só resta o commit do finally da base (log de auditoria).
         await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
     }
@@ -89,10 +89,10 @@ public sealed class CustomerLoginCommandHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Auth.InvalidCredentials");
         await _accessLogRepository.Received(1).AddAsync(
-            Arg.Is<AccessLog>(l => l.EventType == "LoginFailed" && l.AppUserId == customer.Id),
+            Arg.Is<AccessLog>(l => l.EventType == "LoginFailed" && l.AppUserId == null && l.CustomerAppUserId == customer.Id),
             Arg.Any<CancellationToken>());
         customer.LastLoginAt.Should().BeNull();
-        await _refreshTokenRepository.DidNotReceive().AddAsync(Arg.Any<RefreshToken>(), Arg.Any<CancellationToken>());
+        await _refreshTokenRepository.DidNotReceive().AddAsync(Arg.Any<CustomerRefreshToken>(), Arg.Any<CancellationToken>());
         // Commit explícito do handler no ramo de senha errada + commit do finally da base.
         await _unitOfWork.Received(2).CommitAsync(Arg.Any<CancellationToken>());
     }
@@ -107,18 +107,18 @@ public sealed class CustomerLoginCommandHandlerTests
         _passwordHasher.Verify(command.Password, customer.PasswordHash).Returns(true);
         _jwtTokenProvider.GenerateCustomerToken(customer, Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<IReadOnlyCollection<string>>())
             .Returns(new AccessToken("access-token-value", DateTime.Now.AddHours(1)));
-        // Token vazio faz RefreshToken.Create falhar (Error "RefreshToken.EmptyToken").
+        // Token vazio faz RefreshToken.Create falhar (Error "CustomerRefreshToken.EmptyToken").
         _jwtTokenProvider.GenerateRefreshToken().Returns(string.Empty);
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("RefreshToken.EmptyToken");
+        result.Error.Code.Should().Be("CustomerRefreshToken.EmptyToken");
         customer.LastLoginAt.Should().NotBeNull();
         await _accessLogRepository.Received(1).AddAsync(
-            Arg.Is<AccessLog>(l => l.EventType == "Login" && l.AppUserId == customer.Id),
+            Arg.Is<AccessLog>(l => l.EventType == "Login" && l.AppUserId == null && l.CustomerAppUserId == customer.Id),
             Arg.Any<CancellationToken>());
-        await _refreshTokenRepository.DidNotReceive().AddAsync(Arg.Any<RefreshToken>(), Arg.Any<CancellationToken>());
+        await _refreshTokenRepository.DidNotReceive().AddAsync(Arg.Any<CustomerRefreshToken>(), Arg.Any<CancellationToken>());
         // O handler retorna antes do commit explícito; só resta o commit do finally da base.
         await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
     }
@@ -150,10 +150,10 @@ public sealed class CustomerLoginCommandHandlerTests
         customer.LastLoginAt.Should().NotBeNull();
         customer.FailedAccessCount.Should().Be(0);
         await _accessLogRepository.Received(1).AddAsync(
-            Arg.Is<AccessLog>(l => l.EventType == "Login" && l.AppUserId == customer.Id),
+            Arg.Is<AccessLog>(l => l.EventType == "Login" && l.AppUserId == null && l.CustomerAppUserId == customer.Id),
             Arg.Any<CancellationToken>());
         await _refreshTokenRepository.Received(1).AddAsync(
-            Arg.Is<RefreshToken>(rt => rt.Token == "new-refresh-token-value" && rt.AppUserId == customer.Id),
+            Arg.Is<CustomerRefreshToken>(rt => rt.Token == "new-refresh-token-value" && rt.CustomerAppUserId == customer.Id),
             Arg.Any<CancellationToken>());
         // Commit explícito do handler no fim do fluxo de sucesso + commit do finally da base.
         await _unitOfWork.Received(2).CommitAsync(Arg.Any<CancellationToken>());
