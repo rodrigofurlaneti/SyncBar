@@ -6,7 +6,7 @@ namespace SyncBar.API.Controllers;
 
 [ApiController]
 [AllowAnonymous]
-[Route("api/webhook/ifood/{companyId:long}")]
+[Route("api/webhook/ifood/{companyId:long?}")]
 public sealed class IfoodWebhookReceiverController(
     IIfoodWebhookReceiver receiver, ILogger<IfoodWebhookReceiverController> logger) : ControllerBase
 {
@@ -14,7 +14,7 @@ public sealed class IfoodWebhookReceiverController(
 
     [HttpPost]
     [RequestSizeLimit(MaximumBodyBytes)]
-    public async Task<IActionResult> Receive(long companyId, CancellationToken cancellationToken,
+    public async Task<IActionResult> Receive(long? companyId, CancellationToken cancellationToken,
         [FromHeader(Name = "X-IFood-Signature")] string? signature = null)
     {
         if (companyId <= 0) return BadRequest();
@@ -29,7 +29,9 @@ public sealed class IfoodWebhookReceiverController(
         }
         try
         {
-            var receipt = await receiver.ReceiveAsync(companyId, body.ToArray(), signature, cancellationToken);
+            var receipt = companyId.HasValue
+                ? await receiver.ReceiveAsync(companyId.Value, body.ToArray(), signature, cancellationToken)
+                : await receiver.ReceiveAsync(body.ToArray(), signature, cancellationToken);
             return receipt.MerchantIds is null ? StatusCode(receipt.StatusCode)
                 : StatusCode(receipt.StatusCode, new { merchantIds = receipt.MerchantIds });
         }

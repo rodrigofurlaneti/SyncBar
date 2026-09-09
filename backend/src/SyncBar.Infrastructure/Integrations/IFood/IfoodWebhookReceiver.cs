@@ -21,6 +21,62 @@ internal sealed class IfoodWebhookReceiver(
         return CryptographicOperations.FixedTimeEquals(expected, supplied);
     }
 
+    public async Task<IfoodWebhookReceipt> ReceiveAsync(byte[] body, string? signature, CancellationToken ct)
+    {
+        if (signature is null || signature.Length != 64) return new(401);
+        var authenticatedCompanies = new List<long>();
+        foreach (var companyId in await settings.GetEnabledCompanyIdsAsync(ct))
+        {
+            var setting = await settings.GetByCompanyAsync(companyId, ct);
+            if (setting is null || !setting.IsActive || !setting.Enabled || setting.EventDeliveryMode != "Webhook"
+                || string.IsNullOrWhiteSpace(setting.ClientSecretEncrypted)) continue;
+            try
+            {
+                var secret = protector.Unprotect("SyncBar.Integrations.Ifood.ClientSecret.v1", setting.ClientSecretEncrypted);
+                if (Verify(body, secret, signature)) authenticatedCompanies.Add(companyId);
+            }
+            catch (CryptographicException) { }
+        }
+        if (authenticatedCompanies.Count == 0) return new(401);
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) return new(400);
+            var code = String(root, "fullCode") ?? String(root, "code");
+            if (string.IsNullOrWhiteSpace(code)) return new(400);
+            if (code == "KEEPALIVE")
+            {
+                // A shared application can serve multiple companies. Merge only authenticated presence.
+                var merchants = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var accepted = false;
+                foreach (var companyId in authenticatedCompanies)
+                {
+                    var receipt = await ReceiveAsync(companyId, body, signature, ct);
+                    if (receipt.StatusCode == 400) return receipt;
+                    if (receipt.StatusCode != 202) continue;
+                    accepted = true;
+                    if (receipt.MerchantIds is not null) merchants.UnionWith(receipt.MerchantIds);
+                }
+                return new(accepted ? 202 : 503, root.TryGetProperty("merchantIds", out _) ? merchants.ToArray() : null);
+            }
+            var merchantId = String(root, "merchantId");
+            if (string.IsNullOrWhiteSpace(merchantId)) return new(400);
+            var owners = new List<long>();
+            foreach (var companyId in authenticatedCompanies)
+            {
+                var merchantMappings = await mappings.GetByCompanyAsync(companyId, ct);
+                if (merchantMappings.Values.Any(mapping => mapping.IsActive
+                    && string.Equals(mapping.MerchantUuid, merchantId, StringComparison.OrdinalIgnoreCase)))
+                    owners.Add(companyId);
+            }
+            // Never choose an arbitrary tenant or enqueue twice for an ambiguous mapping.
+            if (owners.Count != 1) return new(owners.Count == 0 ? 403 : 503);
+            return await ReceiveAsync(owners[0], body, signature, ct);
+        }
+        catch (JsonException) { return new(400); }
+    }
+
     public async Task<IfoodWebhookReceipt> ReceiveAsync(long companyId, byte[] body, string? signature, CancellationToken ct)
     {
         var setting = await settings.GetByCompanyAsync(companyId, ct);

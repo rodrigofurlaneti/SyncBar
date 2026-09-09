@@ -19,7 +19,7 @@ test('selects and persists iFood event delivery mode and shows its exclusive web
   const selection = page.getByLabel('Recebimento de eventos');
   await expect(selection).toHaveValue('Polling');
   await selection.selectOption('Webhook');
-  await expect(page.getByLabel('URL do webhook iFood')).toHaveValue('http://localhost:5173/api/webhook/ifood/1');
+  await expect(page.getByLabel('URL do webhook iFood')).toHaveValue('http://localhost:5173/api/webhook/ifood');
   await expect(page.getByText('Este endereço usa HTTP.', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Salvar credenciais', exact: true }).click();
   await expect.poll(() => writes).toEqual(['Webhook']);
@@ -29,4 +29,18 @@ test('selects and persists iFood event delivery mode and shows its exclusive web
   await page.getByRole('button', { name: 'Salvar credenciais', exact: true }).click();
   await expect.poll(() => writes).toEqual(['Webhook', 'Polling']);
   await expect(page.getByLabel('URL do webhook iFood')).toHaveCount(0);
+});
+
+test('shows the API validation message when credentials cannot be saved', async ({ page }) => {
+  await adminLogin(page);
+  await page.route('**/api/integrations/ifood/company/1', route => route.fulfill({ json: {
+    hasCredentials: true, clientId: 'test-client', enabled: true, eventDeliveryMode: 'Polling',
+  } }));
+  await page.route('**/api/integrations/ifood', route => route.fulfill({ status: 400, json: {
+    title: 'Ifood.InvalidCredentials', detail: 'Confira o Client ID informado.',
+  } }));
+  await page.goto('/integracoes/ifood');
+  await expect(page.getByLabel('Client ID', { exact: true })).toHaveValue('test-client');
+  await page.getByRole('button', { name: 'Salvar credenciais', exact: true }).click();
+  await expect(page.getByText('Confira o Client ID informado.', { exact: true })).toBeVisible();
 });

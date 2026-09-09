@@ -151,7 +151,10 @@ jobs:
           echo "ENVIANDO DOCKER-COMPOSE.YML PARA O SERVIDOR"
           echo "=========================================="
           
-          scp ./docker-compose.yml "$VM_USER@$VM_HOST:/opt/syncbarservice/docker-compose.yml"
+          ssh "$VM_USER@$VM_HOST" 'mkdir -p /opt/syncbarservice/deploy /opt/syncbarservice/frontend'
+          scp ./docker-compose.yml ./docker-compose.https.yml "$VM_USER@$VM_HOST:/opt/syncbarservice/"
+          scp ./deploy/https.sh ./deploy/nginx-https.conf ./deploy/haproxy.cfg "$VM_USER@$VM_HOST:/opt/syncbarservice/deploy/"
+          scp ./frontend/nginx.conf "$VM_USER@$VM_HOST:/opt/syncbarservice/frontend/nginx.conf"
 
           echo "=========================================="
           echo "CONECTANDO NA VM"
@@ -175,19 +178,20 @@ jobs:
             echo "BAIXANDO NOVAS IMAGENS"
             echo "=========================================="
 
-            sudo docker compose pull
+            # Obtain the public IP certificate and validate configs before switching traffic.
+            sudo bash deploy/https.sh
 
             echo "=========================================="
             echo "RECRIANDO CONTAINERS"
             echo "=========================================="
 
-            sudo docker compose up -d --force-recreate
+            # Containers were recreated by https.sh, including the HTTP/TLS edge.
 
             echo "=========================================="
             echo "STATUS DOS CONTAINERS"
             echo "=========================================="
 
-            sudo docker compose ps
+            sudo docker compose -f docker-compose.yml -f docker-compose.https.yml ps
 
             echo "=========================================="
             echo "LIMPANDO IMAGENS ANTIGAS"

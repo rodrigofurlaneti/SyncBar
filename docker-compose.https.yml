@@ -1,0 +1,19 @@
+services:
+  api:
+    environment:
+      Cors__AllowedOrigins__2: "https://9.205.156.87:84"
+  frontend:
+    # Compose >= 2.24.4. The edge keeps HTTP and HTTPS working on the same public port.
+    ports: !override []
+    volumes:
+      - ./deploy/nginx-https.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./letsencrypt:/etc/letsencrypt:ro
+  edge:
+    image: haproxy:3.2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    ports:
+      - "84:84"
+    volumes:
+      - ./deploy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro

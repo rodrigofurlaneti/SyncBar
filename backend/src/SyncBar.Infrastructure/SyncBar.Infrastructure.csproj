@@ -32,5 +32,6 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="SyncBar.Tests" />
+		<EmbeddedResource Include="Persistence/Migrations/IfoodWebhook.sql" LogicalName="SyncBar.IfoodWebhook.sql" />
 	</ItemGroup>
 </Project>

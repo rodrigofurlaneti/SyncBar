@@ -36,6 +36,7 @@ public sealed class IfoodWebhookTests : RepositoryTestBase
         _setting.SaveCredentials("client", "encrypted", true, null);
         _setting.SetEventDeliveryMode("Webhook");
         _settings.GetByCompanyAsync(1, Arg.Any<CancellationToken>()).Returns(_setting);
+        _settings.GetEnabledCompanyIdsAsync(Arg.Any<CancellationToken>()).Returns(new long[] { 1 });
         _protector.Unprotect("SyncBar.Integrations.Ifood.ClientSecret.v1", "encrypted").Returns(Secret);
         var mapping = IfoodMerchantMapping.Create(10).Value;
         mapping.SetMerchant("merchant-1", "merchant-1");
@@ -46,6 +47,50 @@ public sealed class IfoodWebhookTests : RepositoryTestBase
 
     private static string Sign(string body) => Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(Secret), Encoding.UTF8.GetBytes(body)));
     private Task<IfoodWebhookReceipt> Receive(string body) => _receiver.ReceiveAsync(1, Encoding.UTF8.GetBytes(body), Sign(body), default);
+
+    [Fact]
+    public async Task SharedEndpoint_ResolvesCompanyAndDeduplicates()
+    {
+        for (var i = 0; i < 2; i++)
+            (await _receiver.ReceiveAsync(Encoding.UTF8.GetBytes(Payload), Sign(Payload), default)).StatusCode.Should().Be(202);
+        var entry = await Context.Set<IfoodEventInbox>().SingleAsync();
+        entry.CompanyId.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("merchant-1", false, 401)]
+    [InlineData("foreign", true, 403)]
+    public async Task SharedEndpoint_RejectsInvalidSignatureOrForeignMerchant(string merchant, bool validSignature, int status)
+    {
+        var payload = Payload.Replace("merchant-1", merchant);
+        (await _receiver.ReceiveAsync(Encoding.UTF8.GetBytes(payload), validSignature ? Sign(payload) : new string('0', 64), default))
+            .StatusCode.Should().Be(status);
+        (await Context.Set<IfoodEventInbox>().CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SharedEndpoint_AmbiguousMerchantDoesNotEnqueue()
+    {
+        var other = IfoodIntegrationSetting.Create(2).Value;
+        other.SaveCredentials("client", "encrypted", true, null);
+        other.SetEventDeliveryMode("Webhook");
+        _settings.GetEnabledCompanyIdsAsync(Arg.Any<CancellationToken>()).Returns(new long[] { 1, 2 });
+        _settings.GetByCompanyAsync(2, Arg.Any<CancellationToken>()).Returns(other);
+        var sharedMappings = await _mappings.GetByCompanyAsync(1);
+        _mappings.GetByCompanyAsync(2, Arg.Any<CancellationToken>()).Returns(sharedMappings);
+        (await _receiver.ReceiveAsync(Encoding.UTF8.GetBytes(Payload), Sign(Payload), default)).StatusCode.Should().Be(503);
+        (await Context.Set<IfoodEventInbox>().CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SharedEndpoint_PresenceFiltersMerchants()
+    {
+        const string payload = """{"code":"KEEPALIVE","merchantIds":["merchant-1","foreign"]}""";
+        var receipt = await _receiver.ReceiveAsync(Encoding.UTF8.GetBytes(payload), Sign(payload), default);
+        receipt.StatusCode.Should().Be(202);
+        receipt.MerchantIds.Should().Equal("merchant-1");
+        (await Context.Set<IfoodEventInbox>().CountAsync()).Should().Be(0);
+    }
 
     [Fact]
     public async Task ValidSignature_PersistsBeforeAcceptingAndDeduplicatesAcrossTransports()

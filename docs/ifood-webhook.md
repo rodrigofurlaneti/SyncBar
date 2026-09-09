@@ -4,15 +4,17 @@ O SyncBar permite selecionar **Polling** ou **Webhook** em Integração iFood �
 
 ## Rota exclusiva
 
-`POST /api/webhook/ifood/{companyId}`
+`POST /api/webhook/ifood`
 
-Cadastre no aplicativo centralizado do iFood uma URL pública HTTPS, por exemplo `https://seu-dominio/api/webhook/ifood/1`. Substitua o domínio e o identificador da empresa. A interface apresenta a URL considerando o domínio pelo qual o frontend foi acessado; confirme que o proxy encaminha `/api/` à API.
+Cadastre no aplicativo centralizado do iFood uma URL pública HTTPS, por exemplo `https://seu-dominio/api/webhook/ifood`. A interface apresenta a URL considerando o domínio pelo qual o frontend foi acessado, preservando a porta; confirme que o proxy encaminha `/api/` à API. No ambiente HTTP atual, o endereço é `http://9.205.156.87:84/api/webhook/ifood`, mas é necessário disponibilizar HTTPS para cadastrar no iFood.
+
+A rota identifica a empresa pela assinatura válida do aplicativo e pelo merchant vinculado. Um merchant associado a mais de uma empresa autenticada é rejeitado com 503 para evitar encaminhamento ambíguo. KEEPALIVE por merchant agrega as lojas das empresas autenticadas. A rota anterior com `/{companyId}` continua disponível para compatibilidade.
 
 Não usar a URL do Swagger ou uma rota do Asaas. A URL HTTP atual do ambiente não atende ao requisito HTTPS do iFood.
 
 ## Publicação e ativação
 
-1. Aplicar `sql/2026-09-08_add_ifood_webhook.sql` no banco usado pela API **antes de publicar esta versão**. O projeto não contém migrations EF que apliquem esses scripts avulsos automaticamente. O script adiciona o modo com padrão Polling e a tabela de eventos, sem apagar dados.
+1. A migration `202609090001_AddIfoodWebhook` aplica na inicialização da API a coluna de modo e a tabela da fila. Ela também aceita bancos onde o SQL avulso já foi executado. O banco existente precisa conter a tabela `IfoodIntegrationSetting`; esta é uma atualização incremental, não a criação de todo o sistema.
 2. Publicar API/frontend e verificar `/health`. Garantir persistência das chaves Data Protection usadas para descriptografar o client secret já cadastrado.
 3. Conferir credenciais, integração ativa e merchants vinculados. O segredo da assinatura é o client secret do aplicativo; não vai na URL nem é devolvido pelo frontend.
 4. Salvar Webhook no SyncBar e cadastrar/ativar a URL no Portal do Desenvolvedor iFood. Coordenar a troca: o polling de eventos cessa ao salvar o modo Webhook.
