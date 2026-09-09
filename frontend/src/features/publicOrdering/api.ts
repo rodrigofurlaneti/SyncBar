@@ -29,6 +29,8 @@ export type PublicBillItemResponse = {
     statusId: number;
     requestedAt: string;
     notes?: string | null;
+    optionalExtras?: { name: string; unitPrice: number }[];
+    boosts?: { name: string; unitPrice: number }[];
 };
 
 export type PublicBillResponse = {
@@ -66,10 +68,12 @@ export const addPublicOrderItem = (
     // Quando informado, o pedido vai pra conta da COMANDA (não da mesa) — a mesa
     // continua registrada no pedido pra cozinha/garçom saberem onde entregar.
     comandaCode?: string,
+    optionalExtraIds?: number[],
+    boostIds?: number[],
 ): Promise<{ orderId: number }> =>
     publicApi<{ orderId: number }>(`/api/publicordering/${token}/items`, {
         method: "POST",
-        body: JSON.stringify({ productId, quantity, notes, complements: complements ?? null, comandaCode: comandaCode || null, readingProof: readingProofs.get(`${token}:${comandaCode ?? ""}`), expectedOrderId: activeOrders.get(`${token}:${comandaCode ?? ""}`) }),
+        body: JSON.stringify({ productId, quantity, notes, optionalExtraIds, boostIds, complements: complements ?? null, comandaCode: comandaCode || null, readingProof: readingProofs.get(`${token}:${comandaCode ?? ""}`), expectedOrderId: activeOrders.get(`${token}:${comandaCode ?? ""}`) }),
     }).then(result => { activeOrders.set(`${token}:${comandaCode ?? ""}`, result.orderId); return result; });
 
 export const getPublicBill = (token: string): Promise<PublicBillResponse> =>

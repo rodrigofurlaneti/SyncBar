@@ -19,4 +19,9 @@ public sealed record MenuItemResponse(
 {
     public bool HasOptionalExtras { get; init; }
     public bool HasBoosts { get; init; }
+    public IReadOnlyCollection<MenuOptionalExtraResponse> OptionalExtras { get; init; } = [];
+    public IReadOnlyCollection<MenuBoostResponse> Boosts { get; init; } = [];
 }
+
+public sealed record MenuOptionalExtraResponse(long Id, string OptionalExtraName, int DisplayOrder);
+public sealed record MenuBoostResponse(long Id, string BoostName, decimal IncrementalValue, int DisplayOrder);

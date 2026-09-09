@@ -345,11 +345,11 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
    bem menores, cabem mais por linha em cada faixa). */
 .comanda-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 6rem), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr));
   gap: 0.5rem;
 }
 @media (min-width: 40.0625rem) {
-  .comanda-grid { grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr)); }
+  .comanda-grid { grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
 }
 
 .comanda-tile {
@@ -362,8 +362,9 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
   min-height: 4.5rem;
   display: grid;
   gap: 0.125rem;
-  place-items: center;
-  padding: 0.75rem 0.5rem;
+  align-content: start;
+  justify-items: start;
+  padding: 1rem;
   transition: border-color 180ms var(--ease-standard), transform 180ms var(--ease-standard), background 180ms var(--ease-standard);
 }
 .comanda-tile.is-busy { background: var(--bg-press); border-color: var(--status, var(--line)); }
@@ -384,6 +385,11 @@ input:focus, select:focus { outline: 2px solid var(--amber); outline-offset: -1p
 .comanda-tile-code { font-family: var(--font-display); font-size: 1.5rem; color: var(--ink); }
 .comanda-tile.is-busy .comanda-tile-code { color: var(--status, var(--ink)); }
 .comanda-tile-total { font-size: 0.68rem; color: var(--ink-dim); }
+.order-card-summary { display: flex; flex-direction: column; gap: .5rem; margin-top: .5rem; color: var(--ink-dim); font-size: .8rem; text-align: left; }
+.order-card-summary > span { display: flex; align-items: center; gap: .5rem; }
+.order-card-summary svg { width: 1rem; height: 1rem; flex-shrink: 0; color: var(--ink-faint); }
+.storefront-item-extras { margin: .5rem 0; padding-left: 1rem; color: #d4d4d8; font-size: .8125rem; line-height: 1.5; }
+.storefront-item-extras span { color: #a1a1aa; }
 .comanda-tile-status { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; }
 
 /* ticket de pedido */

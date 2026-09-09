@@ -12,6 +12,8 @@ redirecionamento de uma página não valida seu CRUD nem as regras de negócio.
 | Controle de acesso anônimo | 36 rotas protegidas exigem login | AnonymousAccessTests |
 | Responsividade do login | 390, 768 e 1440 de largura; controles acessíveis e sem overflow horizontal | AnonymousAccessTests |
 | Cadastro de estabelecimento | 9 campos obrigatórios, sem submissão | AnonymousAccessTests |
+| Cadastro de cliente web | Cadastro real via API, Chrome desktop e Android emulado; campos obrigatórios, login, renovação e endereço com CEP 07025020 | CustomerSignupTests |
+| Dados de teste | CPF com verificadores válidos e nomes sequenciais persistentes | CustomerTestDataTests |
 
 ## Fluxos a implementar com o cadastro inicial compartilhado
 

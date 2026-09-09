@@ -84,6 +84,47 @@ public sealed class AddWebStorefrontOrderCommandHandlerTests
 
     // ---------- Falhas ----------
 
+    [Theory]
+    [InlineData("valid")]
+    [InlineData("duplicate")]
+    [InlineData("foreign-product")]
+    [InlineData("inactive")]
+    [InlineData("disabled")]
+    public async Task Handle_Customizations_ValidateOwnershipAndChargeStoredPricePerUnit(string scenario)
+    {
+        var product = MakeProduct();
+        typeof(Entity).GetProperty(nameof(Entity.Id))!.SetValue(product, ProductId);
+        product.ToggleExtrasAndBoosts(true, scenario != "disabled");
+        var optional = ProductOptionalExtra.Create(ProductId, "Sem gelo", 0).Value;
+        var boost = ProductBoost.Create(scenario == "foreign-product" ? 999 : ProductId, "Limão extra", 2.50m, 0).Value;
+        typeof(Entity).GetProperty(nameof(Entity.Id))!.SetValue(optional, 71L);
+        typeof(Entity).GetProperty(nameof(Entity.Id))!.SetValue(boost, 72L);
+        if (scenario == "inactive") boost.Deactivate();
+        product.OptionalExtras.Add(optional);
+        product.Boosts.Add(boost);
+        SetupValidBranchAndProduct(MakeBranch(), product);
+        var command = MakeCommand(items: [new WebStorefrontItemDto(ProductId, 3, null, null, [71], scenario == "duplicate" ? [72, 72] : [72])]);
+        CustomerOrder? saved = null;
+        await _orderRepository.AddAsync(Arg.Do<CustomerOrder>(order => saved = order), Arg.Any<CancellationToken>());
+
+        var result = await _handler.Handle(command, default);
+
+        if (scenario == "valid")
+        {
+            result.IsSuccess.Should().BeTrue();
+            saved!.TotalAmount.Should().Be(67.50m);
+            saved.Items.Single().UnitPrice.Should().Be(22.50m);
+            saved.Items.Single().OptionalExtras.Single().Name.Should().Be("Sem gelo");
+            saved.Items.Single().Boosts.Single().UnitPriceCharged.Should().Be(2.50m);
+        }
+        else
+        {
+            result.IsFailure.Should().BeTrue();
+            result.Error.Code.Should().Be(scenario == "duplicate" ? "OrderItem.DuplicateSelection" : "OrderItem.BoostUnavailable");
+            saved.Should().BeNull();
+        }
+    }
+
     [Fact]
     public async Task Handle_EmptyCart_ShouldReturnCartEmptyFailure()
     {

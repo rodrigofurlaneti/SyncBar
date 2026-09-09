@@ -1,5 +1,25 @@
 import { test, expect } from '@playwright/test';
-import { adminLogin } from './helpers';
+import { adminLogin, orderFixture } from './helpers';
+
+test('occupied tables and comandas show quantities, total and opening time with icons', async ({ page }) => {
+  await adminLogin(page);
+  await page.route('**/api/tables/branch/1', route => route.fulfill({ json: [{ id: 1, number: 1, tableStatusId: 2 }] }));
+  await page.route('**/api/comandas/branch/1', route => route.fulfill({ json: [{ id: 2, code: '002', comandaStatusId: 2 }] }));
+  const items = [{ ...orderFixture.items[0], quantity: 3 }, { ...orderFixture.items[0], id: 2, quantity: 7, orderItemStatusId: 6 }];
+  await page.route('**/api/orders/open/branch/1', route => route.fulfill({ json: [
+    { ...orderFixture, diningTableId: 1, items, totalAmount: 152.5, openedAt: '2026-09-09T13:45:00' },
+    { ...orderFixture, id: 15, comandaId: 2, items, totalAmount: 152.5, openedAt: '2026-09-09T13:45:00' },
+  ] }));
+  await page.goto('/');
+  for (const id of ['table-tile-1', 'comanda-tile-2']) {
+    const card = page.getByTestId(id);
+    await expect(card).toContainText('3 itens');
+    await expect(card).toContainText('152,50');
+    await expect(card).toContainText('Aberta às 13:45');
+    await expect(card.locator('.order-card-summary svg')).toHaveCount(3);
+    await expect(card).toHaveAccessibleName(/3 itens.*152,50.*13:45/);
+  }
+});
 
 test('salon cards adapt to mobile, tablet and desktop and support keyboard and unavailable states', async ({ page }) => {
   await adminLogin(page);

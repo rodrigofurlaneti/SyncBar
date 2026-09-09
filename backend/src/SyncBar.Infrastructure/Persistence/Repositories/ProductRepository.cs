@@ -12,7 +12,7 @@ internal sealed class ProductRepository(AppDbContext context) : IProductReposito
     public async Task<Product?> GetByIdForUpdateAsync(long id, CancellationToken cancellationToken = default)
         => await context.Products.Include(x => x.OptionalExtras).Include(x => x.Boosts).AsSplitQuery().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     public async Task<IReadOnlyCollection<Product>> GetByCompanyAsync(long companyId, CancellationToken cancellationToken = default)
-        => await context.Products.AsNoTracking()
+        => await context.Products.AsNoTracking().Include(p => p.OptionalExtras).Include(p => p.Boosts).AsSplitQuery()
             .Where(x => x.CompanyId == companyId && x.IsActive)
             .ToListAsync(cancellationToken);
     public async Task<IReadOnlyCollection<Product>> GetAllByCompanyAsync(long companyId, CancellationToken cancellationToken = default)

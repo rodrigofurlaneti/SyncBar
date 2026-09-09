@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
     testDir: './test',
-    testMatch: ['**/orders/ProductCustomization.spec.ts', '**/storeFront/ProductWizard.spec.ts'],
+    testMatch: ['**/publicOrdering/PublicExtras.spec.ts', '**/orders/ProductCustomization.spec.ts', '**/storeFront/ProductWizard.spec.ts', '**/storeFront/StorefrontExtras.spec.ts'],
     workers: 3,
     use: { baseURL: 'http://localhost:5173' },
     projects: [

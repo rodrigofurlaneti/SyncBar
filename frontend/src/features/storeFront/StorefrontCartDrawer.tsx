@@ -14,7 +14,13 @@ export type CartItem = {
     notes?: string | null;
     imageUrl?: string | null;
     complements?: Array<{ complementGroupId: number; complementId: number; name: string; price: number }>;
+    optionalExtras?: Array<{ id: number; name: string }>;
+    boosts?: Array<{ id: number; name: string; price: number }>;
 };
+
+const itemUnitTotal = (item: CartItem) => item.salePrice
+    + (item.complements?.reduce((sum, option) => sum + option.price, 0) ?? 0)
+    + (item.boosts?.reduce((sum, option) => sum + option.price, 0) ?? 0);
 
 export type CustomerSessionData = {
     name: string;
@@ -225,8 +231,7 @@ export function StorefrontCartDrawer({
 
     const subtotal = useMemo(() => {
         return items.reduce((acc, item) => {
-            const complementsTotal = item.complements?.reduce((cAcc, c) => cAcc + c.price, 0) || 0;
-            return acc + (item.salePrice + complementsTotal) * item.quantity;
+            return acc + itemUnitTotal(item) * item.quantity;
         }, 0);
     }, [items]);
 
@@ -418,7 +423,7 @@ export function StorefrontCartDrawer({
                             </div>
                         ) : (
                             items.map((item) => {
-                                const itemTotal = (item.salePrice + (item.complements?.reduce((acc, c) => acc + c.price, 0) || 0)) * item.quantity;
+                                const itemTotal = itemUnitTotal(item) * item.quantity;
                                 return (
                                     <article key={item.cartKey} className="cart-item-card" data-testid={`cart-item-${item.productId}`}>
                                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
@@ -436,6 +441,12 @@ export function StorefrontCartDrawer({
                                             </button>
                                         </div>
 
+                                        {!!item.optionalExtras?.length && <ul className="storefront-item-extras">
+                                            {item.optionalExtras.map(option => <li key={option.id}>{option.name} <span>(grátis)</span></li>)}
+                                        </ul>}
+                                        {!!item.boosts?.length && <ul className="storefront-item-extras">
+                                            {item.boosts.map(option => <li key={option.id}>{option.name} <span>(+ {formatBRL(option.price)})</span></li>)}
+                                        </ul>}
                                         {item.complements && item.complements.length > 0 && (
                                             <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", borderLeft: "0.125rem solid #3f3f46", paddingLeft: "0.75rem", fontSize: "0.875rem", color: "#a1a1aa" }}>
                                                 {item.complements.map(c => (

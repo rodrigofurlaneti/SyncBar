@@ -16,4 +16,6 @@ public sealed record AddPublicOrderItemCommand(
     IReadOnlyCollection<OrderItemComplementSelection>? Complements = null,
     string? ComandaCode = null,
     string? ReadingProof = null,
-    long? ExpectedOrderId = null) : ICommand<long>;
+    long? ExpectedOrderId = null,
+    IReadOnlyCollection<long>? OptionalExtraIds = null,
+    IReadOnlyCollection<long>? BoostIds = null) : ICommand<long>;

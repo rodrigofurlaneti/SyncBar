@@ -1,4 +1,4 @@
-﻿using SyncBar.Application.Abstractions.Messaging;
+using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Domain.Exceptions;
 using SyncBar.Domain.Entities;
@@ -72,18 +72,10 @@ internal sealed class AddOrderItemCommandHandler : BaseCommandHandler<AddOrderIt
             return Result.Failure(productResult.Error);
         var product = productResult.Value;
 
-        var optionalIds = request.OptionalExtraIds ?? [];
-        var boostIds = request.BoostIds ?? [];
-        if (optionalIds.Distinct().Count() != optionalIds.Count || boostIds.Distinct().Count() != boostIds.Count)
-            return Result.Failure(new Error("OrderItem.DuplicateSelection", "Selecione cada opcional ou adicional apenas uma vez."));
-        var optionalExtras = product.OptionalExtras.Where(x => optionalIds.Contains(x.Id) && x.ProductId == product.Id && x.IsActive)
-            .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Id).ToArray();
-        var boosts = product.Boosts.Where(x => boostIds.Contains(x.Id) && x.ProductId == product.Id && x.IsActive)
-            .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Id).ToArray();
-        if ((optionalIds.Count > 0 && !product.HasOptionalExtras) || optionalExtras.Length != optionalIds.Count)
-            return Result.Failure(new Error("OrderItem.OptionalExtraUnavailable", "Um opcional selecionado não está disponível para este produto. Reabra a seleção."));
-        if ((boostIds.Count > 0 && !product.HasBoosts) || boosts.Length != boostIds.Count)
-            return Result.Failure(new Error("OrderItem.BoostUnavailable", "Um adicional selecionado não está disponível para este produto. Reabra a seleção."));
+        var customizations = SyncBar.Application.Features.Catalog.ProductExtras.ProductCustomizationResolver.Resolve(product, request.OptionalExtraIds, request.BoostIds);
+        if (customizations.IsFailure) return Result.Failure(customizations.Error);
+        var optionalExtras = customizations.Value.OptionalExtras;
+        var boosts = customizations.Value.Boosts;
 
         var promotions = await _promotionRepository.GetByBranchAsync(order.BranchId, cancellationToken);
 

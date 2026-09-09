@@ -1,5 +1,6 @@
 ﻿using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Printing;
+using SyncBar.Application.Features.Catalog.ProductExtras;
 using SyncBar.Domain.Constants;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
@@ -104,13 +105,16 @@ namespace SyncBar.Application.Features.Storefront.AddOrder
                             return Result.Failure<long>(productResult.Error);
 
                         var product = productResult.Value;
+                        var customizations = ProductCustomizationResolver.Resolve(product, itemReq.OptionalExtraIds, itemReq.BoostIds);
+                        if (customizations.IsFailure) return Result.Failure<long>(customizations.Error);
                         var complementsResult = await ResolveComplementsAsync(product, itemReq, cancellationToken);
                         if (complementsResult.IsFailure)
                             return Result.Failure<long>(complementsResult.Error);
 
                         var resolvedComplements = complementsResult.Value;
                         var itemNotes = string.IsNullOrWhiteSpace(itemReq.Notes) ? request.GeneralNotes : $"{itemReq.Notes} ({request.GeneralNotes})";
-                        var added = order.AddItem(product.Id, product.SalePrice, itemReq.Quantity, itemNotes, null, currentTime);
+                        var added = order.AddItem(product.Id, product.SalePrice + customizations.Value.Boosts.Sum(x => x.IncrementalValue),
+                            itemReq.Quantity, itemNotes, null, currentTime, customizations.Value.OptionalExtras, customizations.Value.Boosts);
                         if (added.IsFailure)
                             return Result.Failure<long>(added.Error);
 

@@ -2,6 +2,7 @@ using SyncBar.Application.Abstractions.Messaging;
 using SyncBar.Application.Abstractions.Printing;
 using SyncBar.Application.Abstractions.Security;
 using SyncBar.Domain.Constants;
+using SyncBar.Application.Features.Catalog.ProductExtras;
 using SyncBar.Domain.Entities;
 using SyncBar.Domain.Primitives;
 using SyncBar.Domain.Repositories;
@@ -72,9 +73,10 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
                 if (allowedMethods.Count > 0 && (_readingProof is null || !_readingProof.Validate(request.ReadingProof, request.Token, request.ComandaCode, allowedMethods)))
                     return Result.Failure<long>(new Error("Reading.Required", "Valide novamente a leitura da mesa/comanda antes de enviar o pedido."));
 
+                CustomerOrder? previous = null;
                 if (request.ExpectedOrderId.HasValue)
                 {
-                    var previous = await _orderRepository.GetByIdForUpdateAsync(request.ExpectedOrderId.Value, cancellationToken);
+                    previous = await _orderRepository.GetByIdForUpdateAsync(request.ExpectedOrderId.Value, cancellationToken);
                     if (previous is null || !previous.IsActive || previous.BranchId != table.BranchId
                         || previous.OrderStatusId is not (OrderStatusIds.Aberto or OrderStatusIds.EmAndamento))
                         return Result.Failure<long>(new Error("CustomerOrder.Closed", "Este pedido foi encerrado. Inicie um novo atendimento para continuar."));
@@ -94,6 +96,8 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
                 if (productResult.IsFailure)
                     return Result.Failure<long>(productResult.Error);
                 var product = productResult.Value;
+                var customizations = ProductCustomizationResolver.Resolve(product, request.OptionalExtraIds, request.BoostIds);
+                if (customizations.IsFailure) return Result.Failure<long>(customizations.Error);
 
                 // Quando o cliente escolhe "Na Comanda": resolve a comanda pelo código digitado
                 // (dentro da mesma filial da mesa). O pedido vai ser aberto/atualizado contra a
@@ -102,6 +106,10 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
                 if (comandaResult.IsFailure)
                     return Result.Failure<long>(comandaResult.Error);
                 var comanda = comandaResult.Value;
+                if (previous is not null && (comanda is null
+                    ? previous.DiningTableId != table.Id || previous.ComandaId.HasValue
+                    : previous.ComandaId != comanda.Id))
+                    return Result.Failure<long>(new Error("CustomerOrder.DestinationMismatch", "O pedido não pertence à mesa/comanda selecionada."));
 
                 var complementsResult = await ResolveComplementsAsync(product, request, cancellationToken);
                 if (complementsResult.IsFailure)
@@ -125,7 +133,7 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
                     _diningTableRepository.Update(table);
                 }
 
-                var addItemResult = AddItemWithComplements(order, product, request, resolvedComplements, currentTime);
+                var addItemResult = AddItemWithComplements(order, product, request, resolvedComplements, customizations.Value, currentTime);
                 if (addItemResult.IsFailure)
                     return Result.Failure<long>(addItemResult.Error);
                 var itemCountBefore = addItemResult.Value;
@@ -275,12 +283,13 @@ internal sealed class AddPublicOrderItemCommandHandler : BaseCommandHandler<AddP
         Product product,
         AddPublicOrderItemCommand request,
         List<(long ComplementId, decimal ExtraPrice)> resolvedComplements,
+        ResolvedProductCustomizations customizations,
         DateTime currentTime)
     {
         var itemCountBefore = order.Items.Count;
 
         // Passando o currentTime para o AddItem
-        var added = order.AddItem(product.Id, product.SalePrice, request.Quantity, request.Notes, null, currentTime);
+        var added = order.AddItem(product.Id, product.SalePrice + customizations.Boosts.Sum(b => b.IncrementalValue), request.Quantity, request.Notes, null, currentTime, customizations.OptionalExtras, customizations.Boosts);
         if (added.IsFailure)
             return Result.Failure<int>(added.Error);
 

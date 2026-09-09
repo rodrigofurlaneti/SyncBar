@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Swal from "sweetalert2";
 import type { MenuItemResponse, OrderItemComplementSelection } from "../../lib/types";
-import { ComplementSelectorModal } from "../orders/ComplementSelectorModal";
+import { ProductCustomizationModal } from "../orders/ProductCustomizationModal";
 import { PublicOrderCard } from "../publicOrdering/PublicOrderCard";
 import { StorefrontCartDrawer, CartItem, CustomerSessionData, PaymentMethod, NewCardData } from "./StorefrontCartDrawer";
 import { submitStorefrontOrder, StorefrontOrderPayload } from "./storefrontApi";
@@ -338,7 +338,10 @@ export function StorefrontOrderPage() {
         setQuantities(prev => ({ ...prev, [productId]: Math.max(1, newQty) }));
     }, []);
 
-    const handleAddOrAddToCart = useCallback(({ productId, quantity, complements, item }: { productId: number; quantity: number; complements?: OrderItemComplementSelection[]; item?: MenuItemResponse }) => {
+    const handleAddOrAddToCart = useCallback(({ productId, quantity, complements, item, optionalExtraIds = [], boostIds = [] }: {
+        productId: number; quantity: number; complements?: OrderItemComplementSelection[]; item?: MenuItemResponse;
+        optionalExtraIds?: number[]; boostIds?: number[];
+    }) => {
         const targetItem: MenuItemResponse | undefined = item || menuQuery.data?.items.find((i: MenuItemResponse) => i.id === productId);
         if (!targetItem) return;
 
@@ -347,8 +350,12 @@ export function StorefrontOrderPage() {
             const option = group?.complements.find(option => option.id === selection.complementId);
             return option ? [{ ...selection, name: option.complementItemName, price: option.extraPrice }] : [];
         });
+        const optionalExtras = (targetItem.optionalExtras ?? []).filter(option => optionalExtraIds.includes(option.id))
+            .map(option => ({ id: option.id, name: option.optionalExtraName }));
+        const boosts = (targetItem.boosts ?? []).filter(option => boostIds.includes(option.id))
+            .map(option => ({ id: option.id, name: option.boostName, price: option.incrementalValue }));
         const cartKey = JSON.stringify([productId, chosen.map(option =>
-            `${option.complementGroupId}:${option.complementId}`).sort()]);
+            `${option.complementGroupId}:${option.complementId}`).sort(), [...optionalExtraIds].sort(), [...boostIds].sort()]);
 
         setCartItems(prev => {
             const existingIndex = prev.findIndex(i => i.cartKey === cartKey);
@@ -363,6 +370,8 @@ export function StorefrontOrderPage() {
                 quantity,
                 imageUrl: targetItem.imageUrl,
                 complements: chosen,
+                optionalExtras,
+                boosts,
             }];
         });
 
@@ -381,7 +390,7 @@ export function StorefrontOrderPage() {
 
     const handlePickItem = useCallback((item: MenuItemResponse) => {
         const currentQty = getQty(item.id);
-        if (item.complementGroups && item.complementGroups.length > 0) {
+        if (item.hasOptionalExtras || item.hasBoosts || (item.complementGroups && item.complementGroups.length > 0)) {
             setSelectingItem(item);
             return;
         }
@@ -398,6 +407,8 @@ export function StorefrontOrderPage() {
             productId: cartItem.productId,
             quantity: cartItem.quantity,
             notes: cartItem.notes || null,
+            optionalExtraIds: cartItem.optionalExtras?.map(option => option.id) ?? [],
+            boostIds: cartItem.boosts?.map(option => option.id) ?? [],
             complements: cartItem.complements?.map(c => ({
                 complementGroupId: c.complementGroupId,
                 complementId: c.complementId
@@ -641,17 +652,20 @@ export function StorefrontOrderPage() {
             )}
 
             {selectingItem && (
-                <ComplementSelectorModal
-                    productName={selectingItem.name}
-                    imageUrl={selectingItem.imageUrl} description={selectingItem.description} basePrice={selectingItem.salePrice}
-                    groups={selectingItem.complementGroups}
+                <ProductCustomizationModal
+                    product={selectingItem}
+                    quantity={getQty(selectingItem.id)}
+                    embeddedDetails={{ salePrice: selectingItem.salePrice,
+                        hasOptionalExtras: !!selectingItem.hasOptionalExtras, hasBoosts: !!selectingItem.hasBoosts,
+                        optionalExtras: selectingItem.optionalExtras ?? [], boosts: selectingItem.boosts ?? [] }}
                     onCancel={() => setSelectingItem(null)}
                     submitting={false}
-                    confirmLabel="ADICIONAR À CESTA"
-                    onConfirm={(complements: OrderItemComplementSelection[]) => {
+                    error={null}
+                    onConfirm={(complements, optionalExtraIds, boostIds) => {
                         const productId = selectingItem.id;
+                        const quantity = getQty(productId);
                         setSelectingItem(null);
-                        handleAddOrAddToCart({ productId, quantity: 1, complements });
+                        handleAddOrAddToCart({ productId, quantity, complements, optionalExtraIds, boostIds });
                     }}
                 />
             )}

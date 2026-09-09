@@ -49,7 +49,17 @@ internal sealed class GetBranchMenuQueryHandler(
                         p.IsStockControlled,
                         p.PreparationTimeMinutes,
                         p.ImageUrl,
-                        complementsByProduct.TryGetValue(p.Id, out var groups) ? groups : []))
+                        complementsByProduct.TryGetValue(p.Id, out var groups) ? groups : [])
+                    {
+                        HasOptionalExtras = p.HasOptionalExtras,
+                        HasBoosts = p.HasBoosts,
+                        OptionalExtras = p.HasOptionalExtras ? p.OptionalExtras.Where(x => x.IsActive)
+                            .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Id)
+                            .Select(x => new MenuOptionalExtraResponse(x.Id, x.OptionalExtraName, x.DisplayOrder)).ToArray() : [],
+                        Boosts = p.HasBoosts ? p.Boosts.Where(x => x.IsActive)
+                            .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Id)
+                            .Select(x => new MenuBoostResponse(x.Id, x.BoostName, x.IncrementalValue, x.DisplayOrder)).ToArray() : [],
+                    })
                     .ToList();
                 return Result.Success(new BranchMenuResponse(branch.Name, items, branch.CompanyId));
             });

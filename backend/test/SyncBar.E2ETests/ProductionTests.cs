@@ -42,12 +42,18 @@ internal sealed class Browser : IDisposable
     public IWebDriver Driver { get; }
     public WebDriverWait Wait { get; }
 
-    public Browser()
+    public Browser(bool android = false)
     {
         var options = new ChromeOptions();
         options.PageLoadStrategy = PageLoadStrategy.Eager;
         if (Environment.GetEnvironmentVariable("E2E_HEADLESS") != "0") options.AddArgument("--headless=new");
         options.AddArgument("--window-size=1440,1000");
+        if (android)
+            options.EnableMobileEmulation(new OpenQA.Selenium.Chromium.ChromiumMobileEmulationDeviceSettings
+            {
+                Width = 393, Height = 852, PixelRatio = 2.75, EnableTouchEvents = true,
+                UserAgent = "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Mobile Safari/537.36",
+            });
         Driver = new ChromeDriver(options);
         Driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(30);
         Wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(20));
