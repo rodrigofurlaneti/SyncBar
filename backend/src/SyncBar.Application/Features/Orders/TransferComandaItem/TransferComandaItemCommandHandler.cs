@@ -83,7 +83,7 @@ namespace SyncBar.Application.Features.Orders.TransferComandaItem
                 itemToTransfer.Notes,
                 request.ActorEmployeeId,
                 originalStatusId,
-                currentTime);
+                currentTime, itemToTransfer);
             if (addResult.IsFailure)
                 return Result.Failure<long>(addResult.Error);
 

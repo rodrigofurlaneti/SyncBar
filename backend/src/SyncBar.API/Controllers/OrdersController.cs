@@ -68,7 +68,7 @@ public sealed class OrdersController(
         ExecuteWithLogAsync(logRepository, unitOfWork, nameof(OrdersController), nameof(AddItem), async () =>
         {
             var result = await Mediator.Send(
-                new AddOrderItemCommand(id, request.ProductId, request.Quantity, request.Notes, request.EmployeeId, request.Complements), ct);
+                new AddOrderItemCommand(id, request.ProductId, request.Quantity, request.Notes, request.EmployeeId, request.Complements, request.OptionalExtraIds, request.BoostIds), ct);
             return result.IsFailure ? HandleFailure(result) : NoContent();
         });
 
@@ -319,7 +319,9 @@ public sealed record AddOrderItemRequest(
     [property: JsonRequired] decimal Quantity,
     string? Notes,
     long? EmployeeId,
-    IReadOnlyCollection<OrderItemComplementSelection>? Complements = null);
+    IReadOnlyCollection<OrderItemComplementSelection>? Complements = null,
+    IReadOnlyCollection<long>? OptionalExtraIds = null,
+    IReadOnlyCollection<long>? BoostIds = null);
 
 public sealed record AddOrderItemComplementRequest(
     [property: JsonRequired] long ComplementGroupId,

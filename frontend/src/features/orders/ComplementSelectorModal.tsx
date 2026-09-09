@@ -1,5 +1,6 @@
 ﻿import { useState } from "react";
 import { Modal } from "../../ui/Modal";
+import type { ReactNode } from "react";
 import { Button } from "../../ui/Button";
 import { formatBRL } from "../../lib/types";
 import type { ComplementGroupResponse, OrderItemComplementSelection } from "../../lib/types";
@@ -11,6 +12,10 @@ interface Props {
     onConfirm: (selections: OrderItemComplementSelection[]) => void;
     confirmLabel?: string;
     submitting?: boolean;
+    children?: ReactNode;
+    basePrice?: number;
+    additionalPrice?: number;
+    error?: string | null;
 }
 
 export function ComplementSelectorModal({
@@ -20,6 +25,10 @@ export function ComplementSelectorModal({
     onConfirm,
     confirmLabel = "Adicionar",
     submitting = false,
+    children,
+    basePrice,
+    additionalPrice = 0,
+    error,
 }: Props) {
     const [selected, setSelected] = useState<Record<number, number[]>>({});
 
@@ -52,7 +61,7 @@ export function ComplementSelectorModal({
     };
 
     return (
-        <Modal title={`Complementos — ${productName}`} onClose={onCancel}>
+        <Modal title={`Complementos — ${productName}`} onClose={() => { if (!submitting) onCancel(); }} dismissable={!submitting}>
             <div style={{ display: "grid", gap: 18 }} data-testid="complement-selector-view">
                 {groups.map((group) => {
                     const chosen = selected[group.id] ?? [];
@@ -103,6 +112,7 @@ export function ComplementSelectorModal({
                                                     type={isSingle ? "radio" : "checkbox"}
                                                     name={`complement-group-${group.id}`}
                                                     checked={isChosen}
+                                                    disabled={submitting}
                                                     onChange={() => toggle(group, c.id)}
                                                     data-testid={`input-complement-${c.id}`}
                                                 />
@@ -119,11 +129,17 @@ export function ComplementSelectorModal({
                     );
                 })}
 
+                {children}
+                {basePrice !== undefined && <p className="mono-num" data-testid="customization-subtotal">
+                    Subtotal: {formatBRL(basePrice + additionalPrice + groups.reduce((sum, group) =>
+                        sum + group.complements.filter(c => (selected[group.id] ?? []).includes(c.id)).reduce((total, c) => total + c.extraPrice, 0), 0))}
+                </p>}
+                {error && <p className="error-text" role="alert">{error}</p>}
                 <Button
                     variant="primary"
                     block
                     loading={submitting}
-                    disabled={!allSatisfied}
+                    disabled={!allSatisfied || submitting}
                     onClick={handleConfirm}
                     data-testid="btn-confirm-complements"
                 >

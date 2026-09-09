@@ -11,6 +11,10 @@ internal sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderIte
         builder.ToTable("OrderItem");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
+        builder.HasMany(x => x.OptionalExtras).WithOne().HasForeignKey(x => x.OrderItemId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.OptionalExtras).UsePropertyAccessMode(PropertyAccessMode.Field).AutoInclude();
+        builder.HasMany(x => x.Boosts).WithOne().HasForeignKey(x => x.OrderItemId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.Boosts).UsePropertyAccessMode(PropertyAccessMode.Field).AutoInclude();
 
         builder.Property(x => x.Quantity).HasColumnType("decimal(18,3)").IsRequired();
         builder.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)").IsRequired();

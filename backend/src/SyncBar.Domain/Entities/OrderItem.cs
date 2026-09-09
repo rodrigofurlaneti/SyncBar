@@ -7,6 +7,30 @@ namespace SyncBar.Domain.Entities
     {
         private readonly List<OrderItemComplement> _complements = [];
         private readonly List<OrderItemPizzaFlavor> _pizzaFlavors = [];
+        private readonly List<OrderItemOptionalExtra> _optionalExtras = [];
+        private readonly List<OrderItemBoost> _boosts = [];
+        public IReadOnlyCollection<OrderItemOptionalExtra> OptionalExtras => _optionalExtras.AsReadOnly();
+        public IReadOnlyCollection<OrderItemBoost> Boosts => _boosts.AsReadOnly();
+
+        internal void SetCustomizations(IEnumerable<ProductOptionalExtra> optionalExtras, IEnumerable<ProductBoost> boosts, DateTime now)
+        {
+            _optionalExtras.AddRange(optionalExtras.Select(x => OrderItemOptionalExtra.Snapshot(x, now)));
+            _boosts.AddRange(boosts.Select(x => OrderItemBoost.Snapshot(x, now)));
+        }
+
+        internal void CopyCustomizationsFrom(OrderItem source, DateTime now)
+        {
+            _optionalExtras.AddRange(source.OptionalExtras.Where(x => x.IsActive).Select(x => x.Copy(now)));
+            _boosts.AddRange(source.Boosts.Where(x => x.IsActive).Select(x => x.Copy(now)));
+        }
+
+        public string? GetPreparationNotes()
+        {
+            var selections = OptionalExtras.Where(x => x.IsActive).Select(x => x.Name)
+                .Concat(Boosts.Where(x => x.IsActive).Select(x => x.Name)).ToArray();
+            if (selections.Length == 0) return Notes;
+            return string.Join(" · ", new[] { Notes, "Escolhas: " + string.Join(", ", selections) }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        }
         public long CustomerOrderId { get; private set; }
         public long ProductId { get; private set; }
         public long OrderItemStatusId { get; private set; }

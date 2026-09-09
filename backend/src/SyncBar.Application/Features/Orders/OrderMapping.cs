@@ -34,7 +34,11 @@ namespace SyncBar.Application.Features.Orders
                         i.Complements
                             .Where(c => c.IsActive)
                             .Select(c => new OrderItemComplementResponse(c.Id, c.ComplementId, c.UnitPriceCharged))
-                            .ToList()))
+                            .ToList())
+                    {
+                        OptionalExtras = i.OptionalExtras.Where(x => x.IsActive).Select(x => new OrderItemOptionalExtraResponse(x.ProductOptionalExtraId, x.Name)).ToArray(),
+                        Boosts = i.Boosts.Where(x => x.IsActive).Select(x => new OrderItemBoostResponse(x.ProductBoostId, x.Name, x.UnitPriceCharged)).ToArray()
+                    })
                     .ToList());
     }
 }

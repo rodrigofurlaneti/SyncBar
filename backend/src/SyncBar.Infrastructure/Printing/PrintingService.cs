@@ -42,7 +42,7 @@ internal sealed class PrintingService(
                 return new TicketFormatter.OrderTicketItem(
                     i.Quantity,
                     product?.Name ?? $"Produto {i.ProductId}",
-                    i.Notes,
+                    i.GetPreparationNotes(),
                     product?.PreparationTimeMinutes ?? 5,
                     employees.FirstOrDefault(e => e.Id == requesterId)?.Name);
             }).ToList();

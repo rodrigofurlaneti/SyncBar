@@ -29,7 +29,7 @@ import type { MenuItemResponse, OrderItemComplementSelection } from "../../lib/t
 import { Overlay } from "./Overlay";
 import { PaymentPanel } from "./PaymentPanel";
 import { PartialPaymentDialog } from "./PartialPaymentDialog";
-import { ComplementSelectorModal } from "./ComplementSelectorModal";
+import { ProductCustomizationModal } from "./ProductCustomizationModal";
 import { useMyFeatures } from "../access/hooks";
 import { getServiceFeeSetting } from "../settings/api";
 
@@ -120,20 +120,26 @@ export function OrderDrawer({ orderId, onClose }: Props) {
         mutationFn: ({
             productId,
             complements,
+            optionalExtraIds,
+            boostIds,
         }: {
             productId: number;
             complements?: OrderItemComplementSelection[];
-        }) => addOrderItem(orderId, productId, 1, null, employeeId, complements),
+            optionalExtraIds?: number[];
+            boostIds?: number[];
+        }) => addOrderItem(orderId, productId, 1, null, employeeId, complements, optionalExtraIds, boostIds),
         onSuccess: () => {
             setActionError(null);
             setSelectingItem(null);
             refetchOrder();
+            void queryClient.invalidateQueries({ queryKey: ["orders"] });
         },
         onError,
     });
 
     const handlePickItem = (item: MenuItemResponse) => {
-        if (item.complementGroups.length > 0) setSelectingItem(item);
+        setActionError(null);
+        if (item.complementGroups.length > 0 || item.hasOptionalExtras || item.hasBoosts) setSelectingItem(item);
         else addItem.mutate({ productId: item.id });
     };
 
@@ -246,13 +252,15 @@ export function OrderDrawer({ orderId, onClose }: Props) {
             )}
 
             {selectingItem && (
-                <ComplementSelectorModal
-                    productName={selectingItem.name}
-                    groups={selectingItem.complementGroups}
+                <ProductCustomizationModal
+                    key={selectingItem.id}
+                    product={selectingItem}
+                    discountRate={activePromosQuery.data?.find(p => p.productId === selectingItem.id && p.promotionTypeId === 2)?.discountRate ?? 0}
+                    error={actionError}
                     onCancel={() => setSelectingItem(null)}
                     submitting={addItem.isPending}
-                    onConfirm={(complements) =>
-                        addItem.mutate({ productId: selectingItem.id, complements })
+                    onConfirm={(complements, optionalExtraIds, boostIds) =>
+                        addItem.mutate({ productId: selectingItem.id, complements, optionalExtraIds, boostIds })
                     }
                 />
             )}
@@ -357,6 +365,16 @@ export function OrderDrawer({ orderId, onClose }: Props) {
                                                     .join(", ")}
                                             </span>
                                         )}
+                                        {item.optionalExtras?.map(extra => (
+                                            <span key={extra.productOptionalExtraId} style={{ fontSize: "0.8rem", color: "var(--ink-dim)" }}>
+                                                - {extra.name}
+                                            </span>
+                                        ))}
+                                        {item.boosts?.map(boost => (
+                                            <span key={boost.productBoostId} style={{ fontSize: "0.8rem", color: "var(--ink-dim)" }}>
+                                                - {boost.name} (+ {formatBRL(boost.unitPriceCharged)})
+                                            </span>
+                                        ))}
                                     </div>
                                     {isOpen && next !== undefined && !cancelled && (
                                         <div style={{ display: "flex", gap: 6 }}>

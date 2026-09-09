@@ -15,7 +15,14 @@ public sealed record OrderItemResponse(
     decimal TotalAmount,
     string? Notes,
     long? EmployeeId,
-    IReadOnlyCollection<OrderItemComplementResponse> Complements);
+    IReadOnlyCollection<OrderItemComplementResponse> Complements)
+{
+    public IReadOnlyCollection<OrderItemOptionalExtraResponse> OptionalExtras { get; init; } = [];
+    public IReadOnlyCollection<OrderItemBoostResponse> Boosts { get; init; } = [];
+}
+
+public sealed record OrderItemOptionalExtraResponse(long ProductOptionalExtraId, string Name);
+public sealed record OrderItemBoostResponse(long ProductBoostId, string Name, decimal UnitPriceCharged);
 
 public sealed record OrderResponse(
     long Id,
