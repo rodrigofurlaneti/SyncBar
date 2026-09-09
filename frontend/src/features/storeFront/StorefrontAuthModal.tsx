@@ -84,7 +84,7 @@ const styles = `
   .input-field:read-only:focus { border-color: #27272a; outline: none; }
 
   .btn-submit { margin-top: 0.5rem; width: 100%; border-radius: 0.5rem; background-color: #f59e0b; padding: 0.875rem; font-weight: bold; font-size: 1rem; color: #18181b; border: none; cursor: pointer; transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 0.5rem; }
-  .btn-submit:hover:not(:disabled) { background-color: #d97706; transform: translateY(-0.0625rem); }
+  .btn-submit:hover:not(:disabled) { background-color: #d97706; }
   .btn-submit:disabled { cursor: not-allowed; opacity: 0.7; }
   .btn-submit:focus-visible { outline: 0.125rem solid #fff; outline-offset: 0.125rem; }
   .address-divider { position: relative; margin: 0.5rem 0; text-align: center; }
@@ -95,7 +95,11 @@ const styles = `
   @keyframes slideUp { from { opacity: 0; transform: translateY(1rem) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   @media (min-width: 40.0625rem) { .auth-modal { padding: 2rem; } .flex-row-desktop { display: flex; gap: 1rem; flex-direction: row; } .flex-3 { flex: 3; } .flex-1 { flex: 1; } }
-  @media (max-width: 40rem) { .flex-row-desktop { display: flex; flex-direction: column; gap: 1.25rem; } }
+  @media (max-width: 40rem) {
+    .flex-row-desktop { display: flex; flex-direction: column; gap: 1.25rem; }
+    .auth-modal { max-height: 90dvh; box-sizing: border-box; }
+    .auth-modal .input-field { font-size: 16px; }
+  }
 `;
 
 export function StorefrontAuthModal({
@@ -221,7 +225,6 @@ export function StorefrontAuthModal({
         setIsLoading(true);
         try {
             const userPayload = {
-                companyId: 1,
                 branchId: branchId,
                 userName: regName,
                 email: regEmail,
@@ -233,6 +236,8 @@ export function StorefrontAuthModal({
             const userResult = await registerCustomerAppUser(userPayload);
 
             const newCustomerId = userResult.id;
+            await loginCustomerAppUser({ email: regEmail, password: regPassword,
+                companyId: userResult.companyId, branchId });
 
             // Concatenando Complemento + Bairro/Cidade para o backend não perder nenhum dado
             const fullSupplementInfo = regSupplement
@@ -240,7 +245,7 @@ export function StorefrontAuthModal({
                 : regNeighborhood;
 
             const addressPayload = {
-                companyId: 1,
+                companyId: userResult.companyId,
                 branchId: branchId,
                 customerId: newCustomerId,
                 street: regStreet,

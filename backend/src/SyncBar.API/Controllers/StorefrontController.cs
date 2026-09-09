@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using SyncBar.Application.Features.CustomerAppUser.Create;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using SyncBar.Application.Features.Orders.AddItem;
@@ -29,6 +30,22 @@ namespace SyncBar.API.Controllers
                 return result.IsFailure ? HandleFailure(result) : Ok(result.Value);
             });
 
+        [HttpPost("branches/{branchId:long}/customers")]
+        [EnableRateLimiting("auth")]
+        public async Task<IActionResult> RegisterCustomer(long branchId, [FromBody] RegisterStorefrontCustomerRequest request,
+            [FromServices] IBranchRepository branches, CancellationToken ct)
+        {
+            var branch = await branches.GetByIdAsync(branchId, ct);
+            if (branch is null || !branch.IsActive)
+                return NotFound(new ProblemDetails { Title = "Branch.NotFound", Detail = "Filial indisponível para cadastro." });
+
+            // Never accept CompanyId or an existing CustomerId from public registration.
+            var result = await Mediator.Send(new CreateCustomerAppUserCommand(
+                branch.CompanyId, branchId, null, request.Cpf, request.UserName,
+                request.Email, request.Password, request.Phone), ct);
+            return result.IsFailure ? HandleFailure(result) : Ok(new { id = result.Value, companyId = branch.CompanyId });
+        }
+
         [HttpPost("branches/{branchId:long}/orders")]
         public Task<IActionResult> CreateOrder(long branchId, [FromBody] AddWebStorefrontOrderRequest request, CancellationToken ct) =>
                     ExecuteWithLogAsync(logRepository, unitOfWork, nameof(StorefrontController), nameof(CreateOrder), async () =>
@@ -54,6 +71,9 @@ namespace SyncBar.API.Controllers
             string? CustomerPhone,
             string? GeneralNotes,
             [property: JsonRequired] IReadOnlyCollection<WebStorefrontItemRequest> Items);
+
+    public sealed record RegisterStorefrontCustomerRequest(
+        string Cpf, string UserName, string Email, string Password, string? Phone = null);
 
     public sealed record WebStorefrontItemRequest(
         [property: JsonRequired] long ProductId,

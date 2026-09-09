@@ -17,11 +17,11 @@ async function register(page: Page) {
   const customer = newCustomer();
   const registrations: unknown[] = [];
   const addresses: unknown[] = [];
-  await page.route('**/api/customerappusers', route => {
+  await page.route('**/api/storefront/branches/*/customers', route => {
     registrations.push(route.request().postDataJSON());
-    return route.fulfill({ json: { id: 901 } });
+    return route.fulfill({ json: { id: 901, companyId: 1 } });
   });
-  await page.route('**/api/customeraddresses', route => {
+  await page.route('**/api/storefront/customer/addresses', route => {
     addresses.push(route.request().postDataJSON());
     return route.fulfill({ json: { id: 902 } });
   });
@@ -29,7 +29,7 @@ async function register(page: Page) {
   await fillNewCustomer(page, customer);
   await page.getByRole('button', { name: 'Cadastrar e Enviar Pedido' }).click();
   await expect(page.getByTestId('storefront-auth-modal')).toHaveCount(0);
-  expect(registrations).toEqual([expect.objectContaining({ userName: customer.name, cpf: customer.cpf, email: customer.email, branchId: 1 })]);
+  expect(registrations).toEqual([expect.objectContaining({ userName: customer.name, cpf: customer.cpf, email: customer.email })]);
   expect(addresses).toEqual([expect.objectContaining({ customerId: 901, zipCode: customer.zipCode })]);
   await page.getByTestId('btn-submit-order').click();
   await page.getByRole('button', { name: /Retirar no Balcão/ }).click();
@@ -83,8 +83,8 @@ for (const method of ['PIX', 'BOLETO', 'MAQUININHA', 'CREDITO', 'DEBITO'] as con
 test('registration API failure keeps the form and never creates an address or order', async ({ page }) => {
   await setup(page);
   let downstream = 0;
-  await page.route('**/api/customerappusers', route => route.fulfill({ status: 409, json: { title: 'Customer.Exists', detail: 'Cliente já cadastrado.' } }));
-  await page.route('**/api/customeraddresses', route => { downstream++; return route.fulfill({ json: { id: 1 } }); });
+  await page.route('**/api/storefront/branches/*/customers', route => route.fulfill({ status: 409, json: { title: 'Customer.Exists', detail: 'Cliente já cadastrado.' } }));
+  await page.route('**/api/storefront/customer/addresses', route => { downstream++; return route.fulfill({ json: { id: 1, companyId: 1 } }); });
   await page.route('**/api/storefront/branches/1/orders', route => { downstream++; return route.fulfill({ json: { orderId: 1 } }); });
   await openIdentification(page, 1);
   await fillNewCustomer(page, newCustomer());
@@ -96,7 +96,7 @@ test('registration API failure keeps the form and never creates an address or or
 
 test('delivery uses the newly registered customer address', async ({ page }) => {
   await setup(page);
-  await page.route('**/api/customeraddresses/customer/901', route => route.fulfill({ json: [
+  await page.route('**/api/storefront/customer/addresses/customer/901', route => route.fulfill({ json: [
     { id: 902, customerId: 901, street: 'Praça da Sé', number: '100', zipCode: '01001000', isActive: true },
   ] }));
   let order: any;

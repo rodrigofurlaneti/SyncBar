@@ -9,12 +9,14 @@ namespace SyncBar.E2ETests;
 
 public sealed class ProductionFactAttribute : FactAttribute
 {
-    public ProductionFactAttribute(bool authenticated = false)
+    public ProductionFactAttribute(bool authenticated = false, bool signup = false)
     {
         if (Environment.GetEnvironmentVariable("E2E_RUN") != "1")
             Skip = "Defina E2E_RUN=1 para executar contra o ambiente publicado.";
         else if (authenticated && Environment.GetEnvironmentVariable("E2E_AUTH") != "1")
             Skip = "Defina E2E_AUTH=1 e as credenciais de teste para executar o login real.";
+        else if (signup && Environment.GetEnvironmentVariable("E2E_SIGNUP") != "1")
+            Skip = "Defina E2E_SIGNUP=1 para criar uma empresa/filial/administrador de teste.";
     }
 }
 
@@ -43,6 +45,7 @@ internal sealed class Browser : IDisposable
     public Browser()
     {
         var options = new ChromeOptions();
+        options.PageLoadStrategy = PageLoadStrategy.Eager;
         if (Environment.GetEnvironmentVariable("E2E_HEADLESS") != "0") options.AddArgument("--headless=new");
         options.AddArgument("--window-size=1440,1000");
         Driver = new ChromeDriver(options);

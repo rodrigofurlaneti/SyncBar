@@ -17,8 +17,8 @@ test('new customer and address persist and allow login at cardapio/1', async ({ 
   }
   await identify(page);
   await fillNewCustomer(page, customer);
-  const registration = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/api/customerappusers'));
-  const address = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/api/customeraddresses')).catch(() => null);
+  const registration = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/api/storefront/branches/1/customers'));
+  const address = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/api/storefront/customer/addresses')).catch(() => null);
   await page.getByRole('button', { name: 'Cadastrar e Enviar Pedido' }).click();
   const result = await registration;
   expect(result.status(), 'Real customer registration status').toBeGreaterThanOrEqual(200);

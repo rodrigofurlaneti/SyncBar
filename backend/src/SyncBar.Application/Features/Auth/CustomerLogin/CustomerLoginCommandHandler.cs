@@ -85,7 +85,7 @@ internal sealed class CustomerLoginCommandHandler : BaseCommandHandler<CustomerL
                 refreshTokenValue,
                 refreshTokenExpiresAt,
                 customer.UserName,
-                customer.Id,
+                customer.CustomerId ?? 0,
                 customer.CompanyId));
         });
 
