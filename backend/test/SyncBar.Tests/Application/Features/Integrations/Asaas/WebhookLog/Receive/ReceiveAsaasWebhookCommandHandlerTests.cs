@@ -58,11 +58,13 @@ public sealed class ReceiveAsaasWebhookCommandHandlerTests
         result.Error.Code.Should().Be("Asaas.InvalidPayload");
     }
 
-    [Fact]
-    public async Task Handle_EventOutsidePaymentCategory_ShouldSucceedWithoutTouchingRepositories()
+    [Theory]
+    [InlineData("""{"id":"evt_1","event":"INVOICE_CREATED","payment":{"id":"pay_1"}}""")]
+    [InlineData("""{"id":"evt_1","event":"ACCESS_TOKEN_CREATED","dateCreated":"2026-09-08 22:16:19","account":{"id":"account_1","ownerId":null},"accessToken":{"id":"token_1","name":"DingFood","enabled":true}}""")]
+    public async Task Handle_EventOutsidePaymentCategory_ShouldSucceedWithoutTouchingRepositories(string payload)
     {
         var command = new ReceiveAsaasWebhookCommand(
-            """{"id":"evt_1","event":"INVOICE_CREATED","payment":{"id":"pay_1"}}""", null, null);
+            payload, null, null);
 
         var result = await _handler.Handle(command, CancellationToken.None);
 

@@ -59,14 +59,16 @@ namespace SyncBar.Application.Features.Integrations.Asaas.WebhookLog.Receive
                         return Result.Failure(new Error("Asaas.InvalidPayload", "Payload do webhook não é um JSON válido."));
                     }
 
-                    if (payload is null || string.IsNullOrWhiteSpace(payload.Event) || payload.Payment is null
-                        || string.IsNullOrWhiteSpace(payload.Payment.Id))
+                    if (payload is null || string.IsNullOrWhiteSpace(payload.Event))
                     {
                         return Result.Failure(new Error("Asaas.InvalidPayload", "Payload do webhook incompleto — evento ou cobrança ausente."));
                     }
 
                     if (!payload.Event.StartsWith("PAYMENT_", StringComparison.OrdinalIgnoreCase))
                         return Result.Success();
+
+                    if (payload.Payment is null || string.IsNullOrWhiteSpace(payload.Payment.Id))
+                        return Result.Failure(new Error("Asaas.InvalidPayload", "Payload do webhook incompleto — evento ou cobrança ausente."));
 
                     var payment = await _paymentRepository.GetByAsaasPaymentIdForUpdateAsync(payload.Payment.Id, cancellationToken);
                     if (payment is null)
